@@ -1,26 +1,28 @@
-# 🌐 Exercice 3 : HAPROXY (Load Balancer)
+# Exercice 3 : HAPROXY + NGINXDEMOS/HELLO (Aligné 100% avec OpenClassrooms)
 
 ---
 
-## 🎯 OBJECTIFS
+## 📌 **OBJECTIFS (Conforme aux consignes OpenClassrooms)**
 
-**But principal** : Déployer un **load balancer HAProxy** devant les 2 VMs NGINX de l'Exercice 1.
+**But principal** : Déployer un **load balancer HAProxy** devant **2 instances de l'application `nginxdemos/hello`** (Docker).
 
 **Compétences visées** :
-- ✅ Maîtriser le Load Balancing.
-- ✅ Comprendre le rôle d'un reverse proxy.
-- ✅ Savoir répartir la charge entre plusieurs serveurs.
-- ✅ Configurer la haute disponibilité.
+- ✅ Maîtriser le **Load Balancing** avec HAProxy.
+- ✅ Comprendre le rôle d'un **reverse proxy**.
+- ✅ Déployer des **conteneurs Docker** (`nginxdemos/hello`).
+- ✅ Configurer HAProxy pour répartir la charge entre plusieurs conteneurs.
+- ✅ Vérifier l'**alternance des requêtes** (Server name change à chaque rafraîchissement).
 
-**Résultat attendu** :
-- ✅ 1 VM HAProxy déployée dans AWS.
-- ✅ HAProxy configuré pour répartir le trafic vers les 2 VMs NGINX.
-- ✅ Load balancing fonctionnel (répartition des requêtes).
-- ✅ Tolérance aux pannes vérifiée.
+**Résultat attendu** (selon OpenClassrooms) :
+- ✅ **1 VM HAProxy déployée** dans AWS (ou 1 conteneur Docker en local).
+- ✅ **2 instances de `nginxdemos/hello`** (Docker) déployées.
+- ✅ **HAProxy configuré** pour répartir la charge entre les 2 instances.
+- ✅ **Vérification de l'alternance** : À chaque rafraîchissement, le **Server name** change (ex : `faf376c0f0b1`).
+- ✅ **Fichier `haproxy.cfg`** livré (conforme aux consignes).
 
 ---
 
-## 🧠 CONCEPTS CLÉS À COMPRENDRE
+## 📚 **CONCEPTS CLÉS À COMPRENDRE**
 
 ### 🔹 1. Load Balancing
 
@@ -44,186 +46,419 @@
 
 ---
 
-## 🛠️ PRÉPARATION
+### 🔹 3. Docker et `nginxdemos/hello`
 
-### ✅ Prérequis pour l'Exercice 3
-
-- Exercice 1 terminé avec succès (2 VMs NGINX déployées et accessibles).
-- VM **vm-devops** accessible en SSH.
-- Terraform, Ansible, AWS CLI installés et configurés.
-- Pack P5 disponible dans `/home/devops/P5_OC_4091_PACK_COMPLET_V4_3_KVM/`.
+| Concept | Explication | Pourquoi c'est utile ? |
+|---------|-------------|------------------------|
+| **Docker** | Plateforme pour créer, déployer et gérer des conteneurs. | Permet d'isoler les applications et de les déployer facilement |
+| **Image Docker** | Modèle immuable pour créer des conteneurs. | Contient tout ce qui est nécessaire pour exécuter une application |
+| **Conteneur Docker** | Instance d'une image Docker en cours d'exécution. | Application isolée et portable |
+| **`nginxdemos/hello`** | Image Docker officielle pour tester NGINX. | Affiche un message avec un **Server name unique** (ID du conteneur) |
+| **Port 80** | Port par défaut pour `nginxdemos/hello`. | Permet d'accéder à l'application via HTTP |
 
 ---
 
-### 📌 Commandes de vérification
+### 🔹 4. Architecture de l'Exercice 3
 
-```bash
-# 1. Vérifiez que vous êtes sur la VM vm-devops
-hostname
-# → Doit afficher : vm-devops
-
-# 2. Vérifiez que Terraform est installé
-terraform -version
-# → Doit afficher : Terraform v1.15.8 (ou supérieur)
-
-# 3. Vérifiez que AWS CLI est configuré
-aws sts get-caller-identity
-# → Doit afficher votre UserId et Account
-
-# 4. Vérifiez que les instances NGINX de l'Exercice 1 sont toujours en cours d'exécution
-aws ec2 describe-instances --query "Reservations[].Instances[?Tags[?Key=='Project' && Value=='p5-openclassrooms']].[InstanceId, PublicIpAddress, PrivateIpAddress, State.Name]" --output table
-# → Doit afficher les 2 instances NGINX avec leur IP privée (nécessaire pour HAProxy)
+```
+┌───────────────────────────────────────────────────────────────────────────────┐
+│                                                                               │
+│   ┌─────────────┐                                                               │
+│   │   Client    │                                                               │
+│   └──────┬──────┘                                                               │
+│          │                                                                       │
+│          ▼                                                                       │
+│   ┌─────────────┐                                                               │
+│   │  HAProxy    │  (Load Balancer - Port 80)                                    │
+│   │  (VM ou    │                                                               │
+│   │  Conteneur) │                                                               │
+│   └──────┬──────┘                                                               │
+│          │                                                                       │
+│          ├───► ┌─────────────┐                                                   │
+│          │    │ nginxdemos/ │  (Server name: faf376c0f0b1)                         │
+│          │    │   hello     │  (Port 80)                                         │
+│          │    └─────────────┘                                                   │
+│          │                                                                       │
+│          └───► ┌─────────────┐                                                   │
+│               │ nginxdemos/ │  (Server name: 3a8f2b1c4d5e)                         │
+│               │   hello     │  (Port 80)                                         │
+│               └─────────────┘                                                   │
+│                                                                               │
+└───────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🚀 ÉTAPES D'EXÉCUTION
+## 🛠️ **PRÉPARATION**
 
-### Étape 1 : Récupérer les IPs privées des VMs NGINX
+### ✅ **Prérequis pour l'Exercice 3**
 
-1. **Récupérer les IPs privées** (nécessaires pour la configuration HAProxy) :
-   ```bash
-   NGINX_1_PRIVATE_IP=$(aws ec2 describe-instances --query "Reservations[0].Instances[0].PrivateIpAddress" --output text)
-   NGINX_2_PRIVATE_IP=$(aws ec2 describe-instances --query "Reservations[0].Instances[1].PrivateIpAddress" --output text)
-   
-   echo "NGINX-1 Private IP: $NGINX_1_PRIVATE_IP"
-   echo "NGINX-2 Private IP: $NGINX_2_PRIVATE_IP"
-   ```
-   **Notez ces IPs privées** pour l'étape suivante.
+#### **Option 1 : Mode Cloud (AWS)**
+- Exercice 1 terminé avec succès (2 VMs déployées, **mais pas NGINX standard** → voir [corrections](#)).
+- VM **vm-devops** accessible en SSH.
+- Terraform, Ansible, AWS CLI installés et configurés.
+- **Docker installé** sur les VMs backend (ou sur la VM HAProxy).
+- Pack P5 disponible dans `/home/devops/P5_OC_4091_PACK_COMPLET_V4_3_KVM/`.
 
----
-
-### Étape 2 : Générer la configuration HAProxy
-
-1. **Créer un script pour générer la configuration** (`generer-haproxy-config.sh`) :
-   ```bash
-   nano generer-haproxy-config.sh
-   ```
-   **Contenu** :
-   ```bash
-   #!/bin/bash
-   
-   NGINX_1_IP=$1
-   NGINX_2_IP=$2
-   
-   cat > haproxy.cfg <<EOF
-   frontend http-in
-       bind *:80
-       default_backend ngx_servers
-   
-   backend ngx_servers
-       balance roundrobin
-       server ngx1 ${NGINX_1_IP}:80 check
-       server ngx2 ${NGINX_2_IP}:80 check
-   
-   listen stats
-       bind *:8404
-       stats enable
-       stats uri /stats
-       stats refresh 10s
-       stats admin if TRUE
-   EOF
-   
-   echo "Configuration HAProxy générée dans haproxy.cfg"
-   ```
-
-2. **Rendre le script exécutable** :
-   ```bash
-   chmod +x generer-haproxy-config.sh
-   ```
-
-3. **Générer la configuration** :
-   ```bash
-   ./generer-haproxy-config.sh $NGINX_1_PRIVATE_IP $NGINX_2_PRIVATE_IP
-   ```
-
-4. **Vérifier le fichier généré** :
-   ```bash
-   cat haproxy.cfg
-   ```
-   **Résultat attendu** :
-   ```cfg
-   frontend http-in
-       bind *:80
-       default_backend ngx_servers
-   
-   backend ngx_servers
-       balance roundrobin
-       server ngx1 10.0.1.123:80 check
-       server ngx2 10.0.2.45:80 check
-   
-   listen stats
-       bind *:8404
-       stats enable
-       stats uri /stats
-       stats refresh 10s
-       stats admin if TRUE
-   ```
+#### **Option 2 : Mode Local (Docker-Compose)**
+- Docker et Docker-Compose installés sur votre machine.
+- Accès à Internet pour télécharger l'image `nginxdemos/hello`.
 
 ---
 
-### Étape 3 : Déployer la VM HAProxy avec Terraform
+### 🔍 **Commandes de vérification**
+
+```bash
+# 1. Vérifiez que vous êtes sur la VM vm-devops (si AWS)
+hostname
+# ✅ Doit afficher : vm-devops
+
+# 2. Vérifiez que Terraform est installé
+terraform -version
+# ✅ Doit afficher : Terraform v1.15.8 (ou supérieur)
+
+# 3. Vérifiez que AWS CLI est configuré (si AWS)
+aws sts get-caller-identity
+# ✅ Doit afficher votre UserId et Account
+
+# 4. Vérifiez que Docker est installé
+docker --version
+# ✅ Doit afficher : Docker version 20.x.x
+
+# 5. Vérifiez que docker-compose est installé (si local)
+docker-compose --version
+# ✅ Doit afficher : docker-compose version 1.x.x
+```
+
+---
+
+## 🚀 **ÉTAPES D'EXÉCUTION**
+
+---
+
+### ✅ **Étape 0 : Choisir le mode (AWS ou Local)**
+
+#### **Option 1 : Mode AWS (Recommandé pour OpenClassrooms)**
+- Déploiement sur **AWS avec Terraform**.
+- **2 VMs backend** avec Docker + `nginxdemos/hello`.
+- **1 VM HAProxy** pour le load balancing.
+
+#### **Option 2 : Mode Local (Docker-Compose)**
+- Déploiement **localement avec Docker-Compose**.
+- **2 conteneurs `nginxdemos/hello`**.
+- **1 conteneur HAProxy** pour le load balancing.
+
+> **⚠️ Pour ce guide, nous allons utiliser le **Mode AWS** (conforme aux consignes OpenClassrooms).**
+> **Si vous préférez le Mode Local, voir [Annexe A](#annexe-a-mode-local-docker-compose).**
+
+---
+
+### ✅ **Étape 1 : Déployer les 2 instances `nginxdemos/hello` (AWS)**
+
+> **⚠️ Correction par rapport à l'Exercice 1 : On utilise `nginxdemos/hello` au lieu de NGINX standard.**
 
 1. **Aller dans le dossier de l'Exercice 3** :
    ```bash
    cd /home/devops/P5_OC_4091_PACK_COMPLET_V4_3_KVM/04_EXERCICES/03_HAPROXY/
    ```
 
-2. **Initialiser Terraform** :
+2. **Modifier le fichier `main.tf`** pour déployer **2 VMs avec Docker + `nginxdemos/hello`** :
+   ```bash
+   nano terraform/exercice-3/main.tf
+   ```
+   **Contenu à ajouter/modifier** (extrait) :
+   ```hcl
+   # Créer 2 VMs pour nginxdemos/hello
+   resource "aws_instance" "nginx_hello" {
+     count         = 2
+     ami           = "ami-0c55b159cbfafe1f0"  # Ubuntu 22.04 LTS (Free Tier)
+     instance_type = "t2.micro"
+     subnet_id     = aws_subnet.p5_public_subnet_a.id
+     
+     # Clé SSH
+     key_name = "p5-key"
+     
+     # Security Group (autorise HTTP et SSH)
+     vpc_security_group_ids = [aws_security_group.p5_nginx_sg.id]
+     
+     # Tags
+     tags = {
+       Name    = "p5-nginx-hello-${count.index}"
+       Project = "p5-openclassrooms"
+     }
+     
+     # User Data : Installer Docker et lancer nginxdemos/hello
+     user_data = <<-EOF
+               #!/bin/bash
+               sudo apt update -y
+               sudo apt install -y docker.io
+               sudo systemctl start docker
+               sudo systemctl enable docker
+               sudo usermod -aG docker ubuntu
+               sudo docker run -d --name nginx-hello -p 80:80 nginxdemos/hello
+               EOF
+   }
+   ```
+
+3. **Appliquer Terraform** :
    ```bash
    terraform init
-   ```
-
-3. **Vérifier le plan** :
-   ```bash
    terraform plan
-   ```
-   **Ce que vous devriez voir** :
-   - Création d'une **VM EC2** pour HAProxy.
-   - Création d'un **Security Group** pour HAProxy.
-   - Message : `Plan: X to add, 0 to change, 0 to destroy.`
-
-4. **Appliquer le plan** :
-   ```bash
    terraform apply -auto-approve
+   ```
+
+4. **Vérifier que les conteneurs sont en cours d'exécution** :
+   ```bash
+   # Récupérer les IPs privées des VMs
+   NGINX_HELLO_1_IP=$(aws ec2 describe-instances --query "Reservations[0].Instances[0].PrivateIpAddress" --output text)
+   NGINX_HELLO_2_IP=$(aws ec2 describe-instances --query "Reservations[0].Instances[1].PrivateIpAddress" --output text)
+   
+   # Se connecter à la première VM et vérifier Docker
+   ssh -i p5-key.pem ubuntu@$(aws ec2 describe-instances --query "Reservations[0].Instances[0].PublicIpAddress" --output text)
+   docker ps
    ```
    **Résultat attendu** :
    ```
-   Apply complete! Resources: X added, 0 changed, 0 destroyed.
+   CONTAINER ID   IMAGE                  COMMAND                  CREATED         STATUS         PORTS                  NAMES
+   abc123def456   nginxdemos/hello      "/docker-entrypoint.…"   2 minutes ago   Up 2 minutes   0.0.0.0:80->80/tcp,:::80->80/tcp   nginx-hello
    ```
 
-5. **Récupérer l'IP publique de HAProxy** :
+5. **Tester l'accès aux instances `nginxdemos/hello`** :
    ```bash
-   HAPROXY_IP=$(terraform output -raw haproxy_public_ip)
-   echo "HAProxy Public IP: $HAPROXY_IP"
+   # Depuis la VM vm-devops, tester via les IPs privées
+   curl http://$NGINX_HELLO_1_IP
+   curl http://$NGINX_HELLO_2_IP
+   ```
+   **Résultat attendu** :
+   ```html
+   <!DOCTYPE html>
+   <html>
+   <head>
+   <title>Hello from NGINX!</title>
+   <style>
+       body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
+       h1 { color: #0078d7; }
+   </style>
+   </head>
+   <body>
+   <h1>Hello from NGINX!</h1>
+   <p>Server name: <strong>faf376c0f0b1</strong></p>
+   <p>Server address: 10.0.1.123:80</p>
+   </body>
+   </html>
+   ```
+   **✅ Notez les `Server name`** (ex : `faf376c0f0b1` et `3a8f2b1c4d5e`).
+
+---
+
+### ✅ **Étape 2 : Générer la configuration HAProxy**
+
+1. **Créer le script `generer-haproxy-config.sh`** :
+   ```bash
+   nano scripts/generer-haproxy-config.sh
+   ```
+   **Contenu** :
+   ```bash
+   #!/bin/bash
+   
+   # IPs des instances nginxdemos/hello
+   NGINX_HELLO_1_IP=$1
+   NGINX_HELLO_2_IP=$2
+   
+   cat > haproxy.cfg <<EOF
+   # =============================================================================
+   # Configuration HAProxy pour nginxdemos/hello
+   # Projet P5 OpenClassrooms - Exercice 3
+   # =============================================================================
+   
+   global
+       log /dev/log local0
+       log /dev/log local1 notice
+       chroot /var/lib/haproxy
+       stats socket /run/haproxy/admin.sock mode 660 level admin
+       stats timeout 30s
+       user haproxy
+       group haproxy
+       daemon
+   
+   defaults
+       log global
+       mode http
+       option httplog
+       option dontlognull
+       timeout connect 5000
+       timeout client 50000
+       timeout server 50000
+       errorfile 400 /etc/haproxy/errors/400.http
+       errorfile 403 /etc/haproxy/errors/403.http
+       errorfile 408 /etc/haproxy/errors/408.http
+       errorfile 500 /etc/haproxy/errors/500.http
+       errorfile 502 /etc/haproxy/errors/502.http
+       errorfile 503 /etc/haproxy/errors/503.http
+       errorfile 504 /etc/haproxy/errors/504.http
+   
+   # ===========================================================================
+   # Frontend : Écoute sur le port 80
+   # ===========================================================================
+   frontend http-in
+       bind *:80
+       default_backend nginx_hello_servers
+   
+   # ===========================================================================
+   # Backend : Répartition entre les 2 instances nginxdemos/hello
+   # ===========================================================================
+   backend nginx_hello_servers
+       balance roundrobin
+       server nginx-hello-1 ${NGINX_HELLO_1_IP}:80 check
+       server nginx-hello-2 ${NGINX_HELLO_2_IP}:80 check
+   
+   # ===========================================================================
+   # Statistiques HAProxy (port 8404)
+   # ===========================================================================
+   listen stats
+       bind *:8404
+       stats enable
+       stats uri /stats
+       stats refresh 10s
+       stats admin if TRUE
+       stats show-legends
+   EOF
+   
+   echo "✅ Configuration HAProxy générée dans haproxy.cfg"
+   echo "   - Backend 1 : $NGINX_HELLO_1_IP:80"
+   echo "   - Backend 2 : $NGINX_HELLO_2_IP:80"
+   ```
+
+2. **Rendre le script exécutable** :
+   ```bash
+   chmod +x scripts/generer-haproxy-config.sh
+   ```
+
+3. **Générer la configuration** :
+   ```bash
+   ./scripts/generer-haproxy-config.sh $NGINX_HELLO_1_IP $NGINX_HELLO_2_IP
+   ```
+
+4. **Vérifier le fichier généré** :
+   ```bash
+   cat haproxy.cfg
    ```
 
 ---
 
-### Étape 4 : Installer et configurer HAProxy
+### ✅ **Étape 3 : Déployer la VM HAProxy avec Terraform**
 
-1. **Se connecter à la VM HAProxy** :
+1. **Modifier le fichier `main.tf`** pour déployer HAProxy :
+   ```bash
+   nano terraform/exercice-3/main.tf
+   ```
+   **Contenu à ajouter** (si non déjà présent) :
+   ```hcl
+   # VM HAProxy
+   resource "aws_instance" "haproxy" {
+     ami           = "ami-0c55b159cbfafe1f0"  # Ubuntu 22.04 LTS
+     instance_type = "t2.micro"
+     subnet_id     = aws_subnet.p5_public_subnet_b.id
+     
+     # Clé SSH
+     key_name = "p5-key"
+     
+     # Security Group (autorise HTTP et stats)
+     vpc_security_group_ids = [aws_security_group.p5_haproxy_sg.id]
+     
+     # Tags
+     tags = {
+       Name    = "p5-haproxy"
+       Project = "p5-openclassrooms"
+     }
+     
+     # User Data : Installer HAProxy
+     user_data = <<-EOF
+               #!/bin/bash
+               sudo apt update -y
+               sudo apt install -y haproxy
+               sudo systemctl start haproxy
+               sudo systemctl enable haproxy
+               EOF
+   }
+   
+   # Security Group pour HAProxy
+   resource "aws_security_group" "p5_haproxy_sg" {
+     name        = "p5-haproxy-sg"
+     description = "Security Group pour HAProxy (Ports 80 et 8404)"
+     vpc_id      = aws_vpc.p5_vpc.id
+     
+     # Autoriser HTTP (port 80)
+     ingress {
+       from_port   = 80
+       to_port     = 80
+       protocol    = "tcp"
+       cidr_blocks = ["0.0.0.0/0"]
+     }
+     
+     # Autoriser les stats HAProxy (port 8404)
+     ingress {
+       from_port   = 8404
+       to_port     = 8404
+       protocol    = "tcp"
+       cidr_blocks = ["0.0.0.0/0"]
+     }
+     
+     # Autoriser SSH (port 22)
+     ingress {
+       from_port   = 22
+       to_port     = 22
+       protocol    = "tcp"
+       cidr_blocks = ["0.0.0.0/0"]
+     }
+     
+     # Autoriser tout le trafic sortant
+     egress {
+       from_port   = 0
+       to_port     = 0
+       protocol    = "-1"
+       cidr_blocks = ["0.0.0.0/0"]
+     }
+     
+     tags = {
+       Name    = "p5-haproxy-sg"
+       Project = "p5-openclassrooms"
+     }
+   }
+   ```
+
+2. **Appliquer Terraform** :
+   ```bash
+   terraform apply -auto-approve
+   ```
+
+3. **Récupérer l'IP publique de HAProxy** :
+   ```bash
+   HAPROXY_IP=$(terraform output -raw haproxy_public_ip)
+   echo "✅ HAProxy Public IP: $HAPROXY_IP"
+   ```
+
+---
+
+### ✅ **Étape 4 : Déployer la configuration HAProxy**
+
+1. **Copier le fichier `haproxy.cfg` sur la VM HAProxy** :
+   ```bash
+   scp -i p5-key.pem haproxy.cfg ubuntu@$HAPROXY_IP:/tmp/
+   ```
+
+2. **Se connecter à la VM HAProxy** :
    ```bash
    ssh -i p5-key.pem ubuntu@$HAPROXY_IP
    ```
 
-2. **Installer HAProxy** :
+3. **Déployer la configuration** :
    ```bash
-   sudo apt update
-   sudo apt install -y haproxy
-   ```
-
-3. **Copier la configuration HAProxy** :
-   ```bash
-   # Depuis votre VM vm-devops, copiez le fichier haproxy.cfg généré précédemment
-   scp -i p5-key.pem haproxy.cfg ubuntu@$HAPROXY_IP:/tmp/
-   
-   # Sur la VM HAProxy, déployez la configuration
    sudo cp /tmp/haproxy.cfg /etc/haproxy/haproxy.cfg
    sudo chmod 644 /etc/haproxy/haproxy.cfg
    ```
 
-4. **Tester la configuration HAProxy** :
+4. **Tester la configuration** :
    ```bash
    sudo haproxy -c -f /etc/haproxy/haproxy.cfg
    ```
@@ -232,26 +467,19 @@ aws ec2 describe-instances --query "Reservations[].Instances[?Tags[?Key=='Projec
    Configuration file is valid
    ```
 
-5. **Démarrer HAProxy** :
+5. **Redémarrer HAProxy** :
    ```bash
-   sudo systemctl start haproxy
-   sudo systemctl enable haproxy
+   sudo systemctl restart haproxy
    ```
 
 6. **Vérifier que HAProxy est démarré** :
    ```bash
    sudo systemctl status haproxy
    ```
-   **Résultat attendu** :
-   ```
-   ● haproxy.service - HAProxy Load Balancer
-      Loaded: loaded (/lib/systemd/system/haproxy.service; enabled; vendor preset: enabled)
-      Active: active (running) since Mon 2026-08-02 12:00:00 UTC; 5min ago
-   ```
 
 ---
 
-### Étape 5 : Tester le Load Balancing
+### ✅ **Étape 5 : Tester le Load Balancing**
 
 1. **Tester l'accès via HAProxy** :
    ```bash
@@ -262,122 +490,146 @@ aws ec2 describe-instances --query "Reservations[].Instances[?Tags[?Key=='Projec
    <!DOCTYPE html>
    <html>
    <head>
-   <title>Welcome to nginx!</title>
+   <title>Hello from NGINX!</title>
    ...
    <body>
-   <h1>Welcome to nginx!</h1>
-   ...
+   <h1>Hello from NGINX!</h1>
+   <p>Server name: <strong>faf376c0f0b1</strong></p>
+   <p>Server address: 10.0.1.123:80</p>
    </body>
    </html>
    ```
 
-2. **Tester la répartition de charge** :
+2. **Tester l'alternance des requêtes (OBLIGATOIRE pour OpenClassrooms)** :
    ```bash
-   for i in {1..5}; do curl -s http://$HAPROXY_IP | grep -o "Welcome to nginx from [^<]*"; echo "---"; done
+   for i in {1..10}; do 
+     curl -s http://$HAPROXY_IP | grep -o "Server name: [^<]*" | sed 's/Server name: //;s/<\/strong>//';
+     echo "---";
+   done
    ```
    **Résultat attendu** :
    ```
-   Welcome to nginx from 10.0.1.123
+   faf376c0f0b1
    ---
-   Welcome to nginx from 10.0.2.45
+   3a8f2b1c4d5e
    ---
-   Welcome to nginx from 10.0.1.123
+   faf376c0f0b1
    ---
-   Welcome to nginx from 10.0.2.45
+   3a8f2b1c4d5e
    ---
-   Welcome to nginx from 10.0.1.123
+   faf376c0f0b1
    ```
-   **Explication** : Les requêtes sont alternées entre NGINX-1 et NGINX-2 (algorithme **Round Robin**).
+   **✅ Les `Server name` doivent alterner entre les 2 conteneurs.**
 
 3. **Vérifier les statistiques HAProxy** :
    ```bash
    curl http://$HAPROXY_IP:8404/stats
    ```
    **Résultat attendu** :
-   - Page HTML avec les statistiques de HAProxy.
-   - Les deux serveurs backend (NGINX-1 et NGINX-2) doivent être **UP**.
+   - Les 2 serveurs backend (`nginx-hello-1` et `nginx-hello-2`) doivent être **UP**.
+   - Le nombre de requêtes doit être réparti entre les 2 serveurs.
 
 ---
 
-### Étape 6 : Tester la tolérance aux pannes
+### ✅ **Étape 6 : Tester la tolérance aux pannes**
 
-1. **Arrêter une VM NGINX** (ex: NGINX-1) :
+1. **Arrêter un conteneur `nginxdemos/hello`** :
    ```bash
-   # Récupérer l'ID de l'instance NGINX-1
-   NGINX_1_ID=$(aws ec2 describe-instances --query "Reservations[0].Instances[0].InstanceId" --output text)
+   # Se connecter à la première VM backend
+   ssh -i p5-key.pem ubuntu@$(aws ec2 describe-instances --query "Reservations[0].Instances[0].PublicIpAddress" --output text)
    
-   # Arrêter l'instance
-   aws ec2 stop-instances --instance-ids $NGINX_1_ID
+   # Arrêter le conteneur
+   docker stop nginx-hello
    ```
 
-2. **Attendre que l'instance soit arrêtée** :
+2. **Tester l'accès via HAProxy** :
    ```bash
-   aws ec2 describe-instances --instance-ids $NGINX_1_ID --query "Reservations[0].Instances[0].State.Name" --output text
-   # → Doit afficher : stopped
-   ```
-
-3. **Tester l'accès via HAProxy** :
-   ```bash
-   curl http://$HAPROXY_IP
+   for i in {1..5}; do 
+     curl -s http://$HAPROXY_IP | grep -o "Server name: [^<]*" | sed 's/Server name: //;s/<\/strong>//';
+     echo "---";
+   done
    ```
    **Résultat attendu** :
-   - La page web doit **toujours s'afficher** (servie par NGINX-2).
-   - HAProxy a automatiquement détecté que NGINX-1 est **DOWN** et envoie tout le trafic vers NGINX-2.
+   - Toutes les requêtes doivent être servies par **le même conteneur** (celui qui est encore UP).
+   - HAProxy a automatiquement détecté que le premier conteneur est **DOWN**.
 
-4. **Vérifier les statistiques HAProxy** :
+3. **Vérifier les statistiques HAProxy** :
    ```bash
    curl http://$HAPROXY_IP:8404/stats
    ```
    **Résultat attendu** :
-   - NGINX-1 doit être marqué comme **DOWN**.
-   - NGINX-2 doit être marqué comme **UP**.
+   - `nginx-hello-1` doit être marqué comme **DOWN**.
+   - `nginx-hello-2` doit être marqué comme **UP**.
 
-5. **Redémarrer NGINX-1** :
+4. **Redémarrer le conteneur** :
    ```bash
-   aws ec2 start-instances --instance-ids $NGINX_1_ID
+   docker start nginx-hello
    ```
 
-6. **Vérifier que le load balancing fonctionne à nouveau** :
+5. **Vérifier que le load balancing fonctionne à nouveau** :
    ```bash
-   for i in {1..5}; do curl -s http://$HAPROXY_IP | grep -o "Welcome to nginx from [^<]*"; echo "---"; done
+   for i in {1..5}; do 
+     curl -s http://$HAPROXY_IP | grep -o "Server name: [^<]*" | sed 's/Server name: //;s/<\/strong>//';
+     echo "---";
+   done
    ```
    **Résultat attendu** :
-   - Les requêtes doivent à nouveau être réparties entre NGINX-1 et NGINX-2.
+   - Les requêtes doivent à nouveau alterner entre les 2 conteneurs.
 
 ---
 
-## ✅ VÉRIFICATIONS
+## ✅ **VÉRIFICATIONS FINALES (Checklist OpenClassrooms)**
 
-### Checklist de Vérification
+### **Checklist de Vérification**
 
 - [ ] **Préparation** :
-  - [ ] IPs privées des VMs NGINX récupérées
-  - [ ] Configuration HAProxy générée
+  - [ ] 2 instances `nginxdemos/hello` déployées (Docker).
+  - [ ] IPs privées des instances récupérées.
+  - [ ] Configuration HAProxy générée (`haproxy.cfg`).
 
 - [ ] **Terraform** :
-  - [ ] `terraform init` exécuté avec succès
-  - [ ] `terraform plan` affiche la création de la VM HAProxy
-  - [ ] `terraform apply` crée la VM avec succès
-  - [ ] IP publique de HAProxy récupérée
+  - [ ] `terraform init` exécuté avec succès.
+  - [ ] `terraform plan` affiche la création de la VM HAProxy.
+  - [ ] `terraform apply` crée la VM avec succès.
+  - [ ] IP publique de HAProxy récupérée.
 
 - [ ] **HAProxy** :
-  - [ ] HAProxy installé sur la VM
-  - [ ] Configuration HAProxy déployée
-  - [ ] Service HAProxy démarré
-  - [ ] Accès via HAProxy fonctionne
+  - [ ] HAProxy installé sur la VM.
+  - [ ] Configuration HAProxy déployée.
+  - [ ] Service HAProxy démarré.
+  - [ ] Accès via HAProxy fonctionne.
 
 - [ ] **Load Balancing** :
-  - [ ] Répartition de charge vérifiée (Round Robin)
-  - [ ] Statistiques HAProxy accessibles
-  - [ ] Tolérance aux pannes testée
+  - [ ] **Alternance des `Server name` vérifiée** (OBLIGATOIRE).
+  - [ ] Statistiques HAProxy accessibles (`:8404/stats`).
+  - [ ] Tolérance aux pannes testée.
+
+- [ ] **Livrable** :
+  - [ ] Fichier `haproxy.cfg` prêt à être livré.
 
 ---
 
-## 🛠️ DÉPANNAGE
+## 📌 **LIVRABLES (Format OpenClassrooms)**
 
-### Problèmes Courants et Solutions
+### **📁 Fichiers à livrer** :
+```
+P5_4091_Deployez_et_suivez_l_IaC_Mathias_SEGUIN-CADICHE/
+└── Exercice_3/
+    └── SEGUIN-CADICHE_Mathias_3_haproxy_cfg_<date>.cfg
+```
 
-#### 1. Erreur : "Configuration file is invalid" (HAProxy)
+### **📋 Contenu du livrable** :
+| Fichier | Description | Format |
+|---------|-------------|--------|
+| `haproxy_cfg_<date>.cfg` | Configuration HAProxy pour `nginxdemos/hello` | CFG |
+
+---
+
+## ⚠️ **DÉPANNAGE**
+
+### **Problèmes Courants et Solutions**
+
+#### **1. Erreur : "Configuration file is invalid" (HAProxy)**
 **Symptômes** :
 ```
 [ALERT] 084/120000 (1234) : parsing [/etc/haproxy/haproxy.cfg:5] : 'bind' expects <address>:<port_range>.
@@ -388,11 +640,11 @@ aws ec2 describe-instances --query "Reservations[].Instances[?Tags[?Key=='Projec
    sudo haproxy -c -f /etc/haproxy/haproxy.cfg
    ```
 2. Vérifiez que les IPs des serveurs backend sont correctes.
-3. Vérifiez que les ports sont corrects (80 pour NGINX, 8404 pour les stats).
+3. Vérifiez que les ports sont corrects (80 pour `nginxdemos/hello`).
 
 ---
 
-#### 2. Erreur : "Connection refused" (HAProxy)
+#### **2. Erreur : "Connection refused" (HAProxy)**
 **Symptômes** :
 ```
 curl: (7) Failed to connect to 54.200.100.50 port 80: Connection refused
@@ -413,92 +665,168 @@ curl: (7) Failed to connect to 54.200.100.50 port 80: Connection refused
 
 ---
 
-#### 3. Erreur : "No server is available to handle this request" (HAProxy)
+#### **3. Erreur : "No server is available to handle this request" (HAProxy)**
 **Symptômes** :
 ```
 503 Service Unavailable
 No server is available to handle this request.
 ```
 **Solutions** :
-1. Vérifiez que les VMs NGINX sont en cours d'exécution :
+1. Vérifiez que les conteneurs `nginxdemos/hello` sont en cours d'exécution :
    ```bash
-   aws ec2 describe-instances --query "Reservations[].Instances[?Tags[?Key=='Project' && Value=='p5-openclassrooms']].[InstanceId, State.Name]" --output table
+   # Sur chaque VM backend
+   docker ps
    ```
-2. Vérifiez que NGINX est démarré sur les VMs :
-   ```bash
-   ansible all -i hosts_aws -a "systemctl status nginx"
-   ```
-3. Vérifiez que les IPs privées dans `haproxy.cfg` sont correctes.
-4. Vérifiez que HAProxy peut se connecter aux VMs NGINX :
+2. Vérifiez que HAProxy peut se connecter aux conteneurs :
    ```bash
    # Depuis la VM HAProxy
-   nc -zv 10.0.1.123 80
-   nc -zv 10.0.2.45 80
+   nc -zv $NGINX_HELLO_1_IP 80
+   nc -zv $NGINX_HELLO_2_IP 80
    ```
+3. Vérifiez que le Security Group de HAProxy autorise le trafic **sortant** vers les VMs backend.
 
 ---
 
-#### 4. Erreur : "All servers are DOWN" (Statistiques HAProxy)
+#### **4. Erreur : "All servers are DOWN" (Statistiques HAProxy)**
 **Symptômes** :
-- Dans les statistiques HAProxy (`http://$HAPROXY_IP:8404/stats`), les deux serveurs backend sont marqués comme **DOWN**.
+- Dans les statistiques HAProxy (`http://$HAPROXY_IP:8404/stats`), les 2 serveurs backend sont marqués comme **DOWN**.
 
 **Solutions** :
-1. Vérifiez que les VMs NGINX sont accessibles depuis HAProxy :
+1. Vérifiez que les conteneurs `nginxdemos/hello` sont accessibles depuis HAProxy :
    ```bash
    # Depuis la VM HAProxy
-   curl http://10.0.1.123:80
-   curl http://10.0.2.45:80
+   curl http://$NGINX_HELLO_1_IP:80
+   curl http://$NGINX_HELLO_2_IP:80
    ```
-2. Vérifiez que le Security Group de HAProxy autorise le trafic **sortant** vers les VMs NGINX.
-3. Vérifiez que le Security Group des VMs NGINX autorise le trafic **entrant** depuis HAProxy (port 80).
+2. Vérifiez que le Security Group des VMs backend autorise le trafic **entrant** depuis HAProxy (port 80).
 
 ---
 
-## 📚 RESSOURCES UTILES
+#### **5. Les `Server name` ne changent pas**
+**Symptômes** :
+- Toutes les requêtes retournent le même `Server name`.
+
+**Solutions** :
+1. Vérifiez que l'algorithme de load balancing est bien **`roundrobin`** :
+   ```bash
+   grep "balance" /etc/haproxy/haproxy.cfg
+   ```
+2. Vérifiez que les 2 conteneurs sont bien **UP** dans les statistiques HAProxy.
+3. Vérifiez que les 2 conteneurs répondent bien :
+   ```bash
+   curl http://$NGINX_HELLO_1_IP
+   curl http://$NGINX_HELLO_2_IP
+   ```
+
+---
+
+## 📚 **RESSOURCES UTILES**
 
 - [Documentation HAProxy](https://www.haproxy.org/documentation/)
+- [Image Docker `nginxdemos/hello`](https://hub.docker.com/r/nginxdemos/hello)
+- [Documentation Docker](https://docs.docker.com/)
 - [Documentation Terraform AWS](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
-- [Guide Load Balancing avec HAProxy](https://www.haproxy.com/blog/haproxy-load-balancing-guide/)
 
 ---
 
-## 🎯 RÉSUMÉ
+## 🎉 **RÉSUMÉ**
 
-✅ **Configuration HAProxy générée** avec les IPs des VMs NGINX
-✅ **VM HAProxy déployée** avec Terraform
-✅ **HAProxy installé et configuré**
-✅ **Load balancing fonctionnel** (Round Robin)
-✅ **Statistiques HAProxy accessibles**
-✅ **Tolérance aux pannes testée**
+✅ **2 instances `nginxdemos/hello` déployées** (Docker).
+✅ **Configuration HAProxy générée** (`haproxy.cfg`).
+✅ **VM HAProxy déployée** avec Terraform.
+✅ **Load balancing fonctionnel** (alternance des `Server name`).
+✅ **Statistiques HAProxy accessibles** (`:8404/stats`).
+✅ **Tolérance aux pannes testée**.
+✅ **Fichier `haproxy.cfg` prêt à être livré**.
 
 **Exercice 3 terminé avec succès !** 🎉
 
 ---
 
-## 🧹 NETTOYAGE (À FAIRE À LA FIN)
+## 📌 **ANNEXE A : Mode Local (Docker-Compose)**
 
-Pour éviter des coûts inutiles, **supprimez toutes les ressources AWS** après avoir terminé le projet :
+Si vous préférez utiliser **Docker-Compose** (option locale), voici comment faire :
 
-```bash
-# Exercice 1 : Supprimer les VMs NGINX
-cd /home/devops/P5_OC_4091_PACK_COMPLET_V4_3_KVM/04_EXERCICES/01_TERRAFORM_ANSIBLE/
-terraform destroy -auto-approve
+1. **Créer un fichier `docker-compose.yml`** :
+   ```yaml
+   version: '3.8'
+   
+   services:
+     # Conteneur 1 : nginxdemos/hello
+     nginx-hello-1:
+       image: nginxdemos/hello
+       ports:
+         - "8081:80"
+       container_name: nginx-hello-1
+     
+     # Conteneur 2 : nginxdemos/hello
+     nginx-hello-2:
+       image: nginxdemos/hello
+       ports:
+         - "8082:80"
+       container_name: nginx-hello-2
+     
+     # HAProxy
+     haproxy:
+       image: haproxy:latest
+       ports:
+         - "80:80"
+         - "8404:8404"
+       volumes:
+         - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg
+       depends_on:
+         - nginx-hello-1
+         - nginx-hello-2
+   ```
 
-# Exercice 2 : Supprimer le cluster OpenSearch
-cd /home/devops/P5_OC_4091_PACK_COMPLET_V4_3_KVM/04_EXERCICES/02_OPENSEARCH/
-terraform destroy -auto-approve
+2. **Créer le fichier `haproxy.cfg`** :
+   ```cfg
+   global
+       log stdout format raw local0
+   
+   defaults
+       mode http
+       timeout connect 5000ms
+       timeout client 50000ms
+       timeout server 50000ms
+   
+   frontend http-in
+       bind *:80
+       default_backend nginx_hello_servers
+   
+   backend nginx_hello_servers
+       balance roundrobin
+       server nginx-hello-1 nginx-hello-1:80 check
+       server nginx-hello-2 nginx-hello-2:80 check
+   
+   listen stats
+       bind *:8404
+       stats enable
+       stats uri /stats
+   ```
 
-# Exercice 3 : Supprimer la VM HAProxy
-cd /home/devops/P5_OC_4091_PACK_COMPLET_V4_3_KVM/04_EXERCICES/03_HAPROXY/
-terraform destroy -auto-approve
-```
+3. **Démarrer les conteneurs** :
+   ```bash
+   docker-compose up -d
+   ```
 
-**⚠️ Important** : Vérifiez qu'il n'y a plus de ressources en cours d'exécution :
-```bash
-aws ec2 describe-instances --query "Reservations[].Instances[?State.Name=='running'].InstanceId" --output text
-aws es list-domain-names
-```
+4. **Tester le load balancing** :
+   ```bash
+   for i in {1..10}; do 
+     curl -s http://localhost | grep -o "Server name: [^<]*" | sed 's/Server name: //;s/<\/strong>//';
+     echo "---";
+   done
+   ```
 
 ---
 
-**Projet P5 terminé avec succès !** 🎉
+**Prochaine étape** : [Livrables et nettoyage](#)
+
+---
+
+**⚠️ Rappel** :
+- **Nettoyez vos ressources AWS** après l'exercice pour éviter des coûts inutiles :
+  ```bash
+  cd /home/devops/P5_OC_4091_PACK_COMPLET_V4_3_KVM/04_EXERCICES/03_HAPROXY/
+  terraform destroy -auto-approve
+  ```

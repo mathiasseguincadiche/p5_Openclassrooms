@@ -1,34 +1,111 @@
 ---
 # =============================================================================
-# PLAYBOOK ANSIBLE : Déploiement NGINX
+# PLAYBOOK ANSIBLE : Déploiement NGINX + Application Angular
 # Projet P5 OpenClassrooms - Déployer et suivre l'infrastructure as code
+# Conforme aux consignes OpenClassrooms (Exercice 1)
 # =============================================================================
 
-- name: Deploy and configure NGINX on all web servers
+- name: Déployer NGINX et l'application Angular
   hosts: webservers
   become: true
   
   tasks:
-    - name: Update apt package index
+    # ===========================================================================
+    # 1. Installation des dépendances système
+    # ===========================================================================
+    - name: Mettre à jour l'index des packages
       apt:
         update_cache: yes
       
-    - name: Install NGINX
+    - name: Installer Git
+      apt:
+        name: git
+        state: present
+      
+    - name: Installer Node.js et npm
+      apt:
+        name: ["nodejs", "npm"]
+        state: present
+      
+    - name: Installer NGINX
       apt:
         name: nginx
         state: present
+
+    # ===========================================================================
+    # 2. Cloner et builder l'application Angular
+    # ===========================================================================
+    - name: Cloner le dépôt Angular (OpenClassrooms)
+      git:
+        repo: "https://github.com/OpenClassrooms-P5/oc-p5-angular-app.git"
+        dest: /var/www/angular-app
+        version: main
+        force: yes
       
-    - name: Start and enable NGINX service
+    - name: Installer les dépendances Angular
+      npm:
+        path: /var/www/angular-app
+      
+    - name: Builder l'application Angular (mode production)
+      command: npm run build -- --prod
+      args:
+        chdir: /var/www/angular-app
+
+    # ===========================================================================
+    # 3. Configurer NGINX pour servir Angular
+    # ===========================================================================
+    - name: Copier la configuration NGINX pour Angular
+      copy:
+        src: files/nginx-angular.conf
+        dest: /etc/nginx/sites-available/default
+      notify: Reload NGINX
+      
+    - name: Supprimer le fichier par défaut de NGINX (si présent)
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+      
+    - name: Activer la configuration NGINX
+      file:
+        src: /etc/nginx/sites-available/default
+        dest: /etc/nginx/sites-enabled/default
+        state: link
+      notify: Reload NGINX
+
+    # ===========================================================================
+    # 4. Copier les fichiers build d'Angular vers NGINX
+    # ===========================================================================
+    - name: Créer le dossier de destination pour Angular
+      file:
+        path: /var/www/html
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'
+      
+    - name: Copier les fichiers Angular vers le dossier web de NGINX
+      copy:
+        src: /var/www/angular-app/dist/
+        dest: /var/www/html/
+        remote_src: yes
+        owner: www-data
+        group: www-data
+        mode: '0755'
+
+    # ===========================================================================
+    # 5. Démarrer et activer NGINX
+    # ===========================================================================
+    - name: Démarrer NGINX
       service:
         name: nginx
         state: started
         enabled: yes
-      
-    - name: Verify NGINX is running
-      uri:
-        url: "http://localhost"
-        return_content: yes
-      register: nginx_status
-      until: nginx_status.status == 200
-      retries: 5
-      delay: 10
+
+  # ===========================================================================
+  # HANDLERS (Tâches déclenchées automatiquement)
+  # ===========================================================================
+  handlers:
+    - name: Reload NGINX
+      service:
+        name: nginx
+        state: reloaded
