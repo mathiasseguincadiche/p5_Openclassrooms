@@ -1,45 +1,39 @@
 # =============================================================================
 # EXERCICE 1 : Variables Terraform
+# Projet P5 OpenClassrooms - Déployer et suivre l'infrastructure as code
+# Région AWS : us-east-1 (OBLIGATOIRE)
 # =============================================================================
 
+# -----------------------------------------------------------------------------
+# Variables AWS
+# -----------------------------------------------------------------------------
 variable "aws_region" {
-  description = "Région AWS"
+  description = "Région AWS (us-east-1 OBLIGATOIRE pour ce projet)"
   type        = string
-  default     = "eu-west-3"
+  default     = "us-east-1"
 }
 
-variable "vpc_cidr" {
-  description = "CIDR block pour le VPC"
-  type        = string
-  default     = "10.0.0.0/16"
-}
-
-variable "public_subnet_a_cidr" {
-  description = "CIDR block pour le subnet public A"
-  type        = string
-  default     = "10.0.1.0/24"
-}
-
-variable "public_subnet_b_cidr" {
-  description = "CIDR block pour le subnet public B"
-  type        = string
-  default     = "10.0.2.0/24"
-}
-
+# -----------------------------------------------------------------------------
+# Variables pour les Instances EC2
+# -----------------------------------------------------------------------------
 variable "ami_id" {
-  description = "AMI ID (Amazon Linux 2)"
+  description = "AMI ID pour Ubuntu 26.04 (us-east-1)"
   type        = string
-  default     = "ami-0c55b159cbfafe1f0"
+  default     = "ami-0c55b159cbfafe1f0"  # Ubuntu 26.04 LTS - us-east-1
+  # Pour trouver l'AMI ID : aws ec2 describe-images --owners 099720109477 --filters 'Name=ubuntu/images/hvm-ssd/ubuntu-noble-26.04-amd64-server-*' --query 'Images | sort_by(@, &CreationDate) | [-1].ImageId' --output text
 }
 
 variable "instance_type" {
-  description = "Type d'instance EC2"
+  description = "Type d'instance EC2 (t2.micro est gratuit avec Free Tier)"
   type        = string
   default     = "t2.micro"
 }
 
+# -----------------------------------------------------------------------------
+# Variables de Sécurité
+# -----------------------------------------------------------------------------
 variable "your_ip_cidr" {
-  description = "Votre IP publique en notation CIDR"
+  description = "Votre IP publique en notation CIDR (ex: 192.168.1.1/32)"
   type        = string
 }
 

@@ -1,0 +1,12 @@
+# =============================================================================
+# EXERCICE 2 : Variables Terraform (EXEMPLE)
+# Projet P5 OpenClassrooms - Déployer et suivre l'infrastructure as code
+# ⚠️ COPIEZ CE FICHIER EN terraform.tfvars ET MODIFIEZ-LE AVEC VOS VALEURS
+# =============================================================================
+
+# Région AWS (us-east-1 OBLIGATOIRE pour ce projet)
+aws_region = "us-east-1"
+
+# 🔴 À MODIFIER : Votre IP publique
+# Trouvez votre IP avec : curl ifconfig.me
+your_ip_cidr = "192.168.1.1/32"  # ⚠️ Remplacez par votre IP !

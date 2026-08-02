@@ -1,273 +1,289 @@
-# 🚀 P5 - Déploiement d'Infrastructure-as-Code avec Terraform, Ansible et ELK
+# 🚀 Projet P5 OpenClassrooms - Déployer et suivre l'infrastructure as code
 
-**Projet OpenClassrooms - Parcours DevOps**
-
----
-
-## 🎯 **Introduction et Contexte**
-
-### **Objectifs Pédagogiques**
-Ce projet a pour but de vous former aux **bonnes pratiques DevOps** en vous faisant :
-- ✅ **Comprendre** les concepts d'Infrastructure-as-Code (IaC)
-- ✅ **Maîtriser** Terraform pour le provisionnement d'infrastructure
-- ✅ **Automatiser** la configuration avec Ansible
-- ✅ **Déployer** une stack ELK (OpenSearch) pour la centralisation des logs
-- ✅ **Mettre en place** un Load Balancer avec HAProxy
-- ✅ **Documenter** votre travail de manière professionnelle
-
-### **Scénario du Projet**
-Vous êtes **DevOps Engineer** dans une entreprise qui souhaite :
-1. **Automatiser** le déploiement de son infrastructure AWS
-2. **Centraliser** les logs de ses applications
-3. **Équilibrer** la charge entre plusieurs serveurs web
-4. **Garantir** la reproductibilité et la maintenabilité
+**Guide Pédagogique Ultime avec Logique, Explications et Commandes Commentées**
 
 ---
 
-## 📚 **Prérequis**
+## 📌 À propos de ce guide
 
-### **Compétences Requises**
-- ⚠️ Connaissances de base en **Linux** (commandes CLI)
-- ⚠️ Compréhension des concepts **réseau** (IP, DNS, ports)
-- ⚠️ Notions de **virtualisation** et **cloud** (AWS)
-- ⚠️ Expérience avec **Git** et GitHub
+Ce document est votre **compagnon ultime** pour réussir votre **Projet 5 OpenClassrooms (4091)** :
+> **"Déployer et suivre l'infrastructure as code grâce à Terraform, Ansible et la stack ELK"**
 
-### **Outils Nécessaires**
-| Outil | Version | Lien | Installation |
-|-------|---------|------|--------------|
-| **Terraform** | ≥ 1.5.x | [terraform.io](https://www.terraform.io) | `brew install terraform` |
-| **Ansible** | ≥ 2.14.x | [ansible.com](https://www.ansible.com) | `pip install ansible` |
-| **AWS CLI** | ≥ 2.x | [aws.amazon.com/cli](https://aws.amazon.com/cli) | `brew install awscli` |
-| **OpenSearch** | 2.x | [opensearch.org](https://opensearch.org) | Docker/VM |
-| **HAProxy** | ≥ 2.6 | [haproxy.org](https://www.haproxy.org) | `apt install haproxy` |
-| **NGINX** | ≥ 1.23 | [nginx.org](https://nginx.org) | `apt install nginx` |
-| **Git** | ≥ 2.x | [git-scm.com](https://git-scm.com) | `brew install git` |
+✅ **100% orienté débutant** – Explications claires, sans jargon, avec des analogies pour tout comprendre.
+✅ **100% pratique** – Commandes à copier-coller, résultats attendus, vérifications à chaque étape.
+✅ **100% pédagogique** – Pour chaque action : **LE QUOI, LE POURQUOI, LE COMMENT**.
+✅ **100% reproductible** – Vous pourrez refaire ce projet n'importe quand, même dans 6 mois.
 
-### **Configuration AWS**
-1. **Créer un compte AWS** (si ce n'est pas déjà fait)
-2. **Configurer les credentials** :
-   ```bash
-   aws configure
-   # AWS Access Key ID: [VOTRE_KEY]
-   # AWS Secret Access Key: [VOTRE_SECRET]
-   # Default region name: eu-west-3 (Paris)
-   # Default output format: json
-   ```
-3. **Créer une paire de clés SSH** :
-   ```bash
-   ssh-keygen -t rsa -b 4096 -f ~/.ssh/p5-key
-   ```
+💡 **Ce guide est conçu pour que vous COMPRENIEZ, pas juste que vous EXÉCUTEZ.**
+Chaque concept est vulgarisé, chaque commande est expliquée, chaque étape a un but clair.
 
-### **Vérification de l'Environnement**
+---
+
+## 🎯 SOMMAIRE (Suivez ce plan pour ne rien oublier !)
+
+| Partie | Titre | Durée | Fichier |
+|--------|-------|-------|--------|
+| 0 | Introduction et Prérequis | 30 min | [Lire](#-0-introduction-et-prérequis) |
+| 1 | Architecture du Projet | 20 min | [Lire](#-1-architecture-du-projet) |
+| 2 | Exercice 1 : Terraform + Ansible (NGINX) | 4-5h | [docs/exercices/exercice-1.md](docs/exercices/exercice-1.md) |
+| 3 | Exercice 2 : OpenSearch (ELK) | 3-4h | [docs/exercices/exercice-2.md](docs/exercices/exercice-2.md) |
+| 4 | Exercice 3 : HAProxy (Load Balancer) | 2-3h | [docs/exercices/exercice-3.md](docs/exercices/exercice-3.md) |
+| 5 | Livrables à rendre | 1h | [docs/livrables/](docs/livrables/) |
+| 6 | Nettoyage Final | 30 min | [scripts/cleanup-all.sh](scripts/cleanup-all.sh) |
+| 7 | Glossaire | 15 min | [docs/09-glossaire.md](docs/09-glossaire.md) |
+| 8 | Commandes CLI | 10 min | [docs/10-commandes-cli.md](docs/10-commandes-cli.md) |
+
+---
+
+## 🎯 0. INTRODUCTION ET PRÉREQUIS
+
+### 📚 Contexte du Projet
+
+**Pourquoi ce projet ?**
+En tant que **DevOps/Ingénieur Cloud**, votre rôle est de :
+- ✅ **Automatiser** la création et la configuration des infrastructures (serveurs, bases de données, réseaux).
+- ✅ **Garantir** que tout est reproductible, fiable et scalable.
+- ✅ **Surveiller** et optimiser les performances.
+- ✅ **Documenter** votre travail pour que d'autres puissent le comprendre.
+
+Ce projet vous fait pratiquer ces compétences en déployant :
+- **2 serveurs web (NGINX)** avec Terraform + Ansible
+- **1 cluster OpenSearch** (pour les logs) avec Terraform
+- **1 load balancer (HAProxy)** pour répartir le trafic
+
+→ **C'est un projet REALISTE** qui reproduit ce que vous ferez en entreprise !
+
+---
+
+### 🎯 Objectifs Pédagogiques
+
+| Objectif | Compétence acquise | Outils |
+|----------|-------------------|-------|
+| Déployer une infrastructure automatiquement | Maîtriser l'Infrastructure as Code (IaC) | Terraform |
+| Configurer des serveurs à distance | Maîtriser le Configuration Management | Ansible |
+| Déployer une base de données NoSQL | Comprendre OpenSearch/ELK | Terraform, OpenSearch |
+| Répartir la charge entre serveurs | Maîtriser le Load Balancing | HAProxy |
+| Gérer un projet de A à Z | Organiser son travail, documenter | Git, Markdown |
+
+---
+
+### 📋 Prérequis Matériels et Logiciels
+
+#### ✅ Ce que vous devez AVOIR
+
+| Prérequis | Commande de vérification | Solution si manquant | Obligatoire |
+|-----------|--------------------------|----------------------|-------------|
+| **Fedora 44 (Cosmic ou KDE)** | `cat /etc/os-release` | Installez Fedora 44 | ⭐⭐⭐⭐⭐ |
+| **KVM/QEMU/libvirt** | `virsh list --all` | `sudo dnf install -y qemu-kvm libvirt virt-install virt-manager` | ⭐⭐⭐⭐⭐ |
+| **VM vm-devops (Ubuntu 26.04)** | `ssh devops@<IP>` | Créez-la avec virt-manager (4 Go RAM, 2 vCPU, 20 Go disque) | ⭐⭐⭐⭐⭐ |
+| **Compte AWS** | `aws sts get-caller-identity` | Créez un compte AWS | ⭐⭐⭐⭐⭐ |
+| **Clés AWS (Access Key + Secret Key)** | `aws configure` | Créez-les dans IAM > Security Credentials | ⭐⭐⭐⭐⭐ |
+| **Git** | `git --version` | `sudo dnf install -y git` (Fedora) / `sudo apt install -y git` (Ubuntu) | ⭐⭐⭐⭐ |
+| **GitHub** | Compte + dépôt privé | Créez un compte GitHub | ⭐⭐⭐⭐ |
+
+---
+
+### ⚠️ IMPORTANT
+
+🔴 **Région AWS : `us-east-1` (OBLIGATOIRE pour le projet)**.
+
+💰 **Budget : Prévois 20€ max** (le projet ne devrait pas dépasser 10-15€ si vous suivez les consignes).
+
+🆓 **Free Tier AWS** : Utilisez des instances **t2.micro** (gratuites pendant 12 mois pour les nouveaux comptes).
+
+---
+
+### 💡 Conseils avant de commencer
+
+🔹 **Ne modifiez pas** les fichiers du pack original → Travaillez dans une copie.
+
+🔹 **Ne commitez JAMAIS** dans Git :
+- Les fichiers `.tfvars` (contiennent vos clés AWS)
+- Les clés SSH privées (ex : `p5-key.pem`)
+- Les outputs Terraform sensibles
+
+🔹 **Vérifiez toujours** avec `terraform plan` avant `terraform apply`.
+
+🔹 **Ne sautez jamais** un point **STOP** dans les runbooks.
+
+🔹 **Notez toutes vos actions** dans un journal de bord (pour les livrables).
+
+---
+
+## 🏗️ 1. ARCHITECTURE DU PROJET
+
+### 🗺️ Schéma Global (Comment tout s'emboîte)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│                              TA MACHINE (Fedora 44 Cosmic)                                      │
+│                                                                                                     │
+│  ┌─────────────────┐                                                                                 │
+│  │   KVM/QEMU      │    ┌─────────────────────────────────────────────────────────────────┐  │
+│  │  (Hyperviseur)   │    │                     vm-devops (Ubuntu 26.04)                     │  │
+│  └─────────────────┘    │  ┌─────────────┐  ┌─────────────┐  ┌───────────────────────┐  │  │
+│         │               │  │ Terraform   │  │   Ansible   │  │       AWS CLI         │  │  │
+│         │               │  │ (IaC)       │  │ (Config)    │  │ (Gestion AWS)         │  │  │
+│         │               │  └─────────────┘  └─────────────┘  └───────────────────────┘  │  │
+│         │               └─────────────────────────────────────────────────────────────────┘  │
+│         │                                                                                     │
+│         ▼                                                                                     │
+│  ┌─────────────────────────────────────────────────────────────────────────────────────┐  │
+│  │                                AWS (us-east-1)                                        │  │
+│  │                                                                                     │  │
+│  │  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐               │  │
+│  │  │  EXERCICE 1:     │    │  EXERCICE 2:     │    │  EXERCICE 3:     │               │  │
+│  │  │  2 VMs NGINX     │    │  OpenSearch      │    │  1 VM HAProxy    │               │  │
+│  │  │  (t2.micro)      │    │  (t3.medium)     │    │  (t2.micro)      │               │  │
+│  │  │                 │    │                 │    │                 │               │  │
+│  │  │  ┌───────────┐  │    │  ┌───────────┐  │    │  ┌───────────┐  │               │  │
+│  │  │  │  NGINX    │  │    │  │OpenSearch│  │    │  │ HAProxy  │──┼──────────▶  │  │
+│  │  │  │ (Site Web)│  │    │  │ (Logs)    │  │    │  │(Load Bal.)│  │  │ Utilisateurs │
+│  │  │  └───────────┘  │    │  └───────────┘  │    │  └───────────┘  │  │
+│  │  └─────────────────┘    └─────────────────┘    └─────────────────┘  │  │
+│  └─────────────────────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 📊 Légende du Schéma
+
+| Élément | Rôle | Analogie | Outils |
+|---------|------|----------|-------|
+| **Fedora 44 (KVM)** | Machine hôte qui fait tourner des VMs locales | Atelier où vous construisez des maquettes | KVM, QEMU, libvirt |
+| **vm-devops** | VM locale où vous exécutez Terraform/Ansible | Bureau dédié à votre projet | Ubuntu 26.04 |
+| **AWS (us-east-1)** | Cloud où vous déploiez vos infrastructures | Terrain où vous construisez votre maison | AWS CLI |
+| **Terraform** | Crée des infrastructures (VMs, réseaux, etc.) | Plan de construction pour une maison | Terraform |
+| **Ansible** | Configure les serveurs (installe NGINX, etc.) | Manuel d'instructions pour meubler votre maison | Ansible |
+| **NGINX** | Serveur web qui affiche un site | Meubles de votre maison | NGINX |
+| **OpenSearch** | Base de données pour stocker et rechercher des logs | Système de rangement intelligent | OpenSearch |
+| **HAProxy** | Load Balancer qui répartit le trafic | Réceptionniste qui dirige les visiteurs | HAProxy |
+
+---
+
+### 🔄 Flux de Travail (Workflow)
+
+```
+┌─────────┐     ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│ Début   │────▶│ Préparer        │────▶│ Exercice 1:      │────▶│ Exercice 2:      │
+└─────────┘     │ l'environnement   │     │ Terraform +     │     │ OpenSearch       │
+                └─────────────────┘     │ Ansible          │     └─────────────────┘
+                                              └─────────────────┘              │
+                                                                               ▼
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│ Exercice 3:      │────▶│ Collecter les   │────▶│ Nettoyer AWS    │────▶│ Rendre les      │
+│ HAProxy         │     │ preuves          │     │                 │     │ livrables       │
+└─────────────────┘     └─────────────────┘     └─────────────────┘     └─────────────────┘
+```
+
+---
+
+### 📌 Résumé des Ressources AWS
+
+| Exercice | Ressource | Type | Coût estimé | Durée |
+|----------|-----------|------|-------------|-------|
+| 1 | 2 VMs NGINX | t2.micro | ~0.02€/h (x2) | 4-5h |
+| 2 | 1 Cluster OpenSearch | t3.medium.search | ~0.10€/h | 3-4h |
+| 3 | 1 VM HAProxy | t2.micro | ~0.02€/h | 2-3h |
+| **Total** | - | - | **~0.14€/h** | **~12h → ~1.68€** |
+
+✅ **Avec le Free Tier AWS (12 mois gratuits)** :
+- Les **t2.micro** sont gratuites (750h/mois).
+- OpenSearch n'est pas gratuit, mais le projet est conçu pour limiter les coûts (1 cluster pendant 3-4h max).
+- **Total estimé : 10-15€ max** (si vous suivez les consignes).
+
+---
+
+## 🔥 EXERCICES PRATIQUES
+
+### 📚 [Exercice 1 : Terraform + Ansible (NGINX)](docs/exercices/exercice-1.md)
+**Durée** : 4-5h
+**Objectif** : Déployer 2 serveurs web NGINX avec Terraform et les configurer avec Ansible.
+
+---
+
+### 🔍 [Exercice 2 : OpenSearch (ELK)](docs/exercices/exercice-2.md)
+**Durée** : 3-4h
+**Objectif** : Déployer un cluster OpenSearch pour centraliser et analyser les logs.
+
+---
+
+### 🌐 [Exercice 3 : HAProxy (Load Balancer)](docs/exercices/exercice-3.md)
+**Durée** : 2-3h
+**Objectif** : Déployer un Load Balancer HAProxy devant les serveurs NGINX.
+
+---
+
+## 📦 LIVRABLES À RENDRE
+
+Tous les modèles de livrables sont disponibles dans [docs/livrables/](docs/livrables/) :
+- 📝 [journal-session.md](docs/livrables/journal-session.md) - Modèle pour votre journal de session
+- ✅ [decisions.md](docs/livrables/decisions.md) - Modèle pour documenter vos décisions techniques
+- 🎯 [preuves-exercice-1.md](docs/livrables/preuves-exercice-1.md) - Modèle pour les preuves de l'Exercice 1
+- 📸 [captures-exercice-2.md](docs/livrables/captures-exercice-2.md) - Modèle pour les captures de l'Exercice 2
+- 🎯 [preuves-exercice-3.md](docs/livrables/preuves-exercice-3.md) - Modèle pour les preuves de l'Exercice 3
+
+---
+
+## 🧹 NETTOYAGE FINAL
+
+Un script est disponible pour supprimer toutes les ressources AWS :
 ```bash
-# Vérifier les versions installées
-terraform --version
-ansible --version
-aws --version
-git --version
-
-# Vérifier la connectivité AWS
-aws sts get-caller-identity
+./scripts/cleanup-all.sh
 ```
 
----
-
-## 🏗️ **Architecture du Projet**
-
-> ⚠️ **Voir le fichier détaillé** : [📄 02-architecture.md](./docs/02-architecture.md)
-
-### **Schéma Global**
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                              CLOUD AWS (VPC)                                │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────────────────────┐  │
-│  │   Client    │───▶│  HAProxy    │───▶│        NGINX Servers         │  │
-│  │ (Utilisateur)│    │ (Load       │    │   (Exercice 1 - Ansible)      │  │
-│  └─────────────┘    │  Balancer)   │    └─────────────┬───────────────┘  │
-│                     └─────────────┘                  │                  │
-│                                                          │                  │
-│                     ┌─────────────────────────────────────────────────┐  │
-│                     │                    OpenSearch                     │  │
-│                     │   ┌─────────────┐    ┌─────────────────────────┐  │  │
-│                     │   │  OpenSearch │◀───│   Logstash (Collecte)    │  │  │
-│                     │   │   (Master)  │    └─────────────────────────┘  │  │
-│                     │   └─────────────┘                                │  │
-│                     │         │                                         │  │
-│                     │   ┌─────────────┐    ┌─────────────────────────┐  │  │
-│                     │   │  OpenSearch │    │   Filebeat (Sur chaque    │  │  │
-│                     │   │   (Node)    │◀───│   serveur NGINX)          │  │  │
-│                     │   └─────────────┘    └─────────────────────────┘  │  │
-│                     │                                                 │  │
-│                     │   ┌─────────────────────────────────────────┐  │  │
-│                     │   │            Kibana (Visualisation)        │  │  │
-│                     │   └─────────────────────────────────────────┘  │  │
-│                     └─────────────────────────────────────────────────┘  │
-│                                                                          │
-└─────────────────────────────────────────────────────────────────────────┘
-```
-
-### **Légende**
-| Composant | Rôle | Technologie |
-|-----------|------|-------------|
-| **HAProxy** | Load Balancer | HAProxy 2.6 |
-| **NGINX** | Serveur Web | NGINX 1.23 |
-| **OpenSearch** | Moteur de recherche/logs | OpenSearch 2.x |
-| **Logstash** | Collecte et traitement des logs | ELK Stack |
-| **Filebeat** | Agent de collecte de logs | Beats |
-| **Kibana** | Interface de visualisation | OpenSearch Dashboards |
+⚠️ **Attention** : Ce script est **destructif et irréversible** !
 
 ---
 
-## 📖 **Structure du Dépôt**
+## 📖 DOCUMENTATION COMPLÉMENTAIRE
 
-```
-p5_Openclassrooms/
-├── README.md                          # 📌 Ce fichier
-├── .gitignore                        # 🔒 Fichiers à ignorer
-│
-├── docs/                              # 📚 Documentation
-│   ├── 01-introduction.md            # 🎯 Introduction détaillée
-│   ├── 02-architecture.md            # 🏗️ Architecture complète
-│   ├── 09-glossaire.md               # 📖 Définitions techniques
-│   ├── 10-commandes-cli.md           # 💻 Récapitulatif CLI
-│   │
-│   ├── exercices/                    # 🔥 Exercices pratiques
-│   │   ├── exercice-1-terraform-ansible-nginx.md
-│   │   ├── exercice-2-opensearch.md
-│   │   └── exercice-3-haproxy.md
-│   │
-│   ├── livrables/                    # 📦 Livrables à rendre
-│   │   ├── journal-session.md         # 📝 Journal de session
-│   │   ├── decisions.md              # ✅ Décisions techniques
-│   │   ├── preuves-exercice-1.md      # 🎯 Preuves Exercice 1
-│   │   ├── captures-exercice-2.md     # 📸 Captures Exercice 2
-│   │   └── preuves-exercice-3.md      # 🎯 Preuves Exercice 3
-│   │
-│   └── references/                   # 🔗 Ressources utiles
-│       └── liens-utiles.md
-│
-├── terraform/                        # ⛏️ Code Terraform
-│   ├── modules/                      # 🧩 Modules réutilisables
-│   │   ├── ec2/                      # Module EC2
-│   │   ├── vpc/                      # Module VPC
-│   │   ├── security-group/           # Module Security Groups
-│   │   └── iam/                      # Module IAM
-│   │
-│   ├── exercice-1/                   # 🔥 Exercice 1
-│   │   ├── main.tf
-│   │   ├── variables.tf
-│   │   ├── outputs.tf
-│   │   └── terraform.tfvars
-│   │
-│   ├── exercice-2/                   # 🔥 Exercice 2
-│   │   ├── main.tf
-│   │   ├── variables.tf
-│   │   └── outputs.tf
-│   │
-│   └── exercice-3/                   # 🔥 Exercice 3
-│       ├── main.tf
-│       ├── variables.tf
-│       └── outputs.tf
-│
-├── ansible/                          # 🎭 Playbooks Ansible
-│   ├── roles/                        # 🎭 Rôles Ansible
-│   │   ├── nginx/                    # Rôle NGINX
-│   │   │   ├── tasks/
-│   │   │   ├── handlers/
-│   │   │   ├── templates/
-│   │   │   └── vars/
-│   │   │
-│   │   ├── opensearch/               # Rôle OpenSearch
-│   │   ├── logstash/                 # Rôle Logstash
-│   │   ├── filebeat/                 # Rôle Filebeat
-│   │   └── haproxy/                  # Rôle HAProxy
-│   │
-│   ├── playbooks/                    # 📜 Playbooks
-│   │   ├── deploy-nginx.yml
-│   │   ├── deploy-opensearch.yml
-│   │   └── deploy-haproxy.yml
-│   │
-│   └── inventories/                  # 📋 Inventaires
-│       ├── exercice-1.ini
-│       ├── exercice-2.ini
-│       └── exercice-3.ini
-│
-├── scripts/                          # 🐍 Scripts utilitaires
-│   ├── setup-aws.sh                  # Configuration AWS
-│   ├── test-connectivity.sh          # Test de connectivité
-│   └── cleanup-all.sh                # 🧹 Nettoyage complet
-│
-└── captures/                         # 📸 Captures d'écran
-    ├── exercice-1/
-    ├── exercice-2/
-    └── exercice-3/
-```
+- 📖 [Glossaire Technique](docs/09-glossaire.md) - 100+ termes expliqués
+- 💻 [Récapitulatif des Commandes CLI](docs/10-commandes-cli.md) - Toutes les commandes essentielles
 
 ---
 
-## 🚀 **Par où commencer ?**
+## 🙏 REMERCIEMENTS ET CONSEILS FINAUX
 
-### **Ordre Recommandé**
-1. **Lire** [01-introduction.md](./docs/01-introduction.md) pour comprendre le contexte
-2. **Étudier** [02-architecture.md](./docs/02-architecture.md) pour visualiser le projet
-3. **Commencer** par [Exercice 1 - Terraform + Ansible + NGINX](./docs/exercices/exercice-1-terraform-ansible-nginx.md)
-4. **Poursuivre** avec [Exercice 2 - OpenSearch (ELK)](./docs/exercices/exercice-2-opensearch.md)
-5. **Terminer** par [Exercice 3 - HAProxy](./docs/exercices/exercice-3-haproxy.md)
-6. **Documenter** vos livrables dans `docs/livrables/`
-7. **Vérifier** avec le [glossaire](./docs/09-glossaire.md) et les [commandes CLI](./docs/10-commandes-cli.md)
+### 💡 Conseils pour réussir votre projet
 
----
-
-## 📞 **Support et Aide**
-
-### **Ressources Officielles**
-- [Documentation Terraform](https://developer.hashicorp.com/terraform/docs)
-- [Documentation Ansible](https://docs.ansible.com)
-- [Documentation AWS](https://docs.aws.amazon.com)
-- [Documentation OpenSearch](https://opensearch.org/docs)
-
-### **Communauté**
-- [Forum OpenClassrooms](https://openclassrooms.com/forum)
-- [Stack Overflow - Terraform](https://stackoverflow.com/questions/tagged/terraform)
-- [Stack Overflow - Ansible](https://stackoverflow.com/questions/tagged/ansible)
+📌 **Suivez l'ordre des exercices** : Exercice 1 → Exercice 2 → Exercice 3.
+✅ **Vérifiez à chaque étape** : Utilisez les commandes de vérification fournies.
+📝 **Notez tout dans votre journal de bord** : Ça vous fera gagner du temps pour les livrables.
+🔍 **Ne restez pas bloqué** : Si une commande échoue, consultez la section Dépannage ou demandez de l'aide.
+💰 **Surveillez vos coûts AWS** : Utilisez `aws ec2 describe-instances` pour voir vos VMs en cours.
+🧹 **Nettoyez toujours à la fin** : `terraform destroy` pour tous les exercices.
 
 ---
 
-## ⚠️ **Avertissements Importants**
+### 🎯 Ce que vous saurez faire après ce projet
 
-1. **Coûts AWS** : Ce projet utilise des ressources AWS **payantes**. Pensez à :
-   - Utiliser le **Free Tier** quand c'est possible
-   - **Supprimer** toutes les ressources après utilisation
-   - Voir [Nettoyage Final](./docs/references/nettoyage-final.md) pour la procédure
-
-2. **Sécurité** :
-   - Ne **jamais** commiter vos clés AWS dans Git
-   - Utilisez toujours le **.gitignore** fourni
-   - Limitez les permissions IAM au strict nécessaire
-
-3. **Bonnes Pratiques** :
-   - **Versionnez** votre code Terraform (Git)
-   - **Testez** en local avant de déployer
-   - **Documentez** chaque étape
+✅ Créer une infrastructure as code avec Terraform.
+✅ Configurer des serveurs automatiquement avec Ansible.
+✅ Déployer une base de données NoSQL (OpenSearch).
+✅ Mettre en place un load balancer avec HAProxy.
+✅ Gérer un projet DevOps de A à Z (déploiement, configuration, documentation, nettoyage).
 
 ---
 
-## 🎓 **Compétences Acquises**
+### 🚀 Prochaines étapes (après le projet)
 
-À la fin de ce projet, vous saurez :
-- ✅ **Provisionner** une infrastructure cloud avec Terraform
-- ✅ **Configurer** des serveurs avec Ansible
-- ✅ **Déployer** une stack ELK complète
-- ✅ **Mettre en place** un Load Balancer
-- ✅ **Centraliser** et analyser des logs
-- ✅ **Documenter** un projet technique
-- ✅ **Estimer** les coûts cloud
-- ✅ **Dépanner** des problèmes d'infrastructure
+- Approfondissez Terraform : Modules, workspaces, autres providers (Azure, GCP).
+- Approfondissez Ansible : Rôles, templates Jinja2, collections.
+- Découvrez Docker et Kubernetes pour la conteneurisation et l'orchestration.
+- Explorez le monitoring avec Prometheus + Grafana.
+- Automatisez vos déploiements avec Jenkins ou GitHub Actions (CI/CD).
 
 ---
 
-**Bonne chance dans votre apprentissage !** 💪
+✅ **Vous avez maintenant TOUT ce qu'il faut pour réussir votre Projet 5 !**
 
-> *"Le code est de la poésie qui fonctionne."* — **Linus Torvalds**
+🚀 **Bonne chance, et amusez-vous bien en apprenant !**
+
+---
+
+**Guide créé spécialement pour Mathias SEGUIN-CADICHE**
+**Dernière mise à jour** : 02/08/2026
+**Version** : 1.0
+**Compatibilité** : Pack P5_OC_4091_PACK_COMPLET_V4_3_KVM + Fedora 44 Cosmic

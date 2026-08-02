@@ -1,0 +1,34 @@
+---
+# =============================================================================
+# PLAYBOOK ANSIBLE : Déploiement NGINX
+# Projet P5 OpenClassrooms - Déployer et suivre l'infrastructure as code
+# =============================================================================
+
+- name: Deploy and configure NGINX on all web servers
+  hosts: webservers
+  become: true
+  
+  tasks:
+    - name: Update apt package index
+      apt:
+        update_cache: yes
+      
+    - name: Install NGINX
+      apt:
+        name: nginx
+        state: present
+      
+    - name: Start and enable NGINX service
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+      
+    - name: Verify NGINX is running
+      uri:
+        url: "http://localhost"
+        return_content: yes
+      register: nginx_status
+      until: nginx_status.status == 200
+      retries: 5
+      delay: 10

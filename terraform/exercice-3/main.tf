@@ -1,11 +1,14 @@
 # =============================================================================
-# EXERCICE 3 : Terraform - Déploiement HAProxy
-# Fichier : main.tf
-# Description : Infrastructure pour HAProxy Load Balancer
+# EXERCICE 3 : Terraform - Déploiement de HAProxy
+# Projet P5 OpenClassrooms - Déployer et suivre l'infrastructure as code
+# Région AWS : us-east-1 (OBLIGATOIRE)
 # =============================================================================
 
+# -----------------------------------------------------------------------------
+# Configuration du Provider AWS
+# -----------------------------------------------------------------------------
 terraform {
-  required_version = ">= 1.5.0"
+  required_version = ">= 1.15.0"
   
   required_providers {
     aws = {
@@ -16,38 +19,49 @@ terraform {
 }
 
 provider "aws" {
-  region = var.aws_region
+  region = "us-east-1"  # Région OBLIGATOIRE pour ce projet
 }
 
+# -----------------------------------------------------------------------------
 # Récupération des ressources existantes (de l'Exercice 1)
-data "aws_vpc" "existing_vpc" {
+# -----------------------------------------------------------------------------
+data "aws_vpc" "p5_vpc" {
   filter {
     name   = "tag:Project"
     values = ["p5-openclassrooms"]
   }
 }
 
-data "aws_subnet" "existing_public_subnets" {
+data "aws_subnet" "p5_public_subnets" {
   filter {
     name   = "tag:Project"
     values = ["p5-openclassrooms"]
   }
 }
 
-data "aws_security_group" "existing_nginx_sg" {
+data "aws_security_group" "p5_nginx_sg" {
   filter {
-    name   = "tag:Name"
-    values = ["p5-nginx-sg"]
+    name   = "tag:Project"
+    values = ["p5-openclassrooms"]
   }
 }
 
-# Security Group pour HAProxy
-resource "aws_security_group" "haproxy_sg" {
+data "aws_instances" "p5_nginx_instances" {
+  instance_tags = {
+    Project = "p5-openclassrooms"
+    Role    = "web-server"
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Création du Security Group pour HAProxy
+# -----------------------------------------------------------------------------
+resource "aws_security_group" "p5_haproxy_sg" {
   name        = "p5-haproxy-sg"
   description = "Security Group pour HAProxy"
-  vpc_id      = data.aws_vpc.existing_vpc.id
+  vpc_id      = data.aws_vpc.p5_vpc.id
   
-  # HTTP depuis n'importe où
+  # Autoriser HTTP depuis n'importe où
   ingress {
     from_port   = 80
     to_port     = 80
@@ -55,7 +69,7 @@ resource "aws_security_group" "haproxy_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
   
-  # HTTPS depuis n'importe où (optionnel)
+  # Autoriser HTTPS depuis n'importe où (optionnel)
   ingress {
     from_port   = 443
     to_port     = 443
@@ -63,7 +77,7 @@ resource "aws_security_group" "haproxy_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
   
-  # Statistiques HAProxy (port 8404) depuis votre IP
+  # Autoriser les statistiques HAProxy depuis votre IP
   ingress {
     from_port   = 8404
     to_port     = 8404
@@ -71,7 +85,7 @@ resource "aws_security_group" "haproxy_sg" {
     cidr_blocks = [var.your_ip_cidr]
   }
   
-  # SSH depuis votre IP
+  # Autoriser SSH depuis votre IP
   ingress {
     from_port   = 22
     to_port     = 22
@@ -79,7 +93,7 @@ resource "aws_security_group" "haproxy_sg" {
     cidr_blocks = [var.your_ip_cidr]
   }
   
-  # Tout le trafic sortant
+  # Autoriser tout le trafic sortant
   egress {
     from_port   = 0
     to_port     = 0
@@ -88,45 +102,87 @@ resource "aws_security_group" "haproxy_sg" {
   }
   
   tags = {
-    Name        = "p5-haproxy-sg"
-    Environment = "dev"
-    Project     = "p5-openclassrooms"
+    Name    = "p5-haproxy-sg"
+    Project = "p5-openclassrooms"
   }
 }
 
-# Instance EC2 pour HAProxy
-resource "aws_instance" "haproxy" {
-  ami           = var.ami_id
-  instance_type = var.haproxy_instance_type
-  subnet_id     = data.aws_subnet.existing_public_subnets.ids[0]
+# -----------------------------------------------------------------------------
+# Création de l'instance EC2 pour HAProxy
+# -----------------------------------------------------------------------------
+resource "aws_instance" "p5_haproxy" {
+  ami           = var.ami_id  # Ubuntu 26.04
+  instance_type = var.instance_type  # t2.micro (gratuit avec Free Tier)
+  subnet_id     = data.aws_subnet.p5_public_subnets.ids[0]
   
-  vpc_security_group_ids = [aws_security_group.haproxy_sg.id]
-  key_name = "p5-key-exercice-1"
+  vpc_security_group_ids = [aws_security_group.p5_haproxy_sg.id]
+  key_name = "p5-key"
   
   tags = {
-    Name        = "p5-haproxy"
-    Environment = "dev"
-    Project     = "p5-openclassrooms"
-    Role        = "load-balancer"
+    Name    = "p5-haproxy"
+    Project = "p5-openclassrooms"
+    Role    = "load-balancer"
   }
   
+  # User Data : Script exécuté au premier démarrage
   user_data = <<-EOF
               #!/bin/bash
-              yum update -y
-              amazon-linux-extras install python3.8 -y
-              yum install python3-pip -y
+              # Mise à jour des packages
+              apt update -y
+              
+              # Installation de Python 3 (requis pour Ansible)
+              apt install -y python3 python3-pip
+              
+              # Installation de pip pour boto3
               pip3 install boto3
+              
+              # Installation de HAProxy
+              apt install -y haproxy
               EOF
 }
 
-# Elastic IP pour HAProxy
-resource "aws_eip" "haproxy_eip" {
-  instance = aws_instance.haproxy.id
-  vpc      = true
-  
-  tags = {
-    Name        = "p5-haproxy-eip"
-    Environment = "dev"
-    Project     = "p5-openclassrooms"
-  }
+# -----------------------------------------------------------------------------
+# Outputs
+# -----------------------------------------------------------------------------
+output "haproxy_public_ip" {
+  description = "IP publique de l'instance HAProxy"
+  value       = aws_instance.p5_haproxy.public_ip
+}
+
+output "haproxy_private_ip" {
+  description = "IP privée de l'instance HAProxy"
+  value       = aws_instance.p5_haproxy.private_ip
+}
+
+output "haproxy_public_dns" {
+  description = "DNS public de l'instance HAProxy"
+  value       = aws_instance.p5_haproxy.public_dns
+}
+
+output "haproxy_security_group_id" {
+  description = "ID du Security Group pour HAProxy"
+  value       = aws_security_group.p5_haproxy_sg.id
+}
+
+# IPs privées des instances NGINX (pour la configuration HAProxy)
+output "nginx_1_private_ip" {
+  description = "IP privée de NGINX-1"
+  value       = data.aws_instances.p5_nginx_instances.private_ips[0]
+}
+
+output "nginx_2_private_ip" {
+  description = "IP privée de NGINX-2"
+  value       = data.aws_instances.p5_nginx_instances.private_ips[1]
+}
+
+# URL pour accéder à HAProxy
+output "haproxy_url" {
+  description = "URL pour accéder à HAProxy"
+  value       = "http://${aws_instance.p5_haproxy.public_ip}"
+}
+
+# URL pour les statistiques HAProxy
+output "haproxy_stats_url" {
+  description = "URL pour les statistiques HAProxy"
+  value       = "http://${aws_instance.p5_haproxy.public_ip}:8404/stats"
 }

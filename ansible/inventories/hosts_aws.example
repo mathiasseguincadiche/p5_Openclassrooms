@@ -1,0 +1,14 @@
+# =============================================================================
+# INVENTAIRE ANSIBLE : Exemple pour le Projet P5 OpenClassrooms
+# Projet P5 OpenClassrooms - Déployer et suivre l'infrastructure as code
+# ⚠️ COPIEZ CE FICHIER EN hosts_aws ET MODIFIEZ-LE AVEC VOS IPs
+# =============================================================================
+
+[webservers]
+# Remplacez les IPs par celles de vos instances NGINX (Exercice 1)
+# Exemple :
+# 54.123.45.67 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/p5-key.pem
+# 54.123.45.68 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/p5-key.pem
+
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3

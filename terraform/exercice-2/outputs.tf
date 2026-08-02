@@ -1,48 +1,27 @@
 # =============================================================================
 # EXERCICE 2 : Outputs Terraform
-# Fichier : outputs.tf
+# Projet P5 OpenClassrooms - Déployer et suivre l'infrastructure as code
 # =============================================================================
 
 # -----------------------------------------------------------------------------
 # Outputs OpenSearch
 # -----------------------------------------------------------------------------
-output "opensearch_public_ip" {
-  description = "IP publique de l'instance OpenSearch"
-  value       = aws_instance.opensearch.public_ip
+output "opensearch_domain_name" {
+  description = "Nom du domaine OpenSearch"
+  value       = aws_elasticsearch_domain.p5_opensearch.domain_name
 }
 
-output "opensearch_private_ip" {
-  description = "IP privée de l'instance OpenSearch"
-  value       = aws_instance.opensearch.private_ip
+output "opensearch_endpoint" {
+  description = "Endpoint du cluster OpenSearch"
+  value       = aws_elasticsearch_domain.p5_opensearch.endpoint
 }
 
-output "opensearch_public_dns" {
-  description = "DNS public de l'instance OpenSearch"
-  value       = aws_instance.opensearch.public_dns
+output "opensearch_arn" {
+  description = "ARN du domaine OpenSearch"
+  value       = aws_elasticsearch_domain.p5_opensearch.arn
 }
 
-output "opensearch_eip" {
-  description = "Elastic IP de l'instance OpenSearch"
-  value       = aws_eip.opensearch_eip.public_ip
-}
-
-# -----------------------------------------------------------------------------
-# Outputs Security Group
-# -----------------------------------------------------------------------------
-output "opensearch_security_group_id" {
-  description = "ID du Security Group pour OpenSearch"
-  value       = aws_security_group.opensearch_sg.id
-}
-
-# -----------------------------------------------------------------------------
-# Outputs pour Ansible
-# -----------------------------------------------------------------------------
-output "opensearch_url" {
-  description = "URL pour accéder à OpenSearch Dashboards"
-  value       = "http://${aws_eip.opensearch_eip.public_ip}:9600"
-}
-
-output "opensearch_api_url" {
-  description = "URL pour l'API OpenSearch"
-  value       = "http://${aws_eip.opensearch_eip.public_ip}:9200"
+output "opensearch_kibana_endpoint" {
+  description = "Endpoint Kibana (OpenSearch Dashboards)"
+  value       = aws_elasticsearch_domain.p5_opensearch.kibana_endpoint
 }
