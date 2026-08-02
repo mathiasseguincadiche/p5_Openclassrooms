@@ -1,0 +1,49 @@
+---
+# =============================================================================
+# EXERCICE 2 : Playbook Ansible - Déploiement OpenSearch + Logstash
+# Fichier : playbooks/deploy-opensearch.yml
+# =============================================================================
+
+- name: Deploy OpenSearch and Logstash
+  hosts: opensearch_servers
+  become: true
+  
+  vars:
+    opensearch_version: "2.11.1"
+    logstash_version: "8.11.1"
+    opensearch_home: "/usr/share/opensearch"
+    opensearch_data_dir: "/var/lib/opensearch"
+    opensearch_logs_dir: "/var/log/opensearch"
+    opensearch_cluster_name: "p5-opensearch-cluster"
+    opensearch_node_name: "p5-opensearch-node-1"
+    opensearch_network_host: "0.0.0.0"
+    opensearch_discovery_type: "single-node"
+    logstash_listen_port: 5044
+  
+  roles:
+    - opensearch
+    - logstash
+  
+  post_tasks:
+    - name: Display OpenSearch status
+      command: systemctl status opensearch
+      register: opensearch_status
+      changed_when: false
+      
+    - name: Show OpenSearch status
+      debug:
+        msg: "OpenSearch status: {{ opensearch_status.stdout }}"
+      
+    - name: Test OpenSearch API
+      uri:
+        url: "http://localhost:9200"
+        method: GET
+        return_content: yes
+      register: opensearch_api_test
+      until: opensearch_api_test.status == 200
+      retries: 10
+      delay: 30
+      
+    - name: Show OpenSearch API test result
+      debug:
+        msg: "OpenSearch API response: {{ opensearch_api_test.json | to_nice_json }}"

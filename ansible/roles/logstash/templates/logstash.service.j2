@@ -1,0 +1,38 @@
+# =============================================================================
+# EXERCICE 2 : Template de service Systemd pour Logstash
+# =============================================================================
+
+[Unit]
+Description=Logstash
+Documentation=https://www.elastic.co/logstash/
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=logstash
+Group=logstash
+Environment="LS_HOME=/usr/share/logstash"
+Environment="LS_SETTINGS_DIR=/etc/logstash"
+Environment="PID_DIR=/var/run/logstash"
+Environment="SD_NOTIFY=1"
+
+WorkingDirectory=/usr/share/logstash
+
+ExecStart=/usr/share/logstash/bin/logstash --path.settings /etc/logstash
+ExecReload=/bin/kill -HUP $MAINPID
+
+StandardOutput=journal
+StandardError=inherit
+
+LimitNOFILE=65536
+LimitNPROC=4096
+
+TimeoutStopSec=0
+KillSignal=SIGTERM
+KillMode=process
+
+SuccessExitStatus=143
+
+[Install]
+WantedBy=multi-user.target

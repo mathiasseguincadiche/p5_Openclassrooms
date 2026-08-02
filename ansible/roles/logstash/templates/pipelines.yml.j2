@@ -1,0 +1,9 @@
+# =============================================================================
+# EXERCICE 2 : Template pipelines.yml pour Logstash
+# =============================================================================
+
+- pipeline.id: main
+  path.config: "/etc/logstash/conf.d/*.conf"
+  pipeline.workers: 2
+  pipeline.batch.size: 125
+  pipeline.batch.delay: 50

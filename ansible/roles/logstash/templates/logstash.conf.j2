@@ -1,0 +1,48 @@
+# =============================================================================
+# EXERCICE 2 : Template de configuration Logstash
+# Description : Pipeline pour traiter les logs NGINX
+# =============================================================================
+
+input {
+  beats {
+    port => {{ logstash_listen_port }}
+    ssl => false
+  }
+}
+
+filter {
+  grok {
+    match => { "message" => "%{IPORHOST:client_ip} - %{DATA:remote_user} \[%{HTTPDATE:timestamp}\] \"%{WORD:method} %{URIPATHPARAM:request} HTTP/%{NUMBER:http_version}\" %{NUMBER:status} %{NUMBER:bytes_sent} \"%{DATA:referrer}\" \"%{DATA:user_agent}\"" }
+    remove_tag => ["_grokparsefailure"]
+  }
+  
+  date {
+    match => ["timestamp", "dd/MMM/yyyy:HH:mm:ss Z"]
+    target => "@timestamp"
+    remove_field => ["timestamp"]
+  }
+  
+  mutate {
+    rename => { "method" => "http_method" }
+    convert => { "status" => "integer" }
+    convert => { "bytes_sent" => "integer" }
+    add_field => {
+      "source_type" => "nginx"
+      "environment" => "p5-openclassrooms"
+    }
+  }
+}
+
+output {
+  opensearch {
+    hosts => ["http://localhost:9200"]
+    index => "logs-nginx-%{+YYYY.MM.dd}"
+    ssl => false
+  }
+  
+  stdout {
+    codec => rubydebug {
+      metadata => true
+    }
+  }
+}

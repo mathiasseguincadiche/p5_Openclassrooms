@@ -1,0 +1,167 @@
+---
+# =============================================================================
+# EXERCICE 2 : Rôle OpenSearch - Tâches principales
+# =============================================================================
+
+- name: Install required packages
+  ansible.builtin.yum:
+    name:
+      - wget
+      - tar
+      - gzip
+      - perl-Digest-SHA
+    state: present
+    update_cache: yes
+  
+  tags:
+    - dependencies
+
+- name: Create OpenSearch user
+  ansible.builtin.user:
+    name: opensearch
+    comment: "OpenSearch user"
+    shell: /bin/bash
+    home: "{{ opensearch_home }}"
+    create_home: yes
+    system: yes
+  
+  tags:
+    - user
+
+- name: Create OpenSearch directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: opensearch
+    group: opensearch
+    mode: '0755'
+  loop:
+    - "{{ opensearch_home }}"
+    - "{{ opensearch_data_dir }}"
+    - "{{ opensearch_logs_dir }}"
+    - "/etc/opensearch"
+    - "/usr/share/opensearch/plugins"
+  
+  tags:
+    - directories
+
+- name: Download OpenSearch
+  ansible.builtin.get_url:
+    url: "https://artifacts.opensearch.org/releases/bundle/opensearch/{{ opensearch_version }}/opensearch-{{ opensearch_version }}-linux-x64.tar.gz"
+    dest: "/tmp/opensearch-{{ opensearch_version }}-linux-x64.tar.gz"
+    mode: '0755'
+  
+  tags:
+    - download
+
+- name: Extract OpenSearch
+  ansible.builtin.unarchive:
+    src: "/tmp/opensearch-{{ opensearch_version }}-linux-x64.tar.gz"
+    dest: "/usr/share/"
+    remote_src: yes
+    owner: opensearch
+    group: opensearch
+  
+  tags:
+    - extract
+
+- name: Create symlink for OpenSearch
+  ansible.builtin.file:
+    src: "/usr/share/opensearch-{{ opensearch_version }}"
+    dest: "{{ opensearch_home }}"
+    state: link
+    owner: opensearch
+    group: opensearch
+  
+  tags:
+    - symlink
+
+- name: Deploy OpenSearch configuration
+  ansible.builtin.template:
+    src: opensearch.yml.j2
+    dest: /etc/opensearch/opensearch.yml
+    owner: opensearch
+    group: opensearch
+    mode: '0644'
+  
+  notify: restart opensearch
+  
+  tags:
+    - configuration
+
+- name: Deploy JVM options
+  ansible.builtin.template:
+    src: jvm.options.j2
+    dest: /etc/opensearch/jvm.options
+    owner: opensearch
+    group: opensearch
+    mode: '0644'
+  
+  notify: restart opensearch
+  
+  tags:
+    - configuration
+
+- name: Configure system limits
+  ansible.builtin.copy:
+    dest: /etc/security/limits.d/opensearch.conf
+    content: |
+      opensearch soft nofile 65536
+      opensearch hard nofile 65536
+      opensearch soft memlock unlimited
+      opensearch hard memlock unlimited
+    mode: '0644'
+  
+  tags:
+    - limits
+
+- name: Configure sysctl
+  ansible.builtin.sysctl:
+    name: vm.max_map_count
+    value: "262144"
+    state: present
+    reload: yes
+  
+  tags:
+    - sysctl
+
+- name: Deploy OpenSearch systemd service
+  ansible.builtin.template:
+    src: opensearch.service.j2
+    dest: /etc/systemd/system/opensearch.service
+    mode: '0644'
+  
+  notify: restart opensearch
+  
+  tags:
+    - service
+
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: yes
+  
+  tags:
+    - service
+
+- name: Enable and start OpenSearch
+  ansible.builtin.service:
+    name: opensearch
+    state: started
+    enabled: yes
+  
+  tags:
+    - service
+
+- name: Wait for OpenSearch to be ready
+  ansible.builtin.uri:
+    url: "http://localhost:9200"
+    method: GET
+    return_content: yes
+    status_code: 200
+  register: result
+  until: result.status == 200
+  retries: 20
+  delay: 30
+  
+  tags:
+    - healthcheck

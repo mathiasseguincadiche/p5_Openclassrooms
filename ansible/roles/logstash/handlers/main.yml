@@ -1,0 +1,11 @@
+---
+# =============================================================================
+# EXERCICE 2 : Rôle Logstash - Handlers
+# =============================================================================
+
+- name: restart logstash
+  ansible.builtin.service:
+    name: logstash
+    state: restarted
+  
+  listen: "restart logstash"

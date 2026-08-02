@@ -1,0 +1,17 @@
+# =============================================================================
+# EXERCICE 2 : Template JVM Options pour Logstash
+# =============================================================================
+
+-Xms512m
+-Xmx512m
+
+-XX:+UseG1GC
+
+-XX:+PrintGCDetails
+-XX:+PrintGCDateStamps
+
+-Xloggc:/var/log/logstash/gc.log
+
+-XX:+UseGCLogFileRotation
+-XX:NumberOfGCLogFiles=5
+-XX:GCLogFileSize=10M

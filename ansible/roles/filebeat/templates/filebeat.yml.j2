@@ -1,0 +1,45 @@
+# =============================================================================
+# EXERCICE 2 : Template de configuration Filebeat
+# =============================================================================
+
+filebeat.inputs:
+- type: filestream
+  enabled: true
+  paths:
+    - /var/log/nginx/access.log
+    - /var/log/nginx/error.log
+  exclude_files: ['\.gz$']
+  ignore_older: 24h
+  start_position: end
+  close_renamed: true
+  close_removed: true
+  close_truncated: true
+
+output.logstash:
+  hosts: ["{{ logstash_host }}:{{ logstash_port }}"]
+  ssl.enabled: false
+
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat
+  keepfiles: 7
+  permissions: 0644
+
+path.config: /etc/filebeat
+path.data: /var/lib/filebeat
+path.home: /usr/share/filebeat
+path.logs: /var/log/filebeat
+
+processors:
+  - add_host_metadata: ~
+  - add_cloud_metadata: ~
+
+queue:
+  mem:
+    events: 4096
+    flush.min_events: 512
+    flush.timeout: 5s
+
+shutdown_timeout: 5s

@@ -1,0 +1,11 @@
+---
+# =============================================================================
+# EXERCICE 2 : Rôle Filebeat - Handlers
+# =============================================================================
+
+- name: restart filebeat
+  ansible.builtin.service:
+    name: filebeat
+    state: restarted
+  
+  listen: "restart filebeat"

@@ -1,0 +1,11 @@
+---
+# =============================================================================
+# EXERCICE 2 : Rôle OpenSearch - Handlers
+# =============================================================================
+
+- name: restart opensearch
+  ansible.builtin.service:
+    name: opensearch
+    state: restarted
+  
+  listen: "restart opensearch"
