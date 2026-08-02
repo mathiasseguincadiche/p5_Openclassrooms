@@ -4,17 +4,17 @@
 
 ## 📌 **OBJECTIFS (Conforme aux consignes OpenClassrooms)**
 
-**But principal** : Déployer un **load balancer HAProxy** devant **2 instances de l'application `nginxdemos/hello`** (Docker).
+**But principal** : Dépllloyer un **load balancer HAProxy** devant **2 instances de l'application `nginxdemos/hello`**.
 
 **Compétences visées** :
 - ✅ Maîtriser le **Load Balancing** avec HAProxy.
 - ✅ Comprendre le rôle d'un **reverse proxy**.
-- ✅ Déployer des **conteneurs Docker** (`nginxdemos/hello`).
+- ✅ Déplllloyer des **l'application** (`nginxdemos/hello`).
 - ✅ Configurer HAProxy pour répartir la charge entre plusieurs conteneurs.
 - ✅ Vérifier l'**alternance des requêtes** (Server name change à chaque rafraîchissement).
 
 **Résultat attendu** (selon OpenClassrooms) :
-- ✅ **1 VM HAProxy déployée** dans AWS (ou 1 conteneur Docker en local).
+- ✅ **1 VM HAProxy déployée** dans AWS .
 - ✅ **2 instances de `nginxdemos/hello`** (Docker) déployées.
 - ✅ **HAProxy configuré** pour répartir la charge entre les 2 instances.
 - ✅ **Vérification de l'alternance** : À chaque rafraîchissement, le **Server name** change (ex : `faf376c0f0b1`).
@@ -45,16 +45,6 @@
 | **Balance Algorithm** | Algorithme de répartition de la charge. | Permet de choisir comment répartir le trafic | Stratégie de répartition |
 
 ---
-
-### 🔹 3. Docker et `nginxdemos/hello`
-
-| Concept | Explication | Pourquoi c'est utile ? |
-|---------|-------------|------------------------|
-| **Docker** | Plateforme pour créer, déployer et gérer des conteneurs. | Permet d'isoler les applications et de les déployer facilement |
-| **Image Docker** | Modèle immuable pour créer des conteneurs. | Contient tout ce qui est nécessaire pour exécuter une application |
-| **Conteneur Docker** | Instance d'une image Docker en cours d'exécution. | Application isolée et portable |
-| **`nginxdemos/hello`** | Image Docker officielle pour tester NGINX. | Affiche un message avec un **Server name unique** (ID du conteneur) |
-| **Port 80** | Port par défaut pour `nginxdemos/hello`. | Permet d'accéder à l'application via HTTP |
 
 ---
 
@@ -97,12 +87,8 @@
 - Exercice 1 terminé avec succès (2 VMs déployées, **mais pas NGINX standard** → voir [corrections](#)).
 - VM **vm-devops** accessible en SSH.
 - Terraform, Ansible, AWS CLI installés et configurés.
-- **Docker installé** sur les VMs backend (ou sur la VM HAProxy).
+- **Docker installé** sur les VMs backend.
 - Pack P5 disponible dans `/home/devops/P5_OC_4091_PACK_COMPLET_V4_3_KVM/`.
-
-#### **Option 2 : Mode Local (Docker-Compose)**
-- Docker et Docker-Compose installés sur votre machine.
-- Accès à Internet pour télécharger l'image `nginxdemos/hello`.
 
 ---
 
@@ -122,11 +108,9 @@ aws sts get-caller-identity
 # ✅ Doit afficher votre UserId et Account
 
 # 4. Vérifiez que Docker est installé
-docker --version
 # ✅ Doit afficher : Docker version 20.x.x
 
 # 5. Vérifiez que docker-compose est installé (si local)
-docker-compose --version
 # ✅ Doit afficher : docker-compose version 1.x.x
 ```
 
@@ -139,21 +123,13 @@ docker-compose --version
 ### ✅ **Étape 0 : Choisir le mode (AWS ou Local)**
 
 #### **Option 1 : Mode AWS (Recommandé pour OpenClassrooms)**
-- Déploiement sur **AWS avec Terraform**.
-- **2 VMs backend** avec Docker + `nginxdemos/hello`.
+- Dépllloiement sur **AWS avec Terraform**.
+- **2 VMs backend** avec `nginxdemos/hello`.
 - **1 VM HAProxy** pour le load balancing.
-
-#### **Option 2 : Mode Local (Docker-Compose)**
-- Déploiement **localement avec Docker-Compose**.
-- **2 conteneurs `nginxdemos/hello`**.
-- **1 conteneur HAProxy** pour le load balancing.
-
-> **⚠️ Pour ce guide, nous allons utiliser le **Mode AWS** (conforme aux consignes OpenClassrooms).**
-> **Si vous préférez le Mode Local, voir [Annexe A](#annexe-a-mode-local-docker-compose).**
 
 ---
 
-### ✅ **Étape 1 : Déployer les 2 instances `nginxdemos/hello` (AWS)**
+### ✅ **Étape 1 : Dépllloyer les 2 instances `nginxdemos/hello` (AWS)**
 
 > **⚠️ Correction par rapport à l'Exercice 1 : On utilise `nginxdemos/hello` au lieu de NGINX standard.**
 
@@ -162,7 +138,7 @@ docker-compose --version
    cd /home/devops/P5_OC_4091_PACK_COMPLET_V4_3_KVM/04_EXERCICES/03_HAPROXY/
    ```
 
-2. **Modifier le fichier `main.tf`** pour déployer **2 VMs avec Docker + `nginxdemos/hello`** :
+2. **Modifier le fichier `main.tf`** pour déployer **2 VMs avec `nginxdemos/hello`** :
    ```bash
    nano terraform/exercice-3/main.tf
    ```
@@ -187,7 +163,7 @@ docker-compose --version
        Project = "p5-openclassrooms"
      }
      
-     # User Data : Installer Docker et lancer nginxdemos/hello
+     # User Data : Installer et lancer nginxdemos/hello
      user_data = <<-EOF
                #!/bin/bash
                sudo apt update -y
@@ -213,7 +189,7 @@ docker-compose --version
    NGINX_HELLO_1_IP=$(aws ec2 describe-instances --query "Reservations[0].Instances[0].PrivateIpAddress" --output text)
    NGINX_HELLO_2_IP=$(aws ec2 describe-instances --query "Reservations[0].Instances[1].PrivateIpAddress" --output text)
    
-   # Se connecter à la première VM et vérifier Docker
+   # Se connecter à la première VM et vérifier l'application
    ssh -i p5-key.pem ubuntu@$(aws ec2 describe-instances --query "Reservations[0].Instances[0].PublicIpAddress" --output text)
    docker ps
    ```
@@ -346,7 +322,7 @@ docker-compose --version
 
 ---
 
-### ✅ **Étape 3 : Déployer la VM HAProxy avec Terraform**
+### ✅ **Étape 3 : Dépllloyer la VM HAProxy avec Terraform**
 
 1. **Modifier le fichier `main.tf`** pour déployer HAProxy :
    ```bash
@@ -440,7 +416,7 @@ docker-compose --version
 
 ---
 
-### ✅ **Étape 4 : Déployer la configuration HAProxy**
+### ✅ **Étape 4 : Dépllloyer la configuration HAProxy**
 
 1. **Copier le fichier `haproxy.cfg` sur la VM HAProxy** :
    ```bash
@@ -452,7 +428,7 @@ docker-compose --version
    ssh -i p5-key.pem ubuntu@$HAPROXY_IP
    ```
 
-3. **Déployer la configuration** :
+3. **Dépllloyer la configuration** :
    ```bash
    sudo cp /tmp/haproxy.cfg /etc/haproxy/haproxy.cfg
    sudo chmod 644 /etc/haproxy/haproxy.cfg
@@ -583,7 +559,7 @@ docker-compose --version
 ### **Checklist de Vérification**
 
 - [ ] **Préparation** :
-  - [ ] 2 instances `nginxdemos/hello` déployées (Docker).
+  - [ ] 2 instances `nginxdemos/hello` déployées.
   - [ ] IPs privées des instances récupérées.
   - [ ] Configuration HAProxy générée (`haproxy.cfg`).
 
@@ -723,15 +699,14 @@ No server is available to handle this request.
 ## 📚 **RESSOURCES UTILES**
 
 - [Documentation HAProxy](https://www.haproxy.org/documentation/)
-- [Image Docker `nginxdemos/hello`](https://hub.docker.com/r/nginxdemos/hello)
-- [Documentation Docker](https://docs.docker.com/)
+- [Image `nginxdemos/hello`](https://hub.docker.com/r/nginxdemos/hello)
 - [Documentation Terraform AWS](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
 
 ---
 
 ## 🎉 **RÉSUMÉ**
 
-✅ **2 instances `nginxdemos/hello` déployées** (Docker).
+✅ **2 instances `nginxdemos/hello` déployées**.
 ✅ **Configuration HAProxy générée** (`haproxy.cfg`).
 ✅ **VM HAProxy déployée** avec Terraform.
 ✅ **Load balancing fonctionnel** (alternance des `Server name`).
@@ -742,85 +717,6 @@ No server is available to handle this request.
 **Exercice 3 terminé avec succès !** 🎉
 
 ---
-
-## 📌 **ANNEXE A : Mode Local (Docker-Compose)**
-
-Si vous préférez utiliser **Docker-Compose** (option locale), voici comment faire :
-
-1. **Créer un fichier `docker-compose.yml`** :
-   ```yaml
-   version: '3.8'
-   
-   services:
-     # Conteneur 1 : nginxdemos/hello
-     nginx-hello-1:
-       image: nginxdemos/hello
-       ports:
-         - "8081:80"
-       container_name: nginx-hello-1
-     
-     # Conteneur 2 : nginxdemos/hello
-     nginx-hello-2:
-       image: nginxdemos/hello
-       ports:
-         - "8082:80"
-       container_name: nginx-hello-2
-     
-     # HAProxy
-     haproxy:
-       image: haproxy:latest
-       ports:
-         - "80:80"
-         - "8404:8404"
-       volumes:
-         - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg
-       depends_on:
-         - nginx-hello-1
-         - nginx-hello-2
-   ```
-
-2. **Créer le fichier `haproxy.cfg`** :
-   ```cfg
-   global
-       log stdout format raw local0
-   
-   defaults
-       mode http
-       timeout connect 5000ms
-       timeout client 50000ms
-       timeout server 50000ms
-   
-   frontend http-in
-       bind *:80
-       default_backend nginx_hello_servers
-   
-   backend nginx_hello_servers
-       balance roundrobin
-       server nginx-hello-1 nginx-hello-1:80 check
-       server nginx-hello-2 nginx-hello-2:80 check
-   
-   listen stats
-       bind *:8404
-       stats enable
-       stats uri /stats
-   ```
-
-3. **Démarrer les conteneurs** :
-   ```bash
-   docker-compose up -d
-   ```
-
-4. **Tester le load balancing** :
-   ```bash
-   for i in {1..10}; do 
-     curl -s http://localhost | grep -o "Server name: [^<]*" | sed 's/Server name: //;s/<\/strong>//';
-     echo "---";
-   done
-   ```
-
----
-
-**Prochaine étape** : [Livrables et nettoyage](#)
 
 ---
 
