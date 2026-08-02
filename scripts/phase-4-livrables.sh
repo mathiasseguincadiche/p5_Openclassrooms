@@ -96,36 +96,85 @@ copy_ansible_playbook() {
 copy_exercice_2_captures() {
     step 4 "Copie des captures d'écran (Exercice 2)"
     
-    info "Recherche des captures d'écran dans le dossier courant..."
+    info "Recherche des captures d'écran..."
     
-    # Liste des fichiers PNG/JPG dans le dossier courant
-    captures=$(find . -maxdepth 1 -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" \) | grep -E "(dashboard|diagramme|histogramme)" | head -4)
-    
-    if [ -z "$captures" ]; then
-        warning "Aucune capture d'écran trouvée dans le dossier courant"
-        info "Veuillez placer vos captures dans le dossier courant ou spécifier leur emplacement"
-        return 1
-    fi
-    
-    # Noms des fichiers de destination
-    capture_names=(
-        "${NOM}_${PRENOM}_2_dashboard_complet_${DATE}.png"
-        "${NOM}_${PRENOM}_2_diagramme_donut_${DATE}.png"
-        "${NOM}_${PRENOM}_2_diagramme_histogramme_${DATE}.png"
-        "${NOM}_${PRENOM}_2_diagramme_histogramme_cumule_${DATE}.png"
-    )
-    
-    # Copier les captures
-    i=0
-    for capture in $captures; do
-        if [ $i -lt 4 ]; then
-            cp "$capture" "$LIVRABLES_DIR/Exercice_2/${capture_names[$i]}"
-            check "Capture ${capture_names[$i]} copiée"
-            i=$((i + 1))
+    # Vérifier si le dossier captures existe
+    if [ -d "captures" ]; then
+        info "Dossier 'captures' trouvé. Utilisation des captures automatiques."
+        
+        # Noms des fichiers de destination
+        capture_names=(
+            "${NOM}_${PRENOM}_2_dashboard_complet_${DATE}.png"
+            "${NOM}_${PRENOM}_2_diagramme_donut_${DATE}.png"
+            "${NOM}_${PRENOM}_2_diagramme_histogramme_${DATE}.png"
+            "${NOM}_${PRENOM}_2_diagramme_histogramme_cumule_${DATE}.png"
+        )
+        
+        # Noms des fichiers sources
+        source_files=(
+            "dashboard_complet_${DATE}.png"
+            "diagramme_donut_${DATE}.png"
+            "diagramme_histogramme_${DATE}.png"
+            "diagramme_histogramme_cumule_${DATE}.png"
+        )
+        
+        # Copier les captures depuis le dossier captures
+        for i in {0..3}; do
+            if [ -f "captures/${source_files[$i]}" ]; then
+                cp "captures/${source_files[$i]}" "$LIVRABLES_DIR/Exercice_2/${capture_names[$i]}"
+                check "Capture ${capture_names[$i]} copiée"
+            else
+                warning "Capture ${source_files[$i]} introuvable dans captures/"
+            fi
+        done
+        
+        success "Captures d'écran copiées depuis captures/ vers $LIVRABLES_DIR/Exercice_2/"
+    else
+        # Méthode originale : recherche dans le dossier courant
+        info "Recherche des captures d'écran dans le dossier courant..."
+        
+        # Liste des fichiers PNG/JPG dans le dossier courant
+        captures=$(find . -maxdepth 1 -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" \) | grep -E "(dashboard|diagramme|histogramme)" | head -4)
+        
+        if [ -z "$captures" ]; then
+            warning "Aucune capture d'écran trouvée dans le dossier courant"
+            info "Veuillez placer vos captures dans le dossier courant ou spécifier leur emplacement"
+            
+            # Proposer de générer les captures automatiquement
+            if confirm "Voulez-vous essayer de générer les captures automatiquement ?"; then
+                if [ -f "$(dirname "$0")/utils/capture-screenshots.sh" ]; then
+                    info "Lancement du script de génération automatique des captures..."
+                    bash "$(dirname "$0")/utils/capture-screenshots.sh" --auto
+                    
+                    # Re-essayer la copie
+                    copy_exercice_2_captures
+                else
+                    error "Le script capture-screenshots.sh n'existe pas"
+                fi
+            fi
+            return 1
         fi
-    done
-    
-    success "Captures d'écran copiées vers $LIVRABLES_DIR/Exercice_2/"
+        
+        # Noms des fichiers de destination
+        capture_names=(
+            "${NOM}_${PRENOM}_2_dashboard_complet_${DATE}.png"
+            "${NOM}_${PRENOM}_2_diagramme_donut_${DATE}.png"
+            "${NOM}_${PRENOM}_2_diagramme_histogramme_${DATE}.png"
+            "${NOM}_${PRENOM}_2_diagramme_histogramme_cumule_${DATE}.png"
+        )
+        
+        # Copier les captures
+        i=0
+        for capture in $captures; do
+            if [ $i -lt 4 ]; then
+                cp "$capture" "$LIVRABLES_DIR/Exercice_2/${capture_names[$i]}"
+                check "Capture ${capture_names[$i]} copiée"
+                i=$((i + 1))
+            fi
+        done
+        
+        success "Captures d'écran copiées vers $LIVRABLES_DIR/Exercice_2/"
+    fi
 }
 
 # Copie le fichier haproxy.cfg pour l'Exercice 3

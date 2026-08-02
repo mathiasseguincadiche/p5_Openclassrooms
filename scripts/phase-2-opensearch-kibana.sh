@@ -319,6 +319,30 @@ show_kibana_instructions() {
     
     echo ""
     title "INSTRUCTIONS POUR CRÉER LE DASHBOARD KIBANA"
+    step 10 "Création automatique du dashboard Kibana"
+    
+    KIBANA_URL=$(cat /tmp/kibana_url.txt)
+    
+    info "Vous pouvez créer le dashboard manuellement ou utiliser le script automatique."
+    echo ""
+    
+    if confirm "Voulez-vous essayer de créer le dashboard automatiquement via l'API ?"; then
+        info "Lancement du script de création automatique du dashboard..."
+        if [ -f "$(dirname "$0")/utils/kibana-api.sh" ]; then
+            if bash "$(dirname "$0")/utils/kibana-api.sh" --url "$KIBANA_URL" --auto; then
+                success "Dashboard créé automatiquement !"
+                info "Vérifiez dans Kibana que le dashboard contient bien les 3 diagrammes."
+            else
+                warning "Échec de la création automatique du dashboard."
+                info "Vous devrez le créer manuellement."
+            fi
+        else
+            error "Le script kibana-api.sh n'existe pas"
+        fi
+    fi
+    
+    echo ""
+    title "INSTRUCTIONS POUR CRÉER LE DASHBOARD KIBANA (MANUELLEMENT)"
     echo ""
     info "1. Accédez à Kibana : $KIBANA_URL"
     info "2. Créez un Index Pattern :"
@@ -344,7 +368,6 @@ show_kibana_instructions() {
     info "   - Diagramme Histogramme cumulé seul"
     echo ""
     warning "⚠️ Ces captures sont OBLIGATOIRES pour le livrable OpenClassrooms"
-}
 
 # Supprime les ressources Terraform
 destroy_terraform() {
