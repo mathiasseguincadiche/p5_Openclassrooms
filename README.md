@@ -533,7 +533,7 @@ P5_4091_Deployez_et_suivez_l_IaC_Mathias_SEGUIN-CADICHE.zip
 │   │   ├── outputs.tf
 │   │   └── terraform.tfvars.example
 │   └── SEGUIN-CADICHE_Mathias_1_playbook_ansible_<date>.yml
-├── Exercice_2/
+├── terraform/exercice-2/samples/
 │   ├── SEGUIN-CADICHE_Mathias_2_dashboard_complet_<date>.png
 │   ├── SEGUIN-CADICHE_Mathias_2_diagramme_donut_<date>.png
 │   ├── SEGUIN-CADICHE_Mathias_2_diagramme_histogramme_<date>.png
@@ -559,20 +559,20 @@ P5_4091_Deployez_et_suivez_l_IaC_Mathias_SEGUIN-CADICHE.zip
 ### 📝 **GÉNÉRER LE ZIP DES LIVRABLES**
 ```bash
 # 1. Créer les dossiers
-mkdir -p Exercice_1 Exercice_2 Exercice_3
+mkdir -p Exercice_1 Exercice_3
 
 # 2. Copier les fichiers Terraform (Exercice 1)
 cp -r terraform/exercice-1/* Exercice_1/SEGUIN-CADICHE_Mathias_1_fichiers_terraform_$(date +%d%m%Y)/
 cp ansible/playbooks/deploy.yml Exercice_1/SEGUIN-CADICHE_Mathias_1_playbook_ansible_$(date +%d%m%Y).yml
 
 # 3. Copier les captures (Exercice 2)
-cp *.png Exercice_2/
+cp *.png terraform/exercice-2/samples/
 
 # 4. Copier haproxy.cfg (Exercice 3)
 cp terraform/exercice-3/haproxy.cfg Exercice_3/SEGUIN-CADICHE_Mathias_3_haproxy_cfg_$(date +%d%m%Y).cfg
 
 # 5. Créer le ZIP
-zip -r P5_4091_Deployez_et_suivez_l_IaC_Mathias_SEGUIN-CADICHE.zip Exercice_1/ Exercice_2/ Exercice_3/ SEGUIN-CADICHE_Mathias_*.md
+zip -r P5_4091_Deployez_et_suivez_l_IaC_Mathias_SEGUIN-CADICHE.zip Exercice_1/ terraform/exercice-2/samples/ Exercice_3/ SEGUIN-CADICHE_Mathias_*.md
 ```
 
 ---

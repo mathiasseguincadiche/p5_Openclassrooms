@@ -2,41 +2,60 @@
 # .gitignore pour le projet P5 OpenClassrooms
 # =============================================================================
 
-# Fichiers temporaires et logs
+# --- Fichiers temporaires et logs ---
 *.log
 *.swp
 *.tmp
 .DS_Store
 Thumbs.db
 
-# Dossiers de build et cache
+# --- Dossiers de build et cache ---
 /.cache/
 /.terraform/
 /terraform.tfstate*
 /terraform.lock.hcl
 
-# Fichiers locaux Ansible
+# --- Fichiers locaux Ansible ---
 /ansible.cfg
 /ansible.log
+/ansible/roles/
 
-# Fichiers de dépendances (optionnel)
+# --- Fichiers de dépendances (Node.js, Python, etc.) ---
 /node_modules/
 /package-lock.json
+/__pycache__/
+*.pyc
 
-# Fichiers IDE
+# --- Fichiers IDE ---
 .idea/
 .vscode/
 *.sublime-workspace
 *.sublime-project
 
-# Fichiers de test ou exemples non nécessaires
-/test/
-/venv/
-
-# Fichiers de configuration locale
+# --- Fichiers de configuration locale ---
 .env
 *.local
 
-# Fichiers générés automatiquement
+# --- Fichiers générés automatiquement ---
 *.pyc
 __pycache__/
+
+# --- Fichiers de test ou exemples non nécessaires ---
+/test/
+/venv/
+
+# --- Fichiers de logs et captures ---
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+
+# --- Fichiers de backup ou temporaires ---
+*.bak
+*.backup
+*.old
+
+# --- Fichiers de configuration système ---
+*.conf.bak
+*.conf.old
