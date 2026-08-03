@@ -1,0 +1,118 @@
+# =============================================
+# TEMPLATE : Workflow CI pour Node.js (GitHub Actions)
+# =============================================
+# Ce workflow s'exécute à chaque push ou pull request sur la branche `main`.
+# Il permet de :
+# 1. Exécuter des tests automatiquement.
+# 2. Vérifier la qualité du code avec ESLint.
+#
+# Pour utiliser ce template :
+# 1. Copiez ce fichier dans .github/workflows/ci-nodejs.yml
+# 2. Personnalisez-le selon vos besoins.
+# 3. Commitez et poussez vers GitHub.
+
+# Nom du workflow (affiché dans l'onglet Actions de GitHub)
+name: CI - Node.js
+
+# Déclencheurs : push ou pull request sur la branche main
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+# Jobs à exécuter
+jobs:
+  # Job 1 : Exécuter les tests et le linting
+  test-and-lint:
+    # Utilise un runner Ubuntu (machine virtuelle fournie par GitHub)
+    runs-on: ubuntu-latest
+
+    # Étapes du job
+    steps:
+      # --- Étape 1 : Checkout du code ---
+      # Récupère le code du dépôt dans le runner.
+      - name: Checkout code
+        uses: actions/checkout@v4
+        # Explication : actions/checkout@v4 est une action officielle GitHub qui
+        # récupère le code de votre dépôt dans le runner.
+
+      # --- Étape 2 : Configuration de Node.js ---
+      # Installe Node.js 18 sur le runner.
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          # Cache les dépendances npm pour accélérer les builds
+          cache: 'npm'
+        # Explication : actions/setup-node@v4 installe Node.js et npm sur le runner.
+        # Le cache permet de ne pas réinstaller les dépendances à chaque exécution.
+
+      # --- Étape 3 : Installation des dépendances ---
+      # Exécute `npm ci` pour installer les dépendances de manière déterministe.
+      - name: Install dependencies
+        run: npm ci
+        # Explication : npm ci (Clean Install) installe exactement les versions
+        # des dépendances spécifiées dans le package-lock.json.
+
+      # --- Étape 4 : Exécution des tests ---
+      # Lance les tests avec `npm test`.
+      - name: Run tests
+        run: npm test
+        # Explication : Exécute les tests définis dans le package.json (script "test").
+
+      # --- Étape 5 : Linting ---
+      # Vérifie la qualité du code avec ESLint.
+      - name: Run linter
+        run: npx eslint .
+        # Explication : ESLint vérifie la qualité du code (syntaxe, style, etc.).
+        # Assurez-vous d'avoir installé ESLint dans votre projet.
+
+# =============================================
+# PERSONNALISATION :
+# =============================================
+# 1. Changez la version de Node.js :
+#    - name: Setup Node.js
+#      uses: actions/setup-node@v4
+#      with:
+#        node-version: 16  # Changez pour utiliser Node.js 16
+#
+# 2. Ajoutez des étapes supplémentaires :
+#    - name: Build application
+#      run: npm run build
+#
+# 3. Utilisez une matrice pour tester plusieurs versions de Node.js :
+#    jobs:
+#      test-and-lint:
+#        runs-on: ubuntu-latest
+#        strategy:
+#          matrix:
+#            node-version: [14.x, 16.x, 18.x]
+#        steps:
+#          - uses: actions/checkout@v4
+#          - uses: actions/setup-node@v4
+#            with:
+#              node-version: ${{ matrix.node-version }}
+#              cache: 'npm'
+#          - run: npm ci
+#          - run: npm test
+#
+# 4. Ajoutez des notifications en cas d'échec :
+#    - name: Notify Slack on Failure
+#      if: failure()
+#      uses: rtCamp/action-slack-notify@v2
+#      env:
+#        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+#        SLACK_COLOR: danger
+#        SLACK_TITLE: "CI Failed"
+# =============================================
+
+# =============================================
+# BONNES PRATIQUES :
+# =============================================
+# 1. Utilisez toujours `npm ci` au lieu de `npm install` pour une installation déterministe.
+# 2. Cachez les dépendances pour accélérer les builds.
+# 3. Exécutez les tests et le linting dans le même job pour éviter de dupliquer le code.
+# 4. Utilisez des secrets pour les informations sensibles (ex: tokens, clés API).
+# 5. Documentez chaque étape avec un nom clair.
+# =============================================

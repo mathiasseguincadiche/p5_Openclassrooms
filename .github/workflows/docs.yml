@@ -1,0 +1,77 @@
+# =============================================
+# Workflow pour générer et déployer la documentation
+# =============================================
+# Ce workflow s'exécute à chaque push sur la branche main.
+# Il permet de :
+# 1. Générer la documentation (si nécessaire).
+# 2. Déployer la documentation sur GitHub Pages (optionnel).
+#
+# Pour activer GitHub Pages :
+# 1. Allez dans Settings > Pages.
+# 2. Sélectionnez la branche "gh-pages" et le dossier "/ (root)".
+#
+# Pour désactiver ce workflow, supprimez ce fichier ou commentez son contenu.
+
+name: Docs - Génération et déploiement
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'docs/**'
+      - 'TEMPLATES/**'
+      - 'README.md'
+
+jobs:
+  # Job 1 : Générer la documentation (optionnel)
+  generate-docs:
+    name: Générer la documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Exemple : Générer un site statique avec MkDocs (si vous utilisez MkDocs)
+      # - name: Installer MkDocs
+      #   run: pip install mkdocs mkdocs-material
+      #
+      # - name: Générer la documentation
+      #   run: mkdocs build
+      #
+      # - name: Commiter la documentation générée
+      #   run: |
+      #     git config --global user.name "GitHub Actions"
+      #     git config --global user.email "actions@github.com"
+      #     git add site/
+      #     git commit -m "docs: update generated documentation"
+      #     git push
+
+  # Job 2 : Déployer sur GitHub Pages (optionnel)
+  deploy-to-pages:
+    name: Déployer sur GitHub Pages
+    needs: generate-docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Exemple : Déployer avec GitHub Pages
+      # - name: Configurer GitHub Pages
+      #   uses: actions/configure-pages@v3
+      #
+      # - name: Générer l'artefact
+      #   uses: actions/upload-pages-artifact@v2
+      #   with:
+      #     path: ./site  # Dossier contenant la documentation générée
+      #
+      # - name: Déployer sur GitHub Pages
+      #   uses: actions/deploy-pages@v2
+
+# =============================================
+# BONNES PRATIQUES :
+# =============================================
+# 1. Ce workflow est optionnel et peut être désactivé si vous n'avez pas besoin de GitHub Pages.
+# 2. Pour utiliser GitHub Pages, activez-le dans les paramètres du dépôt.
+# 3. Pour générer de la documentation, utilisez des outils comme MkDocs, Docusaurus, ou Sphinx.
+# 4. Pour déployer sur un autre service (ex: Netlify, Vercel), utilisez l'API du service.
+# =============================================

@@ -1,0 +1,245 @@
+# =============================================
+# TEMPLATE : Déploiement Kubernetes (Deployment)
+# =============================================
+# Ce fichier permet de déployer une application sur Kubernetes avec un Deployment.
+# Un Deployment gère :
+# - Le nombre de réplicas (pods) à maintenir.
+# - Les mises à jour (rolling updates).
+# - Les rollbacks en cas d'erreur.
+#
+# Pour utiliser ce template :
+# 1. Copiez ce fichier dans votre projet sous le nom "deployment.yaml".
+# 2. Personnalisez-le selon vos besoins (image, réplicas, etc.).
+# 3. Appliquez le déploiement : kubectl apply -f deployment.yaml
+
+apiVersion: apps/v1  # Version de l'API Kubernetes (apps/v1 pour les déploiements)
+kind: Deployment     # Type de ressource (Deployment)
+metadata:
+  # Nom du déploiement
+  name: mon-app
+  
+  # Labels pour identifier le déploiement
+  labels:
+    app: mon-app
+    environment: production
+    version: v1.0.0
+
+spec:
+  # Nombre de réplicas (pods) à maintenir
+  replicas: 3
+  
+  # Stratégie de mise à jour (rolling update par défaut)
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1       # Nombre maximal de pods supplémentaires pendant la mise à jour
+      maxUnavailable: 0 # Nombre maximal de pods indisponibles pendant la mise à jour
+  
+  # Sélecteur pour trouver les pods gérés par ce déploiement
+  selector:
+    matchLabels:
+      app: mon-app
+  
+  # Template pour créer les pods
+  template:
+    metadata:
+      # Labels pour identifier les pods
+      labels:
+        app: mon-app
+        environment: production
+        version: v1.0.0
+    
+    spec:
+      # Conteneurs dans le pod
+      containers:
+      - name: mon-app  # Nom du conteneur
+        image: nginx:1.25  # Image Docker à utiliser
+        
+        # Ports exposés par le conteneur
+        ports:
+        - containerPort: 80  # Port exposé par le conteneur
+          protocol: TCP
+        
+        # Variables d'environnement
+        env:
+        - name: ENVIRONMENT
+          value: "production"
+        - name: PORT
+          value: "80"
+        
+        # Liveness Probe : Vérifie si le conteneur est en vie
+        livenessProbe:
+          httpGet:
+            path: /healthz  # Chemin pour vérifier la santé
+            port: 80        # Port à utiliser
+          initialDelaySeconds: 5  # Délai avant la première vérification
+          periodSeconds: 10       # Intervalle entre les vérifications
+          timeoutSeconds: 2       # Timeout pour la vérification
+          successThreshold: 1     # Nombre de succès pour considérer le conteneur comme sain
+          failureThreshold: 3     # Nombre d'échecs pour redémarrer le conteneur
+        
+        # Readiness Probe : Vérifie si le conteneur est prêt à recevoir du trafic
+        readinessProbe:
+          httpGet:
+            path: /ready   # Chemin pour vérifier la préparation
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 2
+          successThreshold: 1
+          failureThreshold: 3
+        
+        # Limites de ressources (CPU et mémoire)
+        resources:
+          requests:  # Ressources minimales requises
+            cpu: "100m"    # 0.1 CPU
+            memory: "128Mi" # 128 Mo de mémoire
+          limits:    # Ressources maximales autorisées
+            cpu: "500m"    # 0.5 CPU
+            memory: "512Mi" # 512 Mo de mémoire
+        
+        # Politique de redémarrage
+        restartPolicy: Always
+
+# =============================================
+# EXPLICATIONS :
+# =============================================
+# 1. apiVersion : Version de l'API Kubernetes (apps/v1 pour les déploiements).
+#
+# 2. kind : Type de ressource (Deployment, Pod, Service, etc.).
+#
+# 3. metadata : Métadonnées (nom, labels, annotations).
+#    - name : Nom de la ressource.
+#    - labels : Labels pour identifier la ressource.
+#
+# 4. spec : Spécification du déploiement.
+#    - replicas : Nombre de pods à maintenir.
+#    - strategy : Stratégie de mise à jour.
+#      - RollingUpdate : Met à jour les pods progressivement.
+#      - Recreate : Supprime tous les pods avant d'en créer de nouveaux.
+#    - selector : Sélecteur pour trouver les pods gérés.
+#      - matchLabels : Filtre les pods par labels.
+#    - template : Template pour créer les pods.
+#      - metadata : Métadonnées pour les pods.
+#      - spec : Spécification du pod.
+#        - containers : Liste des conteneurs dans le pod.
+#          - name : Nom du conteneur.
+#          - image : Image Docker à utiliser.
+#          - ports : Ports exposés par le conteneur.
+#          - env : Variables d'environnement.
+#          - livenessProbe : Vérifie si le conteneur est en vie.
+#          - readinessProbe : Vérifie si le conteneur est prêt.
+#          - resources : Limites de ressources (CPU, mémoire).
+#
+# 5. Liveness Probe :
+#    - Vérifie si le conteneur est en vie.
+#    - Si la vérification échoue, le conteneur est redémarré.
+#    - Types : httpGet, tcpSocket, exec, grpc.
+#
+# 6. Readiness Probe :
+#    - Vérifie si le conteneur est prêt à recevoir du trafic.
+#    - Si la vérification échoue, le conteneur est marqué comme "non prêt".
+#    - Types : httpGet, tcpSocket, exec, grpc.
+#
+# 7. Resources :
+#    - requests : Ressources minimales requises.
+#    - limits : Ressources maximales autorisées.
+#    - 1 CPU = 1000m (milli-CPU).
+#    - 1 GiB = 1Gi, 1 MiB = 1Mi.
+# =============================================
+
+# =============================================
+# PERSONNALISATION :
+# =============================================
+# 1. Changez le nom du déploiement :
+#    metadata:
+#      name: mon-autre-app
+#
+# 2. Changez le nombre de réplicas :
+#    spec:
+#      replicas: 5
+#
+# 3. Changez l'image Docker :
+#    spec:
+#      template:
+#        spec:
+#          containers:
+#          - image: mon-app:v1.0.0
+#
+# 4. Ajoutez des variables d'environnement :
+#    spec:
+#      template:
+#        spec:
+#          containers:
+#          - env:
+#            - name: DB_HOST
+#              value: "postgres"
+#            - name: DB_PORT
+#              value: "5432"
+#
+# 5. Changez les limites de ressources :
+#    spec:
+#      template:
+#        spec:
+#          containers:
+#          - resources:
+#              requests:
+#                cpu: "200m"
+#                memory: "256Mi"
+#              limits:
+#                cpu: "1"
+#                memory: "1Gi"
+#
+# 6. Ajoutez un second conteneur (sidecar) :
+#    spec:
+#      template:
+#        spec:
+#          containers:
+#          - name: mon-app
+#            image: mon-app:v1.0.0
+#          - name: sidecar
+#            image: sidecar:v1.0.0
+# =============================================
+
+# =============================================
+# COMMANDES UTILES :
+# =============================================
+# 1. Appliquer le déploiement :
+#    kubectl apply -f deployment.yaml
+#
+# 2. Voir les déploiements :
+#    kubectl get deployments
+#
+# 3. Voir les pods :
+#    kubectl get pods
+#
+# 4. Voir les détails du déploiement :
+#    kubectl describe deployment mon-app
+#
+# 5. Mettre à l'échelle le déploiement :
+#    kubectl scale deployment mon-app --replicas=5
+#
+# 6. Mettre à jour l'image :
+#    kubectl set image deployment/mon-app mon-app=nginx:1.26
+#
+# 7. Voir l'historique des révisions :
+#    kubectl rollout history deployment/mon-app
+#
+# 8. Revenir à une révision précédente :
+#    kubectl rollout undo deployment/mon-app
+#
+# 9. Supprimer le déploiement :
+#    kubectl delete deployment mon-app
+# =============================================
+
+# =============================================
+# BONNES PRATIQUES :
+# =============================================
+# 1. Utilisez des labels pour identifier vos ressources.
+# 2. Définissez des limites de ressources pour éviter les abus.
+# 3. Utilisez des Liveness et Readiness Probes pour la résilience.
+# 4. Utilisez une stratégie RollingUpdate pour éviter les temps d'arrêt.
+# 5. Documentez vos déploiements avec des commentaires.
+# 6. Utilisez des ConfigMaps et Secrets pour les configurations.
+# 7. Testez toujours vos déploiements en local avant de les déployer en production.
+# =============================================

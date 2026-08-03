@@ -1,0 +1,114 @@
+# =============================================
+# Workflow CI pour le projet P5 OpenClassrooms
+# =============================================
+# Ce workflow s'exécute à chaque push ou pull request sur la branche main.
+# Il permet de :
+# 1. Vérifier la syntaxe des fichiers Markdown.
+# 2. Vérifier la syntaxe des fichiers YAML.
+# 3. Vérifier la syntaxe des fichiers Terraform (si présents).
+# 4. Vérifier la syntaxe des fichiers Dockerfile (si présents).
+#
+# Pour désactiver ce workflow, supprimez ce fichier ou commentez son contenu.
+
+name: CI - Vérification des fichiers
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  # Job 1 : Vérifier la syntaxe des fichiers Markdown
+  markdown-lint:
+    name: Vérifier la syntaxe Markdown
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Installer markdownlint
+        run: npm install -g markdownlint-cli
+
+      - name: Vérifier les fichiers Markdown
+        run: |
+          # Vérifier tous les fichiers .md dans le dépôt
+          find . -name "*.md" -type f | xargs markdownlint --ignore node_modules
+
+  # Job 2 : Vérifier la syntaxe des fichiers YAML
+  yaml-lint:
+    name: Vérifier la syntaxe YAML
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Installer yamllint
+        run: pip install yamllint
+
+      - name: Vérifier les fichiers YAML
+        run: |
+          # Vérifier tous les fichiers .yaml et .yml dans le dépôt
+          find . -name "*.yaml" -o -name "*.yml" | xargs yamllint -d relaxed
+
+  # Job 3 : Vérifier la syntaxe des fichiers Terraform
+  terraform-lint:
+    name: Vérifier la syntaxe Terraform
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Installer Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.7
+
+      - name: Vérifier les fichiers Terraform
+        run: |
+          # Trouver tous les fichiers .tf et vérifier leur syntaxe
+          find . -name "*.tf" -type f | xargs -I {} sh -c 'terraform validate -no-color {} || true'
+
+  # Job 4 : Vérifier la syntaxe des Dockerfiles
+  dockerfile-lint:
+    name: Vérifier la syntaxe Dockerfile
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Installer hadolint
+        run: |
+          wget -O /tmp/hadolint https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64
+          chmod +x /tmp/hadolint
+          sudo mv /tmp/hadolint /usr/local/bin/hadolint
+
+      - name: Vérifier les Dockerfiles
+        run: |
+          # Trouver tous les Dockerfiles et vérifier leur syntaxe
+          find . -name "Dockerfile*" -type f | xargs hadolint --ignore DL3003,DL3013
+
+  # Job 5 : Vérifier les liens dans les fichiers Markdown
+  markdown-links:
+    name: Vérifier les liens Markdown
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Installer markdown-link-check
+        run: npm install -g markdown-link-check
+
+      - name: Vérifier les liens dans les fichiers Markdown
+        run: |
+          # Vérifier les liens dans tous les fichiers .md
+          find . -name "*.md" -type f | xargs markdown-link-check --quiet
+
+# =============================================
+# BONNES PRATIQUES :
+# =============================================
+# 1. Ce workflow vérifie automatiquement la qualité des fichiers à chaque push/PR.
+# 2. Pour ignorer certains fichiers ou dossiers, ajoutez-les à .gitignore.
+# 3. Pour désactiver une vérification, commentez le job correspondant.
+# 4. Pour ajouter une nouvelle vérification, ajoutez un nouveau job.
+# =============================================

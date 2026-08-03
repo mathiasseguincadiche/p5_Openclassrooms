@@ -1,70 +1,80 @@
-# =============================================================================
-# .gitignore pour le projet P5 OpenClassrooms
-# =============================================================================
+# 📌 Fichiers à ignorer par Git
 
-# --- Fichiers temporaires et logs ---
-*.log
-*.swp
-*.tmp
+# =============================================
+# Système d'exploitation
+# =============================================
 .DS_Store
 Thumbs.db
 
-# --- Terraform ---
+# =============================================
+# Environnements virtuels Python
+# =============================================
+venv/
+env/
+.venv/
+
+# =============================================
+# Node.js
+# =============================================
+node_modules/
+npm-debug.log*
+.yarn/install-state.gz
+
+# =============================================
+# Docker
+# =============================================
+.docker/
+
+# =============================================
+# IDE / Editeurs de code
+# =============================================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# =============================================
+# Logs et fichiers temporaires
+# =============================================
+*.log
+*.tmp
+*.temp
+
+# =============================================
+# Fichiers de configuration locaux
+# =============================================
+.env
+.env.local
+.env.*.local
+
+# =============================================
+# Terraform
+# =============================================
 .terraform/
 *.tfstate
 *.tfstate.*
-terraform.lock.hcl
 
-# --- Ansible ---
+# =============================================
+# Kubernetes
+# =============================================
+.kube/
+
+# =============================================
+# Ansible
+# =============================================
 ansible.cfg
-.inventory
-.ansible-tmp
-ansible.log
-ansible/roles/
+inventory/
 
-# --- Environnement ---
-.env
-.env.*
-*.local
+# =============================================
+# Build et artefacts
+# =============================================
+dist/
+build/
+target/
 
-# --- Logs ---
-logs/
-
-# --- Dossiers de build et cache ---
-/.cache/
-
-# --- Fichiers de dépendances (Node.js, Python, etc.) ---
-/node_modules/
-/package-lock.json
-/__pycache__/
-*.pyc
-
-# --- Fichiers IDE ---
-.idea/
-.vscode/
-*.sublime-workspace
-*.sublime-project
-
-# --- Fichiers générés automatiquement ---
-*.pyc
-__pycache__/
-
-# --- Fichiers de test ou exemples non nécessaires ---
-/test/
-/venv/
-
-# --- Fichiers de logs et captures ---
-*.png
-*.jpg
-*.jpeg
-*.gif
-*.bmp
-
-# --- Fichiers de backup ou temporaires ---
-*.bak
-*.backup
-*.old
-
-# --- Fichiers de configuration système ---
-*.conf.bak
-*.conf.old
+# =============================================
+# Documentation (fichiers générés)
+# =============================================
+docs/_build/
+docs/_static/

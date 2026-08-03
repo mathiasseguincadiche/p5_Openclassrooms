@@ -1,0 +1,86 @@
+# =============================================
+# TEMPLATE : Dockerfile pour une application Python
+# =============================================
+# Ce fichier permet de conteneuriser une application Python (Flask, Django, FastAPI, etc.).
+# Chaque instruction est expliquée ci-dessous.
+
+# --- Étape 1 : Image de base ---
+# Utilise une image officielle Python (version 3.10) basée sur Alpine Linux.
+# Alpine est légère et sécurisée, idéale pour la production.
+FROM python:3.10-alpine
+
+# --- Étape 2 : Métadonnées (optionnel) ---
+# Ajoute des métadonnées pour documenter l'image (auteur, description, etc.).
+LABEL maintainer="votre.email@example.com"
+LABEL description="Application Python conteneurisée avec Docker"
+
+# --- Étape 3 : Répertoire de travail ---
+# Définit le répertoire de travail dans le conteneur.
+WORKDIR /app
+
+# --- Étape 4 : Installation des dépendances système ---
+# Installe des paquets système nécessaires (ex: gcc pour compiler des modules Python).
+# Utilise `--no-cache-dir` pour réduire la taille de l'image.
+RUN apk add --no-cache-dir gcc musl-dev libffi-dev openssl-dev
+
+# --- Étape 5 : Copie des fichiers de dépendances ---
+# Copie uniquement les fichiers requirements.txt et setup.py (si applicable).
+COPY requirements.txt ./
+
+# --- Étape 6 : Installation des dépendances Python ---
+# Exécute `pip install` pour installer les dépendances listées dans requirements.txt.
+# Utilise `--no-cache-dir` pour réduire la taille de l'image.
+RUN pip install --no-cache-dir -r requirements.txt
+
+# --- Étape 7 : Copie du reste de l'application ---
+# Copie tous les fichiers du projet (sauf ceux ignorés par .dockerignore).
+COPY . .
+
+# --- Étape 8 : Exposition du port ---
+# Indique que le conteneur écoutera sur le port 5000 (par défaut pour Flask).
+EXPOSE 5000
+
+# --- Étape 9 : Commande de démarrage ---
+# Définit la commande à exécuter lorsque le conteneur démarre.
+# Exemple pour Flask :
+CMD ["flask", "run", "--host=0.0.0.0"]
+
+# Exemple pour un script Python personnalisé :
+# CMD ["python", "app.py"]
+
+# =============================================
+# BONNES PRATIQUES SUPPLÉMENTAIRES :
+# =============================================
+# 1. Multi-Stage Build (pour réduire la taille de l'image) :
+#    FROM python:3.10-alpine as builder
+#    WORKDIR /app
+#    COPY requirements.txt ./
+#    RUN pip install --user -r requirements.txt
+#    
+#    FROM python:3.10-alpine
+#    WORKDIR /app
+#    COPY --from=builder /root/.local /root/.local
+#    COPY . .
+#    ENV PATH=/root/.local/bin:$PATH
+#    CMD ["flask", "run", "--host=0.0.0.0"]
+#
+# 2. Utilisateur non-root (pour la sécurité) :
+#    RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+#    USER appuser
+#    COPY --chown=appuser:appgroup . .
+#
+# 3. Variables d'environnement :
+#    ENV FLASK_ENV=production
+#    ENV PORT=5000
+# =============================================
+
+# =============================================
+# UTILISATION :
+# 1. Placez ce fichier à la racine de votre projet Python.
+# 2. Créez un fichier requirements.txt avec vos dépendances.
+# 3. Créez un fichier .dockerignore pour exclure __pycache__/, .venv/, etc.
+# 4. Construisez l'image :
+#    docker build -t mon-app-python .
+# 5. Lancez le conteneur :
+#    docker run -p 5000:5000 mon-app-python
+# =============================================
