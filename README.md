@@ -1,195 +1,243 @@
-# 🚀 Projet 5 OpenClassrooms : Déployez et suivez l'Infrastructure-as-Code grâce à Terraform, Ansible et un stack ELK
+# 🚀 Projet 5 OpenClassrooms : Déployez et suivez l'Infrastructure-as-Code
+
+**Pourquoi ce projet ?**
+Ce projet vous permet de **maîtriser les outils DevOps essentiels** (Terraform, Ansible, ELK) en les appliquant à un cas concret :
+→ **Déployer une infrastructure cloud** (AWS) **en 100% code** (IaC).
+→ **Automatiser la configuration** de serveurs avec Ansible.
+→ **Centraliser et visualiser les logs** avec un stack ELK (OpenSearch + Kibana).
+→ **Équilibrer la charge** entre plusieurs serveurs avec HAProxy.
+
+💡 **Ce que vous allez apprendre** :
+- Comment **créer une infrastructure reproducible** avec Terraform.
+- Comment **configurer des serveurs automatiquement** avec Ansible.
+- Comment **monitorer une application** avec Kibana.
 
 ---
 
-## 📌 **Présentation du Projet**
+## 🛠️ Outils Utilisés
 
-### **Contexte**
-Ce projet s'inscrit dans le cadre de la **formation DevOps** d'OpenClassrooms. L'objectif est de **déployer une infrastructure complète en mode Infrastructure-as-Code (IaC)** et de **mettre en place un système de monitoring** pour suivre les performances et les logs.
-
-### **Mission**
-Vous allez :
-1. **Déployer une infrastructure cloud** (AWS) avec Terraform.
-2. **Configurer des serveurs** avec Ansible pour héberger une application Angular.
-3. **Mettre en place un stack ELK** (Elasticsearch, Logstash, Kibana) pour centraliser et visualiser les logs.
-4. **Configurer un load balancer** (HAProxy) pour répartir la charge entre plusieurs instances.
-
----
-
-## 🛠️ **Outils Utilisés et Leurs Rôles**
-
-| **Outil**       | **Rôle**                                                                                     | **Exercice**          |
-|-----------------|---------------------------------------------------------------------------------------------|-----------------------|
-| **Terraform**   | Déploiement de l'infrastructure cloud (VPC, EC2, Security Groups, etc.) en IaC.               | 1, 2, 3               |
-| **Ansible**     | Configuration des serveurs (installation de NGINX, Node.js, Angular, etc.).                  | 1                     |
-| **Docker**      | Conteneurisation des applications (nginxdemos/hello, OpenSearch, Kibana).                     | 2, 3                  |
-| **OpenSearch**  | Moteur de recherche et d'analyse de logs (alternative open-source à Elasticsearch).           | 2                     |
-| **Kibana**      | Interface de visualisation pour les logs et métriques (tableaux de bord).                    | 2                     |
-| **Filebeat**    | Agent de collecte de logs (envoie les logs vers OpenSearch).                                | 2                     |
-| **HAProxy**     | Load balancer pour répartir la charge entre plusieurs instances nginxdemos/hello.          | 3                     |
-| **NGINX**       | Serveur web pour héberger l'application Angular.                                             | 1                     |
-| **Angular**     | Framework frontend pour l'application web.                                                  | 1                     |
+| **Catégorie**       | **Outil**       | **Rôle** | **Pourquoi ?** | **Exercice** |
+|---------------------|-----------------|----------|----------------|--------------|
+| 🏗️ **Infrastructure** | **Terraform** | Déploiement de l'infrastructure cloud (VPC, EC2, Security Groups) en **Infrastructure-as-Code**. | Pour **automatiser la création** de ressources AWS et éviter les erreurs manuelles. | 1, 2, 3 |
+| 🎭 **Configuration** | **Ansible** | Configuration des serveurs (NGINX, Node.js, Angular) via des **playbooks**. | Pour **standardiser** la configuration et la reproduire à l'identique sur plusieurs machines. | 1 |
+| 🐳 **Conteneurisation** | **Docker** | Conteneurisation des applications (OpenSearch, Kibana, nginxdemos/hello). | Pour **isoler** les applications et les déployer facilement. | 2, 3 |
+| 🔍 **Monitoring** | **OpenSearch** | Moteur de recherche et d'analyse de logs. | Pour **stocker et analyser** les logs de l'application. | 2 |
+| 📊 **Visualisation** | **Kibana** | Interface web pour créer des **tableaux de bord** et visualiser les logs. | Pour **comprendre** le trafic et les erreurs de l'application. | 2 |
+| 📜 **Collecte de logs** | **Filebeat** | Agent léger qui envoie les logs vers OpenSearch. | Pour **centraliser** les logs de plusieurs serveurs. | 2 |
+| ⚖️ **Load Balancing** | **HAProxy** | Répartit la charge entre plusieurs instances `nginxdemos/hello`. | Pour **améliorer la disponibilité** et la performance. | 3 |
+| 🌐 **Serveur Web** | **NGINX** | Serveur web pour héberger l'application Angular. | Pour **servir** l'application frontend de manière optimisée. | 1 |
+| 💻 **Frontend** | **Angular** | Framework pour construire l'application web. | Pour **créer une interface moderne** et dynamique. | 1 |
 
 ---
 
-## 📊 **Schéma Global des Exercices**
+## 📊 Schéma des Exercices
 
 ```
 ┌───────────────────────────────────────────────────────────────────────────────┐
-│                                PROJET 5 : IaC + ELK                                │
-├─────────────────────┬─────────────────────┬─────────────────────────────────┤
-│   EXERCICE 1         │   EXERCICE 2         │         EXERCICE 3                │
-│  Terraform + Ansible │ OpenSearch + Kibana  │      HAProxy + nginxdemos         │
-│                     │                     │                                    │
-│  ┌───────────────┐  │  ┌───────────────┐  │  ┌─────────────────────────────┐  │
-│  │  Terraform    │  │  │  Terraform    │  │  │       Terraform              │  │
-│  │  (VPC, EC2)   │──▶│  │  (OpenSearch) │  │  │  (2x nginxdemos/hello +      │  │
-│  └───────────────┘  │  └───────────────┘  │  │        HAProxy)               │  │
-│         │           │         │           │  │         │                    │  │
-│  ┌───────────────┐  │  ┌───────────────┐  │  │  ┌─────────────────────────┐  │  │
-│  │  Ansible      │  │  │  Docker       │  │  │  │   Docker (nginxdemos/hello)│  │  │
-│  │  (NGINX +     │  │  │  (OpenSearch, │  │  │  │   + HAProxy                │  │  │
-│  │   Angular)    │  │  │   Kibana)     │  │  │  └─────────────────────────┘  │  │
-│  └───────────────┘  │  └───────────────┘  │  │         │                    │  │
-│                     │         │           │  │  ┌─────────────────────────┐  │  │
-│  ┌───────────────┐  │  ┌───────────────┐  │  │  │   HAProxy (Load Balancer) │  │  │
-│  │  Application   │  │  │  Filebeat     │  │  │  │   (Port 80 + 8404/stats)   │  │  │
-│  │  Angular       │  │  │  (Logs →     │  │  │  └─────────────────────────┘  │  │
-│  └───────────────┘  │  │   OpenSearch) │  │  │                                    │  │
-└─────────────────────┴─────────────────────┴─────────────────────────────────┘
-     │                         │                              │
-     ▼                         ▼                              ▼
-┌─────────────────┐   ┌─────────────────┐            ┌─────────────────┐
-│  Livrable 1      │   │  Livrable 2      │            │  Livrable 3      │
-│  (Terraform +    │   │  (Kibana +       │            │  (HAProxy +      │
-│   Ansible +      │   │   Dashboard)     │            │   nginxdemos)    │
-│   Angular)       │   └─────────────────┘            └─────────────────┘
-└─────────────────┘
+│                     🎯 PROJET 5 : IaC + ELK (OpenClassrooms)                     │
+├───────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│  🟢 EXERCICE 1 : Infrastructure + Application Angular                          │
+│  ┌───────────────┐     ┌───────────────┐     ┌─────────────────┐               │
+│  │  Terraform    │────▶│   Ansible     │────▶│   Application    │               │
+│  │ (VPC, EC2)    │     │ (NGINX,       │     │   Angular        │               │
+│  └───────────────┘     │  Node.js)     │     └─────────────────┘               │
+│                        └───────────────┘                                       │
+│                                                                               │
+│  🟡 EXERCICE 2 : Stack ELK (Logs + Monitoring)                                 │
+│  ┌───────────────┐     ┌───────────────┐     ┌─────────────────┐               │
+│  │  Terraform    │────▶│   Docker      │────▶│   OpenSearch    │               │
+│  │ (OpenSearch)  │     │ (OpenSearch,  │     │   (Logs)         │               │
+│  └───────────────┘     │   Kibana)     │     └─────────────────┘               │
+│                        └───────────────┘                                       │
+│                              │                                                 │
+│                              ▼                                                 │
+│                        ┌─────────────────┐                                       │
+│                        │   Kibana        │                                       │
+│                        │ (Dashboard)     │                                       │
+│                        └─────────────────┘                                       │
+│                                                                               │
+│  🔴 EXERCICE 3 : Load Balancing avec HAProxy                                  │
+│  ┌───────────────┐     ┌─────────────────────────────┐                        │
+│  │  Terraform    │────▶│       Docker (2x)           │                        │
+│  │ (HAProxy +    │     │   ┌─────────────────┐       │                        │
+│  │  2x EC2)      │────▶│   │ nginxdemos/hello │       │                        │
+│  └───────────────┘     │   └─────────────────┘       │                        │
+│                        └─────────────────────────────┘                        │
+│                              │                                                 │
+│                              ▼                                                 │
+│                        ┌─────────────────┐                                       │
+│                        │   HAProxy        │                                       │
+│                        │ (Port 80 + 8404) │                                       │
+│                        └─────────────────┘                                       │
+│                                                                               │
+└───────────────────────────────────────────────────────────────────────────────┘
 ```
+
+**Légende** :
+- 🟢 = Exercice 1 (Terraform + Ansible + Angular)
+- 🟡 = Exercice 2 (Terraform + Docker + OpenSearch + Kibana)
+- 🔴 = Exercice 3 (Terraform + Docker + HAProxy + nginxdemos/hello)
+- `────▶` = Déploiement/Configuration
+- `│` = Dépendance
 
 ---
 
-## 📂 **Arborescence du Projet**
+## 📂 Arborescence du Projet
 
 ```
 p5_Openclassrooms/
-├── .gitignore                          # Fichiers à ignorer par Git
-├── README.md                           # Ce guide
+├── .gitignore                          # 🗑️ Fichiers à ignorer par Git
+├── README.md                           # 📖 Ce guide (vous êtes ici !)
 │
-├── ansible/                            # Configuration Ansible
-│   ├── files/                         # Fichiers statiques et configurations
-│   │   ├── angular-app/                # Application Angular (Exercice 1)
+├── 📦 ansible/                          # 🎭 Tout ce qui concerne Ansible
+│   ├── 📁 files/                         # 📄 Fichiers statiques et configurations
+│   │   ├── 📁 angular-app/                # 🌐 Application Angular (Exercice 1)
 │   │   │   ├── favicon.ico
 │   │   │   └── index.html
-│   │   └── nginx-angular.conf          # Configuration NGINX pour Angular
-│   ├── inventories/                   # Inventaires Ansible
+│   │   └── nginx-angular.conf          # ⚙️ Configuration NGINX pour Angular
+│   ├── 📁 inventories/                   # 📋 Inventaires Ansible
 │   │   └── hosts_aws.example
-│   └── playbooks/                     # Playbooks Ansible
-│       └── deploy.yml                  # Déploiement NGINX + Angular (Exercice 1)
+│   └── 📁 playbooks/                     # 🎬 Playbooks Ansible
+│       └── deploy.yml                  # 🚀 Déploiement NGINX + Angular (Exercice 1)
 │
-├── terraform/                          # Infrastructure as Code (Terraform)
-│   ├── exercice-1/                     # Infrastructure de base (Exercice 1)
-│   │   ├── main.tf                    # Ressources AWS (VPC, EC2, NGINX)
-│   │   ├── variables.tf               # Variables configurables
-│   │   └── outputs.tf                 # Sorties Terraform
-│   ├── exercice-2/                     # Stack ELK (Exercice 2)
-│   │   ├── main.tf                    # OpenSearch + Kibana
+├── 🏗️ terraform/                          # 🏗️ Infrastructure as Code (Terraform)
+│   ├── 📁 exercice-1/                     # 1️⃣ Infrastructure de base (VPC, EC2, NGINX)
+│   │   ├── main.tf                    # 📜 Ressources AWS
+│   │   ├── variables.tf               # 🔧 Variables configurables
+│   │   └── outputs.tf                 # 📤 Sorties Terraform
+│   ├── 📁 exercice-2/                     # 2️⃣ Stack ELK (OpenSearch + Kibana)
+│   │   ├── main.tf
 │   │   ├── variables.tf
 │   │   ├── outputs.tf
-│   │   └── samples/                    # Échantillons de logs
+│   │   └── 📁 samples/                    # 📄 Échantillons de logs
 │   │       └── nginx-access.log.sample
-│   └── exercice-3/                     # Load Balancing (Exercice 3)
-│       ├── main.tf                    # HAProxy + nginxdemos/hello
+│   └── 📁 exercice-3/                     # 3️⃣ Load Balancing (HAProxy + nginxdemos/hello)
+│       ├── main.tf
 │       ├── variables.tf
 │       └── outputs.tf
 │
-├── scripts/                            # Scripts d'automatisation pédagogique
-│   ├── runbook.sh                      # Menu principal
-│   ├── phase-0-preparation.sh          # Préparation de l'environnement
-│   ├── phase-1-terraform-ansible.sh     # Exercice 1 : Terraform + Ansible
-│   ├── phase-2-opensearch-kibana.sh    # Exercice 2 : OpenSearch + Kibana
-│   ├── phase-3-haproxy.sh              # Exercice 3 : HAProxy + nginxdemos
-│   ├── phase-4-livrables.sh            # Génération des livrables
-│   ├── phase-5-nettoyage.sh            # Nettoyage des ressources AWS
-│   └── utils/                          # Fonctions utilitaires
-│       ├── colors.sh                   # Couleurs pour les logs
-│       ├── prompts.sh                  # Invites utilisateur
-│       ├── checks.sh                   # Vérifications
-│       ├── health-checks.sh            # Vérifications de santé
-│       ├── kibana-api.sh               # Interaction avec Kibana
-│       ├── logging.sh                  # Journalisation
-│       └── capture-screenshots.sh       # Capture d'écran pour Kibana
+├── 🤖 scripts/                            # 🤖 Scripts d'automatisation pédagogique
+│   ├── runbook.sh                      # 🎯 Menu principal (point d'entrée)
+│   ├── phase-0-preparation.sh          # 🛠️ Préparation de l'environnement
+│   ├── phase-1-terraform-ansible.sh     # 1️⃣ Exercice 1 : Terraform + Ansible
+│   ├── phase-2-opensearch-kibana.sh    # 2️⃣ Exercice 2 : OpenSearch + Kibana
+│   ├── phase-3-haproxy.sh              # 3️⃣ Exercice 3 : HAProxy + nginxdemos
+│   ├── phase-4-livrables.sh            # 📝 Génération des livrables
+│   ├── phase-5-nettoyage.sh            # 🧹 Nettoyage des ressources AWS
+│   └── 📁 utils/                          # 🔧 Fonctions utilitaires
+│       ├── colors.sh
+│       ├── prompts.sh
+│       ├── checks.sh
+│       ├── health-checks.sh
+│       ├── kibana-api.sh
+│       ├── logging.sh
+│       └── capture-screenshots.sh
 │
-└── docs/                               # Documentation et livrables
-    └── livrables/                      # Livrables OpenClassrooms (format officiel)
+└── 📚 docs/                               # 📚 Documentation et livrables
+    └── 📁 livrables/                      # 📄 Livrables OpenClassrooms (format officiel)
         ├── SEGUIN-CADICHE_Mathias_1_terraform_ansible_nginx_02082026.md
         ├── SEGUIN-CADICHE_Mathias_2_dashboard_kibana_02082026.md
         ├── SEGUIN-CADICHE_Mathias_3_haproxy_nginxdemos_02082026.md
-        ├── SEGUIN-CADICHE_Mathias_decisions_techniques.md
-        └── SEGUIN-CADICHE_Mathias_journal_session.md
+        ├── SEGUIN-CADICHE_Mathias_decisions_techniques_02082026.md
+        └── SEGUIN-CADICHE_Mathias_journal_session_02082026.md
 ```
 
 ---
 
-## 🚀 **Comment Lancer le Projet ?**
+## 🚀 Comment Lancer le Projet ? (Guide pour Débutants)
 
-### **Prérequis**
-- Un compte **AWS** (avec des droits IAM pour créer des ressources).
-- **Terraform** installé (`>= 1.15.0`).
-- **Ansible** installé (`>= 2.10`).
-- **Docker** installé (pour les conteneurs OpenSearch, Kibana, nginxdemos/hello).
-- **Git** installé.
-- Une **paire de clés SSH** pour AWS (ex: `p5-key`).
+### ⚠️ Prérequis Obligatoires
+Avant de commencer, assurez-vous d'avoir installé :
+
+| **Outil** | **Version** | **Lien d'installation** | **Vérification** |
+|----------|-------------|--------------------------|------------------|
+| Git | >= 2.0 | [git-scm.com](https://git-scm.com/) | `git --version` |
+| Terraform | >= 1.15.0 | [terraform.io](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli) | `terraform --version` |
+| Ansible | >= 2.10 | [ansible.com](https://docs.ansible.com/ansible/latest/installation_guide/index.html) | `ansible --version` |
+| Docker | >= 20.10 | [docker.com](https://docs.docker.com/get-docker/) | `docker --version` |
+| AWS CLI | >= 2.0 | [aws.amazon.com/cli](https://aws.amazon.com/cli/) | `aws --version` |
+| Un compte AWS | Free Tier | [aws.amazon.com](https://aws.amazon.com/) | ✅ Créé et configuré |
 
 ---
 
-### **Étapes de Déploiement**
-
-#### 1️⃣ **Préparation de l'environnement**
+### 📥 Étape 1 : Cloner le Projet
 ```bash
-# Cloner le dépôt
 git clone https://github.com/mathiasseguincadiche/p5_Openclassrooms.git
 cd p5_Openclassrooms
+```
+✅ **Vérifiez** : Vous êtes dans le dossier `p5_Openclassrooms/`.
 
-# Configurer les variables Terraform (exemple pour exercice-1)
-cd terraform/exercice-1
-cp terraform.tfvars.example terraform.tfvars
-# Éditer terraform.tfvars avec vos valeurs (aws_access_key, aws_secret_key, etc.)
+---
+
+### ⚙️ Étape 2 : Configurer AWS (OBLIGATOIRE)
+
+1. **Créer une paire de clés SSH** (si ce n'est pas déjà fait) :
+   ```bash
+   ssh-keygen -t rsa -b 4096 -f p5-key
+   ```
+   → **Ne pas oublier** de l'importer dans AWS (EC2 > Key Pairs > Import Key Pair).
+
+2. **Configurer les identifiants AWS** :
+   - **Option 1** : Variables d'environnement (recommandé) :
+     ```bash
+     export AWS_ACCESS_KEY_ID="votre_access_key"
+     export AWS_SECRET_ACCESS_KEY="votre_secret_key"
+     export AWS_DEFAULT_REGION="us-east-1"
+     ```
+   - **Option 2** : Fichier `~/.aws/credentials` :
+     ```ini
+     [default]
+     aws_access_key_id = votre_access_key
+     aws_secret_access_key = votre_secret_key
+     ```
+
+> ⚠️ **⚠️ ATTENTION : SÉCURITÉ**
+> - **Ne jamais commiter** vos clés AWS dans Git !
+> - Utilisez le **Free Tier** pour éviter les coûts (2 VMs t2.micro = gratuit).
+
+---
+
+### 🌍 Étape 3 : Lancer un Exercice (2 Méthodes)
+
+#### 🎯 Méthode 1 : Avec les Scripts Pédagogiques (Recommandé pour les débutants)
+Les scripts vous guident **pas à pas** et expliquent chaque étape.
+
+```bash
+# 1. Donner les permissions aux scripts
+chmod +x scripts/*.sh scripts/utils/*.sh
+
+# 2. Lancer le menu principal
+./scripts/runbook.sh
+
+# 3. Choisir un exercice (ex: 1 pour l'Exercice 1)
+#    → Le script vous guidera !
 ```
 
-#### 2️⃣ **Lancer les exercices via les scripts pédagogiques**
-Les scripts dans `scripts/` vous guident **pas à pas** :
-
-| **Script**                     | **Description**                                                                 | **Exercice** |
-|-------------------------------|---------------------------------------------------------------------------------|--------------|
-| `./scripts/runbook.sh`         | Menu interactif pour lancer tous les exercices.                                | 1, 2, 3      |
-| `./scripts/phase-0-preparation.sh` | Préparation de l'environnement (installation des outils, vérifications).       | Tous         |
-| `./scripts/phase-1-terraform-ansible.sh` | Déploiement de l'infrastructure + application Angular (Exercice 1).          | 1            |
-| `./scripts/phase-2-opensearch-kibana.sh` | Déploiement du stack ELK + création du dashboard Kibana (Exercice 2).       | 2            |
-| `./scripts/phase-3-haproxy.sh`  | Déploiement de HAProxy + nginxdemos/hello (Exercice 3).                         | 3            |
-| `./scripts/phase-4-livrables.sh` | Génération automatique des livrables OpenClassrooms.                          | Tous         |
-| `./scripts/phase-5-nettoyage.sh` | Nettoyage des ressources AWS pour éviter les coûts.                           | Tous         |
-
-**Exemple pour lancer l'Exercice 1 :**
+**Exemple pour l'Exercice 1** :
 ```bash
-chmod +x scripts/*.sh scripts/utils/*.sh
-./scripts/phase-1-terraform-ansible.sh --auto  # Mode automatique
+./scripts/phase-1-terraform-ansible.sh --auto  # Mode automatique (rapide)
 # ou
 ./scripts/phase-1-terraform-ansible.sh       # Mode interactif (pédagogique)
 ```
 
-#### 3️⃣ **Lancer manuellement (sans scripts)**
-Si vous préférez tout faire manuellement :
+#### 🛠️ Méthode 2 : Manuellement (Pour comprendre en détail)
 
 **Exercice 1 : Terraform + Ansible + Angular**
 ```bash
-# Déployer l'infrastructure avec Terraform
+# 1. Aller dans le dossier Terraform
 cd terraform/exercice-1
+
+# 2. Initialiser Terraform
 terraform init
+
+# 3. Voir le plan (optionnel)
 terraform plan
+
+# 4. Appliquer les changements
 terraform apply -auto-approve
 
-# Configurer les serveurs avec Ansible
+# 5. Configurer les serveurs avec Ansible
 cd ../..
 ansible-playbook -i terraform/exercice-1/hosts_aws.example ansible/playbooks/deploy.yml
 ```
@@ -212,61 +260,110 @@ terraform apply -auto-approve
 
 ---
 
-## 📜 **Livrables à Soumettre**
+### 🧹 Étape 4 : Nettoyer les Ressources (IMPORTANT !)
 
-Les livrables sont **déjà générés** dans `docs/livrables/` au format requis par OpenClassrooms :
+> ⚠️ **⚠️ ATTENTION : COÛTS AWS ⚠️**
+> - **1 VM t2.micro** = Gratuit pendant 12 mois (750h/mois).
+> - **2 VMs t2.micro** = Toujours gratuit (si vous restez dans les limites).
+> - **Nettoyez TOUJOURS** après utilisation pour éviter les coûts.
 
-| **Livrable** | **Fichier** | **Contenu** |
-|--------------|-------------|-------------|
-| Exercice 1   | `SEGUIN-CADICHE_Mathias_1_terraform_ansible_nginx_02082026.md` | Description du déploiement Terraform + Ansible + Angular. |
-| Exercice 2   | `SEGUIN-CADICHE_Mathias_2_dashboard_kibana_02082026.md` | Description du stack ELK + captures Kibana. |
-| Exercice 3   | `SEGUIN-CADICHE_Mathias_3_haproxy_nginxdemos_02082026.md` | Description de HAProxy + nginxdemos/hello. |
-| Décisions techniques | `SEGUIN-CADICHE_Mathias_decisions_techniques.md` | Choix techniques (outils, architectures). |
-| Journal de session | `SEGUIN-CADICHE_Mathias_journal_session.md` | Récapitulatif des actions et problèmes rencontrés. |
+```bash
+# Méthode 1 : Avec le script (recommandé)
+./scripts/phase-5-nettoyage.sh --auto
 
----
-
-## 📚 **Documentation Complémentaire**
-
-- **Terraform** : [Documentation officielle](https://developer.hashicorp.com/terraform/docs)
-- **Ansible** : [Documentation officielle](https://docs.ansible.com/)
-- **OpenSearch** : [Documentation officielle](https://opensearch.org/docs/)
-- **Kibana** : [Documentation officielle](https://www.elastic.co/guide/en/kibana/current/index.html)
-- **HAProxy** : [Documentation officielle](http://www.haproxy.org/documentation/)
+# Méthode 2 : Manuellement (pour chaque exercice)
+cd terraform/exercice-1 && terraform destroy -auto-approve
+cd ../exercice-2 && terraform destroy -auto-approve
+cd ../exercice-3 && terraform destroy -auto-approve
+```
 
 ---
 
-## ⚠️ **Bonnes Pratiques et Avertissements**
+## 📜 Livrables à Soumettre
 
-### **Coûts AWS**
-- Utilisez le **Free Tier** d'AWS pour éviter les coûts.
-- **Nettoyez toujours** vos ressources après utilisation avec :
+Tous les livrables sont **déjà générés** dans `docs/livrables/` au **format officiel OpenClassrooms** (`NOM_PRENOM_n°_description_date.md`).
+
+| **Livrable** | **Fichier** | **Contenu** | **Exercice** | **Lien** |
+|--------------|-------------|-------------|--------------|----------|
+| **Exercice 1** | `SEGUIN-CADICHE_Mathias_1_terraform_ansible_nginx_02082026.md` | Description du déploiement Terraform + Ansible + Angular. | 1 | [Voir](docs/livrables/SEGUIN-CADICHE_Mathias_1_terraform_ansible_nginx_02082026.md) |
+| **Exercice 2** | `SEGUIN-CADICHE_Mathias_2_dashboard_kibana_02082026.md` | Description du stack ELK + captures Kibana. | 2 | [Voir](docs/livrables/SEGUIN-CADICHE_Mathias_2_dashboard_kibana_02082026.md) |
+| **Exercice 3** | `SEGUIN-CADICHE_Mathias_3_haproxy_nginxdemos_02082026.md` | Description de HAProxy + nginxdemos/hello. | 3 | [Voir](docs/livrables/SEGUIN-CADICHE_Mathias_3_haproxy_nginxdemos_02082026.md) |
+| **Décisions Techniques** | `SEGUIN-CADICHE_Mathias_decisions_techniques_02082026.md` | Choix techniques (outils, architectures). | Tous | [Voir](docs/livrables/SEGUIN-CADICHE_Mathias_decisions_techniques_02082026.md) |
+| **Journal de Session** | `SEGUIN-CADICHE_Mathias_journal_session_02082026.md` | Récapitulatif des actions et problèmes rencontrés. | Tous | [Voir](docs/livrables/SEGUIN-CADICHE_Mathias_journal_session_02082026.md) |
+
+💡 **Conseil** :
+- **Relisez chaque livrable** avant soumission pour vous assurer qu'il est complet.
+- **Vérifiez les captures d'écran** dans l'Exercice 2 (Kibana).
+
+---
+
+## 📚 Ressources et Documentation
+
+### 📖 Documentation Officielle
+| **Outil** | **Lien** | **Description** |
+|----------|----------|-----------------|
+| Terraform | [Documentation](https://developer.hashicorp.com/terraform/docs) | Guide officiel pour Terraform. |
+| Ansible | [Documentation](https://docs.ansible.com/) | Guide officiel pour Ansible. |
+| OpenSearch | [Documentation](https://opensearch.org/docs/) | Guide officiel pour OpenSearch. |
+| Kibana | [Documentation](https://www.elastic.co/guide/en/kibana/current/index.html) | Guide officiel pour Kibana. |
+| HAProxy | [Documentation](http://www.haproxy.org/documentation/) | Guide officiel pour HAProxy. |
+
+### 🎓 Tutoriels Recommandés
+- [Terraform pour Débutants](https://learn.hashicorp.com/terraform)
+- [Ansible pour Débutants](https://docs.ansible.com/ansible/latest/user_guide/index.html)
+- [Docker pour Débutants](https://docs.docker.com/get-started/)
+
+---
+
+## ⚠️ Bonnes Pratiques et Dépannage
+
+> ⚠️ **⚠️ ATTENTION : COÛTS AWS ⚠️**
+> - **Utilisez le Free Tier** pour éviter les coûts.
+> - **1 VM t2.micro** = Gratuit pendant 12 mois (750h/mois).
+> - **2 VMs t2.micro** = Toujours gratuit (si vous restez dans les limites).
+> - **Nettoyez TOUJOURS** après utilisation avec `./scripts/phase-5-nettoyage.sh --auto`.
+
+---
+
+### 🔐 Sécurité
+- **Ne jamais commiter** vos clés AWS dans Git (utilisez `.gitignore`).
+- **Limitez les droits IAM** : Donnez uniquement les permissions nécessaires.
+- **Utilisez des variables d'environnement** pour les secrets :
   ```bash
-  ./scripts/phase-5-nettoyage.sh --auto
-  # ou manuellement :
-  cd terraform/exercice-1 && terraform destroy -auto-approve
-  cd ../exercice-2 && terraform destroy -auto-approve
-  cd ../exercice-3 && terraform destroy -auto-approve
+  export AWS_ACCESS_KEY_ID="votre_clé"
+  export AWS_SECRET_ACCESS_KEY="votre_secret"
   ```
 
-### **Sécurité**
-- Ne **jamais** commiter vos clés AWS dans Git.
-- Utilisez des **variables d'environnement** ou `terraform.tfvars` (exclu via `.gitignore`).
-- Limitez les droits IAM au strict minimum.
+---
 
-### **Dépannage**
-- Si un script échoue, relisez les **logs** et vérifiez les **prérequis**.
-- Consultez les **livrables** (`docs/livrables/`) pour des solutions aux problèmes courants.
+### 🐛 Dépannage Courant
+
+| **Problème** | **Cause Probable** | **Solution** |
+|--------------|--------------------|--------------|
+| `terraform apply` échoue | Identifiants AWS incorrects | Vérifiez `~/.aws/credentials` ou les variables d'environnement. |
+| Ansible ne se connecte pas | Clé SSH manquante ou mauvaise | Vérifiez `ansible/playbooks/deploy.yml` et `hosts_aws.example`. |
+| Kibana ne s'affiche pas | OpenSearch non démarré | Vérifiez `docker ps` sur le serveur OpenSearch. |
+| HAProxy ne redirige pas | Mauvaises IPs dans la config | Vérifiez `terraform/exercice-3/main.tf` (user_data). |
+| Coûts AWS inattendus | Ressources non supprimées | Lancez `./scripts/phase-5-nettoyage.sh --auto`. |
 
 ---
 
-## 🙏 **Remerciements et Contributions**
+## 🙏 Remerciements et Contributions
 
-Ce projet a été réalisé dans le cadre de la **formation DevOps d'OpenClassrooms**.
+Merci d'avoir consulté ce projet ! 🎉
 
-**Auteur** : Mathias SEGUIN-CADICHE
+**Auteur** : [Mathias SEGUIN-CADICHE](https://github.com/mathiasseguincadiche)
 **Date** : 02/08/2026
+**Projet** : P5 OpenClassrooms - Déployez et suivez l'Infrastructure-as-Code
 
 ---
 
-**✨ Bonne chance pour votre projet ! ✨**
+### 🌟 Badges
+![Terraform](https://img.shields.io/badge/terraform-%235835CC.svg?style=for-the-badge&logo=terraform&logoColor=white)
+![Ansible](https://img.shields.io/badge/ansible-%23EE0000.svg?style=for-the-badge&logo=ansible&logoColor=white)
+![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)
+![AWS](https://img.shields.io/badge/AWS-%23FF9900.svg?style=for-the-badge&logo=amazon-aws&logoColor=white)
+![OpenSearch](https://img.shields.io/badge/OpenSearch-%23005EB8.svg?style=for-the-badge&logo=opensearch&logoColor=white)
+
+---
+**✨ Bonne chance pour votre projet DevOps ! ✨**
