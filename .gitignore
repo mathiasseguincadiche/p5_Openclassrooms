@@ -1,65 +1,42 @@
-# 🚀 .gitignore pour le Projet P5 OpenClassrooms
-# Ne pas commiter les fichiers sensibles ou générés automatiquement
+# =============================================================================
+# .gitignore pour le projet P5 OpenClassrooms
+# =============================================================================
 
-# -----------------------------------------------------------------------------
-# Secrets AWS
-# -----------------------------------------------------------------------------
-*.tfvars
-*.tfstate
-*.tfstate.*
-
-# -----------------------------------------------------------------------------
-# Clés SSH
-# -----------------------------------------------------------------------------
-*.pem
-*.key
-
-# -----------------------------------------------------------------------------
-# Fichiers de configuration locaux
-# -----------------------------------------------------------------------------
-terraform.tfvars
-hosts_aws
-
-# -----------------------------------------------------------------------------
-# Dossiers temporaires Terraform
-# -----------------------------------------------------------------------------
-__.terraform__/
-.terraform/
-
-# -----------------------------------------------------------------------------
-# Logs et outputs
-# -----------------------------------------------------------------------------
+# Fichiers temporaires et logs
 *.log
-*.output
-
-# -----------------------------------------------------------------------------
-# IDE
-# -----------------------------------------------------------------------------
-.idea/
-.vscode/
 *.swp
-*.swo
-
-# -----------------------------------------------------------------------------
-# OS
-# -----------------------------------------------------------------------------
+*.tmp
 .DS_Store
 Thumbs.db
 
-# -----------------------------------------------------------------------------
-# Fichiers de cache
-# -----------------------------------------------------------------------------
-*.retry
-*.backup
-*.bak
+# Dossiers de build et cache
+/.cache/
+/.terraform/
+/terraform.tfstate*
+/terraform.lock.hcl
 
-# -----------------------------------------------------------------------------
-# Exceptions : Fichiers à commiter même s'ils correspondent aux patterns ci-dessus
-# -----------------------------------------------------------------------------
-!.gitignore
-!README.md
-!docs/**/*.md
-!terraform/**/*.tf
-!terraform/**/*.tfvars.example
-!ansible/**/*.yml
-!ansible/**/*.ini
+# Fichiers locaux Ansible
+/ansible.cfg
+/ansible.log
+
+# Fichiers de dépendances (optionnel)
+/node_modules/
+/package-lock.json
+
+# Fichiers IDE
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+
+# Fichiers de test ou exemples non nécessaires
+/test/
+/venv/
+
+# Fichiers de configuration locale
+.env
+*.local
+
+# Fichiers générés automatiquement
+*.pyc
+__pycache__/
