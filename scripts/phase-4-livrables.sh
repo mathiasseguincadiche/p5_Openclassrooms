@@ -20,6 +20,9 @@ DATE=$(date +%d%m%Y)
 NOM="SEGUIN-CADICHE"
 PRENOM="Mathias"
 
+# Format conforme OpenClassrooms : NOM_Prenom_n°_nom_du_livrable_date
+# Exemple : SEGUIN-CADICHE_Mathias_1_fichiers_terraform_02082026
+
 # =============================================================================
 # FONCTIONS
 # =============================================================================

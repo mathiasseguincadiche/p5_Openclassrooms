@@ -16,6 +16,81 @@ Ce document est votre **guide ultime** pour réussir votre **Projet 5 OpenClassr
 
 💡 **Ce runbook est conçu pour que vous COMPRENIEZ chaque étape, pas juste que vous l'EXÉCUTEZ.**
 
+
+## 📁 **STRUCTURE DU DÉPÔT**
+
+```
+p5_Openclassrooms/
+├── .gitignore                          # Fichiers à ignorer par Git
+├── README.md                           # Ce guide complet
+│
+├── terraform/                          # Configurations Terraform
+│   ├── exercice-1/                     # Exercice 1 : Terraform + Ansible + Angular
+│   │   ├── main.tf                    # Ressources AWS (2 VMs)
+│   │   ├── variables.tf               # Variables configurables
+│   │   ├── outputs.tf                 # Sorties Terraform
+│   │   └── terraform.tfvars.example   # Exemple de variables
+│   │
+│   ├── exercice-2/                     # Exercice 2 : OpenSearch + Kibana
+│   │   ├── main.tf                    # Cluster OpenSearch
+│   │   ├── variables.tf
+│   │   ├── outputs.tf
+│   │   └── terraform.tfvars.example
+│   │
+│   └── exercice-3/                     # Exercice 3 : HAProxy + nginxdemos/hello
+│       ├── main.tf                    # HAProxy + 2 instances nginxdemos/hello
+│       ├── variables.tf
+│       ├── outputs.tf
+│       └── terraform.tfvars.example
+│
+├── ansible/                            # Playbooks et rôles Ansible
+│   ├── files/                         # Fichiers statiques (configs, app Angular)
+│   │   ├── nginx-angular.conf         # Configuration NGINX pour Angular
+│   │   └── angular-app/               # Application Angular
+│   ├── inventories/                   # Inventaires Ansible
+│   ├── playbooks/                     # Playbooks
+│   │   └── deploy.yml                 # Déploiement NGINX + Angular
+│   └── roles/                         # Rôles Ansible (optionnel)
+│
+├── scripts/                           # Scripts d'automatisation
+│   ├── AUTOMATION_README.md           # Documentation de l'automatisation
+│   ├── cleanup-all.sh                # Nettoyage complet de toutes les ressources
+│   ├── generer-haproxy-config.sh      # Génération de la config HAProxy
+│   ├── phase-0-preparation.sh         # Phase 0 : Préparation de l'environnement
+│   ├── phase-1-terraform-ansible.sh   # Phase 1 : Exercice 1
+│   ├── phase-2-opensearch-kibana.sh   # Phase 2 : Exercice 2
+│   ├── phase-3-haproxy.sh             # Phase 3 : Exercice 3
+│   ├── phase-4-livrables.sh           # Phase 4 : Génération des livrables
+│   ├── phase-5-nettoyage.sh            # Phase 5 : Nettoyage final
+│   ├── run-all.sh                     # Exécution complète du projet
+│   ├── runbook.sh                     # Menu interactif principal
+│   └── utils/                         # Utilitaires partagés
+│       ├── colors.sh                  # Couleurs pour les scripts
+│       ├── checks.sh                  # Vérifications communes
+│       ├── prompts.sh                 # Invites utilisateur
+│       ├── logging.sh                 # Système de logging
+│       ├── kibana-api.sh              # Création auto du dashboard Kibana
+│       ├── capture-screenshots.sh     # Génération auto des captures
+│       └── health-checks.sh            # Vérification de santé
+│
+├── docs/                              # Documentation
+│   ├── 09-glossaire.md               # Glossaire des termes
+│   ├── 10-commandes-cli.md           # Commandes CLI utiles
+│   ├── exercices/                     # Documentation par exercice
+│   │   ├── exercice-1.md              # Guide Exercice 1
+│   │   ├── exercice-2.md              # Guide Exercice 2
+│   │   └── exercice-3.md              # Guide Exercice 3
+│   └── livrables/                     # Modèles et exemples de livrables
+│       ├── captures-exercice-2.md     # Guide pour les captures
+│       ├── decisions.md               # Modèle décisions techniques
+│       └── journal-session.md         # Modèle journal de session
+│
+└── data/                             # Données (logs, etc.)
+    └── nginx-access.log               # Logs NGINX pour l'Exercice 2
+```
+
+> **Note sur le choix AWS-only** : Ce projet utilise **uniquement AWS** pour les exercices, conformément aux consignes OpenClassrooms. L'option Docker pourrait être ajoutée ultérieurement comme alternative.
+
 ---
 
 ## 🎯 **OBJECTIFS PÉDAGOGIQUES**
