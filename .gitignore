@@ -9,16 +9,29 @@
 .DS_Store
 Thumbs.db
 
+# --- Terraform ---
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform.lock.hcl
+
+# --- Ansible ---
+ansible.cfg
+.inventory
+.ansible-tmp
+ansible.log
+ansible/roles/
+
+# --- Environnement ---
+.env
+.env.*
+*.local
+
+# --- Logs ---
+logs/
+
 # --- Dossiers de build et cache ---
 /.cache/
-/.terraform/
-/terraform.tfstate*
-/terraform.lock.hcl
-
-# --- Fichiers locaux Ansible ---
-/ansible.cfg
-/ansible.log
-/ansible/roles/
 
 # --- Fichiers de dépendances (Node.js, Python, etc.) ---
 /node_modules/
@@ -31,10 +44,6 @@ Thumbs.db
 .vscode/
 *.sublime-workspace
 *.sublime-project
-
-# --- Fichiers de configuration locale ---
-.env
-*.local
 
 # --- Fichiers générés automatiquement ---
 *.pyc

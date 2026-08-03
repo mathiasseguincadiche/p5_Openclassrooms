@@ -367,3 +367,62 @@ Merci d'avoir consulté ce projet ! 🎉
 
 ---
 **✨ Bonne chance pour votre projet DevOps ! ✨**
+
+---
+
+## 📋 Prérequis
+
+- Terraform >= 1.0.0
+- Ansible >= 2.10
+- Python 3.8+
+- AWS CLI (optionnel)
+
+## 🚀 Installation
+
+### Sur Fedora 44
+
+```bash
+# Installer les dépendances
+sudo dnf update -y
+sudo dnf install -y git curl wget unzip python3 python3-pip
+
+# Installer Terraform
+sudo dnf config-manager --add-repo https://rpm.releases.hashicorp.com/fedora/hashicorp.repo
+sudo dnf install -y terraform
+
+# Installer Ansible
+sudo dnf install -y ansible
+
+# Installer yamllint (optionnel mais recommandé)
+sudo dnf install -y yamllint
+```
+
+## 🏗️ Structure du projet
+
+```
+p5_Openclassrooms/
+├── ansible/           # Playbooks Ansible
+├── terraform/         # Configuration Terraform
+├── scripts/           # Scripts utilitaires
+├── docs/              # Documentation
+└── README.md
+```
+
+## 🎯 Utilisation
+
+### Déploiement complet
+```bash
+./scripts/deploy.sh
+```
+
+### Validation
+```bash
+./scripts/validate.sh
+```
+
+### Nettoyage
+```bash
+./scripts/clean.sh
+```
+
+---
