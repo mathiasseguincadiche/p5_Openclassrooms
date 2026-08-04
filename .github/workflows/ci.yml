@@ -28,11 +28,14 @@ jobs:
         run: |
           set -euo pipefail
 
+          cp .github/workflows/ci.yml "$RUNNER_TEMP/reconstruction-ci.yml"
           cat .p5-rewrite/* | base64 --decode > "$RUNNER_TEMP/p5-final.tgz"
           tar -tzf "$RUNNER_TEMP/p5-final.tgz" >/dev/null
 
           find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
           tar -xzf "$RUNNER_TEMP/p5-final.tgz" -C .
+          mkdir -p .github/workflows
+          cp "$RUNNER_TEMP/reconstruction-ci.yml" .github/workflows/ci.yml
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
