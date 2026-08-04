@@ -178,7 +178,7 @@
 - [Ansible pour Débutants](https://www.ansible.com/resources/get-started)
 - [Galerie de Modules](https://galaxy.ansible.com/)
 - [Template Playbook](../../TEMPLATES/ansible/playbook.yml)
-- [Template Inventory](../../TEMPLATES/ansible/inventories/hosts_aws.example.ini)
+- [Template Inventory](../../TEMPLATES/ansible/inventory.ini)
 
 ---
 
