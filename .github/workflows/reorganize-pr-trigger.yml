@@ -1,0 +1,66 @@
+name: Exécuter la réorganisation
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  execute:
+    if: github.head_ref == 'chore/reorganiser-arborescence-20260804'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer la branche source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Installer Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.15.8
+
+      - name: Extraire les étapes de migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check pyyaml
+          python3 <<'PY'
+          from pathlib import Path
+          import yaml
+
+          workflow = yaml.safe_load(Path('.github/workflows/reorganize-repository.yml').read_text(encoding='utf-8'))
+          steps = workflow['jobs']['reorganize']['steps']
+          scripts = [step['run'] for step in steps if 'run' in step]
+          if len(scripts) != 7:
+              raise SystemExit(f'Nombre inattendu d’étapes shell : {len(scripts)}')
+          for index, script in enumerate(scripts):
+              path = Path(f'/tmp/reorganize-step-{index}.sh')
+              path.write_text('#!/usr/bin/env bash\n' + script + '\n', encoding='utf-8')
+              path.chmod(0o700)
+          PY
+
+      - name: Appliquer et contrôler la migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          for step in 0 1 2 3 4 5; do
+            "/tmp/reorganize-step-${step}.sh"
+          done
+
+      - name: Retirer les fichiers techniques
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f \
+            .github/reorganize-trigger \
+            .github/workflows/reorganize-repository.yml \
+            .github/workflows/reorganize-pr-trigger.yml
+
+      - name: Commiter et pousser la réorganisation
+        shell: bash
+        run: /tmp/reorganize-step-6.sh
