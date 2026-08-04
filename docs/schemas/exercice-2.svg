@@ -1,16 +1,71 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="280" viewBox="0 0 960 280" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="300" viewBox="0 0 960 300" role="img" aria-labelledby="title desc">
 <title id="title">Exercice 2 : analyser les logs avec Amazon OpenSearch</title>
-<desc id="desc">Les logs NGINX sont importés dans OpenSearch puis utilisés dans trois visualisations.</desc>
-<defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#475569"/></marker></defs>
-<rect width="960" height="280" rx="12" fill="#f8fafc"/>
-<text x="32" y="38" font-family="Arial,sans-serif" font-size="22" font-weight="700" fill="#0f172a">Exercice 2 · des logs au dashboard</text>
-<g font-family="Arial,sans-serif" text-anchor="middle">
-<rect x="32" y="88" width="170" height="106" rx="10" fill="#fff" stroke="#d97706" stroke-width="2"/><text x="117" y="126" font-size="16" font-weight="700" fill="#0f172a">Logs NGINX</text><text x="117" y="153" font-size="13" fill="#475569">date · verbe · URL · octets</text>
-<rect x="258" y="88" width="190" height="106" rx="10" fill="#fff" stroke="#2563eb" stroke-width="2"/><text x="353" y="126" font-size="16" font-weight="700" fill="#0f172a">Amazon OpenSearch</text><text x="353" y="153" font-size="13" fill="#475569">index · champs · Discover</text>
-<rect x="504" y="66" width="190" height="62" rx="10" fill="#fff" stroke="#7c3aed" stroke-width="2"/><text x="599" y="93" font-size="14" font-weight="700" fill="#0f172a">Donut</text><text x="599" y="113" font-size="12" fill="#475569">verbes HTTP</text>
-<rect x="504" y="148" width="190" height="62" rx="10" fill="#fff" stroke="#7c3aed" stroke-width="2"/><text x="599" y="175" font-size="14" font-weight="700" fill="#0f172a">Histogramme</text><text x="599" y="195" font-size="12" fill="#475569">octets par 12 h</text>
-<rect x="750" y="88" width="178" height="106" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="2"/><text x="839" y="126" font-size="16" font-weight="700" fill="#065f46">Dashboard</text><text x="839" y="153" font-size="13" fill="#065f46">top 5 par 12 h</text><text x="839" y="174" font-size="13" fill="#065f46">+ 4 captures</text>
+<desc id="desc">Les logs NGINX sont indexés dans OpenSearch, explorés puis transformés en trois visualisations réunies dans un dashboard.</desc>
+<defs>
+  <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#475569"/></marker>
+  <style>
+    .title{font:700 22px Arial,sans-serif;fill:#0f172a}.card-title{font:700 16px Arial,sans-serif;fill:#0f172a}.label{font:13px Arial,sans-serif;fill:#475569}.mini{font:11px Arial,sans-serif;fill:#475569}.ok-title{font:700 16px Arial,sans-serif;fill:#065f46}.ok-label{font:13px Arial,sans-serif;fill:#065f46}.line{fill:none;stroke:#475569;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  </style>
+</defs>
+<rect width="960" height="300" rx="12" fill="#f8fafc"/>
+<text x="32" y="38" class="title">Exercice 2 · transformer les logs NGINX en dashboard</text>
+
+<g text-anchor="middle">
+  <rect x="28" y="72" width="176" height="134" rx="10" fill="#fff" stroke="#d97706" stroke-width="2"/>
+  <g transform="translate(94 88)" class="line" stroke="#d97706">
+    <path d="M0 0h35l9 9v27H0Z"/><path d="M35 0v9h9"/>
+    <line x1="8" y1="15" x2="34" y2="15"/><line x1="8" y1="22" x2="34" y2="22"/><line x1="8" y1="29" x2="27" y2="29"/>
+  </g>
+  <text x="116" y="139" class="card-title">Logs NGINX</text>
+  <text x="116" y="164" class="label">date · verbe · URL</text>
+  <text x="116" y="185" class="label">statut · octets</text>
+
+  <rect x="244" y="72" width="190" height="134" rx="10" fill="#fff" stroke="#2563eb" stroke-width="2"/>
+  <g transform="translate(317 89)" class="line" stroke="#2563eb">
+    <ellipse cx="18" cy="7" rx="18" ry="7"/><path d="M0 7v20c0 4 8 7 18 7s18-3 18-7V7M0 17c0 4 8 7 18 7s18-3 18-7"/>
+    <circle cx="39" cy="28" r="8" fill="#fff"/><line x1="45" y1="34" x2="51" y2="40"/>
+  </g>
+  <text x="339" y="139" class="card-title">Amazon OpenSearch</text>
+  <text x="339" y="164" class="label">index · mapping · Discover</text>
+  <text x="339" y="185" class="label">champs vérifiés</text>
+
+  <rect x="474" y="72" width="260" height="134" rx="10" fill="#fff" stroke="#7c3aed" stroke-width="2"/>
+  <text x="604" y="98" class="card-title">3 visualisations</text>
+
+  <g transform="translate(500 108)">
+    <circle cx="27" cy="25" r="17" fill="none" stroke="#cbd5e1" stroke-width="8"/>
+    <circle cx="27" cy="25" r="17" fill="none" stroke="#7c3aed" stroke-width="8" stroke-dasharray="55 52" transform="rotate(-90 27 25)"/>
+    <circle cx="27" cy="25" r="7" fill="#fff"/>
+    <text x="27" y="62" text-anchor="middle" class="mini">verbes HTTP</text>
+  </g>
+
+  <g transform="translate(577 108)" fill="#7c3aed">
+    <line x1="4" y1="48" x2="55" y2="48" stroke="#94a3b8" stroke-width="1.5"/>
+    <rect x="8" y="32" width="8" height="16" rx="1"/><rect x="21" y="19" width="8" height="29" rx="1"/><rect x="34" y="26" width="8" height="22" rx="1"/><rect x="47" y="10" width="8" height="38" rx="1"/>
+    <text x="31" y="70" text-anchor="middle" class="mini" fill="#475569">octets / 12 h</text>
+  </g>
+
+  <g transform="translate(657 108)" fill="#7c3aed">
+    <rect x="2" y="9" width="50" height="6" rx="2"/><rect x="2" y="19" width="40" height="6" rx="2"/><rect x="2" y="29" width="31" height="6" rx="2"/><rect x="2" y="39" width="23" height="6" rx="2"/><rect x="2" y="49" width="15" height="6" rx="2"/>
+    <text x="27" y="70" text-anchor="middle" class="mini" fill="#475569">top 5 / 12 h</text>
+  </g>
+
+  <rect x="774" y="72" width="158" height="134" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+  <g transform="translate(827 89)" class="line" stroke="#059669">
+    <rect x="0" y="0" width="52" height="34" rx="4"/>
+    <path d="M8 25l8-8 7 5 10-13 11 8"/><line x1="20" y1="40" x2="32" y2="40"/><line x1="26" y1="34" x2="26" y2="40"/>
+  </g>
+  <text x="853" y="139" class="ok-title">Dashboard</text>
+  <text x="853" y="164" class="ok-label">3 graphiques réunis</text>
+  <text x="853" y="185" class="ok-label">+ 4 captures lisibles</text>
 </g>
-<g stroke="#475569" stroke-width="2" marker-end="url(#a)"><line x1="202" y1="141" x2="250" y2="141"/><line x1="448" y1="141" x2="496" y2="99"/><line x1="448" y1="141" x2="496" y2="179"/><line x1="694" y1="99" x2="742" y2="125"/><line x1="694" y1="179" x2="742" y2="157"/></g>
-<text x="32" y="246" font-family="Arial,sans-serif" font-size="14" fill="#475569">Les visualisations sont construites manuellement pour comprendre les champs et agrégations.</text>
+
+<g class="line" marker-end="url(#arrow)">
+  <line x1="204" y1="139" x2="236" y2="139"/>
+  <line x1="434" y1="139" x2="466" y2="139"/>
+  <line x1="734" y1="139" x2="766" y2="139"/>
+</g>
+
+<rect x="28" y="230" width="904" height="42" rx="8" fill="#e2e8f0"/>
+<text x="480" y="257" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" font-weight="700" fill="#334155">Importer · explorer · agréger · visualiser — les graphiques sont construits manuellement</text>
 </svg>
