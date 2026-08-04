@@ -108,7 +108,7 @@ jobs:
           while IFS= read -r -d '' dockerfile; do
             echo "Validation de ${dockerfile}"
             docker run --rm -i hadolint/hadolint:v2.14.0-alpine \
-              --failure-threshold error - < "${dockerfile}"
+              hadolint --failure-threshold error - < "${dockerfile}"
           done < <(find . -type f -name 'Dockerfile*' -print0)
 
       - name: Vérifier Docker Compose
