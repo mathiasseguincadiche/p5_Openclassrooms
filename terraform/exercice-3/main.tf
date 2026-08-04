@@ -15,7 +15,17 @@ terraform {
 }
 
 provider "aws" {
-  region = var.aws_region
+  region              = var.aws_region
+  allowed_account_ids = [var.expected_aws_account_id]
+
+  default_tags {
+    tags = {
+      Project   = "p5-openclassrooms"
+      ManagedBy = "Terraform"
+      Purpose   = "training-lab"
+      Exercise  = "3"
+    }
+  }
 }
 
 # ----------------------------------------------------------------------------
@@ -92,9 +102,8 @@ resource "aws_security_group" "p5_haproxy_sg" {
   }
 
   tags = {
-    Name    = "p5-haproxy-sg"
-    Project = "p5-openclassrooms"
-    Role    = "load-balancer"
+    Name = "p5-haproxy-sg"
+    Role = "load-balancer"
   }
 }
 
@@ -127,9 +136,8 @@ resource "aws_security_group" "p5_hello_sg" {
   }
 
   tags = {
-    Name    = "p5-hello-sg"
-    Project = "p5-openclassrooms"
-    Role    = "web-server"
+    Name = "p5-hello-sg"
+    Role = "web-server"
   }
 }
 
@@ -155,10 +163,9 @@ resource "aws_instance" "p5_hello" {
   EOF
 
   tags = {
-    Name    = "p5-hello-${count.index + 1}"
-    Project = "p5-openclassrooms"
-    Role    = "web-server"
-    App     = "nginxdemos/hello"
+    Name = "p5-hello-${count.index + 1}"
+    Role = "web-server"
+    App  = "nginxdemos/hello"
   }
 }
 
@@ -213,9 +220,8 @@ resource "aws_instance" "p5_haproxy" {
   EOF
 
   tags = {
-    Name    = "p5-haproxy"
-    Project = "p5-openclassrooms"
-    Role    = "load-balancer"
+    Name = "p5-haproxy"
+    Role = "load-balancer"
   }
 
   depends_on = [aws_instance.p5_hello]
