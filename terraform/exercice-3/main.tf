@@ -159,7 +159,12 @@ resource "aws_instance" "p5_hello" {
     apt-get update -y
     apt-get install -y docker.io
     systemctl enable --now docker
-    docker run -d --name nginx-hello --restart unless-stopped -p 80:80 nginxdemos/hello:plain-text
+    docker run -d \
+      --name nginx-hello \
+      --hostname p5-hello-${count.index + 1} \
+      --restart unless-stopped \
+      -p 80:80 \
+      nginxdemos/hello:plain-text
   EOF
 
   tags = {
