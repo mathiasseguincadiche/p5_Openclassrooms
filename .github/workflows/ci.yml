@@ -1,7 +1,7 @@
 name: Appliquer la reconstruction P5 AWS
 
 on:
-  push:
+  pull_request:
     branches:
       - main
 
@@ -9,17 +9,18 @@ permissions:
   contents: write
 
 concurrency:
-  group: p5-rewrite-main
+  group: p5-rewrite-${{ github.head_ref }}
   cancel-in-progress: false
 
 jobs:
   apply:
-    if: github.actor != 'github-actions[bot]'
+    if: github.actor != 'github-actions[bot]' && github.head_ref == 'apply/final-p5-aws'
     runs-on: ubuntu-latest
     steps:
-      - name: Récupérer le dépôt
+      - name: Récupérer la branche d’application
         uses: actions/checkout@v7
         with:
+          ref: apply/final-p5-aws
           fetch-depth: 0
 
       - name: Reconstruire le dépôt P5 AWS
@@ -37,5 +38,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git diff --cached --check
-          git commit -m "refactor: aligner le dépôt sur le parcours P5 AWS"
-          git push origin HEAD:"${GITHUB_REF_NAME}"
+          git commit -m "refactor: publier le wiki P5 sur le parcours AWS"
+          git push origin HEAD:apply/final-p5-aws
