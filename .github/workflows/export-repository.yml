@@ -1,0 +1,30 @@
+name: Exporter le dépôt pour audit
+
+on:
+  push:
+    branches:
+      - refactor/aligner-p5-openclassrooms
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v7
+
+      - name: Créer l’archive d’audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar --exclude=.git --exclude=repository.tgz -czf "$RUNNER_TEMP/repository.tgz" .
+
+      - name: Publier l’archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: p5-repository-audit
+          path: ${{ runner.temp }}/repository.tgz
+          if-no-files-found: error
+          retention-days: 1
