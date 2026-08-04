@@ -18,8 +18,6 @@ assignees: ''
 
 ## 🎯 Objectifs
 
-- [ ] Ajouter un nouvel exercice
-- [ ] Ajouter un nouveau template
 - [ ] Améliorer la documentation existante
 - [ ] Corriger une erreur dans la documentation
 - [ ] Autre (précisez) :
@@ -30,27 +28,17 @@ assignees: ''
 
 **Décrivez en détail la fonctionnalité proposée.**
 
-- **Quel outil ou technologie cela concerne-t-il ?** (ex: Docker, Kubernetes, Terraform)
+- **Quel outil ou technologie cela concerne-t-il ?** (ex. : Terraform, Ansible, Amazon OpenSearch, HAProxy)
 - **Quels fichiers doivent être modifiés ou ajoutés ?**
 - **Y a-t-il des dépendances ou prérequis ?**
 
 ---
 
-## 📌 Exemples
+## 📌 Exemple
 
-Si applicable, fournissez des exemples de code, de configuration, ou de documentation.
-
-```yaml
-# Exemple de configuration
-apiVersion: v1
-kind: Pod
-metadata:
-  name: mon-pod
-spec:
-  containers:
-  - name: mon-conteneur
-    image: nginx:latest
-```
+Décrivez une amélioration directement liée aux trois exercices du P5. Les
+nouveaux exercices, templates généralistes et technologies hors périmètre ne
+sont pas acceptés.
 
 ---
 

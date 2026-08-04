@@ -1,14 +1,6 @@
-# =============================================================================
-# EXERCICE 1 : Terraform - Déploiement de 2 VMs NGINX
-# Projet P5 OpenClassrooms - Déployer et suivre l'infrastructure as code
-# Région AWS : us-east-1 (OBLIGATOIRE)
-# =============================================================================
-
-# -----------------------------------------------------------------------------
-# Configuration du Provider AWS
-# -----------------------------------------------------------------------------
+# Exercice 1 — Infrastructure AWS utilisée comme cible Ansible.
 terraform {
-  required_version = ">= 1.15.0"
+  required_version = ">= 1.15.0, < 2.0.0"
 
   required_providers {
     aws = {
@@ -22,9 +14,13 @@ provider "aws" {
   region = var.aws_region
 }
 
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
 data "aws_ami" "ubuntu" {
   most_recent = true
-  owners      = ["099720109477"]
+  owners      = ["099720109477"] # Canonical
 
   filter {
     name   = "name"
@@ -37,10 +33,7 @@ data "aws_ami" "ubuntu" {
   }
 }
 
-# -----------------------------------------------------------------------------
-# Création du VPC
-# -----------------------------------------------------------------------------
-resource "aws_vpc" "p5_vpc" {
+resource "aws_vpc" "p5" {
   cidr_block           = "10.0.0.0/16"
   enable_dns_support   = true
   enable_dns_hostnames = true
@@ -51,40 +44,22 @@ resource "aws_vpc" "p5_vpc" {
   }
 }
 
-# -----------------------------------------------------------------------------
-# Création des Subnets Publics
-# -----------------------------------------------------------------------------
-resource "aws_subnet" "p5_public_subnet_a" {
-  vpc_id                  = aws_vpc.p5_vpc.id
-  cidr_block              = "10.0.1.0/24"
-  availability_zone       = "us-east-1a"
+resource "aws_subnet" "public" {
+  count                   = 2
+  vpc_id                  = aws_vpc.p5.id
+  cidr_block              = cidrsubnet(aws_vpc.p5.cidr_block, 8, count.index + 1)
+  availability_zone       = data.aws_availability_zones.available.names[count.index]
   map_public_ip_on_launch = true
 
   tags = {
-    Name    = "p5-public-subnet-a"
+    Name    = "p5-public-${count.index + 1}"
     Project = "p5-openclassrooms"
     Type    = "public"
   }
 }
 
-resource "aws_subnet" "p5_public_subnet_b" {
-  vpc_id                  = aws_vpc.p5_vpc.id
-  cidr_block              = "10.0.2.0/24"
-  availability_zone       = "us-east-1b"
-  map_public_ip_on_launch = true
-
-  tags = {
-    Name    = "p5-public-subnet-b"
-    Project = "p5-openclassrooms"
-    Type    = "public"
-  }
-}
-
-# -----------------------------------------------------------------------------
-# Création de l'Internet Gateway
-# -----------------------------------------------------------------------------
-resource "aws_internet_gateway" "p5_igw" {
-  vpc_id = aws_vpc.p5_vpc.id
+resource "aws_internet_gateway" "p5" {
+  vpc_id = aws_vpc.p5.id
 
   tags = {
     Name    = "p5-igw"
@@ -92,15 +67,12 @@ resource "aws_internet_gateway" "p5_igw" {
   }
 }
 
-# -----------------------------------------------------------------------------
-# Création de la Route Table
-# -----------------------------------------------------------------------------
-resource "aws_route_table" "p5_public_rt" {
-  vpc_id = aws_vpc.p5_vpc.id
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.p5.id
 
   route {
     cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.p5_igw.id
+    gateway_id = aws_internet_gateway.p5.id
   }
 
   tags = {
@@ -109,44 +81,33 @@ resource "aws_route_table" "p5_public_rt" {
   }
 }
 
-# -----------------------------------------------------------------------------
-# Association des Subnets à la Route Table
-# -----------------------------------------------------------------------------
-resource "aws_route_table_association" "p5_public_subnet_a_association" {
-  subnet_id      = aws_subnet.p5_public_subnet_a.id
-  route_table_id = aws_route_table.p5_public_rt.id
+resource "aws_route_table_association" "public" {
+  count          = length(aws_subnet.public)
+  subnet_id      = aws_subnet.public[count.index].id
+  route_table_id = aws_route_table.public.id
 }
 
-resource "aws_route_table_association" "p5_public_subnet_b_association" {
-  subnet_id      = aws_subnet.p5_public_subnet_b.id
-  route_table_id = aws_route_table.p5_public_rt.id
-}
+resource "aws_security_group" "web" {
+  name        = "p5-web-sg"
+  description = "Acces HTTP public et SSH depuis le poste d'administration"
+  vpc_id      = aws_vpc.p5.id
 
-# -----------------------------------------------------------------------------
-# Création du Security Group pour NGINX
-# -----------------------------------------------------------------------------
-resource "aws_security_group" "p5_nginx_sg" {
-  name        = "p5-nginx-sg"
-  description = "Security Group pour les serveurs NGINX"
-  vpc_id      = aws_vpc.p5_vpc.id
-
-  # Autoriser SSH depuis votre IP (à configurer dans terraform.tfvars)
   ingress {
+    description = "SSH depuis le poste d'administration"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
     cidr_blocks = [var.your_ip_cidr]
   }
 
-  # Autoriser HTTP depuis n'importe où
   ingress {
+    description = "HTTP public"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Autoriser tout le trafic sortant
   egress {
     from_port   = 0
     to_port     = 0
@@ -155,69 +116,39 @@ resource "aws_security_group" "p5_nginx_sg" {
   }
 
   tags = {
-    Name    = "p5-nginx-sg"
+    Name    = "p5-web-sg"
     Project = "p5-openclassrooms"
   }
 }
 
-# -----------------------------------------------------------------------------
-# Création de la paire de clés SSH
-# -----------------------------------------------------------------------------
-resource "aws_key_pair" "p5_key_pair" {
-  key_name   = "p5-key"
+resource "aws_key_pair" "p5" {
+  key_name   = var.key_name
   public_key = file(pathexpand(var.ssh_public_key_path))
 
   tags = {
-    Name    = "p5-key"
+    Name    = var.key_name
     Project = "p5-openclassrooms"
   }
 }
 
-# -----------------------------------------------------------------------------
-# Création des Instances EC2 pour NGINX
-# -----------------------------------------------------------------------------
-resource "aws_instance" "p5_nginx_1" {
+resource "aws_instance" "web" {
   ami                         = coalesce(var.ami_id, data.aws_ami.ubuntu.id)
   instance_type               = var.instance_type
-  subnet_id                   = aws_subnet.p5_public_subnet_a.id
+  subnet_id                   = aws_subnet.public[0].id
+  vpc_security_group_ids      = [aws_security_group.web.id]
+  key_name                    = aws_key_pair.p5.key_name
   user_data_replace_on_change = true
 
-  vpc_security_group_ids = [aws_security_group.p5_nginx_sg.id]
-  key_name               = aws_key_pair.p5_key_pair.key_name
-
-  tags = {
-    Name    = "p5-nginx-1"
-    Project = "p5-openclassrooms"
-    Role    = "web-server"
-  }
-
-  user_data = <<-EOF
+  user_data = <<-EOF_USER_DATA
     #!/usr/bin/env bash
     set -euo pipefail
     apt-get update -y
     apt-get install -y python3
-  EOF
-}
-
-resource "aws_instance" "p5_nginx_2" {
-  ami                         = coalesce(var.ami_id, data.aws_ami.ubuntu.id)
-  instance_type               = var.instance_type
-  subnet_id                   = aws_subnet.p5_public_subnet_b.id
-  user_data_replace_on_change = true
-
-  vpc_security_group_ids = [aws_security_group.p5_nginx_sg.id]
-  key_name               = aws_key_pair.p5_key_pair.key_name
+  EOF_USER_DATA
 
   tags = {
-    Name    = "p5-nginx-2"
+    Name    = "p5-web"
     Project = "p5-openclassrooms"
-    Role    = "web-server"
+    Role    = "ansible-target"
   }
-
-  user_data = <<-EOF
-    #!/usr/bin/env bash
-    set -euo pipefail
-    apt-get update -y
-    apt-get install -y python3
-  EOF
 }

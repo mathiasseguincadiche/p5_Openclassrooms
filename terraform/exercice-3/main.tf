@@ -1,7 +1,6 @@
 # =============================================================================
 # EXERCICE 3 : Terraform - Déploiement de HAProxy + nginxdemos/hello
 # Projet P5 OpenClassrooms - Déployer et suivre l'infrastructure as code
-# Région AWS : us-east-1 (OBLIGATOIRE)
 # =============================================================================
 
 terraform {
@@ -66,7 +65,7 @@ data "aws_ami" "ubuntu" {
 # ----------------------------------------------------------------------------
 resource "aws_security_group" "p5_haproxy_sg" {
   name        = "p5-haproxy-sg"
-  description = "Acces HTTP, statistiques et administration HAProxy"
+  description = "Acces HTTP public et SSH d’administration"
   vpc_id      = data.aws_vpc.p5_vpc.id
 
   ingress {
@@ -75,14 +74,6 @@ resource "aws_security_group" "p5_haproxy_sg" {
     to_port     = 80
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    description = "Statistiques HAProxy depuis le poste d'administration"
-    from_port   = 8404
-    to_port     = 8404
-    protocol    = "tcp"
-    cidr_blocks = [var.your_ip_cidr]
   }
 
   ingress {
@@ -192,7 +183,6 @@ resource "aws_instance" "p5_haproxy" {
     global
         log /dev/log local0
         chroot /var/lib/haproxy
-        stats socket /run/haproxy/admin.sock mode 660 level admin
         user haproxy
         group haproxy
         daemon
@@ -213,15 +203,9 @@ resource "aws_instance" "p5_haproxy" {
     backend hello-servers
         balance roundrobin
         option httpchk GET /
-        server hello-1 ${aws_instance.p5_hello[0].private_ip}:80 check
-        server hello-2 ${aws_instance.p5_hello[1].private_ip}:80 check
-
-    listen stats
-        bind *:8404
-        stats enable
-        stats uri /stats
-        stats refresh 10s
-        stats auth admin:${var.haproxy_stats_password}
+        http-check expect status 200
+        server hello-1 ${aws_instance.p5_hello[0].private_ip}:80 check inter 3s fall 3 rise 2
+        server hello-2 ${aws_instance.p5_hello[1].private_ip}:80 check inter 3s fall 3 rise 2
     HAPROXY
 
     haproxy -c -f /etc/haproxy/haproxy.cfg

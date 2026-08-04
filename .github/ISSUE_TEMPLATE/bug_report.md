@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Signaler un bug dans la documentation ou les templates
+about: Signaler un bug dans le wiki ou l’implémentation du P5
 title: "[BUG] "
 labels: bug
 assignees: ''
@@ -11,7 +11,7 @@ assignees: ''
 
 **Décrivez clairement le bug que vous avez rencontré.**
 
-- **Où le bug se produit-il ?** (ex: dans un exercice, un template, la documentation)
+- **Où le bug se produit-il ?** (ex. : exercice 1, module Terraform, playbook Ansible, documentation)
 - **Quelle est l'erreur exacte ?** (copiez-collez le message d'erreur)
 - **Quelles étapes reproduisent le bug ?**
 
@@ -27,7 +27,7 @@ assignees: ''
 
 ## 📋 Informations Complémentaires
 
-- **Version de l'outil concerné** (ex: Docker 24.0, Terraform 1.5, Kubernetes 1.28) :
+- **Version de l'outil concerné** (ex. : Terraform, Ansible, AWS CLI, HAProxy) :
 - **Système d'exploitation** (ex: Ubuntu 22.04, macOS Ventura, Windows 11) :
 - **Fichier concerné** (si applicable) :
 - **Lien vers le fichier** (si applicable) :

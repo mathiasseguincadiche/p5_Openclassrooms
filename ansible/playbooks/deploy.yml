@@ -1,5 +1,5 @@
 ---
-- name: Déployer l'interface web P5 avec NGINX
+- name: Déployer l'application Angular avec NGINX
   hosts: webservers
   become: true
   gather_facts: true
@@ -42,7 +42,7 @@
         group: "{{ application_group }}"
         mode: "0755"
 
-    - name: Déployer les fichiers de l'interface web
+    - name: Déployer l'artefact Angular
       ansible.builtin.copy:
         src: ../files/angular-app/
         dest: "{{ web_root }}/"
@@ -54,7 +54,7 @@
 
     - name: Installer la configuration NGINX du projet
       ansible.builtin.copy:
-        src: ../files/nginx-web-app.conf
+        src: ../files/nginx-angular.conf
         dest: /etc/nginx/sites-available/p5
         owner: root
         group: root
