@@ -4,6 +4,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
+VERSIONS_FILE="$PROJECT_ROOT/environment/versions.env"
 cd "$PROJECT_ROOT"
 
 show_help() {
@@ -25,85 +26,120 @@ case "${1:-}" in
     *) printf 'Option inconnue : %s\n' "$1" >&2; show_help >&2; exit 2 ;;
 esac
 
+if [[ ! -r "$VERSIONS_FILE" ]]; then
+    printf 'KO  %s absent\n' "$VERSIONS_FILE" >&2
+    exit 1
+fi
+# shellcheck source=/dev/null
+source "$VERSIONS_FILE"
+
 missing=0
+ok() { printf '  OK  %s\n' "$1"; }
+ko() { printf '  KO  %s\n' "$1" >&2; missing=$((missing + 1)); }
+
 printf 'Système\n'
 if [[ -r /etc/os-release ]]; then
     # shellcheck source=/dev/null
     source /etc/os-release
-    printf '  %s\n' "${PRETTY_NAME:-système inconnu}"
-    if [[ "${ID:-}" != "ubuntu" || "${VERSION_ID:-}" != "26.04" ]]; then
-        printf '  --  lab de référence : Ubuntu Server 26.04\n'
+    if [[ "${ID:-}" == "ubuntu" && "${VERSION_ID:-}" == "$P5_UBUNTU_VERSION_ID" ]]; then
+        ok "${PRETTY_NAME:-Ubuntu $P5_UBUNTU_VERSION_ID}"
+    else
+        ko "Ubuntu Server $P5_UBUNTU_VERSION_ID attendu ; ${PRETTY_NAME:-inconnu} détecté"
     fi
 else
-    printf '  KO  /etc/os-release absent\n'
-    missing=$((missing + 1))
+    ko "/etc/os-release absent"
 fi
 
 printf '\nOutils obligatoires\n'
 for command in git python3 terraform ansible-playbook aws curl jq ssh docker node npm shellcheck yamllint; do
     if command -v "$command" >/dev/null 2>&1; then
-        printf '  OK  %s\n' "$command"
+        ok "$command"
     else
-        printf '  KO  %s absent\n' "$command"
-        missing=$((missing + 1))
+        ko "$command absent"
     fi
 done
 
-if command -v docker >/dev/null 2>&1; then
-    if docker info >/dev/null 2>&1; then
-        printf '  OK  moteur Docker accessible\n'
+if command -v node >/dev/null 2>&1; then
+    if [[ "$(node --version)" == "v${NODE_VERSION}" ]]; then
+        ok "Node.js ${NODE_VERSION}"
     else
-        printf '  KO  moteur Docker inaccessible\n'
-        missing=$((missing + 1))
+        ko "Node.js ${NODE_VERSION} attendu ; $(node --version) détecté"
     fi
 fi
 
-printf '\nStructure du dépôt\n'
+if command -v docker >/dev/null 2>&1; then
+    if docker info >/dev/null 2>&1; then
+        ok "moteur Docker accessible"
+    else
+        ko "moteur Docker inaccessible ; reconnectez-vous après ajout au groupe docker"
+    fi
+fi
+
+printf '\nStructure complète du dépôt\n'
 required=(
     docs/00-preparation-environnement.md
     docs/00b-preparation-compte-aws.md
     docs/04-audit-non-regression.md
     environment/aws-readiness.env.example
+    environment/versions.env
     aws/README.md
     aws/iam/p5-lab-policy.json
     aws/budgets/p5-monthly-budget.json.example
-    application/README.md
-    application/angular/README.md
-    scripts/commands/bootstrap-ubuntu-server.sh
-    scripts/commands/check-aws-readiness.sh
-    scripts/commands/setup-aws-guardrails.sh
-    scripts/commands/check-aws-cleanup.sh
-    scripts/commands/pre-deployment-check.sh
+    application/angular/angular.json
+    application/angular/package.json
+    application/angular/package-lock.json
+    application/angular/src/main.ts
+    ansible/files/angular-app/index.html
+    ansible/files/nginx-angular.conf
+    ansible/playbooks/deploy.yml
+    terraform/exercice-2/opensearch/index-template.json
+    terraform/exercice-2/samples/nginx-access.log.sample
     scripts/commands/prepare-angular-artifact.sh
+    scripts/commands/verify-angular-deployment.sh
+    scripts/commands/generate-nginx-traffic.sh
+    scripts/commands/collect-nginx-access-log.sh
+    scripts/commands/import-opensearch-data.sh
+    scripts/commands/verify-opensearch-data.sh
+    scripts/commands/test-haproxy-roundrobin.sh
+    scripts/commands/test-haproxy-failover.sh
+    scripts/tools/convert-nginx-logs.py
     docs/exercices/01-terraform-ansible.md
     docs/exercices/02-elk-opensearch.md
     docs/exercices/03-haproxy.md
     terraform/exercice-1/main.tf
     terraform/exercice-2/main.tf
     terraform/exercice-3/main.tf
-    ansible/playbooks/deploy.yml
-    ansible/files/nginx-angular.conf
 )
 for path in "${required[@]}"; do
     if [[ -e "$path" ]]; then
-        printf '  OK  %s\n' "$path"
+        ok "$path"
     else
-        printf '  KO  %s absent\n' "$path"
-        missing=$((missing + 1))
+        ko "$path absent"
     fi
 done
 
-printf '\nAWS CLI\n'
-if command -v aws >/dev/null 2>&1 && aws sts get-caller-identity >/dev/null 2>&1; then
-    printf '  OK  identité AWS active ; le contrôle complet reste obligatoire\n'
+printf '\nArtefact Angular\n'
+if grep -q 'main-' ansible/files/angular-app/index.html \
+    && find ansible/files/angular-app -maxdepth 1 -type f -name 'main-*.js' | grep -q .; then
+    ok "build Angular de production versionné pour Ansible"
 else
-    printf '  --  identité AWS non active ; configurez ou renouvelez le profil p5-lab\n'
+    ko "artefact Angular incomplet ou page témoin encore présente"
 fi
 
-"$SCRIPT_DIR/validate.sh"
+printf '\nAWS CLI\n'
+if command -v aws >/dev/null 2>&1 \
+    && aws --profile p5-lab sts get-caller-identity >/dev/null 2>&1; then
+    ok "identité du profil p5-lab active ; AWS Ready reste obligatoire"
+else
+    printf '  --  profil p5-lab non actif ; utilisez aws sso login --profile p5-lab\n'
+fi
+
+if ! "$SCRIPT_DIR/validate.sh"; then
+    missing=$((missing + 1))
+fi
 
 if ((missing > 0)); then
-    printf '\n%s élément(s) obligatoire(s) manque(nt).\n' "$missing" >&2
+    printf '\n%s anomalie(s) obligatoire(s) détectée(s).\n' "$missing" >&2
     exit 1
 fi
 printf '\nÉtape 0A validée. Poursuivez avec le contrôle AWS Ready.\n'
