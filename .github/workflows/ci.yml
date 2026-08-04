@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   coherence:
-    name: Périmètre, non-régression et Bash
+    name: Périmètre, AWS Ready et Bash
     runs-on: ubuntu-latest
     steps:
       - name: Récupérer le dépôt
@@ -42,10 +42,18 @@ jobs:
           set -euo pipefail
           required=(
             docs/00-preparation-environnement.md
+            docs/00b-preparation-compte-aws.md
             docs/04-audit-non-regression.md
+            environment/aws-readiness.env.example
+            aws/README.md
+            aws/iam/p5-lab-policy.json
+            aws/budgets/p5-monthly-budget.json.example
             application/README.md
             application/angular/README.md
             scripts/commands/bootstrap-ubuntu-server.sh
+            scripts/commands/check-aws-readiness.sh
+            scripts/commands/setup-aws-guardrails.sh
+            scripts/commands/check-aws-cleanup.sh
             scripts/commands/pre-deployment-check.sh
             scripts/commands/prepare-angular-artifact.sh
             ansible/files/angular-app/index.html
@@ -53,14 +61,52 @@ jobs:
             ansible/playbooks/deploy.yml
           )
           for path in "${required[@]}"; do test -e "$path"; done
+          for script in \
+            scripts/commands/check-aws-readiness.sh \
+            scripts/commands/setup-aws-guardrails.sh \
+            scripts/commands/check-aws-cleanup.sh; do
+            test -x "$script"
+          done
+          test ! -e environment/aws-readiness.env
           grep -q '../files/angular-app/' ansible/playbooks/deploy.yml
           grep -q '../files/nginx-angular.conf' ansible/playbooks/deploy.yml
+
+      - name: Vérifier les garde-fous AWS
+        shell: bash
+        run: |
+          set -euo pipefail
+          for module in exercice-1 exercice-2 exercice-3; do
+            grep -q 'allowed_account_ids' "terraform/${module}/main.tf"
+            grep -q 'default_tags' "terraform/${module}/main.tf"
+            grep -q 'expected_aws_account_id' "terraform/${module}/variables.tf"
+            grep -q '203.0.113.10/32' "terraform/${module}/variables.tf"
+            grep -q 'expected_aws_account_id' \
+              "terraform/${module}/terraform.tfvars.example"
+          done
+          grep -q 'P5_ROOT_MFA_CONFIRMED=no' \
+            environment/aws-readiness.env.example
+          grep -q 'P5_REQUIRED_STANDARD_VCPUS=8' \
+            environment/aws-readiness.env.example
+          if grep -Eq '^[[:space:]]*terraform[[:space:]]+(apply|destroy)([[:space:]]|$)' \
+            scripts/commands/check-aws-readiness.sh \
+            scripts/commands/check-aws-cleanup.sh; then
+            echo 'Un contrôle AWS non destructif lance Terraform.' >&2
+            exit 1
+          fi
 
       - name: Vérifier la syntaxe Bash
         run: find scripts -type f -name '*.sh' -print0 | xargs -0 -r -n1 bash -n
 
       - name: Analyser les scripts avec ShellCheck
         run: find scripts -type f -name '*.sh' -print0 | xargs -0 -r shellcheck --severity=error
+
+      - name: Valider les fichiers JSON AWS
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m json.tool aws/iam/p5-lab-policy.json >/dev/null
+          python3 -m json.tool \
+            aws/budgets/p5-monthly-budget.json.example >/dev/null
 
       - name: Vérifier les schémas compacts
         shell: bash

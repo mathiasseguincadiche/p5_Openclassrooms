@@ -13,6 +13,9 @@ Usage: ./scripts/commands/setup.sh [--check-only]
 Contrôle non destructif de la VM, des outils et de l'arborescence du P5.
 Pour installer le socle sur Ubuntu Server 26.04 :
   ./scripts/commands/bootstrap-ubuntu-server.sh
+
+Ce contrôle valide l'étape 0A. Pour le compte AWS, utilisez ensuite :
+  ./scripts/commands/pre-deployment-check.sh --stage initial
 HELP
 }
 
@@ -58,10 +61,18 @@ fi
 printf '\nStructure du dépôt\n'
 required=(
     docs/00-preparation-environnement.md
+    docs/00b-preparation-compte-aws.md
     docs/04-audit-non-regression.md
+    environment/aws-readiness.env.example
+    aws/README.md
+    aws/iam/p5-lab-policy.json
+    aws/budgets/p5-monthly-budget.json.example
     application/README.md
     application/angular/README.md
     scripts/commands/bootstrap-ubuntu-server.sh
+    scripts/commands/check-aws-readiness.sh
+    scripts/commands/setup-aws-guardrails.sh
+    scripts/commands/check-aws-cleanup.sh
     scripts/commands/pre-deployment-check.sh
     scripts/commands/prepare-angular-artifact.sh
     docs/exercices/01-terraform-ansible.md
@@ -82,17 +93,17 @@ for path in "${required[@]}"; do
     fi
 done
 
-printf '\nServices et identité\n'
+printf '\nAWS CLI\n'
 if command -v aws >/dev/null 2>&1 && aws sts get-caller-identity >/dev/null 2>&1; then
-    printf '  OK  identité AWS active\n'
+    printf '  OK  identité AWS active ; le contrôle complet reste obligatoire\n'
 else
-    printf '  --  AWS CLI présente mais identité non vérifiée\n'
+    printf '  --  identité AWS non active ; configurez ou renouvelez le profil p5-lab\n'
 fi
 
 "$SCRIPT_DIR/validate.sh"
 
-if (( missing > 0 )); then
+if ((missing > 0)); then
     printf '\n%s élément(s) obligatoire(s) manque(nt).\n' "$missing" >&2
     exit 1
 fi
-printf '\nLab prêt pour le contrôle pré-déploiement.\n'
+printf '\nÉtape 0A validée. Poursuivez avec le contrôle AWS Ready.\n'

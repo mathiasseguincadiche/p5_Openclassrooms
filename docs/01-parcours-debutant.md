@@ -1,6 +1,6 @@
 # 01 — Parcours conseillé
 
-## Étape 0 — Installer et valider le lab
+## Étape 0A — Installer et valider le lab
 
 La VM n’est pas un prérequis implicite : elle fait partie du projet.
 
@@ -14,16 +14,41 @@ La VM n’est pas un prérequis implicite : elle fait partie du projet.
 ```
 
 1. Se reconnecter pour activer le groupe `docker`.
-1. Configurer Git, la clé `~/.ssh/p5-key` et le profil AWS `p5-lab`.
-1. Valider le lab :
+1. Configurer Git et la clé `~/.ssh/p5-key`.
+1. Valider la VM :
 
 ```bash
-export AWS_PROFILE=p5-lab
 ./scripts/commands/setup.sh --check-only
-./scripts/commands/pre-deployment-check.sh
 ```
 
 Guide complet : [préparation de la VM](00-preparation-environnement.md).
+
+## Étape 0B — Sécuriser et valider AWS
+
+1. Sécuriser le compte root et confirmer MFA, récupération et absence de clés.
+1. Configurer le profil `p5-lab` avec IAM Identity Center ou un rôle.
+1. Copier la configuration locale :
+
+```bash
+cp environment/aws-readiness.env.example environment/aws-readiness.env
+$EDITOR environment/aws-readiness.env
+```
+
+1. Copier et compléter les trois fichiers `terraform.tfvars`.
+1. Prévisualiser puis créer le budget mensuel :
+
+```bash
+./scripts/commands/setup-aws-guardrails.sh
+./scripts/commands/setup-aws-guardrails.sh --apply
+```
+
+1. Obtenir le verdict `GO AWS` :
+
+```bash
+./scripts/commands/pre-deployment-check.sh --stage initial
+```
+
+Guide complet : [préparation du compte AWS](00b-preparation-compte-aws.md).
 
 ## Étape 1 — Construire puis déployer l’application
 
@@ -34,7 +59,6 @@ Guide complet : [préparation de la VM](00-preparation-environnement.md).
 ./scripts/commands/prepare-angular-artifact.sh
 ```
 
-1. Créer `terraform.tfvars` depuis l’exemple de l’exercice 1.
 1. Exécuter `terraform init`, puis `terraform plan`.
 1. Lire le plan avant `terraform apply`.
 1. Reporter l’adresse EC2 dans l’inventaire Ansible.
@@ -45,6 +69,12 @@ Guide complet : [préparation de la VM](00-preparation-environnement.md).
 Fiche : [Exercice 1](exercices/01-terraform-ansible.md).
 
 ## Étape 2 — Amazon OpenSearch
+
+1. Relancer le contrôle adapté :
+
+```bash
+./scripts/commands/check-aws-readiness.sh --stage exercice-2
+```
 
 1. Déployer le domaine à partir de `terraform/exercice-2/`.
 1. Importer l’échantillon NGINX.
@@ -58,6 +88,12 @@ Fiche : [Exercice 2](exercices/02-elk-opensearch.md).
 ## Étape 3 — HAProxy
 
 1. Conserver l’infrastructure réseau de l’exercice 1.
+1. Vérifier les dépendances AWS :
+
+```bash
+./scripts/commands/check-aws-readiness.sh --stage exercice-3
+```
+
 1. Déployer deux backends EC2 et une EC2 HAProxy.
 1. Configurer `roundrobin` et les health checks.
 1. Vérifier l’alternance des backends.
@@ -72,8 +108,9 @@ Fiche : [Exercice 3](exercices/03-haproxy.md).
 ```bash
 ./scripts/commands/prepare-livrables.sh
 ./scripts/commands/destroy-aws.sh
+./scripts/commands/check-aws-cleanup.sh
 ```
 
-La destruction s’effectue dans l’ordre 3 → 2 → 1. Vérifier ensuite EC2,
-OpenSearch, les volumes et les adresses dans la console AWS. Ne jamais supprimer
-les états Terraform avant `destroy`.
+La destruction s’effectue dans l’ordre 3 → 2 → 1. Le dernier script doit
+produire `NETTOYAGE AWS COMPLET`. Ne jamais supprimer les états Terraform avant
+la destruction et la vérification des ressources restantes.

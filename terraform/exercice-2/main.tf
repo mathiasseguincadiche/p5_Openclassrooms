@@ -15,7 +15,17 @@ terraform {
 }
 
 provider "aws" {
-  region = var.aws_region
+  region              = var.aws_region
+  allowed_account_ids = [var.expected_aws_account_id]
+
+  default_tags {
+    tags = {
+      Project   = "p5-openclassrooms"
+      ManagedBy = "Terraform"
+      Purpose   = "training-lab"
+      Exercise  = "2"
+    }
+  }
 }
 
 data "aws_caller_identity" "current" {}
@@ -70,8 +80,6 @@ resource "aws_opensearch_domain" "p5" {
   })
 
   tags = {
-    Domain   = "p5-opensearch"
-    Project  = "p5-openclassrooms"
-    Exercice = "2"
+    Domain = "p5-opensearch"
   }
 }

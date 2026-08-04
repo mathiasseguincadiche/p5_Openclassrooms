@@ -11,7 +11,17 @@ terraform {
 }
 
 provider "aws" {
-  region = var.aws_region
+  region              = var.aws_region
+  allowed_account_ids = [var.expected_aws_account_id]
+
+  default_tags {
+    tags = {
+      Project   = "p5-openclassrooms"
+      ManagedBy = "Terraform"
+      Purpose   = "training-lab"
+      Exercise  = "1"
+    }
+  }
 }
 
 data "aws_availability_zones" "available" {
@@ -39,8 +49,7 @@ resource "aws_vpc" "p5" {
   enable_dns_hostnames = true
 
   tags = {
-    Name    = "p5-vpc"
-    Project = "p5-openclassrooms"
+    Name = "p5-vpc"
   }
 }
 
@@ -52,9 +61,8 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name    = "p5-public-${count.index + 1}"
-    Project = "p5-openclassrooms"
-    Type    = "public"
+    Name = "p5-public-${count.index + 1}"
+    Type = "public"
   }
 }
 
@@ -62,8 +70,7 @@ resource "aws_internet_gateway" "p5" {
   vpc_id = aws_vpc.p5.id
 
   tags = {
-    Name    = "p5-igw"
-    Project = "p5-openclassrooms"
+    Name = "p5-igw"
   }
 }
 
@@ -76,8 +83,7 @@ resource "aws_route_table" "public" {
   }
 
   tags = {
-    Name    = "p5-public-rt"
-    Project = "p5-openclassrooms"
+    Name = "p5-public-rt"
   }
 }
 
@@ -116,8 +122,7 @@ resource "aws_security_group" "web" {
   }
 
   tags = {
-    Name    = "p5-web-sg"
-    Project = "p5-openclassrooms"
+    Name = "p5-web-sg"
   }
 }
 
@@ -126,8 +131,7 @@ resource "aws_key_pair" "p5" {
   public_key = file(pathexpand(var.ssh_public_key_path))
 
   tags = {
-    Name    = var.key_name
-    Project = "p5-openclassrooms"
+    Name = var.key_name
   }
 }
 
@@ -147,8 +151,7 @@ resource "aws_instance" "web" {
   EOF_USER_DATA
 
   tags = {
-    Name    = "p5-web"
-    Project = "p5-openclassrooms"
-    Role    = "ansible-target"
+    Name = "p5-web"
+    Role = "ansible-target"
   }
 }
