@@ -22,9 +22,25 @@ validate_scope() {
     fi
     [[ "$(find "$PROJECT_ROOT/docs/exercices" -maxdepth 1 -type f -name '*.md' | wc -l)" -eq 3 ]]
 }
+validate_non_regression() {
+    local required=(
+        docs/00-preparation-environnement.md
+        docs/04-audit-non-regression.md
+        application/README.md
+        application/angular/README.md
+        scripts/commands/bootstrap-ubuntu-server.sh
+        scripts/commands/pre-deployment-check.sh
+        scripts/commands/prepare-angular-artifact.sh
+        ansible/files/angular-app/index.html
+        ansible/files/nginx-angular.conf
+        ansible/playbooks/deploy.yml
+    )
+    local path
+    for path in "${required[@]}"; do
+        [[ -e "$PROJECT_ROOT/$path" ]] || { printf 'Élément requis absent : %s\n' "$path" >&2; return 1; }
+    done
+}
 validate_paths() {
-    [[ -d "$PROJECT_ROOT/ansible/files/angular-app" ]] || return 1
-    [[ -f "$PROJECT_ROOT/ansible/files/nginx-angular.conf" ]] || return 1
     grep -q '../files/angular-app/' "$PROJECT_ROOT/ansible/playbooks/deploy.yml" || return 1
     grep -q '../files/nginx-angular.conf' "$PROJECT_ROOT/ansible/playbooks/deploy.yml"
 }
@@ -35,10 +51,12 @@ import sys
 import xml.etree.ElementTree as ET
 root = Path(sys.argv[1])
 files = sorted((root / 'docs/schemas').glob('*.svg'))
-if len(files) != 4:
-    raise SystemExit(f'4 schémas SVG attendus, {len(files)} trouvés')
+if len(files) != 5:
+    raise SystemExit(f'5 schémas SVG attendus, {len(files)} trouvés')
 for file in files:
     ET.parse(file)
+    if file.stat().st_size > 12000:
+        raise SystemExit(f'{file.name} est trop lourd pour la documentation')
 PYXML
 }
 validate_terraform() {
@@ -50,8 +68,9 @@ validate_terraform() {
 }
 cd "$PROJECT_ROOT" || exit 1
 run_check 'Périmètre : trois exercices et aucun Mermaid' validate_scope
+run_check 'Contrat de non-régression' validate_non_regression
 run_check 'Chemins Ansible' validate_paths
-run_check 'Syntaxe des schémas SVG' validate_svg
+run_check 'Cinq schémas SVG compacts' validate_svg
 run_check 'Syntaxe Bash' validate_bash
 if command -v shellcheck >/dev/null 2>&1; then
     run_check 'ShellCheck' bash -c 'find scripts -type f -name "*.sh" -print0 | xargs -0 -r shellcheck --severity=error'

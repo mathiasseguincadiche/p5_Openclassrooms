@@ -1,39 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650" role="img" aria-labelledby="title desc">
-<title id="title">Exercice 1 : Terraform et Ansible</title>
-<desc id="desc">Flux AWS : Terraform crée une instance EC2, puis Ansible configure NGINX et l’application Angular.</desc>
-<defs>
-  <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
-    <path d="M0,0 L0,6 L9,3 z" fill="#5f5a73"/>
-  </marker>
-  <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
-    <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000000" flood-opacity="0.14"/>
-  </filter>
-</defs>
-<rect width="100%" height="100%" rx="24" fill="#f7f7fb"/>
-<text x="60" y="65" font-family="Arial, sans-serif" font-size="30" font-weight="700" fill="#242038">Exercice 1 · Construire puis configurer</text>
-<text x="60" y="96" font-family="Arial, sans-serif" font-size="17" fill="#5f5a73">Terraform crée l’infrastructure ; Ansible rend le déploiement reproductible.</text>
-<g filter="url(#shadow)"><rect x="55" y="180" width="240" height="250" rx="18" fill="#ffffff" stroke="#7451eb" stroke-width="3"/></g>
-<rect x="55" y="180" width="240" height="10" rx="5" fill="#7451eb"/>
-<text x="79" y="225" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#242038">Terraform</text>
-<text x="79" y="258" font-family="Arial, sans-serif" font-size="16" fill="#5f5a73">main.tf</text>
-<text x="79" y="283" font-family="Arial, sans-serif" font-size="16" fill="#5f5a73">variables.tf</text>
-<text x="79" y="308" font-family="Arial, sans-serif" font-size="16" fill="#5f5a73">init → plan → apply</text><g filter="url(#shadow)"><rect x="360" y="180" width="240" height="250" rx="18" fill="#ffffff" stroke="#2d7dd2" stroke-width="3"/></g>
-<rect x="360" y="180" width="240" height="10" rx="5" fill="#2d7dd2"/>
-<text x="384" y="225" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#242038">Instance AWS EC2</text>
-<text x="384" y="258" font-family="Arial, sans-serif" font-size="16" fill="#5f5a73">Cible accessible en SSH</text>
-<text x="384" y="283" font-family="Arial, sans-serif" font-size="16" fill="#5f5a73">Python disponible</text>
-<text x="384" y="308" font-family="Arial, sans-serif" font-size="16" fill="#5f5a73">Port 80 autorisé</text><g filter="url(#shadow)"><rect x="665" y="180" width="240" height="250" rx="18" fill="#ffffff" stroke="#f39c3d" stroke-width="3"/></g>
-<rect x="665" y="180" width="240" height="10" rx="5" fill="#f39c3d"/>
-<text x="689" y="225" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#242038">Ansible</text>
-<text x="689" y="258" font-family="Arial, sans-serif" font-size="16" fill="#5f5a73">inventaire hosts</text>
-<text x="689" y="283" font-family="Arial, sans-serif" font-size="16" fill="#5f5a73">deploy.yml</text>
-<text x="689" y="308" font-family="Arial, sans-serif" font-size="16" fill="#5f5a73">tasks + handler</text><g filter="url(#shadow)"><rect x="970" y="180" width="180" height="250" rx="18" fill="#ffffff" stroke="#2f9e6f" stroke-width="3"/></g>
-<rect x="970" y="180" width="180" height="10" rx="5" fill="#2f9e6f"/>
-<text x="994" y="225" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#242038">Résultat</text>
-<text x="994" y="258" font-family="Arial, sans-serif" font-size="16" fill="#5f5a73">NGINX actif</text>
-<text x="994" y="283" font-family="Arial, sans-serif" font-size="16" fill="#5f5a73">Build Angular</text>
-<text x="994" y="308" font-family="Arial, sans-serif" font-size="16" fill="#5f5a73">HTTP :80</text><line x1="295" y1="305" x2="360" y2="305" stroke="#5f5a73" stroke-width="3" marker-end="url(#arrow)"/>
-<text x="327.5" y="295.0" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="700" fill="#5f5a73">provisionne</text><line x1="600" y1="305" x2="665" y2="305" stroke="#5f5a73" stroke-width="3" marker-end="url(#arrow)"/>
-<text x="632.5" y="295.0" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="700" fill="#5f5a73">cible</text><line x1="905" y1="305" x2="970" y2="305" stroke="#5f5a73" stroke-width="3" marker-end="url(#arrow)"/>
-<text x="937.5" y="295.0" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="700" fill="#5f5a73">configure</text><rect x="50" y="585" width="1100" height="42" rx="12" fill="#ebe8fb"/><text x="600" y="612" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="700" fill="#7451eb">Preuves : plan Terraform, ping Ansible, playbook réussi et application Angular accessible</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="260" viewBox="0 0 960 260" role="img" aria-labelledby="title desc">
+<title id="title">Exercice 1 : déployer l’application Angular sur AWS</title>
+<desc id="desc">Le build Angular est préparé sur la VM, Terraform crée EC2 et Ansible déploie NGINX.</desc>
+<defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#475569"/></marker></defs>
+<rect width="960" height="260" rx="12" fill="#f8fafc"/>
+<text x="32" y="38" font-family="Arial,sans-serif" font-size="22" font-weight="700" fill="#0f172a">Exercice 1 · construire, provisionner, déployer</text>
+<g font-family="Arial,sans-serif" text-anchor="middle">
+<rect x="32" y="78" width="180" height="112" rx="10" fill="#fff" stroke="#2563eb" stroke-width="2"/><text x="122" y="115" font-size="16" font-weight="700" fill="#0f172a">Angular</text><text x="122" y="142" font-size="13" fill="#475569">npm ci · build</text><text x="122" y="164" font-size="13" fill="#475569">artefact navigateur</text>
+<rect x="272" y="78" width="180" height="112" rx="10" fill="#fff" stroke="#7c3aed" stroke-width="2"/><text x="362" y="115" font-size="16" font-weight="700" fill="#0f172a">Terraform</text><text x="362" y="142" font-size="13" fill="#475569">VPC · sécurité · EC2</text><text x="362" y="164" font-size="13" fill="#475569">init · plan · apply</text>
+<rect x="512" y="78" width="180" height="112" rx="10" fill="#fff" stroke="#d97706" stroke-width="2"/><text x="602" y="115" font-size="16" font-weight="700" fill="#0f172a">Ansible</text><text x="602" y="142" font-size="13" fill="#475569">inventaire · playbook</text><text x="602" y="164" font-size="13" fill="#475569">copie et configuration</text>
+<rect x="752" y="78" width="176" height="112" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="2"/><text x="840" y="115" font-size="16" font-weight="700" fill="#065f46">EC2 + NGINX</text><text x="840" y="142" font-size="13" fill="#065f46">/var/www/p5</text><text x="840" y="164" font-size="13" fill="#065f46">application sur :80</text>
+</g>
+<g stroke="#475569" stroke-width="2" marker-end="url(#a)"><line x1="212" y1="134" x2="264" y2="134"/><line x1="452" y1="134" x2="504" y2="134"/><line x1="692" y1="134" x2="744" y2="134"/></g>
+<text x="32" y="226" font-family="Arial,sans-serif" font-size="14" fill="#475569">Preuves : plan relu · ping Ansible · playbook idempotent · application réelle accessible.</text>
 </svg>

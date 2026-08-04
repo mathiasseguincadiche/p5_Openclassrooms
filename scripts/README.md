@@ -1,20 +1,27 @@
 # Scripts du projet P5
 
-Le dépôt évite volontairement le déploiement « en un clic ». Un débutant doit
-lire le plan Terraform, exécuter les commandes de chaque fiche et comprendre ce
-qui est créé.
+Les scripts préparent et contrôlent le lab sans masquer les commandes
+pédagogiques. Aucun script ne lance automatiquement les trois exercices.
 
 | Besoin | Commande |
 | --- | --- |
-| Vérifier l’environnement sans rien installer | `./scripts/commands/setup.sh --check-only` |
-| Valider la structure et les fichiers | `./scripts/commands/validate.sh` |
-| Contrôler les trois gabarits de remise | `./scripts/commands/prepare-livrables.sh` |
-| Supprimer les caches et plans locaux, sans toucher aux états | `./scripts/commands/clean-local.sh` |
-| Détruire les ressources Terraform AWS | `./scripts/commands/destroy-aws.sh` |
+| Installer le socle sur Ubuntu Server 26.04 | `./scripts/commands/bootstrap-ubuntu-server.sh` |
+| Vérifier la VM et l’arborescence | `./scripts/commands/setup.sh --check-only` |
+| Contrôler avant le premier `apply` | `./scripts/commands/pre-deployment-check.sh` |
+| Construire Angular et préparer Ansible | `./scripts/commands/prepare-angular-artifact.sh` |
+| Valider les fichiers du dépôt | `./scripts/commands/validate.sh` |
+| Contrôler les trois gabarits | `./scripts/commands/prepare-livrables.sh` |
+| Nettoyer les caches sans supprimer les états | `./scripts/commands/clean-local.sh` |
+| Détruire les ressources AWS | `./scripts/commands/destroy-aws.sh` |
 | Générer un `haproxy.cfg` minimal | `./scripts/tools/generer-haproxy-config.sh IP1 IP2` |
 
-`destroy-aws.sh` détruit les modules dans l’ordre **3 → 2 → 1** afin de
-respecter la dépendance réseau entre les exercices 3 et 1. Une vérification
-manuelle dans la console AWS reste obligatoire.
+## Règles de sécurité
 
-`clean-local.sh` conserve toujours les fichiers `terraform.tfstate`, car les supprimer avant `terraform destroy` pourrait laisser des ressources AWS orphelines.
+- `bootstrap-ubuntu-server.sh` installe des outils, mais ne configure aucun
+  secret et ne crée aucune ressource AWS.
+- `pre-deployment-check.sh` est non destructif.
+- `prepare-angular-artifact.sh` remplace uniquement l’artefact sous
+  `ansible/files/angular-app/` après un build réussi.
+- `destroy-aws.sh` détruit dans l’ordre **3 → 2 → 1**.
+- `clean-local.sh` conserve les états Terraform pour ne pas orpheliner des
+  ressources AWS.
