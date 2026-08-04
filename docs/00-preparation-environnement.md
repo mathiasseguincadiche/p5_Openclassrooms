@@ -1,7 +1,9 @@
-# Étape 0 — Préparer la VM de lab
+# Étape 0A — Préparer la VM de lab
 
-Cette étape est le socle du projet. Sans VM correctement installée, sécurisée et
-équipée, les trois exercices AWS ne sont ni reproductibles ni démontrables.
+Cette étape est le socle local du projet. Sans VM correctement installée,
+sécurisée et équipée, les trois exercices AWS ne sont ni reproductibles ni
+démontrables. La validation du compte cloud est traitée ensuite dans
+[l'étape 0B — AWS Ready](00b-preparation-compte-aws.md).
 
 ## Résultat attendu
 
@@ -13,7 +15,6 @@ Une VM nommée `p5-devops` sous **Ubuntu Server 26.04 LTS — Resolute Raccoon**
 - Git, Python, Ansible, Terraform, AWS CLI, Docker, Node.js et les utilitaires
   de diagnostic disponibles ;
 - dépôt cloné dans `~/labs/p5_Openclassrooms` ;
-- identité AWS vérifiée sans enregistrer de secret dans Git ;
 - paire de clés SSH dédiée au lab ;
 - contrôles locaux du dépôt réussis.
 
@@ -96,19 +97,20 @@ chmod 644 ~/.ssh/p5-key.pub
 
 La clé privée ne doit jamais être copiée dans le dépôt.
 
-### AWS CLI
+### Profil AWS CLI
 
-Utiliser un profil dédié :
+Le mode recommandé utilise IAM Identity Center :
 
 ```bash
-aws configure --profile p5-lab
+aws configure sso --profile p5-lab
+aws sso login --profile p5-lab
 export AWS_PROFILE=p5-lab
 aws sts get-caller-identity
 ```
 
-Préférer des identifiants temporaires ou un rôle IAM lorsque le contexte le
-permet. Ne jamais écrire de clé AWS dans un fichier Terraform, Markdown ou
-capture d’écran.
+Un rôle IAM déjà fourni par une organisation peut également alimenter ce
+profil. Les clés d’accès longues durées ne sont pas recommandées et sont
+refusées par défaut par le contrôle AWS Ready.
 
 ## Cloner et préparer le dépôt
 
@@ -117,18 +119,12 @@ mkdir -p ~/labs
 cd ~/labs
 git clone https://github.com/mathiasseguincadiche/p5_Openclassrooms.git
 cd p5_Openclassrooms
-cp terraform/exercice-1/terraform.tfvars.example terraform/exercice-1/terraform.tfvars
-cp terraform/exercice-2/terraform.tfvars.example terraform/exercice-2/terraform.tfvars
-cp terraform/exercice-3/terraform.tfvars.example terraform/exercice-3/terraform.tfvars
 ```
 
-Compléter les trois fichiers locaux sans les commiter.
-
-## Validation de l’étape 0
+## Validation de l’étape 0A
 
 ```bash
 ./scripts/commands/setup.sh --check-only
-./scripts/commands/pre-deployment-check.sh
 ```
 
 Le contrôle doit confirmer :
@@ -136,20 +132,38 @@ Le contrôle doit confirmer :
 - Ubuntu Server 26.04 ;
 - outils présents ;
 - Docker fonctionnel ;
-- identité AWS active ;
-- clé SSH protégée ;
 - arborescence du dépôt complète ;
 - Terraform, YAML, Bash et Ansible valides.
+
+Ce verdict signifie uniquement que **la VM est prête**. Il ne garantit pas
+encore les permissions, quotas, coûts ou paramètres du compte AWS.
+
+## Étape suivante obligatoire
+
+Poursuivez avec :
+
+```bash
+cp environment/aws-readiness.env.example environment/aws-readiness.env
+$EDITOR environment/aws-readiness.env
+./scripts/commands/setup-aws-guardrails.sh --apply
+./scripts/commands/pre-deployment-check.sh --stage initial
+```
+
+La procédure complète se trouve dans
+[`00b-preparation-compte-aws.md`](00b-preparation-compte-aws.md).
 
 ## Snapshot recommandé
 
 Créer un snapshot de la VM après validation, nommé par exemple
-`p5-etape-0-socle-valide`. Il permet de revenir à un environnement propre sans
+`p5-etape-0a-socle-valide`. Il permet de revenir à un environnement propre sans
 réinstaller tout le lab.
 
-## Ce que l’étape 0 ne fait pas
+## Ce que l’étape 0A ne fait pas
 
 - elle ne crée aucune ressource AWS ;
+- elle ne sécurise pas automatiquement le compte root ;
+- elle ne crée pas le budget AWS ;
+- elle ne vérifie pas les quotas ou les permissions du compte ;
 - elle ne construit pas automatiquement les dashboards ;
 - elle ne remplace pas la lecture des plans Terraform ;
 - elle ne stocke aucun secret dans le dépôt.
