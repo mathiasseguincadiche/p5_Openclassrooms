@@ -7,7 +7,7 @@ Cette page regroupe les **commandes Linux les plus utiles** pour les débutants 
 
 ## 📌 Table des Matières
 
-1. [Système](#-système)
+1. [Système](#systeme)
 2. [Fichiers et Dossiers](#-fichiers-et-dossiers)
 3. [Permissions](#-permissions)
 4. [Processus](#-processus)
@@ -16,12 +16,14 @@ Cette page regroupe les **commandes Linux les plus utiles** pour les débutants 
 7. [Disques et Stockage](#-disques-et-stockage)
 8. [Paquets](#-paquets)
 9. [Textes et Fichiers](#-textes-et-fichiers)
-10. [Archives](#-archives)
+10. [Archives](#archives)
 11. [SSH](#-ssh)
 12. [Cron](#-cron)
-13. [Dépannage](#-dépannage)
+13. [Dépannage](#depannage)
 
 ---
+
+<a id="systeme"></a>
 
 ## 🖥️ Système
 
@@ -337,7 +339,7 @@ Cette page regroupe les **commandes Linux les plus utiles** pour les débutants 
 | `awk '{print $1}' <file>` | Extraire la première colonne | `awk '{print $1}' fichier.txt` |
 | `sed 's/<old>/<new>/g' <file>` | Remplacer du texte | `sed 's/foo/bar/g' fichier.txt` |
 | `sed -i 's/<old>/<new>/g' <file>` | Remplacer du texte et modifier le fichier | `sed -i 's/foo/bar/g' fichier.txt` |
-| `tr <from> <to>` | Remplacer des caractères | `echo "hello" | tr 'a-z' 'A-Z'` |
+| `tr <from> <to>` | Remplacer des caractères | `echo "hello" \| tr 'a-z' 'A-Z'` |
 | `paste <file1> <file2>` | Fusionner des fichiers | `paste fichier1.txt fichier2.txt` |
 | `join <file1> <file2>` | Joindre des fichiers sur une colonne commune | `join -1 1 -2 1 fichier1.txt fichier2.txt` |
 | `diff <file1> <file2>` | Afficher les différences entre deux fichiers | `diff fichier1.txt fichier2.txt` |
@@ -345,6 +347,8 @@ Cette page regroupe les **commandes Linux les plus utiles** pour les débutants 
 | `patch <file> <patch>` | Appliquer un patch | `patch fichier.txt mon-patch.patch` |
 
 ---
+
+<a id="archives"></a>
 
 ## 🗜️ Archives
 
@@ -385,6 +389,7 @@ Cette page regroupe les **commandes Linux les plus utiles** pour les débutants 
 | `sftp <user>@<host>` | Se connecter via SFTP | `sftp user@192.168.1.10` |
 
 ### Exemple de `~/.ssh/config`
+
 ```
 Host mon-serveur
   HostName 192.168.1.10
@@ -408,6 +413,7 @@ Host mon-serveur
 | `sudo service cron restart` | Redémarrer le service cron | `sudo service cron restart` |
 
 ### Syntaxe Crontab
+
 ```
 # Minute Heure Jour Mois Jour_de_la_semaine Commande
 # 0-59   0-23 1-31 1-12 0-6 (0=dimanche)
@@ -426,6 +432,8 @@ Host mon-serveur
 ```
 
 ---
+
+<a id="depannage"></a>
 
 ## 🛠️ Dépannage
 

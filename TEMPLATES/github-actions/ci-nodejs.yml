@@ -17,9 +17,9 @@ name: CI - Node.js
 # Déclencheurs : push ou pull request sur la branche main
 on:
   push:
-    branches: [ "main" ]
+    branches: [main]
   pull_request:
-    branches: [ "main" ]
+    branches: [main]
 
 # Jobs à exécuter
 jobs:
@@ -33,19 +33,19 @@ jobs:
       # --- Étape 1 : Checkout du code ---
       # Récupère le code du dépôt dans le runner.
       - name: Checkout code
-        uses: actions/checkout@v4
-        # Explication : actions/checkout@v4 est une action officielle GitHub qui
+        uses: actions/checkout@v7
+        # Explication : actions/checkout@v7 est une action officielle GitHub qui
         # récupère le code de votre dépôt dans le runner.
 
       # --- Étape 2 : Configuration de Node.js ---
-      # Installe Node.js 18 sur le runner.
+      # Installe Node.js 24 sur le runner.
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: 18
+          node-version: 24
           # Cache les dépendances npm pour accélérer les builds
           cache: 'npm'
-        # Explication : actions/setup-node@v4 installe Node.js et npm sur le runner.
+        # Explication : actions/setup-node@v7 installe Node.js et npm sur le runner.
         # Le cache permet de ne pas réinstaller les dépendances à chaque exécution.
 
       # --- Étape 3 : Installation des dépendances ---
@@ -73,9 +73,9 @@ jobs:
 # =============================================
 # 1. Changez la version de Node.js :
 #    - name: Setup Node.js
-#      uses: actions/setup-node@v4
+#      uses: actions/setup-node@v7
 #      with:
-#        node-version: 16  # Changez pour utiliser Node.js 16
+#        node-version: 24
 #
 # 2. Ajoutez des étapes supplémentaires :
 #    - name: Build application
@@ -87,10 +87,10 @@ jobs:
 #        runs-on: ubuntu-latest
 #        strategy:
 #          matrix:
-#            node-version: [14.x, 16.x, 18.x]
+#            node-version: [22.x, 24.x]
 #        steps:
-#          - uses: actions/checkout@v4
-#          - uses: actions/setup-node@v4
+#          - uses: actions/checkout@v7
+#          - uses: actions/setup-node@v7
 #            with:
 #              node-version: ${{ matrix.node-version }}
 #              cache: 'npm'

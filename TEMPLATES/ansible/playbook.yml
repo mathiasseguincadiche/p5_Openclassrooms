@@ -19,7 +19,7 @@
   # Cible : tous les serveurs dans le fichier d'inventaire (inventory.ini)
   hosts: all
   # Exécute les tâches en tant que root (nécessaire pour installer des paquets)
-  become: yes
+  become: true
 
   # Variables globales pour ce playbook
   vars:
@@ -35,7 +35,7 @@
     # --- Tâche 1 : Mettre à jour les paquets APT ---
     - name: Mettre à jour les paquets APT
       apt:
-        update_cache: yes
+        update_cache: true
         upgrade: dist
       # Cette tâche ne s'exécute que sur les systèmes Debian/Ubuntu
       when: ansible_os_family == "Debian"
@@ -71,7 +71,7 @@
       service:
         name: nginx
         state: started
-        enabled: yes
+        enabled: true
       # Explication :
       # - name : Nom du service.
       # - state: started : Démarre le service.
@@ -96,7 +96,7 @@
           server {
             listen 80;
             server_name {{ server_name }};
-            
+
             location / {
               return 200 "{{ custom_message }}";
               add_header Content-Type text/plain;
@@ -123,7 +123,7 @@
       user:
         name: "{{ ansible_user }}"
         groups: docker
-        append: yes
+        append: true
       # Explication :
       # - name : Nom de l'utilisateur (utilise la variable ansible_user).
       # - groups: docker : Ajoute l'utilisateur au groupe docker.

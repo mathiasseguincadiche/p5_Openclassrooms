@@ -10,6 +10,9 @@ source "$(dirname "$0")/utils/colors.sh"
 source "$(dirname "$0")/utils/checks.sh"
 source "$(dirname "$0")/utils/prompts.sh"
 
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+
 # =============================================================================
 # VARIABLES GLOBALES
 # =============================================================================
@@ -37,15 +40,15 @@ show_help() {
 # Nettoie les ressources de l'Exercice 1
 cleanup_exercice_1() {
     step 1 "Nettoyage de l'Exercice 1 (Terraform + Ansible)"
-    
-    EXERCICE_1_DIR="04_EXERCICES/01_TERRAFORM_ANSIBLE"
-    
+
+    EXERCICE_1_DIR="$PROJECT_ROOT/terraform/exercice-1"
+
     if [ -d "$EXERCICE_1_DIR" ]; then
         cd "$EXERCICE_1_DIR" || {
             error "Impossible de se déplacer vers $EXERCICE_1_DIR"
             return 1
         }
-        
+
         if check_terraform_state "."; then
             info "Suppression des ressources Terraform de l'Exercice 1..."
             if terraform destroy -auto-approve; then
@@ -58,7 +61,7 @@ cleanup_exercice_1() {
         else
             info "Aucun state Terraform trouvé pour l'Exercice 1"
         fi
-        
+
         cd - >/dev/null
     else
         info "Le dossier $EXERCICE_1_DIR n'existe pas"
@@ -68,15 +71,15 @@ cleanup_exercice_1() {
 # Nettoie les ressources de l'Exercice 2
 cleanup_exercice_2() {
     step 2 "Nettoyage de l'Exercice 2 (OpenSearch)"
-    
-    EXERCICE_2_DIR="04_EXERCICES/02_OPENSEARCH"
-    
+
+    EXERCICE_2_DIR="$PROJECT_ROOT/terraform/exercice-2"
+
     if [ -d "$EXERCICE_2_DIR" ]; then
         cd "$EXERCICE_2_DIR" || {
             error "Impossible de se déplacer vers $EXERCICE_2_DIR"
             return 1
         }
-        
+
         if check_terraform_state "."; then
             info "Suppression du domaine OpenSearch..."
             if terraform destroy -auto-approve; then
@@ -89,7 +92,7 @@ cleanup_exercice_2() {
         else
             info "Aucun state Terraform trouvé pour l'Exercice 2"
         fi
-        
+
         cd - >/dev/null
     else
         info "Le dossier $EXERCICE_2_DIR n'existe pas"
@@ -99,15 +102,15 @@ cleanup_exercice_2() {
 # Nettoie les ressources de l'Exercice 3
 cleanup_exercice_3() {
     step 3 "Nettoyage de l'Exercice 3 (HAProxy)"
-    
-    EXERCICE_3_DIR="04_EXERCICES/03_HAPROXY"
-    
+
+    EXERCICE_3_DIR="$PROJECT_ROOT/terraform/exercice-3"
+
     if [ -d "$EXERCICE_3_DIR" ]; then
         cd "$EXERCICE_3_DIR" || {
             error "Impossible de se déplacer vers $EXERCICE_3_DIR"
             return 1
         }
-        
+
         if check_terraform_state "."; then
             info "Suppression des ressources Terraform de l'Exercice 3..."
             if terraform destroy -auto-approve; then
@@ -120,7 +123,7 @@ cleanup_exercice_3() {
         else
             info "Aucun state Terraform trouvé pour l'Exercice 3"
         fi
-        
+
         cd - >/dev/null
     else
         info "Le dossier $EXERCICE_3_DIR n'existe pas"
@@ -130,30 +133,33 @@ cleanup_exercice_3() {
 # Vérifie qu'il n'y a plus de ressources AWS
 verify_cleanup() {
     step 4 "Vérification du nettoyage"
-    
+
     info "Vérification qu'il n'y a plus de ressources AWS..."
     echo ""
-    
+
     # Vérifier les instances EC2
     info "Vérification des instances EC2..."
-    instances=$(aws ec2 describe-instances --query "length(Reservations[].Instances[?Tags[?Key=='Project' && Value=='$PROJECT_TAG']])" --output text 2>/dev/null)
+    instances=$(aws ec2 describe-instances \
+        --filters "Name=tag:Project,Values=$PROJECT_TAG" \
+            "Name=instance-state-name,Values=pending,running,stopping,stopped,shutting-down" \
+        --query "length(Reservations[].Instances[])" --output text 2>/dev/null)
     if [ "$instances" -eq 0 ]; then
         check "Aucune instance EC2 avec le tag Project=$PROJECT_TAG"
     else
         error "Il reste $instances instance(s) EC2 avec le tag Project=$PROJECT_TAG"
         info "Exécutez : aws ec2 describe-instances --query \"Reservations[].Instances[?Tags[?Key=='Project' && Value=='$PROJECT_TAG']].[InstanceId, PublicIpAddress, State.Name]\" --output table"
     fi
-    
+
     # Vérifier les domaines OpenSearch
     info "Vérification des domaines OpenSearch..."
-    domains=$(aws es list-domain-names --query "length(DomainNames[?starts_with(@, 'p5-opensearch')])" --output text 2>/dev/null)
+    domains=$(aws opensearch list-domain-names --query "length(DomainNames[?starts_with(DomainName, 'p5-opensearch')])" --output text 2>/dev/null)
     if [ "$domains" -eq 0 ]; then
         check "Aucun domaine OpenSearch avec le préfixe p5-opensearch"
     else
         error "Il reste $domains domaine(s) OpenSearch avec le préfixe p5-opensearch"
-        info "Exécutez : aws es list-domain-names"
+        info "Exécutez : aws opensearch list-domain-names"
     fi
-    
+
     echo ""
     if [ "$instances" -eq 0 ] && [ "$domains" -eq 0 ]; then
         success "Toutes les ressources AWS ont été supprimées"
@@ -166,17 +172,17 @@ verify_cleanup() {
 cleanup_all() {
     title "NETTOYAGE COMPLET DES RESSOURCES AWS"
     warning "⚠️ ATTENTION : Ce script va SUPPRIMER TOUTES les ressources AWS du projet P5"
-    
+
     # Nettoyer chaque exercice
     cleanup_exercice_1
     echo ""
-    
+
     cleanup_exercice_2
     echo ""
-    
+
     cleanup_exercice_3
     echo ""
-    
+
     # Vérifier le nettoyage
     verify_cleanup
 }

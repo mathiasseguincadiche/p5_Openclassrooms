@@ -1,47 +1,91 @@
 ---
-- name: Deploy p5_Openclassrooms infrastructure
-  hosts: all
-  become: yes
-  gather_facts: yes
+- name: Déployer l'interface web P5 avec NGINX
+  hosts: webservers
+  become: true
+  gather_facts: true
 
   vars:
-    project_name: "p5_Openclassrooms"
-    user: "appuser"
-    group: "appgroup"
+    application_user: appuser
+    application_group: appgroup
+    web_root: /var/www/p5
 
   tasks:
-    - name: Ensure required packages are installed
-      ansible.builtin.package:
+    - name: Installer NGINX et les utilitaires requis
+      ansible.builtin.apt:
         name:
-          - git
+          - nginx
           - curl
-          - wget
-          - unzip
-          - python3
-          - python3-pip
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Créer le groupe de l'application
+      ansible.builtin.group:
+        name: "{{ application_group }}"
+        system: true
         state: present
 
-    - name: Create application directory
-      ansible.builtin.file:
-        path: "/opt/{{ project_name }}"
-        state: directory
-        owner: "{{ user }}"
-        group: "{{ group }}"
-        mode: '0755'
-
-    - name: Ensure application user exists
+    - name: Créer l'utilisateur de l'application
       ansible.builtin.user:
-        name: "{{ user }}"
-        group: "{{ group }}"
-        shell: /bin/bash
-        system: yes
-        create_home: yes
+        name: "{{ application_user }}"
+        group: "{{ application_group }}"
+        shell: /usr/sbin/nologin
+        system: true
+        create_home: false
+        state: present
 
-    - name: Deploy application files
+    - name: Créer la racine du site
+      ansible.builtin.file:
+        path: "{{ web_root }}"
+        state: directory
+        owner: "{{ application_user }}"
+        group: "{{ application_group }}"
+        mode: "0755"
+
+    - name: Déployer les fichiers de l'interface web
       ansible.builtin.copy:
-        src: files/
-        dest: "/opt/{{ project_name }}/"
-        owner: "{{ user }}"
-        group: "{{ group }}"
-        mode: '0644'
-      when: false  # Désactivé par défaut, à activer si tu as des fichiers à déployer
+        src: ../files/angular-app/
+        dest: "{{ web_root }}/"
+        owner: "{{ application_user }}"
+        group: "{{ application_group }}"
+        directory_mode: "0755"
+        mode: "0644"
+      notify: Recharger NGINX
+
+    - name: Installer la configuration NGINX du projet
+      ansible.builtin.copy:
+        src: ../files/nginx-angular.conf
+        dest: /etc/nginx/sites-available/p5
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Recharger NGINX
+
+    - name: Activer le site P5
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/p5
+        dest: /etc/nginx/sites-enabled/p5
+        state: link
+      notify: Recharger NGINX
+
+    - name: Désactiver le site NGINX par défaut
+      ansible.builtin.file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+      notify: Recharger NGINX
+
+    - name: Vérifier la configuration NGINX
+      ansible.builtin.command: nginx -t
+      changed_when: false
+
+    - name: Démarrer et activer NGINX
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        enabled: true
+
+  handlers:
+    - name: Recharger NGINX
+      ansible.builtin.service:
+        name: nginx
+        state: reloaded

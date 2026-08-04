@@ -23,26 +23,26 @@ kind: Ingress
 metadata:
   # Nom de l'Ingress
   name: mon-app-ingress
-  
+
   # Labels pour identifier l'Ingress
   labels:
     app: mon-app
     environment: production
-  
+
   # Annotations pour configurer l'Ingress Controller
   annotations:
     # Annotation pour NGINX Ingress Controller : réécrire l'URL
     nginx.ingress.kubernetes.io/rewrite-target: /
-    
+
     # Annotation pour activer le SSL (si vous utilisez des certificats)
     # nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    
+
     # Annotation pour spécifier le certificat TLS
     # nginx.ingress.kubernetes.io/ssl-cert: "mon-namespace/mon-certificat-tls"
-    
+
     # Annotation pour limiter la taille des requêtes
     nginx.ingress.kubernetes.io/proxy-body-size: "10m"
-    
+
     # Annotation pour activer CORS (si nécessaire)
     # nginx.ingress.kubernetes.io/enable-cors: "true"
     # nginx.ingress.kubernetes.io/cors-allow-origin: "*"
@@ -50,18 +50,18 @@ metadata:
 spec:
   # Règles de routage
   rules:
-  # Règle 1 : Router le trafic vers mon-app-service pour le chemin /
-  - host: mon-app.example.com  # Nom d'hôte (optionnel, * pour tous les hôtes)
-    http:
-      paths:
-      - path: /  # Chemin URL
-        pathType: Prefix  # Type de correspondance (Prefix, Exact, ImplementationSpecific)
-        backend:
-          service:
-            name: mon-app-service  # Nom du service Kubernetes à exposer
-            port:
-              number: 80  # Port du service
-  
+    # Règle 1 : Router le trafic vers mon-app-service pour le chemin /
+    - host: mon-app.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: mon-app-service
+                port:
+                  number: 80
+
   # Règle 2 : Router le trafic vers un autre service pour le chemin /api
   # - host: api.example.com
   #   http:
@@ -73,7 +73,7 @@ spec:
   #           name: mon-api-service
   #           port:
   #             number: 8080
-  
+
   # Règle 3 : Router le trafic vers un service pour un chemin exact
   # - http:
   #     paths:

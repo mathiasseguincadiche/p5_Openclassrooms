@@ -4,9 +4,6 @@
 # Ce fichier permet de définir et gérer des applications multi-conteneurs
 # avec Docker Compose. Chaque service est expliqué ci-dessous.
 
-# Version du schéma Docker Compose (3.x est recommandée)
-version: "3.8"
-
 # =============================================
 # SERVICES : Liste des services (conteneurs) à lancer
 # =============================================
@@ -16,75 +13,75 @@ services:
   backend:
     # Construire l'image à partir du Dockerfile dans le répertoire courant
     build: .
-    
+
     # Nom du conteneur (optionnel)
     container_name: p5-backend
-    
+
     # Mapper le port 3000 du conteneur au port 3000 de l'hôte
     ports:
       - "3000:3000"
-    
+
     # Variables d'environnement
     environment:
       - NODE_ENV=production
       - DB_HOST=db  # Nom du service de la base de données (Docker Compose gère le DNS)
       - DB_PORT=5432
       - DB_USER=postgres
-      - DB_PASSWORD=postgres
+      - DB_PASSWORD=${DB_PASSWORD:?Définissez DB_PASSWORD dans votre environnement}
       - DB_NAME=mydb
-    
+
     # Dépendre du service de base de données (attendre que la DB soit prête)
     depends_on:
       - db
-    
+
     # Volumes pour persister des données ou monter des fichiers
     volumes:
       - ./logs:/app/logs  # Monte le dossier ./logs local dans /app/logs dans le conteneur
-    
+
     # Redémarrer automatiquement en cas d'erreur
     restart: unless-stopped
 
   # --- Service 2 : Base de données PostgreSQL ---
   db:
     # Utiliser une image PostgreSQL officielle
-    image: postgres:13
-    
+    image: postgres:17-alpine
+
     # Nom du conteneur (optionnel)
     container_name: p5-db
-    
+
     # Variables d'environnement pour PostgreSQL
     environment:
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_PASSWORD=${DB_PASSWORD:?Définissez DB_PASSWORD dans votre environnement}
       - POSTGRES_DB=mydb
-    
+
     # Persister les données dans un volume nommé
     volumes:
       - db_data:/var/lib/postgresql/data
-    
+
     # Mapper le port 5432 du conteneur au port 5432 de l'hôte (optionnel)
     ports:
       - "5432:5432"
-    
+
     # Redémarrer automatiquement en cas d'erreur
     restart: unless-stopped
 
   # --- Service 3 : Cache Redis ---
   redis:
     # Utiliser une image Redis officielle
-    image: redis:alpine
-    
+    image: redis:8-alpine
+
     # Nom du conteneur (optionnel)
     container_name: p5-redis
-    
+
     # Persister les données Redis dans un volume nommé
     volumes:
       - redis_data:/data
-    
+
     # Mapper le port 6379 du conteneur au port 6379 de l'hôte (optionnel)
     ports:
       - "6379:6379"
-    
+
     # Redémarrer automatiquement en cas d'erreur
     restart: unless-stopped
 
@@ -92,18 +89,18 @@ services:
   frontend:
     # Construire l'image à partir du Dockerfile dans le dossier ./frontend
     build: ./frontend
-    
+
     # Nom du conteneur (optionnel)
     container_name: p5-frontend
-    
+
     # Mapper le port 80 du conteneur au port 8080 de l'hôte
     ports:
       - "8080:80"
-    
+
     # Dépendre du service backend
     depends_on:
       - backend
-    
+
     # Redémarrer automatiquement en cas d'erreur
     restart: unless-stopped
 

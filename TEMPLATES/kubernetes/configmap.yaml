@@ -18,7 +18,7 @@ kind: ConfigMap
 metadata:
   # Nom du ConfigMap
   name: mon-app-config
-  
+
   # Labels pour identifier le ConfigMap
   labels:
     app: mon-app
@@ -34,7 +34,7 @@ data:
   DB_HOST: "postgres"
   DB_PORT: "5432"
   DB_NAME: "mydb"
-  
+
   # --- Fichiers de configuration ---
   # Ces fichiers peuvent être montés comme volumes dans un conteneur.
   # Utilisez | pour définir un contenu multi-lignes (YAML).
@@ -42,19 +42,19 @@ data:
     server {
       listen 8080;
       server_name localhost;
-      
+
       location / {
         proxy_pass http://localhost:3000;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
       }
-      
+
       location /healthz {
         return 200 "OK";
         add_header Content-Type text/plain;
       }
     }
-  
+
   # Exemple de fichier de configuration pour une application Node.js
   app.config.json: |
     {
@@ -70,7 +70,7 @@ data:
         "file": "/var/log/app.log"
       }
     }
-  
+
   # Exemple de fichier .env (pour les applications qui lisent depuis un fichier .env)
   dotenv: |
     ENVIRONMENT=production

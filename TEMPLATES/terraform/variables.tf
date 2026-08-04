@@ -83,7 +83,6 @@ variable "private_subnet_cidr" {
 variable "ami_id" {
   description = "AMI à utiliser pour les instances EC2"
   type        = string
-  default     = "ami-0c55b159cbfafe1f0"  # Ubuntu 22.04 LTS en eu-west-3
 }
 
 # Type d'instance EC2
@@ -102,7 +101,6 @@ variable "instance_type" {
 variable "key_name" {
   description = "Nom de la clé SSH pour se connecter aux instances EC2"
   type        = string
-  default     = "ma-cle-ssh"  # À remplacer par le nom de votre clé SSH
 }
 
 # =============================================
@@ -111,9 +109,8 @@ variable "key_name" {
 
 # Plages d'adresses IP autorisées pour SSH (CIDR)
 variable "ssh_cidr_blocks" {
-  description = "Plages d'adresses IP autorisées pour SSH (ex: [\"0.0.0.0/0\"])"
+  description = "Plages d'adresses IP autorisées pour SSH (ex: [\"203.0.113.10/32\"])"
   type        = list(string)
-  default     = ["0.0.0.0/0"]  # Autorise SSH depuis n'importe où (à restreindre en production !)
 }
 
 # Plages d'adresses IP autorisées pour HTTP/HTTPS (CIDR)
@@ -159,8 +156,7 @@ variable "db_username" {
 variable "db_password" {
   description = "Mot de passe de la base de données"
   type        = string
-  sensitive   = true  # Masque la valeur dans les logs
-  default     = "mon-mot-de-passe"  # À remplacer !
+  sensitive   = true
 }
 
 # =============================================

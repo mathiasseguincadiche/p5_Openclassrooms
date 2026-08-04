@@ -23,13 +23,13 @@
 # Bloc terraform : configure la version de Terraform et les providers requis
 terraform {
   # Version minimale de Terraform requise
-  required_version = ">= 1.5.0"
+  required_version = ">= 1.15.0, < 2.0.0"
 
   # Providers requis
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 4.0"  # Version 4.x du provider AWS
+      version = "~> 5.0"
     }
   }
 }
@@ -68,7 +68,7 @@ resource "aws_vpc" "main" {
 # Créer un subnet public
 resource "aws_subnet" "public" {
   # VPC dans lequel créer le subnet
-  vpc_id     = aws_vpc.main.id
+  vpc_id = aws_vpc.main.id
 
   # Plage d'adresses IP pour le subnet (CIDR)
   cidr_block = var.public_subnet_cidr
@@ -89,7 +89,7 @@ resource "aws_subnet" "public" {
 # Créer un subnet privé
 resource "aws_subnet" "private" {
   # VPC dans lequel créer le subnet
-  vpc_id     = aws_vpc.main.id
+  vpc_id = aws_vpc.main.id
 
   # Plage d'adresses IP pour le subnet (CIDR)
   cidr_block = var.private_subnet_cidr
@@ -118,6 +118,8 @@ resource "aws_internet_gateway" "igw" {
 
 # Créer une Elastic IP pour la NAT Gateway
 resource "aws_eip" "nat" {
+  domain = "vpc"
+
   # Tag pour identifier l'Elastic IP
   tags = {
     Name    = "${var.project_name}-nat-eip"
@@ -182,7 +184,7 @@ resource "aws_route_table" "private" {
 # Associer la route table publique au subnet public
 resource "aws_route_table_association" "public" {
   # Subnet à associer
-  subnet_id      = aws_subnet.public.id
+  subnet_id = aws_subnet.public.id
 
   # Route table à associer
   route_table_id = aws_route_table.public.id
@@ -191,7 +193,7 @@ resource "aws_route_table_association" "public" {
 # Associer la route table privée au subnet privé
 resource "aws_route_table_association" "private" {
   # Subnet à associer
-  subnet_id      = aws_subnet.private.id
+  subnet_id = aws_subnet.private.id
 
   # Route table à associer
   route_table_id = aws_route_table.private.id
@@ -213,7 +215,7 @@ resource "aws_security_group" "public" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]  # Autorise SSH depuis n'importe où (à restreindre en production !)
+    cidr_blocks = var.ssh_cidr_blocks
   }
 
   ingress {
@@ -236,7 +238,7 @@ resource "aws_security_group" "public" {
   egress {
     from_port   = 0
     to_port     = 0
-    protocol    = "-1"  # Tous les protocoles
+    protocol    = "-1" # Tous les protocoles
     cidr_blocks = ["0.0.0.0/0"]
   }
 
@@ -292,13 +294,13 @@ resource "aws_security_group" "private" {
 # Créer une instance EC2 dans le subnet public
 resource "aws_instance" "public" {
   # AMI (Amazon Machine Image) : Ubuntu 22.04 LTS
-  ami           = var.ami_id
+  ami = var.ami_id
 
   # Type d'instance (t2.micro est éligible au Free Tier)
   instance_type = var.instance_type
 
   # Clé SSH pour se connecter à l'instance
-  key_name      = var.key_name
+  key_name = var.key_name
 
   # Subnet dans lequel lancer l'instance
   subnet_id = aws_subnet.public.id
@@ -320,13 +322,13 @@ resource "aws_instance" "public" {
 # Créer une instance EC2 dans le subnet privé
 resource "aws_instance" "private" {
   # AMI (Amazon Machine Image) : Ubuntu 22.04 LTS
-  ami           = var.ami_id
+  ami = var.ami_id
 
   # Type d'instance
   instance_type = var.instance_type
 
   # Clé SSH pour se connecter à l'instance
-  key_name      = var.key_name
+  key_name = var.key_name
 
   # Subnet dans lequel lancer l'instance
   subnet_id = aws_subnet.private.id

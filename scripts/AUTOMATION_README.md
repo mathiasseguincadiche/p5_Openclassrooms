@@ -58,6 +58,7 @@ Ce dossier contient des scripts pour **automatiser à 100%** le projet P5 "Dépl
 **Description** : Crée automatiquement le dashboard Kibana avec les 3 diagrammes obligatoires via l'API OpenSearch, avec vérifications avancées.
 
 **Nouveautés v2.0** :
+
 - ✅ Vérification automatique que l'index `nginx-access*` existe
 - ✅ Vérification que l'index contient des données (> 0 documents)
 - ✅ Vérification que tous les champs requis existent (`@timestamp`, `method`, `url`, `status`, `size`, `client_ip`)
@@ -67,6 +68,7 @@ Ce dossier contient des scripts pour **automatiser à 100%** le projet P5 "Dépl
 - ✅ Logging complet avec `logging.sh`
 
 **Utilisation** :
+
 ```bash
 # Mode interactif
 ./scripts/utils/kibana-api.sh --url https://votre-opensearch-url/_dashboards
@@ -82,6 +84,7 @@ Ce dossier contient des scripts pour **automatiser à 100%** le projet P5 "Dépl
 ```
 
 **Options** :
+
 - `--url URL` : Spécifie l'URL de Kibana
 - `--index-pattern PATTERN` : Spécifie l'index pattern (défaut: nginx-access*)
 - `--dashboard-name NAME` : Spécifie le nom du dashboard (défaut: P5_NGINX_Logs_Dashboard)
@@ -91,6 +94,7 @@ Ce dossier contient des scripts pour **automatiser à 100%** le projet P5 "Dépl
 - `--help, -h` : Affiche l'aide
 
 **Exemple de sortie** :
+
 ```
 ✅ Index nginx-access* trouvé
 ✅ Index contient 150 documents
@@ -106,6 +110,7 @@ URL : https://.../app/dashboards#/view/abc123
 **Description** : Génère automatiquement les 4 captures d'écran pour l'Exercice 2, avec support headless complet.
 
 **Nouveautés v2.0** :
+
 - ✅ **Mode headless** avec Puppeteer pour les environnements sans GUI
 - ✅ Installation automatique de Puppeteer et Node.js
 - ✅ Vérification automatique que Kibana est accessible
@@ -117,6 +122,7 @@ URL : https://.../app/dashboards#/view/abc123
 **Utilisation** :
 
 #### Mode GUI (avec interface graphique)
+
 ```bash
 # Mode interactif
 ./scripts/utils/capture-screenshots.sh --url https://votre-kibana-url
@@ -126,6 +132,7 @@ URL : https://.../app/dashboards#/view/abc123
 ```
 
 #### Mode Headless (sans interface graphique)
+
 ```bash
 # Installation des dépendances (une seule fois)
 sudo apt install -y nodejs npm
@@ -138,6 +145,7 @@ sudo apt install -y nodejs npm
 ```
 
 **Options** :
+
 - `--url URL` : Spécifie l'URL de Kibana
 - `--nom NOM` : Spécifie le nom (défaut: SEGUIN-CADICHE)
 - `--prenom PRENOM` : Spécifie le prénom (défaut: Mathias)
@@ -147,12 +155,14 @@ sudo apt install -y nodejs npm
 - `--help, -h` : Affiche l'aide
 
 **Fichiers générés** :
+
 - `{NOM}_{PRENOM}_2_dashboard_complet_{DATE}.png`
 - `{NOM}_{PRENOM}_2_diagramme_donut_{DATE}.png`
 - `{NOM}_{PRENOM}_2_diagramme_histogramme_{DATE}.png`
 - `{NOM}_{PRENOM}_2_diagramme_histogramme_cumule_{DATE}.png`
 
 **Prérequis pour le mode headless** :
+
 - Node.js (v14+ recommandé)
 - npm
 - Puppeteer (installé automatiquement)
@@ -165,6 +175,7 @@ sudo apt install -y nodejs npm
 **Description** : Vérifie l'état de santé de toutes les ressources du projet P5.
 
 **Fonctionnalités** :
+
 - ✅ Vérification des outils de base (Terraform, AWS CLI, Git, Ansible, curl, jq)
 - ✅ Vérification des fichiers du projet (scripts, configurations)
 - ✅ Vérification par phase (0 à 5)
@@ -175,6 +186,7 @@ sudo apt install -y nodejs npm
 - ✅ Rapport détaillé avec statistiques
 
 **Utilisation** :
+
 ```bash
 # Vérifier tout
 ./scripts/utils/health-checks.sh
@@ -193,6 +205,7 @@ sudo apt install -y nodejs npm
 ```
 
 **Options** :
+
 - `--auto, -a` : Mode automatique (pas de confirmation)
 - `--phase PHASE` : Vérifie seulement une phase spécifique (0-5)
 - `--quick` : Mode rapide (vérifications de base seulement)
@@ -200,6 +213,7 @@ sudo apt install -y nodejs npm
 - `--help, -h` : Affiche l'aide
 
 **Exemple de sortie** :
+
 ```
 === RAPPORT DE SANTÉ DU PROJET P5 ===
 
@@ -220,6 +234,7 @@ Statistiques : 5/6 phases réussies
 **Description** : Exécute automatiquement toutes les phases du projet de A à Z, avec validation pré-exécution.
 
 **Nouveautés v2.0** :
+
 - ✅ Validation automatique des prérequis avant exécution
 - ✅ Intégration des health checks (`--health-check`)
 - ✅ Mode `--validate` pour vérifier sans exécuter
@@ -229,6 +244,7 @@ Statistiques : 5/6 phases réussies
 - ✅ Rapports d'erreur détaillés
 
 **Utilisation** :
+
 ```bash
 # Exécuter tout le projet en mode interactif
 ./scripts/run-all.sh
@@ -256,6 +272,7 @@ Statistiques : 5/6 phases réussies
 ```
 
 **Options** :
+
 - `--auto, -a` : Mode automatique (pas de confirmation)
 - `--from PHASE` : Commence à partir de la phase spécifiée (0-5)
 - `--to PHASE` : Termine à la phase spécifiée (0-5)
@@ -272,12 +289,14 @@ Statistiques : 5/6 phases réussies
 **Description** : Fournit des fonctions de logging pour suivre l'avancement du projet.
 
 **Fonctionnalités** :
+
 - Logging avec timestamp et niveaux (INFO, SUCCESS, WARNING, ERROR, DEBUG)
 - Stockage des logs dans `/tmp/p5_logs/`
 - Affichage des statistiques des logs
 - Nettoyage automatique des anciens logs (> 7 jours)
 
 **Utilisation** :
+
 ```bash
 # Dans vos scripts, sourcez le fichier
 source ./scripts/utils/logging.sh
@@ -306,12 +325,14 @@ log_warning "Attention, problème détecté"
 ### Modifications apportées à `phase-2-opensearch-kibana.sh`
 
 Le script a été mis à jour pour :
+
 1. ✅ Proposer la création automatique du dashboard via `kibana-api.sh`
 2. ✅ Conserver la possibilité de créer le dashboard manuellement
 3. ✅ Afficher des instructions claires pour les deux méthodes
 4. ✅ Sauvegarder automatiquement l'URL de Kibana dans `/tmp/kibana_url.txt`
 
 **Nouveau flux** :
+
 ```
 1. Le script demande si vous voulez utiliser l'API pour créer le dashboard
 2. Si oui, il exécute automatiquement kibana-api.sh avec vérifications
@@ -322,6 +343,7 @@ Le script a été mis à jour pour :
 ### Modifications apportées à `phase-4-livrables.sh`
 
 Le script a été mis à jour pour :
+
 1. ✅ Rechercher d'abord les captures dans le dossier `captures/`
 2. ✅ Si le dossier existe, utiliser les captures automatiques
 3. ✅ Sinon, proposer de générer les captures avec `capture-screenshots.sh`
@@ -329,6 +351,7 @@ Le script a été mis à jour pour :
 5. ✅ Gérer les erreurs de manière plus robuste
 
 **Nouveau flux** :
+
 ```
 1. Le script vérifie si le dossier captures/ existe
 2. Si oui, il copie les captures depuis ce dossier
@@ -341,7 +364,7 @@ Le script a été mis à jour pour :
 
 ## 📊 Workflow Recommandé
 
-### Pour un déploiement complet automatique (avec environnement graphique) :
+### Pour un déploiement complet automatique (avec environnement graphique)
 
 ```bash
 # 1. Préparer l'environnement
@@ -367,7 +390,7 @@ Le script a été mis à jour pour :
 ./scripts/phase-5-nettoyage.sh --auto
 ```
 
-### Pour un déploiement complet en mode headless (sans GUI) :
+### Pour un déploiement complet en mode headless (sans GUI)
 
 ```bash
 # 1. Installer les dépendances headless
@@ -383,7 +406,7 @@ sudo apt update && sudo apt install -y nodejs npm
 ./scripts/phase-4-livrables.sh --auto
 ```
 
-### Pour un déploiement avec validation complète :
+### Pour un déploiement avec validation complète
 
 ```bash
 # 1. Vérifier l'état du projet
@@ -396,7 +419,7 @@ sudo apt update && sudo apt install -y nodejs npm
 ./scripts/run-all.sh --validate --health-check --auto
 ```
 
-### Ou en une seule commande (recommandé) :
+### Ou en une seule commande (recommandé)
 
 ```bash
 # Exécuter tout le projet avec validation et health checks
@@ -407,17 +430,20 @@ sudo apt update && sudo apt install -y nodejs npm
 
 ## 🎯 Bonnes Pratiques
 
-### Avant de commencer :
+### Avant de commencer
+
 1. **Vérifiez les prérequis** : `./scripts/run-all.sh --validate`
 2. **Exécutez les health checks** : `./scripts/utils/health-checks.sh --auto`
 3. **Installez les dépendances headless** si vous êtes en SSH : `sudo apt install -y nodejs npm`
 
-### Pendant l'exécution :
+### Pendant l'exécution
+
 1. **Surveillez les logs** : `tail -f /tmp/p5_logs/p5_*.log`
 2. **Utilisez le mode --wait** pour les vérifications automatiques
 3. **Activez le mode --auto** pour une exécution sans intervention
 
-### Après l'exécution :
+### Après l'exécution
+
 1. **Vérifiez le rapport final** dans le terminal
 2. **Consultez le fichier de log** : `/tmp/p5_logs/p5_*.log`
 3. **Exécutez les health checks** : `./scripts/utils/health-checks.sh`
@@ -427,9 +453,10 @@ sudo apt update && sudo apt install -y nodejs npm
 
 ## 🐛 Dépannage
 
-### Problèmes courants et solutions :
+### Problèmes courants et solutions
 
 #### 1. **Kibana n'est pas accessible**
+
 ```bash
 # Vérifiez le cluster OpenSearch
 ./scripts/utils/health-checks.sh --phase 2 --auto
@@ -442,6 +469,7 @@ sudo apt update && sudo apt install -y nodejs npm
 ```
 
 #### 2. **Les logs ne sont pas chargés dans OpenSearch**
+
 ```bash
 # Vérifiez avec kibana-api.sh en mode wait
 ./scripts/utils/kibana-api.sh --url https://... --wait --auto
@@ -453,6 +481,7 @@ sudo apt update && sudo apt install -y nodejs npm
 ```
 
 #### 3. **Les visualisations ne sont pas créées**
+
 ```bash
 # Vérifiez les champs dans l'index
 ./scripts/utils/kibana-api.sh --url https://... --auto
@@ -465,6 +494,7 @@ sudo apt update && sudo apt install -y nodejs npm
 ```
 
 #### 4. **Les captures d'écran ne sont pas générées (mode GUI)**
+
 ```bash
 # Vérifiez les outils de capture
 ./scripts/utils/capture-screenshots.sh --auto
@@ -477,6 +507,7 @@ sudo apt update && sudo apt install -y nodejs npm
 ```
 
 #### 5. **Les captures d'écran ne sont pas générées (mode headless)**
+
 ```bash
 # Vérifiez les dépendances headless
 ./scripts/utils/capture-screenshots.sh --headless --auto
@@ -489,6 +520,7 @@ sudo apt update && sudo apt install -y nodejs npm
 ```
 
 #### 6. **Le script run-all.sh s'arrête**
+
 ```bash
 # Consultez le fichier de log
 ./scripts/utils/logging.sh --show
@@ -503,6 +535,7 @@ sudo apt update && sudo apt install -y nodejs npm
 ```
 
 #### 7. **Problèmes de permissions**
+
 ```bash
 # Donnez les permissions à tous les scripts
 chmod +x scripts/*.sh scripts/utils/*.sh
@@ -537,6 +570,7 @@ bash scripts/run-all.sh --auto
 ## 📞 Support
 
 Pour toute question ou problème :
+
 1. Consultez les logs dans `/tmp/p5_logs/`
 2. Vérifiez la documentation ci-dessus
 3. Exécutez les health checks : `./scripts/utils/health-checks.sh --auto`

@@ -8,7 +8,7 @@
 
 1. [Schéma Global du Projet](#-schéma-global-du-projet)
 2. [Schéma de l'Environnement Local](#-schéma-de-lenvironnement-local)
-3. [Schéma de l'Environnement GitHub](#-schéma-de-lenvironnement-github)
+3. [Schéma de l'Environnement GitHub](#environnement-github)
 4. [Schéma de l'Environnement de Production](#-schéma-de-lenvironnement-de-production)
 5. [Schéma par Exercice](#-schéma-par-exercice)
 6. [Légende](#-légende)
@@ -28,13 +28,13 @@ graph TD
         D --> E[Docker Hub]
         D -->|docker run| F[Conteneur Local]
         F -->|Expose Port| G[Application en Local]
-        
+
         C -->|docker-compose.yml| H[Docker Compose]
         H --> I[Multi-Conteneurs]
         I --> J[Base de Données]
         I --> K[Backend]
         I --> L[Frontend]
-        
+
         C -->|minikube/kind| M[Cluster K8s Local]
         M --> N[Pods]
         N --> O[Services]
@@ -86,6 +86,7 @@ graph TD
 Ce schéma détaille **l'environnement de développement local**, avec Docker, Docker Compose, et Kubernetes.
 
 ### Avec Docker
+
 ```mermaid
 graph LR
     A[Code Source] -->|Dockerfile| B[Image Docker]
@@ -93,27 +94,28 @@ graph LR
     C -->|docker run| D[Conteneur]
     D -->|Expose Port| E[Application]
     E -->|http://localhost:3000| F[Navigateur]
-    
+
     style A fill:#9f9,stroke:#333
     style B fill:#ff9,stroke:#333
     style D fill:#f96,stroke:#333
 ```
 
 ### Avec Docker Compose
+
 ```mermaid
 graph TD
     A[docker-compose.yml] --> B[Docker Compose]
     B --> C[Crée un Réseau]
     B --> D[Lance les Services]
-    
+
     D --> E[Service: web]
     D --> F[Service: db]
     D --> G[Service: redis]
-    
+
     E -->|Port 80| H[Navigateur]
     F -->|Port 5432| E
     G -->|Port 6379| E
-    
+
     style A fill:#bbf,stroke:#333
     style D fill:#9f9,stroke:#333
     style E fill:#ff9,stroke:#333
@@ -121,26 +123,27 @@ graph TD
 ```
 
 ### Avec Kubernetes (Minikube/Kind)
+
 ```mermaid
 graph TD
     A[Cluster K8s Local] --> B[Node Master]
     A --> C[Node Worker]
-    
+
     B --> D[API Server]
     B --> E[Scheduler]
     B --> F[Controller Manager]
     B --> G[Etcd]
-    
+
     C --> H[Pod 1]
     C --> I[Pod 2]
     C --> J[Pod 3]
-    
+
     H --> K[Conteneur App]
     H --> L[Conteneur Sidecar]
     K --> M[Service]
     M --> N[Ingress]
     N --> O[http://localhost:8080]
-    
+
     style A fill:#f96,stroke:#333
     style B fill:#ff9,stroke:#333
     style C fill:#9f9,stroke:#333
@@ -148,6 +151,8 @@ graph TD
 ```
 
 ---
+
+<a id="environnement-github"></a>
 
 ## ☁️ Schéma de l'Environnement GitHub
 
@@ -158,7 +163,7 @@ graph TD
     A[Push sur main] --> B[GitHub Actions]
     A --> C[Pull Request]
     C --> B
-    
+
     B --> D[Workflow CI]
     D --> E[Checkout Code]
     E --> F[Setup Node.js]
@@ -167,15 +172,15 @@ graph TD
     H --> I[Run Linter]
     I --> J[Build Docker Image]
     J --> K[Push to Docker Hub]
-    
+
     D -->|Succès| L[Workflow CD]
     L --> M[Déploiement en Staging]
     M --> N[Tests en Staging]
     N -->|Succès| O[Déploiement en Production]
-    
+
     I -->|Échec| P[Notification Slack]
     N -->|Échec| P
-    
+
     style A fill:#bbf,stroke:#333
     style D fill:#9f9,stroke:#333
     style L fill:#ff9,stroke:#333
@@ -190,51 +195,53 @@ graph TD
 Ce schéma détaille **l'infrastructure en production**, avec Terraform, Kubernetes, et Ansible.
 
 ### Infrastructure as Code avec Terraform
+
 ```mermaid
 graph TD
     A[Fichiers Terraform] --> B[terraform init]
     B --> C[terraform plan]
     C --> D[terraform apply]
     D --> E[AWS/Azure/GCP]
-    
+
     E --> F[VPC]
     E --> G[Subnets]
     E --> H[Security Groups]
     E --> I[Load Balancer]
     E --> J[Cluster Kubernetes]
     E --> K[Base de Données]
-    
+
     style A fill:#99f,stroke:#333
     style D fill:#ff9,stroke:#333
     style E fill:#f96,stroke:#333
 ```
 
 ### Cluster Kubernetes en Production
+
 ```mermaid
 graph TD
     A[Cluster Kubernetes] --> B[Node Master x3]
     A --> C[Node Worker xN]
-    
+
     B --> D[API Server]
     B --> E[Scheduler]
     B --> F[Controller Manager]
     B --> G[Etcd Cluster]
-    
+
     C --> H[Pods]
     H --> I[Conteneurs]
     I --> J[Applications]
-    
+
     A --> K[Service Mesh]
     K -->|Istio/Linkerd| H
-    
+
     A --> L[Ingress Controller]
     L --> M[Load Balancer]
     M -->|HTTP/HTTPS| N[Utilisateurs]
-    
+
     A --> O[Monitoring]
     O --> P[Prometheus]
     O --> Q[Grafana]
-    
+
     style A fill:#f96,stroke:#333
     style B fill:#ff9,stroke:#333
     style C fill:#9f9,stroke:#333
@@ -242,26 +249,27 @@ graph TD
 ```
 
 ### Configuration avec Ansible
+
 ```mermaid
 graph TD
     A[Playbook Ansible] --> B[Inventory]
     B --> C[Serveurs Cibles]
     A --> D[Variables]
     A --> E[Rôles]
-    
+
     C --> F[Serveur 1]
     C --> G[Serveur 2]
     C --> H[Serveur N]
-    
+
     A -->|ansible-playbook| I[Exécution]
     I --> F
     I --> G
     I --> H
-    
+
     F -->|Installe| J[Docker]
     F -->|Configure| K[Kubernetes]
     F -->|Déploie| L[Applications]
-    
+
     style A fill:#9f9,stroke:#333
     style I fill:#ff9,stroke:#333
     style F fill:#f96,stroke:#333
@@ -272,6 +280,7 @@ graph TD
 ## 🎯 Schéma par Exercice
 
 ### Exercice 1 : Déploiement avec Docker
+
 ```mermaid
 graph LR
     A[Code Source] -->|Dockerfile| B[Image Docker]
@@ -279,13 +288,14 @@ graph LR
     C -->|docker run| D[Conteneur]
     D -->|Expose Port 3000| E[Application]
     E -->|http://localhost:3000| F[Navigateur]
-    
+
     style A fill:#9f9,stroke:#333
     style B fill:#ff9,stroke:#333
     style D fill:#f96,stroke:#333
 ```
 
 ### Exercice 2 : CI/CD avec GitHub Actions
+
 ```mermaid
 graph TD
     A[Push sur GitHub] --> B[Workflow CI]
@@ -296,32 +306,34 @@ graph TD
     F --> G[Run Linter]
     G -->|Succès| H[Build Docker Image]
     H --> I[Push to Docker Hub]
-    
+
     style A fill:#bbf,stroke:#333
     style B fill:#9f9,stroke:#333
     style H fill:#ff9,stroke:#333
 ```
 
 ### Exercice 3 : Configuration avec Ansible
+
 ```mermaid
 graph TD
     A[Playbook Ansible] --> B[Inventory]
     B --> C[Serveurs]
     A --> D[Variables]
     A --> E[Tasks]
-    
+
     E -->|ansible-playbook| F[Exécution]
     F --> C
     C --> G[Installe Nginx]
     C --> H[Configure Nginx]
     C --> I[Démarre Nginx]
-    
+
     style A fill:#9f9,stroke:#333
     style F fill:#ff9,stroke:#333
     style C fill:#f96,stroke:#333
 ```
 
 ### Exercice 4 : Infrastructure as Code avec Terraform
+
 ```mermaid
 graph TD
     A[Fichiers .tf] --> B[terraform init]
@@ -331,13 +343,14 @@ graph TD
     E --> F[Crée VPC]
     E --> G[Crée EC2 Instance]
     E --> H[Crée Security Group]
-    
+
     style A fill:#99f,stroke:#333
     style D fill:#ff9,stroke:#333
     style E fill:#f96,stroke:#333
 ```
 
 ### Exercice 5 : Orchestration avec Kubernetes
+
 ```mermaid
 graph TD
     A[Manifests K8s] --> B[kubectl apply]
@@ -346,11 +359,11 @@ graph TD
     D --> E[Pods]
     E --> F[Conteneurs]
     F --> G[Application]
-    
+
     C --> H[Service]
     H --> I[Load Balancer]
     I -->|HTTP| J[Utilisateur]
-    
+
     style A fill:#bbf,stroke:#333
     style B fill:#ff9,stroke:#333
     style E fill:#f96,stroke:#333

@@ -18,11 +18,11 @@ source "$(dirname "$0")/colors.sh"
 confirm() {
     local message="$1"
     local default="${2:-y}"  # Par défaut : Oui
-    
+
     question "$message (O/n) "
     read -r -n 1 response
     echo
-    
+
     case "$response" in
         [oOyY])
             return 0
@@ -45,12 +45,12 @@ confirm() {
 # Retourne 0 si Oui, 1 si Non
 confirm_strict() {
     local message="$1"
-    
+
     while true; do
         question "$message (O/n) "
         read -r -n 1 response
         echo
-        
+
         case "$response" in
             [oOyY])
                 return 0
@@ -78,13 +78,13 @@ choose() {
     shift
     local options=("$@")
     local choice
-    
+
     echo
     question "$message"
     for i in "${!options[@]}"; do
         echo "  $((i+1)). ${options[$i]}"
     done
-    
+
     while true; do
         read -r -p "Votre choix [1-${#options[@]}] : " choice
         if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#options[@]} ]; then
@@ -108,15 +108,15 @@ show_menu() {
     shift
     local options=("$@")
     local choice
-    
+
     title "$title"
-    
+
     for i in "${!options[@]}"; do
         local key=$(echo "${options[$i]}" | cut -d':' -f1)
         local desc=$(echo "${options[$i]}" | cut -d':' -f2-)
         echo "  $key. $desc"
     done
-    
+
     echo
     while true; do
         read -r -p "Votre choix : " choice
@@ -140,7 +140,7 @@ progress_bar() {
     local width=50
     local completed=$((percent * width / 100))
     local remaining=$((width - completed))
-    
+
     info "$message"
     printf "["
     printf "${GREEN}%${completed}s${NC}" | tr ' ' '='

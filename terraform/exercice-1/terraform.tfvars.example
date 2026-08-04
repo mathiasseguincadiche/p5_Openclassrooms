@@ -7,10 +7,8 @@
 # Région AWS (us-east-1 OBLIGATOIRE pour ce projet)
 aws_region = "us-east-1"
 
-# AMI ID pour Ubuntu 26.04 (us-east-1)
-# Pour trouver l'AMI ID actuelle :
-# aws ec2 describe-images --owners 099720109477 --filters 'Name=ubuntu/images/hvm-ssd/ubuntu-noble-26.04-amd64-server-*' --query 'Images | sort_by(@, &CreationDate) | [-1].ImageId' --output text
-ami_id = "ami-0c55b159cbfafe1f0"
+# Laissez null pour sélectionner automatiquement la dernière Ubuntu 24.04 LTS.
+ami_id = null
 
 # Type d'instance EC2 (t2.micro est gratuit avec Free Tier)
 instance_type = "t2.micro"

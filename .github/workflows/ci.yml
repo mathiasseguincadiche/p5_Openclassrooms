@@ -1,114 +1,129 @@
-# =============================================
-# Workflow CI pour le projet P5 OpenClassrooms
-# =============================================
-# Ce workflow s'exécute à chaque push ou pull request sur la branche main.
-# Il permet de :
-# 1. Vérifier la syntaxe des fichiers Markdown.
-# 2. Vérifier la syntaxe des fichiers YAML.
-# 3. Vérifier la syntaxe des fichiers Terraform (si présents).
-# 4. Vérifier la syntaxe des fichiers Dockerfile (si présents).
-#
-# Pour désactiver ce workflow, supprimez ce fichier ou commentez son contenu.
-
-name: CI - Vérification des fichiers
+# =============================================================================
+# CI : validation reproductible de l'ensemble du dépôt P5
+# =============================================================================
+name: CI - Qualité du dépôt
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [main]
   pull_request:
-    branches: [ "main" ]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  # Job 1 : Vérifier la syntaxe des fichiers Markdown
-  markdown-lint:
-    name: Vérifier la syntaxe Markdown
+  bash:
+    name: Bash
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v7
 
-      - name: Installer markdownlint
-        run: npm install -g markdownlint-cli
+      - name: Vérifier la syntaxe Bash
+        run: find . -type f -name '*.sh' -print0 | xargs -0 -r -n1 bash -n
 
-      - name: Vérifier les fichiers Markdown
-        run: |
-          # Vérifier tous les fichiers .md dans le dépôt
-          find . -name "*.md" -type f | xargs markdownlint --ignore node_modules
+      - name: Analyser les scripts avec ShellCheck
+        run: find . -type f -name '*.sh' -print0 | xargs -0 -r shellcheck --severity=error
 
-  # Job 2 : Vérifier la syntaxe des fichiers YAML
-  yaml-lint:
-    name: Vérifier la syntaxe YAML
+  yaml:
+    name: YAML
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v7
 
       - name: Installer yamllint
-        run: pip install yamllint
+        run: python -m pip install --disable-pip-version-check yamllint==1.37.1
 
       - name: Vérifier les fichiers YAML
-        run: |
-          # Vérifier tous les fichiers .yaml et .yml dans le dépôt
-          find . -name "*.yaml" -o -name "*.yml" | xargs yamllint -d relaxed
+        run: yamllint --config-file .yamllint.yml .
 
-  # Job 3 : Vérifier la syntaxe des fichiers Terraform
-  terraform-lint:
-    name: Vérifier la syntaxe Terraform
+  terraform:
+    name: Terraform
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v7
 
       - name: Installer Terraform
-        uses: hashicorp/setup-terraform@v2
+        uses: hashicorp/setup-terraform@v4
         with:
-          terraform_version: 1.5.7
+          terraform_version: 1.15.8
 
-      - name: Vérifier les fichiers Terraform
+      - name: Vérifier le format Terraform
+        run: terraform fmt -check -recursive
+
+      - name: Initialiser et valider chaque module racine
+        shell: bash
         run: |
-          # Trouver tous les fichiers .tf et vérifier leur syntaxe
-          find . -name "*.tf" -type f | xargs -I {} sh -c 'terraform validate -no-color {} || true'
+          set -euo pipefail
+          modules=(
+            terraform/exercice-1
+            terraform/exercice-2
+            terraform/exercice-3
+            TEMPLATES/terraform
+          )
+          for module in "${modules[@]}"; do
+            echo "Validation de ${module}"
+            terraform -chdir="${module}" init -backend=false -input=false
+            terraform -chdir="${module}" validate
+          done
 
-  # Job 4 : Vérifier la syntaxe des Dockerfiles
-  dockerfile-lint:
-    name: Vérifier la syntaxe Dockerfile
+  markdown:
+    name: Markdown
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v7
 
-      - name: Installer hadolint
-        run: |
-          wget -O /tmp/hadolint https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64
-          chmod +x /tmp/hadolint
-          sudo mv /tmp/hadolint /usr/local/bin/hadolint
+      - name: Vérifier la présentation Markdown
+        uses: DavidAnson/markdownlint-cli2-action@v24
+        with:
+          globs: |
+            **/*.md
+            #node_modules
 
-      - name: Vérifier les Dockerfiles
-        run: |
-          # Trouver tous les Dockerfiles et vérifier leur syntaxe
-          find . -name "Dockerfile*" -type f | xargs hadolint --ignore DL3003,DL3013
+      - name: Vérifier les liens et ancres internes
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: --offline --no-progress './**/*.md'
+          fail: true
 
-  # Job 5 : Vérifier les liens dans les fichiers Markdown
-  markdown-links:
-    name: Vérifier les liens Markdown
+  configurations:
+    name: Ansible, NGINX et Docker
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v7
 
-      - name: Installer markdown-link-check
-        run: npm install -g markdown-link-check
-
-      - name: Vérifier les liens dans les fichiers Markdown
+      - name: Vérifier les Dockerfiles avec Hadolint
+        shell: bash
         run: |
-          # Vérifier les liens dans tous les fichiers .md
-          find . -name "*.md" -type f | xargs markdown-link-check --quiet
+          set -euo pipefail
+          while IFS= read -r -d '' dockerfile; do
+            echo "Validation de ${dockerfile}"
+            docker run --rm -i hadolint/hadolint:v2.14.0-alpine \
+              --failure-threshold error - < "${dockerfile}"
+          done < <(find . -type f -name 'Dockerfile*' -print0)
 
-# =============================================
-# BONNES PRATIQUES :
-# =============================================
-# 1. Ce workflow vérifie automatiquement la qualité des fichiers à chaque push/PR.
-# 2. Pour ignorer certains fichiers ou dossiers, ajoutez-les à .gitignore.
-# 3. Pour désactiver une vérification, commentez le job correspondant.
-# 4. Pour ajouter une nouvelle vérification, ajoutez un nouveau job.
-# =============================================
+      - name: Vérifier Docker Compose
+        env:
+          DB_PASSWORD: ci-placeholder-not-a-secret
+        run: docker compose --file TEMPLATES/docker/docker-compose.yml config --quiet
+
+      - name: Installer Ansible
+        run: python -m pip install --disable-pip-version-check 'ansible-core>=2.18,<2.20'
+
+      - name: Vérifier le playbook Ansible
+        run: ansible-playbook --syntax-check --inventory ansible/inventories/hosts_aws.example ansible/playbooks/deploy.yml
+
+      - name: Vérifier la configuration NGINX
+        run: |
+          docker run --rm \
+            --volume "$PWD/ansible/files/nginx-angular.conf:/etc/nginx/conf.d/default.conf:ro" \
+            nginx:1.28-alpine nginx -t

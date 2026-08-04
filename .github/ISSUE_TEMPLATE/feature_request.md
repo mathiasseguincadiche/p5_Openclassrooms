@@ -6,7 +6,7 @@ assignees: ''
 
 ---
 
-## 🚀 Description de la Fonctionnalité
+# 🚀 Description de la Fonctionnalité
 
 **Décrivez clairement la fonctionnalité que vous souhaitez ajouter.**
 

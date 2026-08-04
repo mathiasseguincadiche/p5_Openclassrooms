@@ -5,9 +5,9 @@
 # Chaque instruction est expliquée ci-dessous.
 
 # --- Étape 1 : Image de base ---
-# Utilise une image officielle Python (version 3.10) basée sur Alpine Linux.
+# Utilise une image officielle Python (version 3.13) basée sur Alpine Linux.
 # Alpine est légère et sécurisée, idéale pour la production.
-FROM python:3.10-alpine
+FROM python:3.13-alpine
 
 # --- Étape 2 : Métadonnées (optionnel) ---
 # Ajoute des métadonnées pour documenter l'image (auteur, description, etc.).
@@ -20,8 +20,8 @@ WORKDIR /app
 
 # --- Étape 4 : Installation des dépendances système ---
 # Installe des paquets système nécessaires (ex: gcc pour compiler des modules Python).
-# Utilise `--no-cache-dir` pour réduire la taille de l'image.
-RUN apk add --no-cache-dir gcc musl-dev libffi-dev openssl-dev
+# Utilise `--no-cache` pour réduire la taille de l'image.
+RUN apk add --no-cache gcc musl-dev libffi-dev openssl-dev
 
 # --- Étape 5 : Copie des fichiers de dépendances ---
 # Copie uniquement les fichiers requirements.txt et setup.py (si applicable).
@@ -34,7 +34,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # --- Étape 7 : Copie du reste de l'application ---
 # Copie tous les fichiers du projet (sauf ceux ignorés par .dockerignore).
-COPY . .
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+COPY --chown=appuser:appgroup . .
+
+# Réduire l'impact d'une compromission de l'application.
+USER appuser
 
 # --- Étape 8 : Exposition du port ---
 # Indique que le conteneur écoutera sur le port 5000 (par défaut pour Flask).
@@ -52,12 +56,12 @@ CMD ["flask", "run", "--host=0.0.0.0"]
 # BONNES PRATIQUES SUPPLÉMENTAIRES :
 # =============================================
 # 1. Multi-Stage Build (pour réduire la taille de l'image) :
-#    FROM python:3.10-alpine as builder
+#    FROM python:3.13-alpine AS builder
 #    WORKDIR /app
 #    COPY requirements.txt ./
 #    RUN pip install --user -r requirements.txt
 #    
-#    FROM python:3.10-alpine
+#    FROM python:3.13-alpine
 #    WORKDIR /app
 #    COPY --from=builder /root/.local /root/.local
 #    COPY . .

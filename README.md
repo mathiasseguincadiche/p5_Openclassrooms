@@ -18,73 +18,20 @@ Ce projet a pour objectif de vous faire découvrir et maîtriser les outils et m
 
 ## 🗂️ Structure du dépôt
 
-```bash
+```text
 p5_Openclassrooms/
-├── .github/                  # Configuration GitHub (CI/CD, templates)
-│   ├── workflows/            # Workflows GitHub Actions (CI/CD)
-│   └── ISSUE_TEMPLATE/       # Templates pour les issues
-│
-├── docs/                     # 📚 Documentation pédagogique
-│   ├── README.md             # Table des matières de la documentation
-│   ├── architecture/        # 🏗️ Schémas et infrastructure
-│   │   ├── infrastructure.md # Schéma global de l'infrastructure
-│   │   └── tools.md          # Présentation des outils DevOps utilisés
-│   │
-│   ├── guides/               # 📖 Guides généraux
-│   │   ├── project-overview.md # Présentation complète du projet
-│   │   ├── devops-tools.md   # Détail des outils (Docker, GitHub Actions, etc.)
-│   │   └── best-practices.md # Bonnes pratiques (Git, CI/CD, etc.)
-│   │
-│   ├── exercises/            # 🎯 Exercices pratiques (1 fiche par exercice)
-│   │   ├── exercise-1/       # Déploiement avec Docker
-│   │   ├── exercise-2/       # CI/CD avec GitHub Actions
-│   │   ├── exercise-3/       # Configuration avec Ansible
-│   │   ├── exercise-4/       # Infrastructure as Code avec Terraform
-│   │   └── exercise-5/       # Orchestration avec Kubernetes
-│   │
-│   └── cheatsheets/          # 📋 Aides-mémoire
-│       ├── docker.md         # Commandes Docker utiles
-│       ├── git.md            # Commandes Git utiles
-│       └── linux.md          # Commandes Linux utiles
-│
-├── TEMPLATES/                # 📁 Templates de configuration
-│   ├── docker/               # Templates Docker
-│   │   ├── Dockerfile.nodejs # Dockerfile pour Node.js
-│   │   ├── Dockerfile.python # Dockerfile pour Python
-│   │   ├── docker-compose.yml # Docker Compose pour multi-conteneurs
-│   │   └── README.md         # Guide d'utilisation
-│   │
-│   ├── github-actions/       # Templates GitHub Actions
-│   │   ├── ci-nodejs.yml     # Workflow CI pour Node.js
-│   │   ├── cd-aws.yml        # Workflow CD pour AWS
-│   │   └── README.md         # Explications des workflows
-│   │
-│   ├── ansible/              # Templates Ansible
-│   │   ├── playbook.yml      # Playbook Ansible de base
-│   │   ├── inventory.ini     # Fichier d'inventaire
-│   │   └── README.md         # Guide Ansible
-│   │
-│   ├── terraform/            # Templates Terraform
-│   │   ├── main.tf           # Configuration Terraform
-│   │   ├── variables.tf      # Variables Terraform
-│   │   └── README.md         # Guide Terraform
-│   │
-│   ├── kubernetes/           # Templates Kubernetes
-│   │   ├── deployment.yaml   # Déploiement Kubernetes
-│   │   ├── service.yaml      # Service Kubernetes
-│   │   └── README.md         # Guide Kubernetes
-│   │
-│   └── scripts/              # Scripts utiles
-│       ├── setup.sh          # Script de configuration
-│       └── README.md         # Explications des scripts
-│
-├── src/                      # 📦 Code source (si applicable)
-├── tests/                    # 🧪 Tests
-│   ├── unit/                 # Tests unitaires
-│   └── integration/          # Tests d'intégration
-│
-├── .gitignore                # Fichiers à ignorer
-├── LICENSE                   # Licence (MIT)
+├── .github/                  # CI et modèles GitHub
+├── ansible/                  # Playbook, inventaires et interface web P5
+├── docs/                     # 📚 Guides, exercices, aides-mémoire et livrables
+├── scripts/                  # Orchestration des phases et contrôles locaux
+├── terraform/                # Modules AWS des trois exercices du projet
+│   ├── exercice-1/           # VPC, deux EC2 et NGINX
+│   ├── exercice-2/           # Amazon OpenSearch
+│   └── exercice-3/           # Deux backends hello et HAProxy
+├── TEMPLATES/                # 📁 Exemples Ansible, Docker, CI, Kubernetes et Terraform
+├── .gitignore                # Fichiers locaux, états et secrets à ignorer
+├── RAPPORT_VALIDATION.md     # Résumé des contrôles reproductibles
+├── setup-and-run.sh          # Assistant de préparation
 └── README.md                 # Ce fichier
 ```
 
@@ -93,10 +40,13 @@ p5_Openclassrooms/
 ## 🚀 Pour commencer
 
 ### 1️⃣ Lire la présentation du projet
+
 Consultez le guide **[Présentation du Projet](./docs/guides/project-overview.md)** pour comprendre les objectifs, l'infrastructure, et les outils utilisés.
 
 ### 2️⃣ Explorer les exercices
+
 Chaque exercice est documenté dans `docs/exercises/` avec :
+
 - Une **description claire** des objectifs.
 - Des **étapes détaillées** à suivre.
 - Des **commandes commentées** pour comprendre chaque action.
@@ -105,12 +55,15 @@ Chaque exercice est documenté dans `docs/exercises/` avec :
 👉 **[Liste des exercices](./docs/exercises/)**
 
 ### 3️⃣ Utiliser les templates
+
 Les templates dans `TEMPLATES/` sont prêts à l'emploi. Copiez-les dans votre projet et adaptez-les selon vos besoins.
 
 👉 **[Liste des templates](./TEMPLATES/)**
 
 ### 4️⃣ Contribuer
+
 Vous pouvez :
+
 - **Ouvrir une issue** pour poser une question ou signaler un problème.
 - **Proposer une pull request** pour améliorer la documentation ou ajouter un exercice.
 
@@ -123,11 +76,11 @@ Pour suivre les exercices, assurez-vous d'avoir installé :
 | Outil          | Version recommandée | Lien d'installation                          |
 |----------------|---------------------|---------------------------------------------|
 | Git            | 2.x                 | [git-scm.com](https://git-scm.com/)         |
-| Docker         | 24.x                | [docker.com](https://www.docker.com/)       |
-| Node.js        | 18.x                | [nodejs.org](https://nodejs.org/)           |
-| Python         | 3.10+               | [python.org](https://www.python.org/)       |
-| Ansible        | 8.x                 | [ansible.com](https://www.ansible.com/)     |
-| Terraform      | 1.5.x               | [terraform.io](https://www.terraform.io/)   |
+| Docker         | 28.x                | [docker.com](https://www.docker.com/)       |
+| Node.js        | 24.x                | [nodejs.org](https://nodejs.org/)           |
+| Python         | 3.12+               | [python.org](https://www.python.org/)       |
+| Ansible Core   | 2.18+               | [ansible.com](https://www.ansible.com/)     |
+| Terraform      | 1.15.8              | [terraform.io](https://www.terraform.io/)   |
 | kubectl        | 1.28.x              | [kubernetes.io](https://kubernetes.io/)    |
 
 ---
@@ -165,6 +118,7 @@ Ce projet est sous licence **MIT**. Consultez le fichier [LICENSE](./LICENSE) po
 ## 📞 Contact
 
 Pour toute question ou suggestion, n'hésitez pas à :
+
 - Ouvrir une **issue** dans ce dépôt.
 - Me contacter directement via [GitHub](https://github.com/mathiasseguincadiche).
 

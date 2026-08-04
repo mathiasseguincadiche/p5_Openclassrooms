@@ -1,0 +1,16 @@
+{
+  "config": {
+    "default": true,
+    "MD013": false,
+    "MD024": false,
+    "MD025": false,
+    "MD028": false,
+    "MD040": false,
+    "MD033": {
+      "allowed_elements": ["a", "br", "details", "kbd", "summary"]
+    },
+    "MD036": false,
+    "MD060": false
+  },
+  "ignores": ["node_modules/**", "dist/**"]
+}
