@@ -33,3 +33,9 @@ comprendre en quelques secondes **ce qui entre, ce qui se passe et ce qui doit
   dashboard attendu.
 - [Exercice 3](exercice-3.svg) : répartition HAProxy, état des backends, panne et
   reprise automatique.
+- [Finalisation](finalisation.svg) : collecte des preuves, contrôle des trois
+  livrables, destruction des ressources et audit du nettoyage AWS.
+
+Le README principal utilise ces six vues comme un parcours continu. Chaque
+schéma introduit une étape ; les commandes et preuves détaillées restent dans
+les guides correspondants.
