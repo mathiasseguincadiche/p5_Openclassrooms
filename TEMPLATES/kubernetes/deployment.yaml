@@ -17,7 +17,7 @@ kind: Deployment     # Type de ressource (Deployment)
 metadata:
   # Nom du déploiement
   name: mon-app
-  
+
   # Labels pour identifier le déploiement
   labels:
     app: mon-app
@@ -27,19 +27,19 @@ metadata:
 spec:
   # Nombre de réplicas (pods) à maintenir
   replicas: 3
-  
+
   # Stratégie de mise à jour (rolling update par défaut)
   strategy:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1       # Nombre maximal de pods supplémentaires pendant la mise à jour
       maxUnavailable: 0 # Nombre maximal de pods indisponibles pendant la mise à jour
-  
+
   # Sélecteur pour trouver les pods gérés par ce déploiement
   selector:
     matchLabels:
       app: mon-app
-  
+
   # Template pour créer les pods
   template:
     metadata:
@@ -48,58 +48,58 @@ spec:
         app: mon-app
         environment: production
         version: v1.0.0
-    
+
     spec:
       # Conteneurs dans le pod
       containers:
-      - name: mon-app  # Nom du conteneur
-        image: nginx:1.25  # Image Docker à utiliser
-        
-        # Ports exposés par le conteneur
-        ports:
-        - containerPort: 80  # Port exposé par le conteneur
-          protocol: TCP
-        
-        # Variables d'environnement
-        env:
-        - name: ENVIRONMENT
-          value: "production"
-        - name: PORT
-          value: "80"
-        
-        # Liveness Probe : Vérifie si le conteneur est en vie
-        livenessProbe:
-          httpGet:
-            path: /healthz  # Chemin pour vérifier la santé
-            port: 80        # Port à utiliser
-          initialDelaySeconds: 5  # Délai avant la première vérification
-          periodSeconds: 10       # Intervalle entre les vérifications
-          timeoutSeconds: 2       # Timeout pour la vérification
-          successThreshold: 1     # Nombre de succès pour considérer le conteneur comme sain
-          failureThreshold: 3     # Nombre d'échecs pour redémarrer le conteneur
-        
-        # Readiness Probe : Vérifie si le conteneur est prêt à recevoir du trafic
-        readinessProbe:
-          httpGet:
-            path: /ready   # Chemin pour vérifier la préparation
-            port: 80
-          initialDelaySeconds: 5
-          periodSeconds: 10
-          timeoutSeconds: 2
-          successThreshold: 1
-          failureThreshold: 3
-        
-        # Limites de ressources (CPU et mémoire)
-        resources:
-          requests:  # Ressources minimales requises
-            cpu: "100m"    # 0.1 CPU
-            memory: "128Mi" # 128 Mo de mémoire
-          limits:    # Ressources maximales autorisées
-            cpu: "500m"    # 0.5 CPU
-            memory: "512Mi" # 512 Mo de mémoire
-        
-        # Politique de redémarrage
-        restartPolicy: Always
+        - name: mon-app  # Nom du conteneur
+          image: nginx:1.28  # Image Docker à utiliser
+
+          # Ports exposés par le conteneur
+          ports:
+            - containerPort: 80  # Port exposé par le conteneur
+              protocol: TCP
+
+          # Variables d'environnement
+          env:
+            - name: ENVIRONMENT
+              value: "production"
+            - name: PORT
+              value: "80"
+
+          # Liveness Probe : Vérifie si le conteneur est en vie
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 2
+            successThreshold: 1
+            failureThreshold: 3
+
+          # Readiness Probe : Vérifie si le conteneur est prêt à recevoir du trafic
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 2
+            successThreshold: 1
+            failureThreshold: 3
+
+          # Limites de ressources (CPU et mémoire)
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+
+      # Politique de redémarrage des pods
+      restartPolicy: Always
 
 # =============================================
 # EXPLICATIONS :

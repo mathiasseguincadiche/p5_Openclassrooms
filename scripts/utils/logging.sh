@@ -23,7 +23,7 @@ LOG_FILE="$LOG_DIR/p5_$(date +%Y%m%d).log"
 # Initialise le système de logging
 init_logging() {
  mkdir -p "$LOG_DIR"
- 
+
  # Créer un nouveau fichier de log si ce n'est pas déjà fait aujourd'hui
  if [ ! -f "$LOG_FILE" ]; then
  echo "=== LOG DU PROJET P5 - $(date) ===" > "$LOG_FILE"
@@ -36,7 +36,7 @@ log() {
  local level="$1"
  local message="$2"
  local timestamp=$(date +"%Y-%m-%d %H:%M:%S")
- 
+
  # Déterminer la couleur en fonction du niveau
  case "$level" in
  "INFO")
@@ -58,10 +58,10 @@ log() {
  color="white"
  ;;
  esac
- 
+
  # Afficher sur la console
  echo -e "${!color}[$timestamp] [$level] $message${NC}"
- 
+
  # Écrire dans le fichier de log
  echo "[$timestamp] [$level] $message" >> "$LOG_FILE"
 }
@@ -109,16 +109,16 @@ show_log_stats() {
  echo ""
  title "STATISTIQUES DES LOGS"
  echo ""
- 
+
  total=$(wc -l < "$LOG_FILE")
  info "Total des lignes : $total"
- 
+
  info "Répartition par niveau :"
  for level in "INFO" "SUCCESS" "WARNING" "ERROR"; do
  count=$(grep "\[$level\]" "$LOG_FILE" | wc -l)
  info "  $level : $count"
  done
- 
+
  # Afficher les dernières erreurs
  errors=$(grep "\[ERROR\]" "$LOG_FILE" | tail -n 5)
  if [ -n "$errors" ]; then

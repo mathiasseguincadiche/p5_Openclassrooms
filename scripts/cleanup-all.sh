@@ -2,7 +2,7 @@
 # =============================================================================
 # SCRIPT DE NETTOYAGE COMPLET
 # Projet P5 OpenClassrooms - Déployer et suivre l'infrastructure as code
-# 
+#
 # Ce script supprime TOUTES les ressources AWS créées pour les 3 exercices.
 # ⚠️ ATTENTION : Ce script est DESTRUCTIF et IRREVERSIBLE !
 # =============================================================================
@@ -14,7 +14,8 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Chemins des dossiers (adaptés à votre environnement)
-P5_PACK_DIR="/home/devops/P5_OC_4091_PACK_COMPLET_V4_3_KVM/04_EXERCICES"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 
 # Fonction pour afficher un message de confirmation
 confirm() {
@@ -48,62 +49,69 @@ cleanup_exercice() {
     local exercice="$1"
     local dir="$2"
     local name="$3"
-    
+
     info "Nettoyage de l'Exercice $exercice : $name"
-    
+
     # Vérifier que le dossier existe
     if [ ! -d "$dir" ]; then
         info "Le dossier $dir n'existe pas. Passage à l'exercice suivant."
         return 0
     fi
-    
+
     # Aller dans le dossier
     cd "$dir" || error_exit "Impossible de se déplacer vers $dir"
-    
+
     # Vérifier que le state existe
     if [ ! -f "terraform.tfstate" ]; then
         info "Aucun state Terraform trouvé pour $name. Passage à l'exercice suivant."
         cd - >/dev/null
         return 0
     fi
-    
+
     # Afficher les ressources qui seront supprimées
     info "Ressources à supprimer pour $name :"
     terraform state list 2>/dev/null | while read -r resource; do
         echo "  - $resource"
     done
-    
+
     # Demander confirmation
     confirm "Voulez-vous vraiment supprimer toutes les ressources de l'Exercice $exercice ?"
-    
+
     # Supprimer les ressources
     info "Suppression des ressources Terraform pour $name..."
     terraform destroy -auto-approve || error_exit "Échec de la suppression des ressources Terraform pour $name"
-    
+
     # Supprimer le state local
     rm -f terraform.tfstate terraform.tfstate.backup
-    
+
     success "Toutes les ressources de l'Exercice $exercice ont été supprimées."
-    
+
     cd - >/dev/null
 }
 
 # Fonction pour vérifier le nettoyage
 verify_cleanup() {
     info "Vérification qu'il n'y a plus de ressources AWS..."
-    
+
     # Vérifier les instances EC2
-    local instances=$(aws ec2 describe-instances --query 'length(Reservations[*].Instances[?Tags[?Key==`Project` && Value==`p5-openclassrooms`]])' 2>/dev/null)
+    local instances
+    instances=$(aws ec2 describe-instances \
+        --filters "Name=tag:Project,Values=p5-openclassrooms" \
+            "Name=instance-state-name,Values=pending,running,stopping,stopped,shutting-down" \
+        --query 'length(Reservations[].Instances[])' --output text 2>/dev/null)
     if [ "$instances" -ne 0 ]; then
         error_exit "Il reste $instances instances EC2 avec le tag Project=p5-openclassrooms. Vérifiez manuellement."
     fi
-    
+
     # Vérifier les domaines OpenSearch
-    local domains=$(aws es list-domain-names --query 'length(DomainNames[?starts_with(@, `p5-opensearch`)])' 2>/dev/null)
+    local domains
+    domains=$(aws opensearch list-domain-names \
+        --query 'length(DomainNames[?starts_with(DomainName, `p5-opensearch`)])' \
+        --output text 2>/dev/null)
     if [ "$domains" -ne 0 ]; then
         error_exit "Il reste $domains domaines OpenSearch avec le préfixe p5-opensearch. Vérifiez manuellement."
     fi
-    
+
     success "Aucune ressource AWS avec le tag Project=p5-openclassrooms n'a été trouvée."
 }
 
@@ -125,13 +133,13 @@ confirm "Voulez-vous vraiment exécuter le nettoyage complet ?"
 echo
 
 # Nettoyer chaque exercice
-cleanup_exercice "1" "$P5_PACK_DIR/01_TERRAFORM_ANSIBLE" "Terraform + Ansible (NGINX)"
+cleanup_exercice "1" "$PROJECT_ROOT/terraform/exercice-1" "Terraform + Ansible (NGINX)"
 echo
 
-cleanup_exercice "2" "$P5_PACK_DIR/02_OPENSEARCH" "OpenSearch (ELK)"
+cleanup_exercice "2" "$PROJECT_ROOT/terraform/exercice-2" "OpenSearch (ELK)"
 echo
 
-cleanup_exercice "3" "$P5_PACK_DIR/03_HAPROXY" "HAProxy (Load Balancer)"
+cleanup_exercice "3" "$PROJECT_ROOT/terraform/exercice-3" "HAProxy (Load Balancer)"
 echo
 
 # Vérifier le nettoyage
@@ -146,6 +154,6 @@ echo
 echo "Toutes les ressources AWS ont été supprimées."
 echo "Vous pouvez vérifier manuellement dans la console AWS :"
 echo "  - https://console.aws.amazon.com/ec2/v2/home?region=us-east-1#Instances"
-echo "  - https://console.aws.amazon.com/es/home?region=us-east-1#domains"
+echo "  - https://console.aws.amazon.com/aos/home?region=us-east-1#opensearch/domains"
 echo
 echo "Bonne continuation avec vos projets DevOps ! 🚀"

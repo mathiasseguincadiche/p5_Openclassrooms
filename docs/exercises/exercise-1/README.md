@@ -8,13 +8,13 @@ Ici, vous allez apprendre à **conteneuriser une application** avec Docker, à l
 ## 📌 Table des Matières
 
 1. [🎯 Objectifs](#-objectifs)
-2. [🛠️ Prérequis](#-prérequis)
+2. [🛠️ Prérequis](#prerequis)
 3. [📥 Préparation de l'Environnement](#-préparation-de-lenvironnement)
-4. [📝 Étape 1 : Créer un Dockerfile](#-étape-1-créer-un-dockerfile)
-5. [📝 Étape 2 : Construire l'Image Docker](#-étape-2-construire-limage-docker)
-6. [📝 Étape 3 : Lancer le Conteneur](#-étape-3-lancer-le-conteneur)
-7. [📝 Étape 4 : Utiliser Docker Compose (Bonus)](#-étape-4-utiliser-docker-compose-bonus)
-8. [📝 Étape 5 : Gérer les Volumes (Bonus)](#-étape-5-gérer-les-volumes-bonus)
+4. [📝 Étape 1 : Créer un Dockerfile](#-étape-1--créer-un-dockerfile)
+5. [📝 Étape 2 : Construire l'Image Docker](#-étape-2--construire-limage-docker)
+6. [📝 Étape 3 : Lancer le Conteneur](#-étape-3--lancer-le-conteneur)
+7. [📝 Étape 4 : Utiliser Docker Compose (Bonus)](#-étape-4--utiliser-docker-compose-bonus)
+8. [📝 Étape 5 : Gérer les Volumes (Bonus)](#-étape-5--gérer-les-volumes-bonus)
 9. [✅ Vérification](#-vérification)
 10. [🔍 Résolution des Problèmes](#-résolution-des-problèmes)
 11. [📚 Pour Aller Plus Loin](#-pour-aller-plus-loin)
@@ -34,6 +34,8 @@ Ici, vous allez apprendre à **conteneuriser une application** avec Docker, à l
 
 ---
 
+<a id="prerequis"></a>
+
 ## 🛠️ Prérequis
 
 Avant de commencer, assurez-vous d'avoir :
@@ -52,7 +54,9 @@ Avant de commencer, assurez-vous d'avoir :
 ## 📥 Préparation de l'Environnement
 
 ### 1. Cloner le Dépôt
+
 Ouvrez un terminal et exécutez :
+
 ```bash
 # Cloner le dépôt du projet
 git clone https://github.com/mathiasseguincadiche/p5_Openclassrooms.git
@@ -60,6 +64,7 @@ cd p5_Openclassrooms
 ```
 
 ### 2. Créer un Projet d'Exemple
+
 Pour cet exercice, nous allons utiliser une **application Node.js simple** qui affiche "Hello, Docker !".
 
 ```bash
@@ -89,17 +94,20 @@ EOF
 ```
 
 > **💡 Explication** :
+>
 > - `npm init -y` : Initialise un projet Node.js avec des valeurs par défaut.
 > - `npm install express` : Installe le framework Express pour créer un serveur web.
 > - `index.js` : Fichier principal de l'application qui écoute sur le port 3000.
 
 ### 3. Tester l'Application Localement
+
 ```bash
 # Démarrer l'application
 node index.js
 ```
 
-Ouvrez votre navigateur et accédez à [http://localhost:3000](http://localhost:3000). Vous devriez voir :
+Ouvrez votre navigateur et accédez à `http://localhost:3000`. Vous devriez voir :
+
 ```
 Hello, Docker ! 🐳
 ```
@@ -115,7 +123,9 @@ Arrêtez l'application avec `Ctrl + C` dans le terminal.
 Un **Dockerfile** est un fichier texte qui contient les instructions pour **construire une image Docker**. Chaque instruction crée une nouvelle couche dans l'image.
 
 ### 1. Créer le Fichier `Dockerfile`
+
 Dans le dossier `~/p5-exercise-1`, créez un fichier nommé `Dockerfile` (sans extension) :
+
 ```bash
 # Créer le Dockerfile
 nano Dockerfile
@@ -124,6 +134,7 @@ nano Dockerfile
 > **⚠️ Attention** : Le nom du fichier doit être **exactement `Dockerfile`** (majuscule D, sans extension).
 
 ### 2. Ajouter le Contenu
+
 Copiez le contenu suivant dans le `Dockerfile` :
 
 ```dockerfile
@@ -134,7 +145,7 @@ Copiez le contenu suivant dans le `Dockerfile` :
 # --- Étape 1 : Image de base ---
 # Utilise une image officielle Node.js (version 18) basée sur Alpine Linux.
 # Alpine est légère et sécurisée, idéale pour la production.
-FROM node:18-alpine
+FROM node:24-alpine
 
 # --- Étape 2 : Métadonnées (optionnel) ---
 # Ajoute des métadonnées pour documenter l'image (auteur, description, etc.).
@@ -183,9 +194,10 @@ CMD ["node", "index.js"]
 ```
 
 > **💡 Explication des Instructions** :
+>
 > | Instruction | Description | Exemple |
 > |-------------|-------------|---------|
-> | `FROM` | Définit l'image de base. | `FROM node:18-alpine` |
+> | `FROM` | Définit l'image de base. | `FROM node:24-alpine` |
 > | `LABEL` | Ajoute des métadonnées à l'image. | `LABEL maintainer="email@example.com"` |
 > | `WORKDIR` | Définit le répertoire de travail. | `WORKDIR /app` |
 > | `COPY` | Copie des fichiers locaux dans le conteneur. | `COPY . .` |
@@ -194,12 +206,15 @@ CMD ["node", "index.js"]
 > | `CMD` | Définit la commande par défaut au démarrage. | `CMD ["node", "index.js"]` |
 
 ### 3. Créer un `.dockerignore`
+
 Pour **optimiser le build** et **éviter de copier des fichiers inutiles**, créez un fichier `.dockerignore` :
+
 ```bash
 nano .dockerignore
 ```
 
 Ajoutez le contenu suivant :
+
 ```dockerignore
 # Ignorer les dépendances locales (seront réinstallées dans le conteneur)
 node_modules/
@@ -229,6 +244,7 @@ node_modules/
 ```
 
 > **💡 Pourquoi un `.dockerignore` ?**
+>
 > - **Réduit la taille de l'image** : Évite de copier des fichiers inutiles.
 > - **Accélère le build** : Moins de fichiers à copier = build plus rapide.
 > - **Sécurité** : Évite de copier des fichiers sensibles (ex: `.env`).
@@ -240,13 +256,16 @@ node_modules/
 Maintenant que le `Dockerfile` est prêt, nous allons **construire l'image Docker**.
 
 ### 1. Vérifier le Contexte de Build
+
 Assurez-vous d'être dans le bon dossier :
+
 ```bash
 cd ~/p5-exercise-1
 ls -la
 ```
 
 > **✅ Résultat attendu** : Vous devriez voir les fichiers suivants :
+>
 > ```
 > Dockerfile
 > .dockerignore
@@ -257,26 +276,30 @@ ls -la
 > ```
 
 ### 2. Construire l'Image
+
 Exécutez la commande suivante pour construire l'image :
+
 ```bash
 # Construire l'image avec le nom "p5-exercise-1" et le tag "v1"
 docker build -t p5-exercise-1:v1 .
 ```
 
 > **💡 Explication de la commande** :
+>
 > - `docker build` : Commande pour construire une image.
 > - `-t p5-exercise-1:v1` : Donne un **nom** (`p5-exercise-1`) et un **tag** (`v1`) à l'image.
 > - `.` : Indique que le `Dockerfile` est dans le **répertoire courant**.
 
 > **✅ Résultat attendu** :
+>
 > ```
 > [+] Building 5.2s (10/10) FINISHED
 >  => [internal] load build definition from Dockerfile                       0.1s
 >  => => transferring dockerfile: 32B                                         0.0s
 >  => [internal] load .dockerignore                                          0.1s
 >  => => transferring context: 2B                                           0.0s
->  => [1/5] FROM docker.io/library/node:18-alpine@sha256:...               4.2s
->  => => resolve docker.io/library/node:18-alpine@sha256:...              0.1s
+>  => [1/5] FROM docker.io/library/node:24-alpine@sha256:...               4.2s
+>  => => resolve docker.io/library/node:24-alpine@sha256:...              0.1s
 >  => => sha256:... 1.2kB / 1.2kB                                             0.0s
 >  => => sha256:... 1.2kB / 1.2kB                                             0.0s
 >  => => sha256:... 1.2kB / 1.2kB                                             0.0s
@@ -292,12 +315,14 @@ docker build -t p5-exercise-1:v1 .
 > ```
 
 ### 3. Vérifier que l'Image a été Créée
+
 ```bash
 # Lister toutes les images Docker locales
 docker images
 ```
 
 > **✅ Résultat attendu** : Vous devriez voir votre image dans la liste :
+>
 > ```
 > REPOSITORY          TAG       IMAGE ID       CREATED         SIZE
 > p5-exercise-1       v1        abc123def456   1 minute ago   120MB
@@ -311,13 +336,16 @@ docker images
 Maintenant que l'image est construite, nous allons **lancer un conteneur** à partir de cette image.
 
 ### 1. Lancer le Conteneur
+
 Exécutez la commande suivante :
+
 ```bash
 # Lancer un conteneur à partir de l'image "p5-exercise-1:v1"
 docker run -d -p 3000:3000 --name p5-container p5-exercise-1:v1
 ```
 
 > **💡 Explication de la commande** :
+>
 > - `docker run` : Commande pour lancer un conteneur.
 > - `-d` : Lance le conteneur en **arrière-plan** (mode "detached").
 > - `-p 3000:3000` : **Mappe le port 3000 du conteneur au port 3000 de l'hôte**.
@@ -327,43 +355,52 @@ docker run -d -p 3000:3000 --name p5-container p5-exercise-1:v1
 > - `p5-exercise-1:v1` : Nom et tag de l'image à utiliser.
 
 > **✅ Résultat attendu** :
+>
 > ```
 > abc123def4567890
 > ```
+>
 > (L'ID du conteneur est affiché.)
 
 ### 2. Vérifier que le Conteneur est en Cours d'Exécution
+
 ```bash
 # Lister les conteneurs en cours d'exécution
 docker ps
 ```
 
 > **✅ Résultat attendu** : Vous devriez voir votre conteneur dans la liste :
+>
 > ```
 > CONTAINER ID   IMAGE               COMMAND                  CREATED         STATUS         PORTS                    NAMES
 > abc123def456   p5-exercise-1:v1   "node index.js"          5 seconds ago   Up 3 seconds   0.0.0.0:3000->3000/tcp   p5-container
 > ```
 
 ### 3. Accéder à l'Application
-Ouvrez votre navigateur et accédez à [http://localhost:3000](http://localhost:3000).
+
+Ouvrez votre navigateur et accédez à `http://localhost:3000`.
 
 > **✅ Résultat attendu** : Vous devriez voir :
+>
 > ```
 > Hello, Docker ! 🐳
 > ```
 
 ### 4. Voir les Logs du Conteneur
+
 ```bash
 # Afficher les logs du conteneur
 docker logs p5-container
 ```
 
 > **✅ Résultat attendu** : Vous devriez voir :
+>
 > ```
 > Server running at http://localhost:3000
 > ```
 
 ### 5. Arrêter le Conteneur
+
 ```bash
 # Arrêter le conteneur
 docker stop p5-container
@@ -372,6 +409,7 @@ docker stop p5-container
 > **✅ Résultat attendu** : Le conteneur s'arrête.
 
 ### 6. Redémarrer le Conteneur
+
 ```bash
 # Redémarrer le conteneur
 docker start p5-container
@@ -380,6 +418,7 @@ docker start p5-container
 > **✅ Résultat attendu** : Le conteneur redémarre et l'application est de nouveau accessible.
 
 ### 7. Supprimer le Conteneur
+
 ```bash
 # Supprimer le conteneur (doit être arrêté)
 docker rm p5-container
@@ -392,12 +431,15 @@ docker rm p5-container
 **Docker Compose** permet de gérer des **applications multi-conteneurs** de manière simplifiée. Dans cette étape, nous allons ajouter une **base de données Redis** à notre application.
 
 ### 1. Modifier l'Application pour Utiliser Redis
+
 Modifiez le fichier `index.js` pour utiliser Redis :
+
 ```bash
 nano index.js
 ```
 
 Remplacez le contenu par :
+
 ```javascript
 const express = require('express');
 const redis = require('redis');
@@ -439,16 +481,19 @@ app.listen(port, () => {
 ```
 
 ### 2. Installer le Client Redis
+
 ```bash
 npm install redis
 ```
 
 ### 3. Créer le Fichier `docker-compose.yml`
+
 ```bash
 nano docker-compose.yml
 ```
 
 Ajoutez le contenu suivant :
+
 ```yaml
 # =============================================
 # docker-compose.yml pour une application Node.js + Redis
@@ -480,7 +525,7 @@ services:
   # Service 2 : Base de données Redis
   redis:
     # Utiliser une image Redis officielle
-    image: redis:alpine
+    image: redis:8-alpine
     # Nom du conteneur
     container_name: p5-redis
     # Mapper le port 6379 du conteneur au port 6379 de l'hôte (optionnel)
@@ -512,25 +557,29 @@ volumes:
 ```
 
 > **💡 Explication du `docker-compose.yml`** :
+>
 > - **`version`** : Version du schéma Docker Compose (ici, 3.8).
 > - **`services`** : Liste des services à lancer (ici, `app` et `redis`).
 > - **`build`** : Construire une image à partir du `Dockerfile` dans le répertoire courant.
-> - **`image`** : Utiliser une image existante (ici, `redis:alpine`).
+> - **`image`** : Utiliser une image existante (ici, `redis:8-alpine`).
 > - **`ports`** : Mapper les ports (format : `hôte:conteneur`).
 > - **`depends_on`** : Attendre que d'autres services soient prêts avant de démarrer.
 > - **`volumes`** : Persister des données dans des volumes nommés.
 
 ### 4. Lancer les Services avec Docker Compose
+
 ```bash
 # Démarrer les services en arrière-plan
 docker-compose up -d
 ```
 
 > **💡 Explication de la commande** :
+>
 > - `docker-compose up` : Démarre les services définis dans `docker-compose.yml`.
 > - `-d` : Lance les conteneurs en **arrière-plan** (mode "detached").
 
 > **✅ Résultat attendu** :
+>
 > ```
 > [+] Running 2/2
 >  ✔ Container p5-redis  Created                                              0.1s
@@ -538,12 +587,14 @@ docker-compose up -d
 > ```
 
 ### 5. Vérifier que les Services sont en Cours d'Exécution
+
 ```bash
 # Lister les conteneurs
 docker-compose ps
 ```
 
 > **✅ Résultat attendu** :
+>
 > ```
 > NAME        COMMAND                  SERVICE   CREATED         STATUS         PORTS
 > p5-app     "node index.js"          app       5 seconds ago   Up 3 seconds   0.0.0.0:3000->3000/tcp
@@ -551,15 +602,19 @@ docker-compose ps
 > ```
 
 ### 6. Accéder à l'Application
-Ouvrez votre navigateur et accédez à [http://localhost:3000](http://localhost:3000).
+
+Ouvrez votre navigateur et accédez à `http://localhost:3000`.
 
 > **✅ Résultat attendu** : Vous devriez voir :
+>
 > ```
 > Hello, Docker ! 🐳 (Visites: 1)
 > ```
+>
 > (Le nombre de visites augmente à chaque rafraîchissement.)
 
 ### 7. Voir les Logs
+
 ```bash
 # Afficher les logs de l'application
 docker-compose logs app
@@ -569,6 +624,7 @@ docker-compose logs redis
 ```
 
 ### 8. Arrêter les Services
+
 ```bash
 # Arrêter tous les services
 docker-compose down
@@ -577,7 +633,9 @@ docker-compose down
 > **⚠️ Attention** : Cette commande **supprime les conteneurs**, mais **conserve les volumes** (données Redis).
 
 ### 9. Supprimer les Volumes (Optionnel)
+
 Si vous voulez **supprimer les données Redis** :
+
 ```bash
 # Arrêter et supprimer les conteneurs + volumes
 docker-compose down -v
@@ -590,18 +648,21 @@ docker-compose down -v
 Les **volumes Docker** permettent de **persister des données** même après la suppression d'un conteneur. Dans cette étape, nous allons explorer comment les utiliser.
 
 ### 1. Lister les Volumes
+
 ```bash
 # Lister tous les volumes Docker
 docker volume ls
 ```
 
 > **✅ Résultat attendu** : Vous devriez voir le volume `p5-exercise-1_redis_data` (créé par Docker Compose) :
+>
 > ```
 > DRIVER    VOLUME NAME
 > local     p5-exercise-1_redis_data
 > ```
 
 ### 2. Inspecter un Volume
+
 ```bash
 # Inspecter le volume Redis
 docker volume inspect p5-exercise-1_redis_data
@@ -610,21 +671,25 @@ docker volume inspect p5-exercise-1_redis_data
 > **✅ Résultat attendu** : Vous verrez des informations comme le **point de montage** du volume.
 
 ### 3. Créer un Volume Manuellement
+
 ```bash
 # Créer un volume nommé "mon_volume"
 docker volume create mon_volume
 ```
 
 ### 4. Utiliser un Volume dans un Conteneur
+
 ```bash
 # Lancer un conteneur avec un volume monté
 docker run -d -p 3000:3000 --name p5-app-volume -v mon_volume:/app/data p5-exercise-1:v1
 ```
 
 > **💡 Explication** :
+>
 > - `-v mon_volume:/app/data` : Monte le volume `mon_volume` dans `/app/data` dans le conteneur.
 
 ### 5. Supprimer un Volume
+
 ```bash
 # Supprimer un volume (doit être déconnecté de tous les conteneurs)
 docker volume rm mon_volume
@@ -637,43 +702,50 @@ docker volume rm mon_volume
 Pour vérifier que vous avez **bien compris** cet exercice, répondez aux questions suivantes :
 
 ### 1. Qu'est-ce qu'un `Dockerfile` ?
+
 <details>
 <summary>💡 Réponse</summary>
 Un `Dockerfile` est un fichier texte qui contient les instructions pour construire une image Docker. Chaque instruction crée une nouvelle couche dans l'image.
 </details>
 
 ### 2. Quelle est la différence entre une **image** et un **conteneur** ?
+
 <details>
 <summary>💡 Réponse</summary>
-- **Image** : Modèle immuable utilisé pour créer un conteneur (ex: `node:18-alpine`).
+- **Image** : Modèle immuable utilisé pour créer un conteneur (ex: `node:24-alpine`).
 - **Conteneur** : Instance d'une image en cours d'exécution (ex: un conteneur lancé avec `docker run`).
 </details>
 
 ### 3. À quoi sert la commande `docker build` ?
+
 <details>
 <summary>💡 Réponse</summary>
 La commande `docker build` permet de **construire une image Docker** à partir d'un `Dockerfile`.
 </details>
 
 ### 4. À quoi sert la commande `docker run` ?
+
 <details>
 <summary>💡 Réponse</summary>
 La commande `docker run` permet de **lancer un conteneur** à partir d'une image Docker.
 </details>
 
 ### 5. À quoi sert le flag `-p` dans `docker run` ?
+
 <details>
 <summary>💡 Réponse</summary>
 Le flag `-p` (ou `--publish`) permet de **mapper un port du conteneur à un port de l'hôte** (ex: `-p 3000:3000` mappe le port 3000 du conteneur au port 3000 de l'hôte).
 </details>
 
 ### 6. À quoi sert Docker Compose ?
+
 <details>
 <summary>💡 Réponse</summary>
 Docker Compose permet de **gérer des applications multi-conteneurs** de manière simplifiée, en définissant tous les services dans un fichier `docker-compose.yml`.
 </details>
 
 ### 7. À quoi sert un volume Docker ?
+
 <details>
 <summary>💡 Réponse</summary>
 Un volume Docker permet de **persister des données** même après la suppression d'un conteneur. Il est utile pour les bases de données, les fichiers de configuration, etc.
@@ -700,25 +772,29 @@ Voici les **problèmes courants** et leurs solutions :
 ## 📚 Pour Aller Plus Loin
 
 ### Ressources Officielles
+
 - [Documentation Docker](https://docs.docker.com)
 - [Docker pour Débutants](https://docker-curriculum.com/)
 - [Docker Compose Documentation](https://docs.docker.com/compose/)
 
 ### Tutoriels
+
 - [Docker Get Started](https://docs.docker.com/get-started/)
 - [Docker Compose Tutorial](https://docs.docker.com/compose/gettingstarted/)
 
 ### Livres
-- [Docker Deep Dive](https://www.amazon.fr/Docker-Deep-Dive-Nigel-Poulton/dp/1521822808) (Nigel Poulton)
-- [The Docker Book](https://www.amazon.fr/Docker-Book-DevOps-containerisation-applications/dp/240902296X) (James Turnbull)
+
+- *Docker Deep Dive* (Nigel Poulton)
+- *The Docker Book* (James Turnbull)
 
 ### Prochains Exercices
+
 - **[Exercice 2 : CI/CD avec GitHub Actions](../exercise-2/README.md)** : Automatisez les tests et le déploiement de votre application.
 - **[Exercice 3 : Configuration avec Ansible](../exercise-3/README.md)** : Automatisez la configuration de serveurs.
 
 ---
 
-## 🎉 Félicitations !
+## 🎉 Félicitations
 
 Vous avez **terminé l'Exercice 1** ! 🎉
 Vous savez maintenant :

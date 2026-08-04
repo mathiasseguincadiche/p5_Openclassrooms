@@ -9,17 +9,21 @@
 #
 # Pour utiliser ce template :
 # 1. Copiez ce fichier dans .github/workflows/cd-aws.yml
-# 2. Configurez les secrets GitHub (DOCKER_USERNAME, DOCKER_PASSWORD, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY).
+# 2. Configurez les secrets GitHub (DOCKER_USERNAME, DOCKER_PASSWORD, AWS_ROLE_ARN).
 # 3. Personnalisez-le selon vos besoins.
 # 4. Commitez et poussez vers GitHub.
 
 # Nom du workflow (affiché dans l'onglet Actions de GitHub)
 name: CD - AWS
 
+permissions:
+  contents: read
+  id-token: write
+
 # Déclencheur : après un push réussi sur main
 on:
   push:
-    branches: [ "main" ]
+    branches: [main]
 
 # Jobs à exécuter
 jobs:
@@ -32,17 +36,17 @@ jobs:
     steps:
       # --- Étape 1 : Checkout du code ---
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # --- Étape 2 : Configuration de Docker Buildx ---
       # Docker Buildx permet de construire des images multi-architectures.
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
       # --- Étape 3 : Connexion à Docker Hub ---
       # Utilise les secrets DOCKER_USERNAME et DOCKER_PASSWORD.
       - name: Login to Docker Hub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
@@ -50,17 +54,17 @@ jobs:
 
       # --- Étape 4 : Construire et pousser l'image Docker ---
       - name: Build and push Docker image
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v6
         with:
           # Contexte de build (répertoire courant)
           context: .
-          
+
           # Fichier Dockerfile à utiliser (par défaut : Dockerfile)
           file: ./Dockerfile
-          
+
           # Construire et pousser l'image
           push: true
-          
+
           # Tags pour l'image (nom:tag)
           # Utilisez votre nom d'utilisateur Docker Hub et le SHA du commit pour une traçabilité unique.
           tags: |
@@ -76,20 +80,19 @@ jobs:
     steps:
       # --- Étape 1 : Checkout du code ---
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # --- Étape 2 : Configuration de AWS CLI ---
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v5
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: us-east-1  # Changez pour votre région
 
       # --- Étape 3 : Connexion à AWS ECR ---
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
+        uses: aws-actions/amazon-ecr-login@v2
 
       # --- Étape 4 : Construire, tagger et pousser l'image vers ECR ---
       - name: Build, tag, and push image to Amazon ECR
@@ -100,17 +103,17 @@ jobs:
         run: |
           # Construire l'image
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          
+
           # Tagger l'image avec latest
           docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          
+
           # Pousser l'image vers ECR
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
       # --- Étape 5 : Déployer sur AWS ECS ---
       - name: Deploy to Amazon ECS
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
           task-definition: .aws/task-definition.json  # Fichier de définition de tâche ECS
           service: mon-app-service
@@ -154,8 +157,7 @@ jobs:
 # Pour utiliser ce workflow, vous devez configurer les secrets suivants dans GitHub :
 # 1. DOCKER_USERNAME : Votre nom d'utilisateur Docker Hub.
 # 2. DOCKER_PASSWORD : Votre mot de passe ou token Docker Hub.
-# 3. AWS_ACCESS_KEY_ID : Votre clé d'accès AWS.
-# 4. AWS_SECRET_ACCESS_KEY : Votre clé secrète AWS.
+# 3. AWS_ROLE_ARN : Rôle IAM assumé via GitHub OIDC, sans clé AWS longue durée.
 #
 # Pour configurer les secrets :
 # 1. Allez dans votre dépôt GitHub.

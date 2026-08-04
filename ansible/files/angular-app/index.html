@@ -1,11 +1,10 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="utf-8">
-  <title>P5 OpenClassrooms - Angular App</title>
+  <title>P5 OpenClassrooms - Interface web</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -69,46 +68,46 @@
   <header>
     <h1>Projet P5 - Déployez et suivez l'Infrastructure-as-Code</h1>
   </header>
-  
+
   <div class="app-container">
     <div class="content">
-      <h2>🎯 Application Angular pour l'Exercice 1</h2>
-      
+      <h2>🎯 Interface web pour l'Exercice 1</h2>
+
       <p>Cette application a été déployée automatiquement via Terraform et Ansible.</p>
-      
+
       <div class="server-info">
         <h3>📊 Informations du serveur</h3>
         <p><strong>Projet:</strong> P5 OpenClassrooms - Déploiement et suivi d'infrastructure as code</p>
-        <p><strong>Technologies:</strong> Terraform, Ansible, NGINX, Angular</p>
+        <p><strong>Technologies:</strong> Terraform, Ansible, NGINX, HTML/CSS</p>
         <p><strong>Exercice:</strong> 1 - Déploiement de VMs avec Terraform et configuration avec Ansible</p>
-        <p><strong>Statut:</strong> ✅ Déployé avec succès</p>
+        <p><strong>Statut:</strong> ✅ Serveur configuré avec succès</p>
       </div>
-      
+
       <h2>🚀 Fonctionnalités</h2>
       <ul>
         <li>Déploiement automatique de l'infrastructure avec Terraform</li>
         <li>Configuration automatique avec Ansible</li>
-        <li>Application Angular servie par NGINX</li>
+        <li>Interface web statique servie par NGINX</li>
         <li>Intégration continue avec GitHub</li>
       </ul>
-      
+
       <h2>📚 À propos du projet</h2>
       <p>Ce projet fait partie de la formation DevOps d'OpenClassrooms. L'objectif est de déployer une infrastructure complète en utilisant les outils d'Infrastructure-as-Code (IaC).</p>
-      
+
       <p><strong>Étudiant:</strong> SEGUIN-CADICHE Mathias</p>
       <p><strong>Date:</strong> <span id="current-date"></span></p>
     </div>
   </div>
-  
+
   <footer>
     <p>© 2026 - Projet P5 OpenClassrooms | Déployez et suivez l'Infrastructure-as-Code</p>
     <p>Technologies: Terraform, Ansible, AWS, OpenSearch, HAProxy</p>
   </footer>
-  
+
   <script>
     // Afficher la date actuelle
     document.getElementById('current-date').textContent = new Date().toLocaleDateString('fr-FR');
-    
+
     // Ajouter un effet de chargement
     window.addEventListener('load', function() {
       document.body.style.opacity = '1';

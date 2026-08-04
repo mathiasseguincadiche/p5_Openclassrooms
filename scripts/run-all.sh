@@ -11,11 +11,14 @@ source "$(dirname "$0")/utils/colors.sh"
 source "$(dirname "$0")/utils/prompts.sh"
 source "$(dirname "$0")/utils/logging.sh"
 
+SCRIPTS_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd -- "$SCRIPTS_DIR/.." && pwd)"
+cd "$PROJECT_ROOT" || exit 1
+
 # =============================================================================
 # VARIABLES GLOBALES
 # =============================================================================
 
-SCRIPTS_DIR="$(dirname "$0")"
 LOG_FILE="/tmp/p5_automation_$(date +%Y%m%d_%H%M%S).log"
 
 # Timeout pour les vérifications (en secondes)
@@ -68,7 +71,7 @@ log_action() {
  local action="$2"
  local status="$3"
  local timestamp=$(date +"%Y-%m-%d %H:%M:%S")
- 
+
  echo "[$timestamp] [PHASE $phase] [$status] $action" >> "$LOG_FILE"
 }
 
@@ -76,9 +79,9 @@ log_action() {
 check_global_prerequisites() {
  title "VÉRIFICATION DES PRÉREQUIS GLOBAUX"
  log_info "Vérification prérequis globaux"
- 
+
  local all_ok=true
- 
+
  # Terraform
  if ! command -v terraform &> /dev/null; then
  error "Terraform n'est pas installé"
@@ -88,7 +91,7 @@ check_global_prerequisites() {
  check "Terraform est installé ($(terraform --version | head -n1))"
  log_info "Terraform installé"
  fi
- 
+
  # AWS CLI
  if ! command -v aws &> /dev/null; then
  error "AWS CLI n'est pas installé"
@@ -98,7 +101,7 @@ check_global_prerequisites() {
  check "AWS CLI est installé ($(aws --version 2>&1 | head -n1))"
  log_info "AWS CLI installé"
  fi
- 
+
  # Git
  if ! command -v git &> /dev/null; then
  error "Git n'est pas installé"
@@ -108,7 +111,7 @@ check_global_prerequisites() {
  check "Git est installé ($(git --version))"
  log_info "Git installé"
  fi
- 
+
  # Ansible
  if ! command -v ansible &> /dev/null; then
  error "Ansible n'est pas installé"
@@ -118,7 +121,7 @@ check_global_prerequisites() {
  check "Ansible est installé ($(ansible --version | head -n1))"
  log_info "Ansible installé"
  fi
- 
+
  # curl
  if ! command -v curl &> /dev/null; then
  error "curl n'est pas installé"
@@ -128,7 +131,7 @@ check_global_prerequisites() {
  check "curl est installé"
  log_info "curl installé"
  fi
- 
+
  # jq
  if ! command -v jq &> /dev/null; then
  warning "jq n'est pas installé (nécessaire pour certaines fonctionnalités)"
@@ -137,7 +140,7 @@ check_global_prerequisites() {
  check "jq est installé"
  log_info "jq installé"
  fi
- 
+
  if [ "$all_ok" = true ]; then
  success "Tous les prérequis globaux sont validés"
  log_success "Tous les prérequis globaux validés"
@@ -153,9 +156,9 @@ check_global_prerequisites() {
 check_project_files() {
  title "VÉRIFICATION DES FICHIERS DU PROJET"
  log_info "Vérification fichiers projet"
- 
+
  local all_ok=true
- 
+
  # Vérifier les scripts principaux
  for script in "phase-0-preparation.sh" "phase-1-terraform-ansible.sh" "phase-2-opensearch-kibana.sh" "phase-3-haproxy.sh" "phase-4-livrables.sh" "phase-5-nettoyage.sh"; do
  if [ -f "$SCRIPTS_DIR/$script" ]; then
@@ -167,7 +170,7 @@ check_project_files() {
  all_ok=false
  fi
  done
- 
+
  # Vérifier les utilitaires
  for util in "colors.sh" "prompts.sh" "checks.sh" "logging.sh" "kibana-api.sh" "capture-screenshots.sh" "health-checks.sh"; do
  if [ -f "$SCRIPTS_DIR/utils/$util" ]; then
@@ -179,7 +182,7 @@ check_project_files() {
  all_ok=false
  fi
  done
- 
+
  # Vérifier les dossiers Terraform
  for dir in "terraform/exercice-1" "terraform/exercice-2" "terraform/exercice-3"; do
  if [ -d "$dir" ]; then
@@ -191,7 +194,7 @@ check_project_files() {
  all_ok=false
  fi
  done
- 
+
  # Vérifier Ansible
  if [ -d "ansible" ]; then
  check "Dossier ansible existe"
@@ -201,7 +204,7 @@ check_project_files() {
  log_error "Dossier ansible introuvable"
  all_ok=false
  fi
- 
+
  if [ "$all_ok" = true ]; then
  success "Tous les fichiers du projet sont en place"
  log_success "Tous les fichiers projet validés"
@@ -217,7 +220,7 @@ check_project_files() {
 run_health_checks() {
  info "Exécution des health checks..."
  log_info "Exécution health checks"
- 
+
  if [ -f "$SCRIPTS_DIR/utils/health-checks.sh" ]; then
  if bash "$SCRIPTS_DIR/utils/health-checks.sh" --auto; then
  success "Health checks terminés avec succès"
@@ -241,25 +244,25 @@ run_phase() {
  local phase_name="$2"
  local phase_script="$3"
  local phase_description="$4"
- 
+
  echo ""
  title "PHASE $phase_num : $phase_name"
  info "Description : $phase_description"
  info "Script : $phase_script"
  echo ""
- 
+
  # Vérifier que le script existe
  if [ ! -f "$phase_script" ]; then
  error "Script introuvable : $phase_script"
  log_action "$phase_num" "Script $phase_script introuvable" "ERREUR"
  return 1
  fi
- 
+
  # Exécuter le script
  if [ "$AUTO_MODE" = true ]; then
  info "Exécution automatique de la Phase $phase_num..."
  log_action "$phase_num" "Début de l'exécution (mode automatique)" "INFO"
- 
+
  if bash "$phase_script" --auto >> "$LOG_FILE" 2>&1; then
  success "Phase $phase_num terminée avec succès"
  log_action "$phase_num" "Exécution terminée" "SUCCÈS"
@@ -267,17 +270,17 @@ run_phase() {
  else
  error "Échec de la Phase $phase_num"
  log_action "$phase_num" "Exécution échouée" "ERREUR"
- 
+
  # Afficher les dernières lignes du log pour le dépannage
  info "Dernières erreurs dans le log :"
  tail -n 20 "$LOG_FILE" | grep -E "(error|Error|ERREUR|échec|Échec)" || info "Aucune erreur évidente dans le log"
- 
+
  return 1
  fi
  else
  info "Exécution interactive de la Phase $phase_num..."
  log_action "$phase_num" "Début de l'exécution (mode interactif)" "INFO"
- 
+
  if bash "$phase_script"; then
  success "Phase $phase_num terminée avec succès"
  log_action "$phase_num" "Exécution terminée" "SUCCÈS"
@@ -295,19 +298,19 @@ show_final_summary() {
  echo ""
  title "RÉSUMÉ FINAL"
  echo ""
- 
+
  info "Fichier de log : $LOG_FILE"
  info ""
- 
+
  # Compter les succès et échecs
  successes=$(grep "SUCCÈS" "$LOG_FILE" | wc -l)
  errors=$(grep "ERREUR" "$LOG_FILE" | wc -l)
- 
+
  info "Statistiques :"
  info "  ✅ Succès : $successes"
  info "  ❌ Échecs : $errors"
  echo ""
- 
+
  if [ "$errors" -eq 0 ]; then
  success "Toutes les phases ont été exécutées avec succès !"
  log_action "FINAL" "Toutes les phases réussies" "SUCCÈS"
@@ -315,7 +318,7 @@ show_final_summary() {
  warning "Certaines phases ont échoué. Consultez le fichier de log pour plus de détails."
  log_action "FINAL" "Certaines phases échouées" "AVERTISSEMENT"
  fi
- 
+
  echo ""
  info "Prochaines étapes :"
  info "  1. Vérifiez le fichier de log : $LOG_FILE"
@@ -329,15 +332,15 @@ show_error_report() {
  echo ""
  title "RAPPORT D'ERREUR"
  echo ""
- 
+
  info "Les erreurs suivantes ont été détectées :"
  echo ""
- 
+
  # Afficher les erreurs du log
  grep "ERREUR" "$LOG_FILE" | while read -r line; do
  error "$line"
  done
- 
+
  echo ""
  info "Pour résoudre ces erreurs :"
  info "  1. Consultez le fichier de log complet : $LOG_FILE"
@@ -415,7 +418,7 @@ init_logging
 if [ "$VALIDATE_MODE" = true ] || [ "$HEALTH_CHECK_MODE" = true ]; then
  info "Validation des prérequis activée..."
  log_info "Validation prérequis activée"
- 
+
  if ! check_global_prerequisites; then
  if [ "$FORCE_MODE" = false ]; then
  error "La validation des prérequis a échoué"
@@ -463,12 +466,12 @@ fi
 
 # Définir les phases
 PHASES=(
- "0:Préparation:scripts/phase-0-preparation.sh:Préparation de l'environnement"
- "1:Terraform+Ansible:scripts/phase-1-terraform-ansible.sh:Déploiement des VMs avec Terraform et configuration avec Ansible"
- "2:OpenSearch+Kibana:scripts/phase-2-opensearch-kibana.sh:Déploiement OpenSearch + Kibana + Dashboard"
- "3:HAProxy:scripts/phase-3-haproxy.sh:Déploiement du load balancer HAProxy"
- "4:Livrables:scripts/phase-4-livrables.sh:Génération des livrables OpenClassrooms"
- "5:Nettoyage:scripts/phase-5-nettoyage.sh:Nettoyage des ressources AWS"
+ "0:Préparation:phase-0-preparation.sh:Préparation de l'environnement"
+ "1:Terraform+Ansible:phase-1-terraform-ansible.sh:Déploiement des VMs avec Terraform et configuration avec Ansible"
+ "2:OpenSearch+Kibana:phase-2-opensearch-kibana.sh:Déploiement OpenSearch + Kibana + Dashboard"
+ "3:HAProxy:phase-3-haproxy.sh:Déploiement du load balancer HAProxy"
+ "4:Livrables:phase-4-livrables.sh:Génération des livrables OpenClassrooms"
+ "5:Nettoyage:phase-5-nettoyage.sh:Nettoyage des ressources AWS"
 )
 
 # Exécuter les phases
@@ -477,13 +480,12 @@ for phase in "${PHASES[@]}"; do
  phase_name=$(echo "$phase" | cut -d: -f2)
  phase_script=$(echo "$phase" | cut -d: -f3)
  phase_description=$(echo "$phase" | cut -d: -f4-)
- 
+
  # Vérifier si on doit exécuter cette phase
  if [ "$phase_num" -ge "$FROM_PHASE" ] && [ "$phase_num" -le "$TO_PHASE" ]; then
- if [ "$phase_num" -eq 0 ] || [ "$phase_num" -ge "$FROM_PHASE" ]; then
  info "Début de la Phase $phase_num : $phase_name"
  log_info "Début Phase $phase_num"
- 
+
  if run_phase "$phase_num" "$phase_name" "$SCRIPTS_DIR/$phase_script" "$phase_description"; then
  # Succès, continuer
  continue

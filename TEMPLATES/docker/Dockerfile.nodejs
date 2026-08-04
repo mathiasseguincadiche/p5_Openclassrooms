@@ -5,9 +5,9 @@
 # Chaque instruction est expliquée ci-dessous.
 
 # --- Étape 1 : Image de base ---
-# Utilise une image officielle Node.js (version 18) basée sur Alpine Linux.
+# Utilise une image officielle Node.js (version 24) basée sur Alpine Linux.
 # Alpine est légère et sécurisée, idéale pour la production.
-FROM node:18-alpine
+FROM node:24-alpine
 
 # --- Étape 2 : Métadonnées (optionnel) ---
 # Ajoute des métadonnées pour documenter l'image (auteur, description, etc.).
@@ -27,11 +27,14 @@ COPY package*.json ./
 # --- Étape 5 : Installation des dépendances ---
 # Exécute `npm install` pour installer les dépendances listées dans package.json.
 # Utilise `--production` pour éviter d'installer les dépendances de développement.
-RUN npm install --production
+RUN npm ci --omit=dev
 
 # --- Étape 6 : Copie du reste de l'application ---
 # Copie tous les fichiers du projet (sauf ceux ignorés par .dockerignore).
-COPY . .
+COPY --chown=node:node . .
+
+# Exécuter l'application avec l'utilisateur non privilégié fourni par l'image.
+USER node
 
 # --- Étape 7 : Exposition du port ---
 # Indique que le conteneur écoutera sur le port 3000.
@@ -47,14 +50,14 @@ CMD ["node", "index.js"]
 # BONNES PRATIQUES SUPPLÉMENTAIRES :
 # =============================================
 # 1. Multi-Stage Build (pour réduire la taille de l'image) :
-#    FROM node:18-alpine as builder
+#    FROM node:24-alpine AS builder
 #    WORKDIR /app
 #    COPY package*.json ./
 #    RUN npm install
 #    COPY . .
 #    RUN npm run build
 #    
-#    FROM node:18-alpine
+#    FROM node:24-alpine
 #    WORKDIR /app
 #    COPY --from=builder /app/dist ./dist
 #    COPY package*.json ./

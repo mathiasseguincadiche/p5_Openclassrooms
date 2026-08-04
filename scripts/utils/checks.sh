@@ -20,12 +20,12 @@ command_exists() {
 # Vérifie si Terraform est installé
 check_terraform() {
     if command_exists terraform; then
-        version=$(terraform -version 2>&1 | head -n1 | cut -d' ' -f2)
-        if [[ "$version" =~ ^v1\.[0-9]+\. ]]; then
+        version=$(terraform -version 2>&1 | head -n1 | cut -d' ' -f2 | tr -d 'v')
+        if [ "$(printf '%s\n' "1.15.0" "$version" | sort -V | head -n1)" = "1.15.0" ]; then
             success "Terraform est installé (version: $version)"
             return 0
         else
-            error "Terraform est installé mais la version est trop ancienne ($version). Version requise: >= v1.15.0"
+            error "Terraform est installé mais la version est trop ancienne ($version). Version requise: >= 1.15.0"
             return 1
         fi
     else
@@ -56,7 +56,7 @@ check_aws_cli() {
     if command_exists aws; then
         version=$(aws --version 2>&1 | awk '{print $1}' | cut -d'/' -f2)
         success "AWS CLI est installé (version: $version)"
-        
+
         # Vérifier la configuration
         if aws sts get-caller-identity >/dev/null 2>&1; then
             success "AWS CLI est configuré avec des credentials valides"
@@ -92,7 +92,7 @@ check_nodejs() {
         error "Node.js n'est pas installé. Installez-le avec: sudo apt install -y nodejs"
         return 1
     fi
-    
+
     if command_exists npm; then
         npm_version=$(npm --version 2>&1)
         success "npm est installé (version: $npm_version)"
@@ -133,11 +133,12 @@ check_vm_devops() {
 
 # Vérifie si on est dans le bon dossier
 check_project_dir() {
-    if [ -d "04_EXERCICES" ] && [ -d "terraform" ] && [ -d "ansible" ]; then
+    if [ -d "terraform/exercice-1" ] && [ -d "terraform/exercice-2" ] && \
+       [ -d "terraform/exercice-3" ] && [ -d "ansible" ]; then
         success "Vous êtes dans le bon dossier du projet"
         return 0
     else
-        error "Vous n'êtes pas dans le bon dossier. Allez dans: /home/devops/P5_OC_4091_PACK_COMPLET_V4_3_KVM/"
+        error "Exécutez ce script depuis la racine du dépôt p5_Openclassrooms."
         return 1
     fi
 }
@@ -171,13 +172,16 @@ check_dir_exists() {
 # Vérifie si un cluster OpenSearch existe
 check_opensearch_domain() {
     domain_name="$1"
-    if aws es describe-domain --domain-name "$domain_name" >/dev/null 2>&1; then
-        status=$(aws es describe-domain --domain-name "$domain_name" --query "DomainStatus.Status" --output text 2>/dev/null)
-        if [[ "$status" == "Active" ]]; then
+    if aws opensearch describe-domain --domain-name "$domain_name" >/dev/null 2>&1; then
+        processing=$(aws opensearch describe-domain --domain-name "$domain_name" \
+            --query "DomainStatus.Processing" --output text 2>/dev/null)
+        endpoint=$(aws opensearch describe-domain --domain-name "$domain_name" \
+            --query "DomainStatus.Endpoint" --output text 2>/dev/null)
+        if [[ "$processing" == "False" && -n "$endpoint" && "$endpoint" != "None" ]]; then
             success "Le domaine OpenSearch $domain_name existe et est actif"
             return 0
         else
-            info "Le domaine OpenSearch $domain_name existe mais n'est pas encore actif (statut: $status)"
+            info "Le domaine OpenSearch $domain_name existe mais sa préparation est encore en cours"
             return 1
         fi
     else
@@ -206,7 +210,7 @@ check_ec2_instances() {
 # Vérifie si NGINX est installé et démarré
 check_nginx() {
     ip="$1"
-    if ssh -i p5-key.pem -o StrictHostKeyChecking=no -o ConnectTimeout=5 ubuntu@"$ip" "systemctl is-active --quiet nginx" 2>/dev/null; then
+    if ssh -i "$HOME/.ssh/p5-key" -o StrictHostKeyChecking=accept-new -o ConnectTimeout=5 ubuntu@"$ip" "systemctl is-active --quiet nginx" 2>/dev/null; then
         success "NGINX est démarré sur $ip"
         return 0
     else
@@ -218,7 +222,7 @@ check_nginx() {
 # Vérifie si HAProxy est installé et démarré
 check_haproxy() {
     ip="$1"
-    if ssh -i p5-key.pem -o StrictHostKeyChecking=no -o ConnectTimeout=5 ubuntu@"$ip" "systemctl is-active --quiet haproxy" 2>/dev/null; then
+    if ssh -i "$HOME/.ssh/p5-key" -o StrictHostKeyChecking=accept-new -o ConnectTimeout=5 ubuntu@"$ip" "systemctl is-active --quiet haproxy" 2>/dev/null; then
         success "HAProxy est démarré sur $ip"
         return 0
     else

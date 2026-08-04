@@ -7,8 +7,8 @@
 # Région AWS (us-east-1 OBLIGATOIRE pour ce projet)
 aws_region = "us-east-1"
 
-# AMI ID pour Ubuntu 26.04 (us-east-1)
-ami_id = "ami-0c55b159cbfafe1f0"
+# Laisser null pour sélectionner automatiquement Ubuntu 24.04 LTS
+ami_id = null
 
 # Type d'instance EC2 (t2.micro est gratuit avec Free Tier)
 instance_type = "t2.micro"
@@ -16,3 +16,7 @@ instance_type = "t2.micro"
 # 🔴 À MODIFIER : Votre IP publique
 # Trouvez votre IP avec : curl ifconfig.me
 your_ip_cidr = "192.168.1.1/32"  # ⚠️ Remplacez par votre IP !
+
+# 🔐 Ne stockez pas le mot de passe HAProxy dans ce fichier.
+# Fournissez-le avant terraform plan/apply :
+# export TF_VAR_haproxy_stats_password='une-phrase-secrete-de-16-caracteres-minimum'

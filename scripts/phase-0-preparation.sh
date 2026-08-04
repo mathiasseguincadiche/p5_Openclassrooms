@@ -10,11 +10,13 @@ source "$(dirname "$0")/utils/colors.sh"
 source "$(dirname "$0")/utils/checks.sh"
 source "$(dirname "$0")/utils/prompts.sh"
 
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+
 # =============================================================================
 # VARIABLES GLOBALES
 # =============================================================================
 
-PROJECT_DIR="/home/devops/P5_OC_4091_PACK_COMPLET_V4_3_KVM"
 
 # =============================================================================
 # FONCTIONS
@@ -39,7 +41,7 @@ install_package() {
     local package="$1"
     local install_cmd="$2"
     local description="$3"
-    
+
     if command_exists "$package"; then
         check "$description est déjà installé"
     else
@@ -56,14 +58,11 @@ install_package() {
 # Vérifie et installe tous les prérequis
 check_and_install_prerequisites() {
     title "VÉRIFICATION ET INSTALLATION DES PRÉREQUIS"
-    
-    # 1. Vérifier qu'on est sur la VM vm-devops
+
+    # 1. Identifier l'hôte d'exécution
     step 1 "Vérification de la VM"
-    check_vm_devops || {
-        error "Vous devez être sur la VM vm-devops pour continuer."
-        exit 1
-    }
-    
+    check_vm_devops || warning "L'hôte n'est pas nommé vm-devops ; poursuite après vérification des outils."
+
     # 2. Vérifier qu'on est dans le bon dossier
     step 2 "Vérification du dossier du projet"
     if [ -d "$PROJECT_DIR" ]; then
@@ -71,35 +70,35 @@ check_and_install_prerequisites() {
         check "Dossier du projet trouvé"
     else
         error "Le dossier $PROJECT_DIR n'existe pas."
-        info "Assurez-vous que le pack P5 est décompressé dans /home/devops/"
+        info "Assurez-vous d'exécuter le script depuis le dépôt P5."
         exit 1
     fi
-    
+
     # 3. Installer Terraform
     step 3 "Installation de Terraform"
     install_package "terraform" "sudo apt install -y terraform" "Terraform"
-    
+
     # 4. Installer Ansible
     step 4 "Installation d'Ansible"
     install_package "ansible" "sudo apt install -y ansible" "Ansible"
-    
+
     # 5. Installer AWS CLI
     step 5 "Installation d'AWS CLI"
     install_package "aws" "sudo apt install -y awscli" "AWS CLI"
-    
+
     # 6. Installer Git
     step 6 "Installation de Git"
     install_package "git" "sudo apt install -y git" "Git"
-    
+
     # 7. Installer Node.js et npm
     step 7 "Installation de Node.js et npm"
     install_package "node" "sudo apt install -y nodejs npm" "Node.js"
     install_package "npm" "sudo apt install -y npm" "npm"
-    
+
     # 8. Installer Docker
     step 8 "Installation de Docker"
     install_package "docker" "sudo apt install -y docker.io" "Docker"
-    
+
     # 9. Configurer AWS CLI
     step 9 "Configuration d'AWS CLI"
     if aws sts get-caller-identity >/dev/null 2>&1; then
@@ -114,7 +113,7 @@ check_and_install_prerequisites() {
             exit 1
         fi
     fi
-    
+
     # 10. Vérifier que tout est installé
     step 10 "Vérification finale"
     echo ""
@@ -126,33 +125,38 @@ check_and_install_prerequisites() {
     node --version 2>&1
     npm --version 2>&1
     docker --version 2>&1 | head -n1
-    
+
     success "Tous les prérequis sont installés et configurés !"
 }
 
 # Vérifie uniquement l'environnement (sans installation)
 check_environment_only() {
     title "VÉRIFICATION DE L'ENVIRONNEMENT"
-    
+    local failures=0
+
     step 1 "Vérification de la VM"
-    check_vm_devops || warning "Vous n'êtes pas sur la VM vm-devops"
-    
+    check_vm_devops || warning "Vous n'êtes pas sur la VM vm-devops ; ce nom d'hôte est facultatif."
+
     step 2 "Vérification du dossier du projet"
-    check_dir_exists "$PROJECT_DIR" || warning "Le dossier $PROJECT_DIR n'existe pas"
-    
+    check_project_dir || {
+        warning "La structure du dépôt est incomplète"
+        failures=$((failures + 1))
+    }
+
     step 3 "Vérification des outils"
-    check_terraform || warning "Terraform n'est pas installé ou version trop ancienne"
-    check_ansible || warning "Ansible n'est pas installé ou version trop ancienne"
-    check_aws_cli || warning "AWS CLI n'est pas installé ou non configuré"
-    check_git || warning "Git n'est pas installé"
-    check_nodejs || warning "Node.js ou npm n'est pas installé"
-    check_docker || warning "Docker n'est pas installé"
-    
+    check_terraform || { warning "Terraform n'est pas installé ou sa version est trop ancienne"; failures=$((failures + 1)); }
+    check_ansible || { warning "Ansible n'est pas installé"; failures=$((failures + 1)); }
+    check_aws_cli || { warning "AWS CLI n'est pas installé ou configuré"; failures=$((failures + 1)); }
+    check_git || { warning "Git n'est pas installé"; failures=$((failures + 1)); }
+    check_nodejs || { warning "Node.js ou npm n'est pas installé"; failures=$((failures + 1)); }
+    check_docker || { warning "Docker n'est pas installé"; failures=$((failures + 1)); }
+
     echo ""
-    if [ $? -eq 0 ]; then
+    if [ "$failures" -eq 0 ]; then
         success "L'environnement est prêt pour le projet !"
     else
-        warning "Certains outils manquent. Exécutez le script sans --check-only pour les installer."
+        error "$failures prérequis obligatoire(s) manquent."
+        return 1
     fi
 }
 

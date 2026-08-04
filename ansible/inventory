@@ -1,4 +1,4 @@
-[web_servers]
+[webservers]
 # Ajoute tes serveurs ici
 # Exemple:
 # web1 ansible_host=192.168.1.10

@@ -9,20 +9,21 @@ Cette page regroupe les **commandes Docker les plus utiles** pour les débutants
 
 1. [Installation](#-installation)
 2. [Commandes de Base](#-commandes-de-base)
-3. [Gestion des Images](#-gestion-des-images)
+3. [Gestion des Images](#gestion-images)
 4. [Gestion des Conteneurs](#-gestion-des-conteneurs)
 5. [Dockerfile](#-dockerfile)
 6. [Docker Compose](#-docker-compose)
 7. [Réseau](#-réseau)
 8. [Volumes](#-volumes)
 9. [Sécurité](#-sécurité)
-10. [Dépannage](#-dépannage)
+10. [Dépannage](#depannage)
 
 ---
 
 ## 📥 Installation
 
 ### Linux (Ubuntu/Debian)
+
 ```bash
 # Installer Docker
 sudo apt update
@@ -41,6 +42,7 @@ docker-compose --version
 ```
 
 ### macOS
+
 ```bash
 # Installer Docker Desktop
 brew install --cask docker
@@ -53,9 +55,11 @@ docker --version
 ```
 
 ### Windows
+
 1. Téléchargez [Docker Desktop](https://www.docker.com/products/docker-desktop/).
 2. Installez et démarrez Docker Desktop.
 3. Vérifiez l'installation :
+
 ```powershell
 docker --version
 ```
@@ -72,6 +76,8 @@ docker --version
 | `docker help <commande>` | Afficher l'aide pour une commande | `docker help run` |
 
 ---
+
+<a id="gestion-images"></a>
 
 ## 🖼️ Gestion des Images
 
@@ -149,9 +155,10 @@ docker --version
 | `ENTRYPOINT` | Point d'entrée | `ENTRYPOINT ["/app/start.sh"]` |
 
 ### Exemple de Dockerfile
+
 ```dockerfile
 # Image de base
-FROM node:18-alpine
+FROM node:24-alpine
 
 # Métadonnées
 LABEL maintainer="votre.email@example.com"
@@ -176,9 +183,10 @@ CMD ["node", "index.js"]
 ```
 
 ### Multi-Stage Build
+
 ```dockerfile
 # Étape 1 : Build de l'application
-FROM node:18-alpine as builder
+FROM node:24-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
@@ -186,7 +194,7 @@ COPY . .
 RUN npm run build
 
 # Étape 2 : Image finale légère
-FROM node:18-alpine
+FROM node:24-alpine
 WORKDIR /app
 COPY --from=builder /app/dist ./dist
 COPY package*.json ./
@@ -223,9 +231,8 @@ CMD ["node", "dist/index.js"]
 | `docker-compose config` | Vérifier la configuration | `docker-compose config` |
 
 ### Exemple de `docker-compose.yml`
-```yaml
-version: "3.8"
 
+```yaml
 services:
   web:
     build: .
@@ -238,9 +245,9 @@ services:
     restart: unless-stopped
 
   db:
-    image: postgres:13
+    image: postgres:17-alpine
     environment:
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_PASSWORD=${DB_PASSWORD:?Définissez DB_PASSWORD}
     volumes:
       - db_data:/var/lib/postgresql/data
     restart: unless-stopped
@@ -288,6 +295,8 @@ volumes:
 | `docker run --security-opt <option> <image>` | Options de sécurité | `docker run --security-opt no-new-privileges nginx:latest` |
 
 ---
+
+<a id="depannage"></a>
 
 ## 🛠️ Dépannage
 

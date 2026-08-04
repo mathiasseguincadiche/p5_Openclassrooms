@@ -92,18 +92,18 @@ configure_kibana_url() {
  read -r KIBANA_BASE_URL
  fi
  fi
- 
+
  # Vérifier que l'URL se termine par /_dashboards
  if [[ ! "$KIBANA_BASE_URL" == *"_dashboards"* ]]; then
  KIBANA_BASE_URL="${KIBANA_BASE_URL}/_dashboards"
  info "URL corrigée : $KIBANA_BASE_URL"
  log_info "URL corrigée: $KIBANA_BASE_URL"
  fi
- 
+
  # Extraire l'URL de base (sans /_dashboards)
  BASE_URL=$(echo "$KIBANA_BASE_URL" | sed 's|/_dashboards$||')
  API_URL="$BASE_URL"
- 
+
  # Sauvegarder l'URL pour les autres scripts
  echo "$KIBANA_BASE_URL" > /tmp/kibana_url.txt
  echo "$BASE_URL" > /tmp/opensearch_endpoint.txt
@@ -114,17 +114,17 @@ configure_kibana_url() {
 check_kibana_access() {
  info "Vérification de l'accès à Kibana..."
  log_info "Vérification accès Kibana"
- 
+
  local start_time=$(date +%s)
  while true; do
- if curl -k -I "$KIBANA_BASE_URL" | grep -q "HTTP/1.1 200 OK"; then
+ if curl -I "$KIBANA_BASE_URL" | grep -q "HTTP/1.1 200 OK"; then
  success "Kibana est accessible"
  log_success "Kibana accessible"
  return 0
  else
  local current_time=$(date +%s)
  local elapsed=$((current_time - start_time))
- 
+
  if [ "$elapsed" -ge "$CHECK_TIMEOUT" ]; then
  error "Timeout atteint ($CHECK_TIMEOUT s). Kibana n'est pas accessible."
  log_error "Timeout accès Kibana"
@@ -135,7 +135,7 @@ check_kibana_access() {
  info "  4. URL correcte : $KIBANA_BASE_URL"
  exit 1
  fi
- 
+
  info "Kibana non accessible. Attente de $CHECK_INTERVAL secondes... (${elapsed}s/${CHECK_TIMEOUT}s)"
  sleep $CHECK_INTERVAL
  fi
@@ -146,11 +146,11 @@ check_kibana_access() {
 check_index_exists() {
  info "Vérification de l'existence de l'index $INDEX_PATTERN..."
  log_info "Vérification index $INDEX_PATTERN"
- 
+
  local start_time=$(date +%s)
  while true; do
- local index_response=$(curl -k -s -X GET "$API_URL/_cat/indices/$INDEX_PATTERN?v" 2>/dev/null)
- 
+ local index_response=$(curl -s -X GET "$API_URL/_cat/indices/$INDEX_PATTERN?v" 2>/dev/null)
+
  if echo "$index_response" | grep -q "nginx-access"; then
  success "Index $INDEX_PATTERN trouvé"
  log_success "Index trouvé"
@@ -158,14 +158,14 @@ check_index_exists() {
  else
  local current_time=$(date +%s)
  local elapsed=$((current_time - start_time))
- 
+
  if [ "$WAIT_MODE" = true ] && [ "$elapsed" -lt "$CHECK_TIMEOUT" ]; then
  info "Index non trouvé. Attente de $CHECK_INTERVAL secondes... (${elapsed}s/${CHECK_TIMEOUT}s)"
  info "Astuce : Exécutez d'abord phase-2-opensearch-kibana.sh pour charger les logs"
  sleep $CHECK_INTERVAL
  continue
  fi
- 
+
  error "Index $INDEX_PATTERN introuvable dans OpenSearch"
  log_error "Index $INDEX_PATTERN introuvable"
  info "Solutions :"
@@ -181,12 +181,12 @@ check_index_exists() {
 check_index_has_data() {
  info "Vérification que l'index contient des données..."
  log_info "Vérification données dans l'index"
- 
+
  local start_time=$(date +%s)
  while true; do
- local count_response=$(curl -k -s -X GET "$API_URL/$INDEX_PATTERN/_count" 2>/dev/null)
+ local count_response=$(curl -s -X GET "$API_URL/$INDEX_PATTERN/_count" 2>/dev/null)
  local doc_count=$(echo "$count_response" | jq -r '.count // "0"' 2>/dev/null)
- 
+
  if [ "$doc_count" -gt 0 ]; then
  success "Index contient $doc_count documents"
  log_success "Index contient $doc_count documents"
@@ -194,14 +194,14 @@ check_index_has_data() {
  else
  local current_time=$(date +%s)
  local elapsed=$((current_time - start_time))
- 
+
  if [ "$WAIT_MODE" = true ] && [ "$elapsed" -lt "$CHECK_TIMEOUT" ]; then
  info "Aucune donnée trouvée. Attente de $CHECK_INTERVAL secondes... (${elapsed}s/${CHECK_TIMEOUT}s)"
  info "Astuce : Les logs sont en cours de chargement par phase-2-opensearch-kibana.sh"
  sleep $CHECK_INTERVAL
  continue
  fi
- 
+
  error "L'index $INDEX_PATTERN est vide (0 document)"
  log_error "Index vide"
  info "Solutions :"
@@ -217,16 +217,16 @@ check_index_has_data() {
 check_required_fields() {
  info "Vérification des champs requis dans l'index..."
  log_info "Vérification champs requis"
- 
+
  local required_fields=("@timestamp" "method" "url" "status" "size" "client_ip")
  local missing_fields=()
- 
+
  for field in "${required_fields[@]}"; do
- if ! curl -k -s -X GET "$API_URL/$INDEX_PATTERN/_mapping" | jq -e ".$INDEX_PATTERN.mappings.properties.\"$field\"" >/dev/null 2>&1; then
+ if ! curl -s -X GET "$API_URL/$INDEX_PATTERN/_mapping" | jq -e ".$INDEX_PATTERN.mappings.properties.\"$field\"" >/dev/null 2>&1; then
  missing_fields+=("$field")
  fi
  done
- 
+
  if [ ${#missing_fields[@]} -eq 0 ]; then
  success "Tous les champs requis sont présents"
  log_success "Tous les champs requis présents"
@@ -242,9 +242,9 @@ check_required_fields() {
 
 # Vérifie si le dashboard existe déjà
 check_dashboard_exists() {
- local existing_dashboard=$(curl -k -s -X GET "$API_URL/api/saved_objects/dashboard" | \
+ local existing_dashboard=$(curl -s -X GET "$API_URL/api/saved_objects/dashboard" | \
  jq -r ".saved_objects[] | select(.attributes.title == \"$DASHBOARD_NAME\") | .id" 2>/dev/null)
- 
+
  if [ -n "$existing_dashboard" ]; then
  if [ "$FORCE_MODE" = true ]; then
  warning "Dashboard $DASHBOARD_NAME existe déjà (ID: $existing_dashboard). Mode --force activé, écrasement."
@@ -270,19 +270,19 @@ check_dashboard_exists() {
 create_index_pattern() {
  info "Création de l'index pattern : $INDEX_PATTERN"
  log_info "Création index pattern $INDEX_PATTERN"
- 
+
  # Vérifier si l'index pattern existe déjà
- local existing_pattern=$(curl -k -s -X GET "$API_URL/api/saved_objects/index-pattern" | \
+ local existing_pattern=$(curl -s -X GET "$API_URL/api/saved_objects/index-pattern" | \
  jq -r ".saved_objects[] | select(.attributes.title == \"$INDEX_PATTERN\") | .id" 2>/dev/null)
- 
+
  if [ -n "$existing_pattern" ]; then
  info "Index pattern $INDEX_PATTERN existe déjà (ID: $existing_pattern)"
  log_info "Index pattern existe déjà"
  return 0
  fi
- 
+
  # Créer l'index pattern
- response=$(curl -k -s -X POST "$API_URL/api/saved_objects/index-pattern" \
+ response=$(curl -s -X POST "$API_URL/api/saved_objects/index-pattern" \
  -H "Content-Type: application/json" \
  -H "kbn-xsrf: true" \
  -d "{
@@ -291,7 +291,7 @@ create_index_pattern() {
  \"timeFieldName\": \"@timestamp\"
  }
  }")
- 
+
  if echo "$response" | jq -e ".id" >/dev/null 2>&1; then
  success "Index pattern créé : $INDEX_PATTERN"
  log_success "Index pattern créé"
@@ -308,26 +308,26 @@ create_visualization() {
  local vis_type="$1"
  local vis_name="$2"
  local vis_json="$3"
- 
+
  info "Création de la visualisation : $vis_name (type: $vis_type)"
  log_info "Création visualisation $vis_name"
- 
+
  # Vérifier si la visualisation existe déjà
- local existing_vis=$(curl -k -s -X GET "$API_URL/api/saved_objects/visualization" | \
+ local existing_vis=$(curl -s -X GET "$API_URL/api/saved_objects/visualization" | \
  jq -r ".saved_objects[] | select(.attributes.title == \"$vis_name\") | .id" 2>/dev/null)
- 
+
  if [ -n "$existing_vis" ] && [ "$FORCE_MODE" != true ]; then
  info "Visualisation $vis_name existe déjà (ID: $existing_vis)"
  log_info "Visualisation existe déjà"
  echo "$existing_vis"
  return 0
  fi
- 
- response=$(curl -k -s -X POST "$API_URL/api/saved_objects/visualization" \
+
+ response=$(curl -s -X POST "$API_URL/api/saved_objects/visualization" \
  -H "Content-Type: application/json" \
  -H "kbn-xsrf: true" \
  -d "$vis_json")
- 
+
  if echo "$response" | jq -e ".id" >/dev/null 2>&1; then
  success "Visualisation créée : $vis_name"
  log_success "Visualisation $vis_name créée"
@@ -344,7 +344,7 @@ create_visualization() {
 create_donut_chart() {
  info "Création du diagramme Donut : Répartition des verbes HTTP"
  log_info "Création diagramme Donut"
- 
+
  donut_json=$(jq -n --arg title "Répartition des verbes HTTP" \
  --arg index "$INDEX_PATTERN" \
  '{
@@ -355,7 +355,7 @@ create_donut_chart() {
  "savedSearchId": null
  }
  }')
- 
+
  create_visualization "pie" "Répartition des verbes HTTP" "$donut_json"
 }
 
@@ -363,7 +363,7 @@ create_donut_chart() {
 create_histogram_chart() {
  info "Création du diagramme Histogram : Quantité cumulée de données par tranche de 12h"
  log_info "Création diagramme Histogram"
- 
+
  histogram_json=$(jq -n --arg title "Quantité cumulée de données par tranche de 12h" \
  --arg index "$INDEX_PATTERN" \
  '{
@@ -374,7 +374,7 @@ create_histogram_chart() {
  "savedSearchId": null
  }
  }')
- 
+
  create_visualization "histogram" "Quantité cumulée de données par tranche de 12h" "$histogram_json"
 }
 
@@ -382,7 +382,7 @@ create_histogram_chart() {
 create_cumulative_histogram() {
  info "Création du diagramme Histogram cumulé : Top 5 des requêtes par tranche de 12h"
  log_info "Création diagramme Histogram cumulé"
- 
+
  cumulative_json=$(jq -n --arg title "Top 5 des requêtes par tranche de 12h (cumul)" \
  --arg index "$INDEX_PATTERN" \
  '{
@@ -393,7 +393,7 @@ create_cumulative_histogram() {
  "savedSearchId": null
  }
  }')
- 
+
  create_visualization "histogram" "Top 5 des requêtes par tranche de 12h (cumul)" "$cumulative_json"
 }
 
@@ -401,24 +401,24 @@ create_cumulative_histogram() {
 create_dashboard() {
  info "Création du dashboard : $DASHBOARD_NAME"
  log_info "Création dashboard $DASHBOARD_NAME"
- 
+
  # Récupérer les IDs des visualisations
- DONUT_ID=$(curl -k -s -X GET "$API_URL/api/saved_objects/visualization" | \
+ DONUT_ID=$(curl -s -X GET "$API_URL/api/saved_objects/visualization" | \
  jq -r ".saved_objects[] | select(.attributes.title == \"Répartition des verbes HTTP\") | .id")
- 
- HISTOGRAM_ID=$(curl -k -s -X GET "$API_URL/api/saved_objects/visualization" | \
+
+ HISTOGRAM_ID=$(curl -s -X GET "$API_URL/api/saved_objects/visualization" | \
  jq -r ".saved_objects[] | select(.attributes.title == \"Quantité cumulée de données par tranche de 12h\") | .id")
- 
- CUMULATIVE_ID=$(curl -k -s -X GET "$API_URL/api/saved_objects/visualization" | \
+
+ CUMULATIVE_ID=$(curl -s -X GET "$API_URL/api/saved_objects/visualization" | \
  jq -r ".saved_objects[] | select(.attributes.title == \"Top 5 des requêtes par tranche de 12h (cumul)\") | .id")
- 
+
  if [ -z "$DONUT_ID" ] || [ -z "$HISTOGRAM_ID" ] || [ -z "$CUMULATIVE_ID" ]; then
  error "Impossible de récupérer les IDs des visualisations"
  log_error "IDs visualisations introuvables"
  info "Vérifiez que les visualisations ont été créées"
  exit 1
  fi
- 
+
  # Créer le dashboard
  dashboard_json=$(jq -n --arg title "$DASHBOARD_NAME" \
  --arg donut_id "$DONUT_ID" \
@@ -432,12 +432,12 @@ create_dashboard() {
  "savedSearchId": null
  }
  }')
- 
- response=$(curl -k -s -X POST "$API_URL/api/saved_objects/dashboard" \
+
+ response=$(curl -s -X POST "$API_URL/api/saved_objects/dashboard" \
  -H "Content-Type: application/json" \
  -H "kbn-xsrf: true" \
  -d "$dashboard_json")
- 
+
  if echo "$response" | jq -e ".id" >/dev/null 2>&1; then
  success "Dashboard créé : $DASHBOARD_NAME"
  log_success "Dashboard $DASHBOARD_NAME créé"

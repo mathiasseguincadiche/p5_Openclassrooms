@@ -8,15 +8,15 @@ Ici, vous allez apprendre à **provisionner une infrastructure cloud** avec **Te
 ## 📌 Table des Matières
 
 1. [🎯 Objectifs](#-objectifs)
-2. [🛠️ Prérequis](#-prérequis)
+2. [🛠️ Prérequis](#prerequis)
 3. [📥 Préparation de l'Environnement](#-préparation-de-lenvironnement)
-4. [📝 Étape 1 : Installer Terraform](#-étape-1-installer-terraform)
-5. [📝 Étape 2 : Configurer un Provider AWS](#-étape-2-configurer-un-provider-aws)
-6. [📝 Étape 3 : Créer une Ressource Simple (Instance EC2)](#-étape-3-créer-une-ressource-simple-instance-ec2)
-7. [📝 Étape 4 : Utiliser des Variables](#-étape-4-utiliser-des-variables)
-8. [📝 Étape 5 : Créer un Réseau Complet (VPC, Subnet, Security Group)](#-étape-5-créer-un-réseau-complet-vpc-subnet-security-group)
-9. [📝 Étape 6 : Utiliser des Outputs](#-étape-6-utiliser-des-outputs)
-10. [📝 Étape 7 : Détruire l'Infrastructure](#-étape-7-détruire-linfrastructure)
+4. [📝 Étape 1 : Installer Terraform](#-étape-1--installer-terraform)
+5. [📝 Étape 2 : Configurer un Provider AWS](#-étape-2--configurer-un-provider-aws)
+6. [📝 Étape 3 : Créer une Ressource Simple (Instance EC2)](#-étape-3--créer-une-ressource-simple-instance-ec2)
+7. [📝 Étape 4 : Utiliser des Variables](#-étape-4--utiliser-des-variables)
+8. [📝 Étape 5 : Créer un Réseau Complet (VPC, Subnet, Security Group)](#-étape-5--créer-un-réseau-complet-vpc-subnet-security-group)
+9. [📝 Étape 6 : Utiliser des Outputs](#-étape-6--utiliser-des-outputs)
+10. [📝 Étape 7 : Détruire l'Infrastructure](#-étape-7--détruire-linfrastructure)
 11. [✅ Vérification](#-vérification)
 12. [🔍 Résolution des Problèmes](#-résolution-des-problèmes)
 13. [📚 Pour Aller Plus Loin](#-pour-aller-plus-loin)
@@ -36,6 +36,8 @@ Ici, vous allez apprendre à **provisionner une infrastructure cloud** avec **Te
 
 ---
 
+<a id="prerequis"></a>
+
 ## 🛠️ Prérequis
 
 Avant de commencer, assurez-vous d'avoir :
@@ -48,6 +50,7 @@ Avant de commencer, assurez-vous d'avoir :
 | **Clés AWS** | - | - | IAM Console |
 
 > **⚠️ Important** :
+>
 > - Vous avez besoin d'un **compte AWS** avec des **permissions IAM** pour créer des ressources.
 > - Les ressources créées dans cet exercice **coûtent de l'argent** (mais très peu, ~0.01$ par heure pour une instance t2.micro).
 > - **Pensez à détruire l'infrastructure** après l'exercice pour éviter des frais inutiles.
@@ -57,18 +60,22 @@ Avant de commencer, assurez-vous d'avoir :
 ## 📥 Préparation de l'Environnement
 
 ### 1. Cloner le Dépôt du Projet P5
+
 Si ce n'est pas déjà fait, clonez le dépôt :
+
 ```bash
 git clone https://github.com/mathiasseguincadiche/p5_Openclassrooms.git
 cd p5_Openclassrooms
 ```
 
 ### 2. Créer un Dossier pour l'Exercice
+
 ```bash
 mkdir -p ~/p5-exercise-4 && cd ~/p5-exercise-4
 ```
 
 ### 3. Configurer les Clés AWS
+
 1. Allez sur la [Console IAM AWS](https://console.aws.amazon.com/iam/).
 2. Cliquez sur **Users** > **Votre utilisateur** > **Security credentials**.
 3. Cliquez sur **Create access key**.
@@ -77,12 +84,14 @@ mkdir -p ~/p5-exercise-4 && cd ~/p5-exercise-4
 6. **Copiez** la **Access Key ID** et la **Secret Access Key** (vous ne pourrez plus les voir après).
 
 ### 4. Configurer AWS CLI
+
 ```bash
 # Configurer AWS CLI avec vos clés
 aws configure
 ```
 
 > **Répondez aux questions comme suit** (remplacez par vos valeurs) :
+>
 > ```
 > AWS Access Key ID [None]: VOTRE_ACCESS_KEY_ID
 > AWS Secret Access Key [None]: VOTRE_SECRET_ACCESS_KEY
@@ -91,12 +100,14 @@ aws configure
 > ```
 
 ### 5. Vérifier la Configuration
+
 ```bash
 # Vérifier que AWS CLI est bien configuré
 aws sts get-caller-identity
 ```
 
 > **✅ Résultat attendu** : Vous devriez voir :
+>
 > ```json
 > {
 >     "UserId": "AIDASAMPLEUSERID",
@@ -110,9 +121,11 @@ aws sts get-caller-identity
 ## 📝 Étape 1 : Installer Terraform
 
 ### 1. Télécharger Terraform
+
 Terraform est distribué sous forme de **binaire unique**. Téléchargez la dernière version depuis le site officiel.
 
-#### Sur Linux/macOS :
+#### Sur Linux/macOS
+
 ```bash
 # Télécharger Terraform (version 1.5.x)
 wget https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
@@ -127,7 +140,8 @@ sudo mv terraform /usr/local/bin/
 rm terraform_1.5.7_linux_amd64.zip
 ```
 
-#### Sur Windows (PowerShell) :
+#### Sur Windows (PowerShell)
+
 ```powershell
 # Télécharger Terraform
 Invoke-WebRequest -Uri https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_windows_amd64.zip -OutFile terraform.zip
@@ -143,12 +157,14 @@ rm terraform.zip
 ```
 
 ### 2. Vérifier l'Installation
+
 ```bash
 # Vérifier la version de Terraform
 terraform --version
 ```
 
 > **✅ Résultat attendu** : Vous devriez voir :
+>
 > ```
 > Terraform v1.5.7
 > on linux_amd64
@@ -161,12 +177,15 @@ terraform --version
 Un **provider** est un plugin Terraform qui permet d'interagir avec une plateforme cloud (AWS, Azure, GCP, etc.).
 
 ### 1. Créer le Fichier `main.tf`
+
 Créez un fichier `main.tf` :
+
 ```bash
 nano main.tf
 ```
 
 Ajoutez le contenu suivant :
+
 ```hcl
 # =============================================
 # Configuration du provider AWS
@@ -212,41 +231,45 @@ provider "aws" {
 ```
 
 > **⚠️ Sécurité** :
+>
 > - **Ne jamais stocker de clés AWS dans le code** (même dans des fichiers `.tf`).
 > - Utilisez toujours **AWS CLI** ou des **variables d'environnement** pour les credentials.
 
 ### 2. Initialiser Terraform
+
 ```bash
 # Initialiser Terraform (télécharge les providers)
 terraform init
 ```
 
 > **💡 Explication** :
+>
 > - `terraform init` :
 >   - Télécharge les **providers** spécifiés dans le fichier de configuration.
 >   - Initialise le **backend** (pour stocker l'état Terraform).
 >   - Crée un fichier `.terraform.lock.hcl` pour verrouiller les versions des providers.
 
 > **✅ Résultat attendu** : Vous devriez voir :
+>
 > ```
 > Initializing the backend...
-> 
+>
 > Initializing provider plugins...
 > - Finding hashicorp/aws versions matching "~> 4.0"...
 > - Installing hashicorp/aws v4.65.0...
 > - Installed hashicorp/aws v4.65.0 (signed by HashiCorp)
-> 
+>
 > Terraform has created a lock file .terraform.lock.hcl to record the provider
 > selections it made above. Include this file in your version control repository
 > so that Terraform can guarantee to make the same selections by default when
 > you run "terraform init" in the future.
-> 
+>
 > Terraform has been successfully initialized!
-> 
+>
 > You may now begin working with Terraform. Try running "terraform plan" to see
 > any changes that are required for your infrastructure. All Terraform commands
 > should now work.
-> 
+>
 > If you ever set or change modules or backend configurations for Terraform,
 > rerun this command to reinitialize your working directory. If you forget, other
 > commands will detect it and remind you to do so if necessary.
@@ -259,12 +282,15 @@ terraform init
 Une **ressource** est une unité d'infrastructure (ex: instance EC2, bucket S3, VPC, etc.).
 
 ### 1. Ajouter une Ressource EC2 à `main.tf`
+
 Modifiez le fichier `main.tf` :
+
 ```bash
 nano main.tf
 ```
 
 Ajoutez le contenu suivant à la fin du fichier :
+
 ```hcl
 # =============================================
 # Ressource : Instance EC2
@@ -360,41 +386,48 @@ resource "aws_security_group" "p5_sg" {
 ```
 
 > **⚠️ Important** :
+>
 > - Remplacez `votre-cle-ssh` par le **nom de votre clé SSH** (créée dans AWS EC2).
 > - Si vous n'avez pas de clé SSH, créez-en une dans la [Console EC2](https://console.aws.amazon.com/ec2/v2/home#KeyPairs:).
 
 ### 2. Vérifier la Configuration
+
 ```bash
 # Vérifier la syntaxe des fichiers Terraform
 terraform validate
 ```
 
 > **✅ Résultat attendu** : Vous devriez voir :
+>
 > ```
 > Success! The configuration is valid.
 > ```
 
 ### 3. Voir le Plan d'Exécution
+
 ```bash
 # Afficher le plan d'exécution (ce que Terraform va faire)
 terraform plan
 ```
 
 > **💡 Explication** :
+>
 > - `terraform plan` :
 >   - Affiche les **changements** que Terraform va appliquer.
 >   - Ne **modifie pas** l'infrastructure (c'est une simulation).
 >   - Montre les ressources à **créer** (`+`), **modifier** (`~`), ou **supprimer** (`-`).
 
 > **✅ Résultat attendu** : Vous devriez voir un résumé des ressources à créer :
+>
 > ```
 > Plan: 2 to add, 0 to change, 0 to destroy.
-> 
+>
 > Changes to Outputs:
 >   + p5_exercise_4_instance_id = (known after apply)
 > ```
 
 ### 4. Appliquer les Changements
+
 ```bash
 # Appliquer les changements (créer les ressources)
 terraform apply
@@ -403,23 +436,26 @@ terraform apply
 > **⚠️ Attention** : Terraform va **créer des ressources réelles** sur AWS, ce qui peut engendrer des **frais**. Assurez-vous de **détruire l'infrastructure** après l'exercice.
 
 > **💡 Explication** :
+>
 > - `terraform apply` :
 >   - Crée les ressources définies dans les fichiers `.tf`.
 >   - Affiche un **résumé** des changements avant de les appliquer.
 >   - Demande une **confirmation** (`yes` pour valider).
 
 > **✅ Résultat attendu** : Après confirmation, vous devriez voir :
+>
 > ```
 > aws_security_group.p5_sg: Creating...
 > aws_security_group.p5_sg: Creation complete after 2s [id=sg-1234567890abcdef0]
 > aws_instance.p5_exercise_4: Creating...
 > aws_instance.p5_exercise_4: Still creating... [10s elapsed]
 > aws_instance.p5_exercise_4: Creation complete after 20s [id=i-1234567890abcdef0]
-> 
+>
 > Apply complete! Resources: 2 added, 0 changed, 0 destroyed.
 > ```
 
 ### 5. Vérifier les Ressources sur AWS
+
 1. Allez sur la [Console EC2](https://console.aws.amazon.com/ec2/v2/home).
 2. Cliquez sur **Instances** dans le menu de gauche.
 3. Vous devriez voir une instance nommée `p5-exercise-4-instance` en cours d'exécution.
@@ -432,12 +468,15 @@ terraform apply
 Les **variables** permettent de **paramétrer** votre infrastructure et de la rendre plus **flexible**.
 
 ### 1. Créer un Fichier `variables.tf`
+
 Créez un fichier `variables.tf` :
+
 ```bash
 nano variables.tf
 ```
 
 Ajoutez le contenu suivant :
+
 ```hcl
 # =============================================
 # Variables pour l'infrastructure
@@ -487,12 +526,15 @@ variable "instance_name" {
 ```
 
 ### 2. Modifier `main.tf` pour Utiliser les Variables
+
 Modifiez le fichier `main.tf` :
+
 ```bash
 nano main.tf
 ```
 
 Remplacez le contenu par :
+
 ```hcl
 # =============================================
 # Configuration du provider AWS
@@ -578,14 +620,17 @@ resource "aws_security_group" "p5_sg" {
 ```
 
 ### 3. Créer un Fichier `terraform.tfvars`
+
 Les fichiers `.tfvars` permettent de **surcharger les valeurs des variables** sans modifier le code.
 
 Créez un fichier `terraform.tfvars` :
+
 ```bash
 nano terraform.tfvars
 ```
 
 Ajoutez le contenu suivant (remplacez par vos valeurs) :
+
 ```hcl
 # =============================================
 # Valeurs des variables pour l'exercice 4
@@ -608,19 +653,23 @@ instance_name = "p5-exercise-4-instance"
 ```
 
 > **⚠️ Important** :
+>
 > - Le fichier `terraform.tfvars` **n'est pas versionné** dans Git (ajoutez-le au `.gitignore`).
 > - Il permet de **personnaliser** les variables sans modifier le code.
 
 ### 4. Vérifier les Variables
+
 ```bash
 # Afficher la liste des variables et leurs valeurs
 terraform show
 ```
 
 > **💡 Explication** :
+>
 > - `terraform show` : Affiche l'**état actuel** de l'infrastructure.
 
 ### 5. Appliquer les Changements
+
 ```bash
 # Appliquer les changements (les variables sont déjà utilisées)
 terraform apply
@@ -635,12 +684,15 @@ terraform apply
 Dans cette étape, nous allons **améliorer l'infrastructure** en ajoutant un **VPC**, des **subnets**, et une **IP publique** à l'instance.
 
 ### 1. Modifier `main.tf` pour Ajouter un VPC
+
 Modifiez le fichier `main.tf` :
+
 ```bash
 nano main.tf
 ```
 
 Remplacez le contenu par :
+
 ```hcl
 # =============================================
 # Configuration du provider AWS
@@ -832,21 +884,25 @@ resource "aws_instance" "p5_exercise_4" {
 ```
 
 ### 2. Vérifier la Configuration
+
 ```bash
 terraform validate
 ```
 
 ### 3. Voir le Plan d'Exécution
+
 ```bash
 terraform plan
 ```
 
 > **✅ Résultat attendu** : Vous devriez voir un résumé des **nouvelles ressources** à créer :
+>
 > ```
 > Plan: 6 to add, 1 to change, 0 to destroy.
 > ```
 
 ### 4. Appliquer les Changements
+
 ```bash
 terraform apply
 ```
@@ -856,6 +912,7 @@ terraform apply
 > **✅ Résultat attendu** : Après confirmation, Terraform devrait créer toutes les nouvelles ressources.
 
 ### 5. Vérifier les Ressources sur AWS
+
 1. Allez sur la [Console VPC](https://console.aws.amazon.com/vpc/home).
 2. Vérifiez que le **VPC**, le **subnet**, l'**Internet Gateway**, et la **route table** ont été créés.
 3. Allez sur la [Console EC2](https://console.aws.amazon.com/ec2/v2/home) et vérifiez que l'instance a une **IP publique**.
@@ -867,12 +924,15 @@ terraform apply
 Les **outputs** permettent d'**afficher des informations** sur les ressources créées (ex: IP publique, ID, etc.).
 
 ### 1. Ajouter des Outputs à `main.tf`
+
 Modifiez le fichier `main.tf` :
+
 ```bash
 nano main.tf
 ```
 
 Ajoutez le contenu suivant à la fin du fichier :
+
 ```hcl
 # =============================================
 # Outputs : Afficher des informations sur les ressources créées
@@ -918,16 +978,18 @@ output "public_subnet_id" {
 ```
 
 ### 2. Appliquer les Changements
+
 ```bash
 terraform apply
 ```
 
 > **✅ Résultat attendu** : Après confirmation, Terraform devrait afficher les **outputs** :
+>
 > ```
 > Apply complete! Resources: 0 added, 0 changed, 0 destroyed.
-> 
+>
 > Outputs:
-> 
+>
 > instance_id = "i-1234567890abcdef0"
 > instance_public_ip = "51.20.123.45"
 > instance_ssh_url = "ssh -i ~/.ssh/votre-cle-ssh.pem ubuntu@51.20.123.45"
@@ -936,6 +998,7 @@ terraform apply
 > ```
 
 ### 3. Afficher les Outputs à Tout Moment
+
 ```bash
 # Afficher les outputs sans appliquer de changements
 terraform output
@@ -950,17 +1013,20 @@ terraform output
 Il est **très important** de **détruire l'infrastructure** après avoir terminé l'exercice pour éviter des **frais inutiles**.
 
 ### 1. Vérifier les Ressources à Détruire
+
 ```bash
 # Voir le plan de destruction
 terraform plan -destroy
 ```
 
 > **✅ Résultat attendu** : Vous devriez voir un résumé des ressources à **supprimer** :
+>
 > ```
 > Plan: 0 to add, 0 to change, 7 to destroy.
 > ```
 
 ### 2. Détruire l'Infrastructure
+
 ```bash
 # Détruire toutes les ressources
 terraform destroy
@@ -969,6 +1035,7 @@ terraform destroy
 > **⚠️ Attention** : Terraform va **supprimer toutes les ressources** créées. Confirmez avec `yes`.
 
 > **✅ Résultat attendu** : Après confirmation, Terraform devrait supprimer toutes les ressources :
+>
 > ```
 > aws_instance.p5_exercise_4: Destroying... [id=i-1234567890abcdef0]
 > aws_route_table_association.p5_public_assoc: Destroying... [id=rtassoc-1234567890abcdef0]
@@ -977,11 +1044,12 @@ terraform destroy
 > aws_subnet.p5_public_subnet: Destroying... [id=subnet-1234567890abcdef0]
 > aws_security_group.p5_sg: Destroying... [id=sg-1234567890abcdef0]
 > aws_vpc.p5_vpc: Destroying... [id=vpc-1234567890abcdef0]
-> 
+>
 > Destroy complete! Resources: 7 destroyed.
 > ```
 
 ### 3. Vérifier sur AWS
+
 1. Allez sur la [Console EC2](https://console.aws.amazon.com/ec2/v2/home).
 2. Vérifiez que **aucune instance** n'est en cours d'exécution.
 3. Allez sur la [Console VPC](https://console.aws.amazon.com/vpc/home) et vérifiez que **toutes les ressources** ont été supprimées.
@@ -993,24 +1061,28 @@ terraform destroy
 Pour vérifier que vous avez **bien compris** cet exercice, répondez aux questions suivantes :
 
 ### 1. Qu'est-ce que Terraform ?
+
 <details>
 <summary>💡 Réponse</summary>
 Terraform est un outil d'**Infrastructure as Code (IaC)** qui permet de **provisionner** et de **gérer** une infrastructure cloud de manière **déclarative**. Avec Terraform, vous définissez l'**état souhaité** de votre infrastructure, et l'outil se charge de l'atteindre.
 </details>
 
 ### 2. Qu'est-ce qu'un provider Terraform ?
+
 <details>
 <summary>💡 Réponse</summary>
 Un **provider** est un plugin Terraform qui permet d'**interagir avec une plateforme cloud** (AWS, Azure, GCP, etc.). Chaque provider expose des **ressources** (ex: `aws_instance`, `aws_vpc`) et des **data sources** pour récupérer des informations.
 </details>
 
 ### 3. Qu'est-ce qu'une ressource Terraform ?
+
 <details>
 <summary>💡 Réponse</summary>
 Une **ressource** est une **unité d'infrastructure** (ex: instance EC2, bucket S3, VPC, etc.) définie dans un fichier `.tf`. Chaque ressource a un **type** (ex: `aws_instance`) et un **nom** (ex: `p5_exercise_4`).
 </details>
 
 ### 4. À quoi sert `terraform init` ?
+
 <details>
 <summary>💡 Réponse</summary>
 `terraform init` permet d'**initialiser** Terraform :
@@ -1020,6 +1092,7 @@ Une **ressource** est une **unité d'infrastructure** (ex: instance EC2, bucket 
 </details>
 
 ### 5. À quoi sert `terraform plan` ?
+
 <details>
 <summary>💡 Réponse</summary>
 `terraform plan` permet de **voir le plan d'exécution** :
@@ -1029,6 +1102,7 @@ Une **ressource** est une **unité d'infrastructure** (ex: instance EC2, bucket 
 </details>
 
 ### 6. À quoi sert `terraform apply` ?
+
 <details>
 <summary>💡 Réponse</summary>
 `terraform apply` permet d'**appliquer les changements** :
@@ -1038,23 +1112,28 @@ Une **ressource** est une **unité d'infrastructure** (ex: instance EC2, bucket 
 </details>
 
 ### 7. À quoi sert `terraform destroy` ?
+
 <details>
 <summary>💡 Réponse</summary>
 `terraform destroy` permet de **supprimer toutes les ressources** créées par Terraform. C'est utile pour **nettoyer** l'infrastructure et éviter des frais inutiles.
 </details>
 
 ### 8. Qu'est-ce que le fichier `terraform.tfstate` ?
+
 <details>
 <summary>💡 Réponse</summary>
 Le fichier `terraform.tfstate` est un **fichier JSON** qui stocke l'**état actuel** de votre infrastructure. Il permet à Terraform de **savoir quelles ressources existent** et de **détecter les changements**.
 
 > **⚠️ Important** :
+>
 > - **Ne jamais modifier manuellement** ce fichier.
 > - **Ne jamais le supprimer** (sauf si vous savez ce que vous faites).
 > - En production, stockez-le dans un **backend distant** (S3, Azure Blob Storage, etc.).
+>
 </details>
 
 ### 9. À quoi servent les variables dans Terraform ?
+
 <details>
 <summary>💡 Réponse</summary>
 Les **variables** permettent de **paramétrer** votre infrastructure et de la rendre plus **flexible**. Elles peuvent être définies dans :
@@ -1065,6 +1144,7 @@ Les **variables** permettent de **paramétrer** votre infrastructure et de la re
 </details>
 
 ### 10. À quoi servent les outputs dans Terraform ?
+
 <details>
 <summary>💡 Réponse</summary>
 Les **outputs** permettent d'**afficher des informations** sur les ressources créées (ex: IP publique, ID, URL, etc.). Ils sont utiles pour :
@@ -1095,25 +1175,29 @@ Voici les **problèmes courants** et leurs solutions :
 ## 📚 Pour Aller Plus Loin
 
 ### Ressources Officielles
+
 - [Documentation Terraform](https://developer.hashicorp.com/terraform)
 - [Registry de Modules Terraform](https://registry.terraform.io/)
 - [Provider AWS](https://registry.terraform.io/providers/hashicorp/aws/latest)
 
 ### Tutoriels
+
 - [Terraform Get Started](https://learn.hashicorp.com/terraform)
 - [Terraform Best Practices](https://www.terraform-best-practices.com/)
 
 ### Livres
+
 - [Terraform: Up & Running](https://www.oreilly.com/library/view/terraform-up/9781492046899/) (Yevgeniy Brikman)
 - [Terraform in Action](https://www.manning.com/books/terraform-in-action) (Scott Winkler)
 
 ### Prochains Exercices
+
 - **[Exercice 3 : Configuration avec Ansible](../exercise-3/README.md)** : Si vous ne l'avez pas encore fait.
 - **[Exercice 5 : Orchestration avec Kubernetes](../exercise-5/README.md)** : Déployez une application sur un cluster Kubernetes.
 
 ---
 
-## 🎉 Félicitations !
+## 🎉 Félicitations
 
 Vous avez **terminé l'Exercice 4** ! 🎉
 Vous savez maintenant :

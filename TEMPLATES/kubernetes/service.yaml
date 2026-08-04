@@ -17,7 +17,7 @@ kind: Service
 metadata:
   # Nom du service
   name: mon-app-service
-  
+
   # Labels pour identifier le service
   labels:
     app: mon-app
@@ -27,23 +27,23 @@ spec:
   # Sélecteur pour trouver les pods à exposer
   selector:
     app: mon-app  # Doit correspondre aux labels des pods à exposer
-  
+
   # Ports à exposer
   ports:
     - name: http  # Nom du port (optionnel)
       protocol: TCP
       port: 80        # Port du service (utilisé pour accéder au service)
       targetPort: 80 # Port du conteneur (doit correspondre au port du conteneur)
-    
+
     # Exemple pour un second port (ex: HTTPS)
     # - name: https
     #   protocol: TCP
     #   port: 443
     #   targetPort: 443
-  
+
   # Type de service (ClusterIP, NodePort, LoadBalancer)
   type: ClusterIP
-  
+
   # Pour un service de type LoadBalancer (cloud), vous pouvez spécifier une IP statique
   # loadBalancerIP: "192.0.2.100"
 

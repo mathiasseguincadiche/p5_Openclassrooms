@@ -8,45 +8,51 @@ Cette page regroupe les **commandes Git les plus utiles** pour les débutants et
 ## 📌 Table des Matières
 
 1. [Installation](#-installation)
-2. [Configuration](#-configuration)
+2. [Configuration](#configuration)
 3. [Commandes de Base](#-commandes-de-base)
 4. [Branches](#-branches)
 5. [Commits](#-commits)
-6. [Dépôt Distant](#-dépôt-distant)
+6. [Dépôt Distant](#depot-distant)
 7. [Collaboration](#-collaboration)
 8. [Historique](#-historique)
 9. [Annulation](#-annulation)
-10. [Tags](#-tags)
+10. [Tags](#tags)
 11. [Stash](#-stash)
 12. [Rebase](#-rebase)
 13. [Merge](#-merge)
-14. [Dépannage](#-dépannage)
+14. [Dépannage](#depannage)
 
 ---
 
 ## 📥 Installation
 
 ### Linux (Ubuntu/Debian)
+
 ```bash
 sudo apt update
 sudo apt install -y git
 ```
 
 ### macOS
+
 ```bash
 brew install git
 ```
 
 ### Windows
+
 1. Téléchargez [Git for Windows](https://gitforwindows.org/).
 2. Installez Git avec les options par défaut.
 
 ### Vérifier l'installation
+
 ```bash
 git --version
 ```
 
 ---
+
+<a id="configuration"></a>
 
 ## ⚙️ Configuration
 
@@ -129,6 +135,8 @@ git --version
 
 ---
 
+<a id="depot-distant"></a>
+
 ## ☁️ Dépôt Distant
 
 | Commande | Description | Exemple |
@@ -200,6 +208,8 @@ git --version
 
 ---
 
+<a id="tags"></a>
+
 ## 🏷️ Tags
 
 | Commande | Description | Exemple |
@@ -261,6 +271,8 @@ git --version
 
 ---
 
+<a id="depannage"></a>
+
 ## 🛠️ Dépannage
 
 | Problème | Solution | Commande |
@@ -279,6 +291,7 @@ git --version
 ## 📚 Conventions de Commit
 
 ### Conventional Commits
+
 Utilisez des messages de commit **structurés** pour faciliter la lecture de l'historique.
 
 | Type | Description | Exemple |
@@ -295,6 +308,7 @@ Utilisez des messages de commit **structurés** pour faciliter la lecture de l'h
 | `ci:` | Modification de la CI/CD | `ci: ajoute un workflow GitHub Actions` |
 
 ### Exemple de Message de Commit
+
 ```
 feat: ajoute un endpoint /api/users
 

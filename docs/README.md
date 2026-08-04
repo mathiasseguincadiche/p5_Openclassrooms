@@ -46,16 +46,20 @@ docs/
 ## 📌 Par où commencer ?
 
 ### 1️⃣ **Lisez la présentation du projet**
+
 👉 **[Présentation du Projet](./guides/project-overview.md)**
+
 - Comprenez les **objectifs** du projet P5.
 - Découvrez l'**infrastructure** et les **outils** utilisés.
 - Visualisez les **schémas d'architecture**.
 
 ### 2️⃣ **Explorez les guides**
+
 - **[Outils DevOps](./guides/devops-tools.md)** : Détail de chaque outil (Docker, GitHub Actions, Ansible, Terraform, Kubernetes).
 - **[Bonnes pratiques](./guides/best-practices.md)** : Conseils pour bien démarrer (Git, CI/CD, sécurité).
 
 ### 3️⃣ **Faites les exercices**
+
 Chaque exercice est **autonome** et conçu pour vous faire pratiquer un outil ou un concept spécifique.
 
 | Exercice | Titre | Outils | Niveau |
@@ -67,6 +71,7 @@ Chaque exercice est **autonome** et conçu pour vous faire pratiquer un outil ou
 | [5](./exercises/exercise-5/README.md) | Orchestration avec Kubernetes | Kubernetes, Docker | Avancé |
 
 ### 4️⃣ **Consultez les aides-mémoire**
+
 - **[Docker](./cheatsheets/docker.md)** : Commandes utiles pour Docker et Docker Compose.
 - **[Git](./cheatsheets/git.md)** : Commandes Git essentielles (commit, branch, merge, etc.).
 - **[Linux](./cheatsheets/linux.md)** : Commandes Linux de base (fichiers, processus, permissions).
@@ -76,6 +81,7 @@ Chaque exercice est **autonome** et conçu pour vous faire pratiquer un outil ou
 ## 🏗️ Architecture du Projet
 
 Pour comprendre l'infrastructure globale du projet, consultez :
+
 - **[Schéma d'infrastructure](./architecture/infrastructure.md)** : Diagrammes Mermaid et explications.
 - **[Outils utilisés](./architecture/tools.md)** : Pourquoi et comment chaque outil est utilisé.
 
