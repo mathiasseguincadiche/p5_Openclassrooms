@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - refactor/aligner-p5-openclassrooms
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
