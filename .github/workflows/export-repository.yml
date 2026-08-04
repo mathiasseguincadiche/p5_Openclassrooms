@@ -1,33 +1,41 @@
-name: Exporter le dépôt pour audit
+name: Appliquer la reconstruction P5 AWS
 
 on:
   push:
     branches:
       - refactor/aligner-p5-openclassrooms
-  pull_request:
-    branches:
-      - main
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: p5-rewrite-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  export:
+  apply:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: Récupérer le dépôt
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
-      - name: Créer l’archive d’audit
+      - name: Reconstruire le dépôt P5 AWS
         shell: bash
         run: |
           set -euo pipefail
-          tar --exclude=.git --exclude=repository.tgz -czf "$RUNNER_TEMP/repository.tgz" .
 
-      - name: Publier l’archive
-        uses: actions/upload-artifact@v4
-        with:
-          name: p5-repository-audit
-          path: ${{ runner.temp }}/repository.tgz
-          if-no-files-found: error
-          retention-days: 1
+          cat .p5-rewrite/* | base64 --decode > "$RUNNER_TEMP/p5-final.tgz"
+          tar -tzf "$RUNNER_TEMP/p5-final.tgz" >/dev/null
+
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          tar -xzf "$RUNNER_TEMP/p5-final.tgz" -C .
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "refactor: aligner le dépôt sur le parcours P5 AWS"
+          git push origin HEAD:refactor/aligner-p5-openclassrooms
