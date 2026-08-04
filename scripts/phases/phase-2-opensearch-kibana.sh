@@ -5,13 +5,13 @@
 # PROJET : P5 OpenClassrooms - Déployer et suivre l'infrastructure as code
 # =============================================================================
 
-# Charger les utilitaires
-source "$(dirname "$0")/utils/colors.sh"
-source "$(dirname "$0")/utils/checks.sh"
-source "$(dirname "$0")/utils/prompts.sh"
-
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
+
+# Charger les bibliothèques partagées
+source "$SCRIPT_DIR/../lib/colors.sh"
+source "$SCRIPT_DIR/../lib/checks.sh"
+source "$SCRIPT_DIR/../lib/prompts.sh"
 
 # =============================================================================
 # VARIABLES GLOBALES
@@ -303,8 +303,8 @@ show_kibana_instructions() {
 
     if confirm "Voulez-vous essayer de créer le dashboard automatiquement via l'API ?"; then
         info "Lancement du script de création automatique du dashboard..."
-        if [ -f "$(dirname "$0")/utils/kibana-api.sh" ]; then
-            if bash "$(dirname "$0")/utils/kibana-api.sh" --url "$KIBANA_URL" --auto; then
+        if [ -f "$SCRIPT_DIR/../tools/kibana-api.sh" ]; then
+            if bash "$SCRIPT_DIR/../tools/kibana-api.sh" --url "$KIBANA_URL" --auto; then
                 success "Dashboard créé automatiquement !"
                 info "Vérifiez dans Kibana que le dashboard contient bien les 3 diagrammes."
             else
@@ -451,4 +451,4 @@ success "Cluster OpenSearch + Kibana déployé !"
 info "Prochaine étape :"
 info "  1. Suivez les instructions pour créer le dashboard dans Kibana"
 info "  2. Générez les 4 captures d'écran"
-info "  3. Passez à la Phase 3 : ./runbook.sh → Option 3"
+info "  3. Passez à la Phase 3 : ./scripts/runbook.sh → Option 3"

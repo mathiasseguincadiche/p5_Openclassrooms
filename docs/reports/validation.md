@@ -52,7 +52,7 @@ Ce rapport décrit les contrôles reproductibles du dépôt. Il ne certifie pas 
 ## 🧪 7. Commande de validation locale
 
 ```bash
-./scripts/validate.sh
+./scripts/commands/validate.sh
 ```
 
 La source de vérité automatisée reste le workflow `.github/workflows/ci.yml`.

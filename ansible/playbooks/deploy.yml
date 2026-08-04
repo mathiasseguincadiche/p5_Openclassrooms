@@ -44,7 +44,7 @@
 
     - name: Déployer les fichiers de l'interface web
       ansible.builtin.copy:
-        src: ../files/angular-app/
+        src: ../files/web-app/
         dest: "{{ web_root }}/"
         owner: "{{ application_user }}"
         group: "{{ application_group }}"
@@ -54,7 +54,7 @@
 
     - name: Installer la configuration NGINX du projet
       ansible.builtin.copy:
-        src: ../files/nginx-angular.conf
+        src: ../files/nginx-web-app.conf
         dest: /etc/nginx/sites-available/p5
         owner: root
         group: root

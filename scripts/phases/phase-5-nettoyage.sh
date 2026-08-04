@@ -5,13 +5,13 @@
 # PROJET : P5 OpenClassrooms - Déployer et suivre l'infrastructure as code
 # =============================================================================
 
-# Charger les utilitaires
-source "$(dirname "$0")/utils/colors.sh"
-source "$(dirname "$0")/utils/checks.sh"
-source "$(dirname "$0")/utils/prompts.sh"
-
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
+
+# Charger les bibliothèques partagées
+source "$SCRIPT_DIR/../lib/colors.sh"
+source "$SCRIPT_DIR/../lib/checks.sh"
+source "$SCRIPT_DIR/../lib/prompts.sh"
 
 # =============================================================================
 # VARIABLES GLOBALES

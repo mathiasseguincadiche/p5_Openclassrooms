@@ -5,8 +5,10 @@
 # PROJET : P5 OpenClassrooms - Déployer et suivre l'infrastructure as code
 # =============================================================================
 
+LIB_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+
 # Charger les couleurs
-source "$(dirname "$0")/colors.sh"
+source "$LIB_DIR/colors.sh"
 
 # =============================================================================
 # VARIABLES GLOBALES

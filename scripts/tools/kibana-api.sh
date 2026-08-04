@@ -6,10 +6,15 @@
 # VERSION : 2.0 - Avec vérifications avancées et gestion d'erreur robuste
 # =============================================================================
 
-# Charger les utilitaires
-source "$(dirname "$0")/colors.sh"
-source "$(dirname "$0")/prompts.sh"
-source "$(dirname "$0")/logging.sh"
+TOOL_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd -- "$TOOL_DIR/../.." && pwd)"
+
+# Charger les bibliothèques partagées
+source "$TOOL_DIR/../lib/colors.sh"
+source "$TOOL_DIR/../lib/prompts.sh"
+source "$TOOL_DIR/../lib/logging.sh"
+
+cd "$PROJECT_ROOT" || exit 1
 
 # =============================================================================
 # VARIABLES GLOBALES
@@ -169,7 +174,7 @@ check_index_exists() {
  error "Index $INDEX_PATTERN introuvable dans OpenSearch"
  log_error "Index $INDEX_PATTERN introuvable"
  info "Solutions :"
- info "  1. Exécutez : ./scripts/phase-2-opensearch-kibana.sh"
+ info "  1. Exécutez : ./scripts/phases/phase-2-opensearch-kibana.sh"
  info "  2. Vérifiez que les logs ont été chargés"
  info "  3. Utilisez --wait pour attendre automatiquement"
  exit 1
@@ -206,7 +211,7 @@ check_index_has_data() {
  log_error "Index vide"
  info "Solutions :"
  info "  1. Vérifiez que les logs NGINX ont été chargés"
- info "  2. Exécutez : ./scripts/phase-2-opensearch-kibana.sh"
+ info "  2. Exécutez : ./scripts/phases/phase-2-opensearch-kibana.sh"
  info "  3. Utilisez --wait pour attendre automatiquement"
  exit 1
  fi
@@ -586,5 +591,5 @@ info ""
 info "Prochaine étape :"
 info "  1. Vérifiez que le dashboard contient bien les 3 diagrammes"
 info "  2. Prenez les 4 captures d'écran (dashboard + 3 diagrammes)"
-info "  3. Utilisez : ./scripts/utils/capture-screenshots.sh --auto"
+info "  3. Utilisez : ./scripts/tools/capture-screenshots.sh --auto"
 info "  4. Placez-les dans le dossier courant pour la Phase 4"

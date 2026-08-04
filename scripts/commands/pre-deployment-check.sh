@@ -4,7 +4,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
+cd "$PROJECT_ROOT"
 
 printf '==========================================\n'
 printf '  TEST PRÉ-DÉPLOIEMENT - P5\n'
@@ -15,9 +16,9 @@ required_files=(
     terraform/exercice-2/main.tf
     terraform/exercice-3/main.tf
     ansible/playbooks/deploy.yml
-    scripts/validate.sh
+    scripts/commands/validate.sh
     scripts/runbook.sh
-    scripts/phase-5-nettoyage.sh
+    scripts/phases/phase-5-nettoyage.sh
 )
 
 for required_file in "${required_files[@]}"; do
@@ -38,8 +39,8 @@ if [ "$(stat -c %a "$HOME/.ssh/p5-key")" != "600" ]; then
     exit 1
 fi
 
-./scripts/phase-0-preparation.sh --check-only
-./scripts/validate.sh
+./scripts/phases/phase-0-preparation.sh --check-only
+./scripts/commands/validate.sh
 
 if ! aws sts get-caller-identity >/dev/null 2>&1; then
     printf '❌ AWS CLI ne peut pas vérifier l’identité active. Utilisez aws configure ou un profil/SSO.\n' >&2

@@ -4,11 +4,12 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
+cd "$PROJECT_ROOT"
 
 show_help() {
     cat <<'EOF'
-Usage: ./setup-and-run.sh [--check-only] [--auto]
+Usage: ./scripts/commands/setup.sh [--check-only] [--auto]
 
   --check-only  Vérifie l'environnement et le dépôt sans installer ni déployer.
   --auto        Transmet le mode automatique à la phase de préparation.
@@ -49,8 +50,8 @@ if [ "$(id -u)" -eq 0 ]; then
     exit 1
 fi
 
-./scripts/phase-0-preparation.sh "${PHASE_ARGS[@]}"
-./scripts/validate.sh
+./scripts/phases/phase-0-preparation.sh "${PHASE_ARGS[@]}"
+./scripts/commands/validate.sh
 
 if [ "$CHECK_ONLY" = true ]; then
     printf '\n✅ Environnement et dépôt vérifiés.\n'

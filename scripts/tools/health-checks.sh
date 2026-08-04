@@ -6,13 +6,14 @@
 # VERSION : 1.0
 # =============================================================================
 
-# Charger les utilitaires
-source "$(dirname "$0")/colors.sh"
-source "$(dirname "$0")/prompts.sh"
-source "$(dirname "$0")/logging.sh"
+TOOL_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd -- "$TOOL_DIR/../.." && pwd)"
 
-UTILS_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd -- "$UTILS_DIR/../.." && pwd)"
+# Charger les bibliothèques partagées
+source "$TOOL_DIR/../lib/colors.sh"
+source "$TOOL_DIR/../lib/prompts.sh"
+source "$TOOL_DIR/../lib/logging.sh"
+
 cd "$PROJECT_ROOT" || exit 1
 
 # =============================================================================
@@ -143,7 +144,7 @@ check_phase_0() {
 
  # Vérifier les scripts
  for script in "phase-0-preparation.sh" "phase-1-terraform-ansible.sh" "phase-2-opensearch-kibana.sh" "phase-3-haproxy.sh" "phase-4-livrables.sh" "phase-5-nettoyage.sh"; do
- if [ -f "$(dirname "$0")/../$script" ]; then
+ if [ -f "$TOOL_DIR/../phases/$script" ]; then
  check "Script $script existe"
  log_info "Script $script existe"
  else
@@ -153,14 +154,26 @@ check_phase_0() {
  fi
  done
 
- # Vérifier les utilitaires
- for util in "colors.sh" "prompts.sh" "checks.sh" "logging.sh" "kibana-api.sh" "capture-screenshots.sh"; do
- if [ -f "$(dirname "$0")/$util" ]; then
- check "Utilitaire $util existe"
- log_info "Utilitaire $util existe"
+ # Vérifier les bibliothèques
+ for library in "colors.sh" "prompts.sh" "checks.sh" "logging.sh"; do
+ if [ -f "$TOOL_DIR/../lib/$library" ]; then
+ check "Bibliothèque $library existe"
+ log_info "Bibliothèque $library existe"
  else
- error "Utilitaire $util introuvable"
- log_error "Utilitaire $util introuvable"
+ error "Bibliothèque $library introuvable"
+ log_error "Bibliothèque $library introuvable"
+ all_ok=false
+ fi
+ done
+
+ # Vérifier les outils
+ for tool in "kibana-api.sh" "capture-screenshots.sh" "health-checks.sh"; do
+ if [ -f "$TOOL_DIR/$tool" ]; then
+ check "Outil $tool existe"
+ log_info "Outil $tool existe"
+ else
+ error "Outil $tool introuvable"
+ log_error "Outil $tool introuvable"
  all_ok=false
  fi
  done
@@ -474,7 +487,7 @@ check_phase_5() {
  info "Cette vérification confirme que les scripts de nettoyage existent."
  log_info "Vérification scripts nettoyage"
 
- if [ -f "$(dirname "$0")/../phase-5-nettoyage.sh" ]; then
+ if [ -f "$TOOL_DIR/../phases/phase-5-nettoyage.sh" ]; then
  check "Script phase-5-nettoyage.sh existe"
  log_info "Script phase-5-nettoyage.sh existe"
  success "Phase 5 : Script de nettoyage disponible"
@@ -548,19 +561,19 @@ show_report() {
  echo ""
  info "Recommandations :"
  if [ "${PHASE_RESULTS[0]}" != "0" ]; then
- info "  → Exécutez : ./scripts/phase-0-preparation.sh"
+ info "  → Exécutez : ./scripts/phases/phase-0-preparation.sh"
  fi
  if [ "${PHASE_RESULTS[1]}" != "0" ]; then
- info "  → Exécutez : ./scripts/phase-1-terraform-ansible.sh"
+ info "  → Exécutez : ./scripts/phases/phase-1-terraform-ansible.sh"
  fi
  if [ "${PHASE_RESULTS[2]}" != "0" ]; then
- info "  → Exécutez : ./scripts/phase-2-opensearch-kibana.sh"
+ info "  → Exécutez : ./scripts/phases/phase-2-opensearch-kibana.sh"
  fi
  if [ "${PHASE_RESULTS[3]}" != "0" ]; then
- info "  → Exécutez : ./scripts/phase-3-haproxy.sh"
+ info "  → Exécutez : ./scripts/phases/phase-3-haproxy.sh"
  fi
  if [ "${PHASE_RESULTS[4]}" != "0" ]; then
- info "  → Exécutez : ./scripts/phase-4-livrables.sh"
+ info "  → Exécutez : ./scripts/phases/phase-4-livrables.sh"
  fi
 }
 

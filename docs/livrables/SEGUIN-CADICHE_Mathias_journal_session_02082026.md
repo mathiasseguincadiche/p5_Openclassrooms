@@ -24,11 +24,11 @@
 
 | Heure | Action | Commande | Résultat vérifié | Preuve associée |
 |-------|--------|----------|-----------------|-----------------|
-| | Validation locale | `./scripts/validate.sh` | À compléter | Sortie CI ou terminal |
-| | Exercice 1 | `./scripts/phase-1-terraform-ansible.sh` | À compléter | Livrable 1 |
-| | Exercice 2 | `./scripts/phase-2-opensearch-kibana.sh` | À compléter | Livrable 2 |
-| | Exercice 3 | `./scripts/phase-3-haproxy.sh` | À compléter | Livrable 3 |
-| | Nettoyage | `./scripts/phase-5-nettoyage.sh` | À compléter | Inventaire AWS vide |
+| | Validation locale | `./scripts/commands/validate.sh` | À compléter | Sortie CI ou terminal |
+| | Exercice 1 | `./scripts/phases/phase-1-terraform-ansible.sh` | À compléter | Livrable 1 |
+| | Exercice 2 | `./scripts/phases/phase-2-opensearch-kibana.sh` | À compléter | Livrable 2 |
+| | Exercice 3 | `./scripts/phases/phase-3-haproxy.sh` | À compléter | Livrable 3 |
+| | Nettoyage | `./scripts/phases/phase-5-nettoyage.sh` | À compléter | Inventaire AWS vide |
 
 ---
 

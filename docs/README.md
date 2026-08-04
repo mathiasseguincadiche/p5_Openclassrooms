@@ -20,6 +20,7 @@ docs/
 │   └── best-practices.md    # Bonnes pratiques (Git, CI/CD, sécurité, etc.)
 │
 ├── exercises/               # 🎯 Exercices pratiques (1 fiche par exercice)
+│   ├── README.md            # Index des cinq exercices
 │   ├── exercise-1/          # **Exercice 1 : Déploiement avec Docker**
 │   │   └── README.md        # Étapes, commandes commentées, résultats attendus
 │   │
@@ -35,10 +36,13 @@ docs/
 │   └── exercise-5/          # **Exercice 5 : Orchestration avec Kubernetes**
 │       └── README.md
 │
-└── cheatsheets/             # 📋 Aides-mémoire
-    ├── docker.md            # Commandes Docker essentielles
-    ├── git.md               # Commandes Git essentielles
-    └── linux.md             # Commandes Linux essentielles
+├── cheatsheets/             # 📋 Aides-mémoire
+│   ├── docker.md            # Commandes Docker essentielles
+│   ├── git.md               # Commandes Git essentielles
+│   └── linux.md             # Commandes Linux essentielles
+│
+├── livrables/               # 📦 Modèles de remise et index des preuves
+└── reports/                 # ✅ Rapports de validation reproductibles
 ```
 
 ---
@@ -75,6 +79,11 @@ Chaque exercice est **autonome** et conçu pour vous faire pratiquer un outil ou
 - **[Docker](./cheatsheets/docker.md)** : Commandes utiles pour Docker et Docker Compose.
 - **[Git](./cheatsheets/git.md)** : Commandes Git essentielles (commit, branch, merge, etc.).
 - **[Linux](./cheatsheets/linux.md)** : Commandes Linux de base (fichiers, processus, permissions).
+
+### 5️⃣ **Préparez les livrables**
+
+- **[Index des livrables](./livrables/README.md)** : Documents de remise et règles de preuve.
+- **[Rapport de validation](./reports/validation.md)** : Contrôles disponibles et limites volontaires.
 
 ---
 

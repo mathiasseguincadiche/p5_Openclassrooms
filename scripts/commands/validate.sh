@@ -4,7 +4,7 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
 ERRORS=0
 
 run_check() {
@@ -25,6 +25,14 @@ validate_bash() {
     while IFS= read -r -d '' script_file; do
         bash -n "$script_file" || return 1
     done < <(find "$PROJECT_ROOT" -type f -name '*.sh' -print0)
+}
+
+validate_shellcheck() {
+    local script_file
+    while IFS= read -r -d '' script_file; do
+        shellcheck --severity=error --external-sources --source-path=SCRIPTDIR \
+            "$script_file" || return 1
+    done < <(find "$PROJECT_ROOT/scripts" -type f -name '*.sh' -print0)
 }
 
 validate_terraform() {
@@ -49,8 +57,7 @@ cd "$PROJECT_ROOT" || exit 1
 run_check "Syntaxe Bash" validate_bash
 
 if command -v shellcheck >/dev/null 2>&1; then
-    run_check "ShellCheck" shellcheck --severity=error --external-sources --source-path=SCRIPTDIR \
-        scripts/*.sh scripts/utils/*.sh setup-and-run.sh TEST_PRE_DEPLOIEMENT.sh
+    run_check "ShellCheck" validate_shellcheck
 fi
 
 if command -v terraform >/dev/null 2>&1; then

@@ -1,0 +1,10 @@
+# Copiez ce fichier vers terraform.tfvars et remplacez les valeurs d'exemple.
+
+aws_region = "eu-west-3"
+ami_id     = "ami-a-remplacer"
+key_name   = "cle-ssh-a-remplacer"
+
+ssh_cidr_blocks = ["203.0.113.10/32"]
+
+# Cette valeur est uniquement un exemple. Injectez un secret réel hors Git.
+db_password = "a-remplacer-hors-du-depot"

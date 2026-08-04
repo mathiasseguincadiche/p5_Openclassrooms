@@ -5,13 +5,13 @@
 # PROJET : P5 OpenClassrooms - Déployer et suivre l'infrastructure as code
 # =============================================================================
 
-# Charger les utilitaires
-source "$(dirname "$0")/utils/colors.sh"
-source "$(dirname "$0")/utils/checks.sh"
-source "$(dirname "$0")/utils/prompts.sh"
-
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
+
+# Charger les bibliothèques partagées
+source "$SCRIPT_DIR/../lib/colors.sh"
+source "$SCRIPT_DIR/../lib/checks.sh"
+source "$SCRIPT_DIR/../lib/prompts.sh"
 
 # =============================================================================
 # VARIABLES GLOBALES
@@ -169,11 +169,11 @@ generate_haproxy_config() {
     BACKEND_1_IP=$(cat /tmp/backend_1_private_ip.txt)
     BACKEND_2_IP=$(cat /tmp/backend_2_private_ip.txt)
 
-    command "./scripts/generer-haproxy-config.sh $BACKEND_1_IP $BACKEND_2_IP"
+    command "./scripts/tools/generer-haproxy-config.sh $BACKEND_1_IP $BACKEND_2_IP"
 
     info "Génération de la configuration HAProxy..."
-    if [ -f "$SCRIPTS_DIR/generer-haproxy-config.sh" ]; then
-        if bash "$SCRIPTS_DIR/generer-haproxy-config.sh" "$BACKEND_1_IP" "$BACKEND_2_IP" "$HAPROXY_CONFIG"; then
+    if [ -f "$SCRIPTS_DIR/tools/generer-haproxy-config.sh" ]; then
+        if bash "$SCRIPTS_DIR/tools/generer-haproxy-config.sh" "$BACKEND_1_IP" "$BACKEND_2_IP" "$HAPROXY_CONFIG"; then
             success "Configuration HAProxy générée"
             info "Le fichier a été créé sans afficher le mot de passe dans les logs."
         else
@@ -447,4 +447,4 @@ success "HAProxy déployé devant 2 instances de nginxdemos/hello !"
 info "Prochaine étape :"
 info "  1. Vérifiez que l'alternance des Server name fonctionne"
 info "  2. Récupérez le fichier haproxy.cfg pour le livrable"
-info "  3. Passez à la Phase 4 : ./runbook.sh → Option 4"
+info "  3. Passez à la Phase 4 : ./scripts/runbook.sh → Option 4"

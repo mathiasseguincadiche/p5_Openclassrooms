@@ -6,10 +6,15 @@
 # VERSION : 2.0 - Avec mode headless robuste et gestion d'erreur améliorée
 # =============================================================================
 
-# Charger les utilitaires
-source "$(dirname "$0")/colors.sh"
-source "$(dirname "$0")/prompts.sh"
-source "$(dirname "$0")/logging.sh"
+TOOL_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd -- "$TOOL_DIR/../.." && pwd)"
+
+# Charger les bibliothèques partagées
+source "$TOOL_DIR/../lib/colors.sh"
+source "$TOOL_DIR/../lib/prompts.sh"
+source "$TOOL_DIR/../lib/logging.sh"
+
+cd "$PROJECT_ROOT" || exit 1
 
 # =============================================================================
 # VARIABLES GLOBALES
@@ -309,7 +314,7 @@ check_dashboard_exists() {
  if [ "$elapsed" -ge "$CHECK_TIMEOUT" ]; then
  error "Timeout atteint ($CHECK_TIMEOUT s). Aucun dashboard trouvé."
  log_error "Timeout dashboard introuvable"
- info "Exécutez d'abord : ./scripts/utils/kibana-api.sh"
+ info "Exécutez d'abord : ./scripts/tools/kibana-api.sh"
  return 1
  fi
 
@@ -527,7 +532,7 @@ show_summary() {
  echo ""
  info "Prochaine étape :"
  info "  1. Vérifiez que les 4 captures sont présentes"
- info "  2. Exécutez la Phase 4 : ./scripts/phase-4-livrables.sh --auto"
+ info "  2. Exécutez la Phase 4 : ./scripts/phases/phase-4-livrables.sh --auto"
 }
 
 # =============================================================================
@@ -634,4 +639,4 @@ info "Elles sont dans le dossier : $CAPTURES_DIR/"
 info ""
 info "Prochaine étape :"
 info "  1. Vérifiez que les 4 captures sont présentes"
-info "  2. Exécutez la Phase 4 : ./scripts/phase-4-livrables.sh --auto"
+info "  2. Exécutez la Phase 4 : ./scripts/phases/phase-4-livrables.sh --auto"
