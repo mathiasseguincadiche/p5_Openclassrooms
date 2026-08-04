@@ -50,7 +50,7 @@ jobs:
                   index += 1
               scripts.append('\n'.join(block).rstrip())
 
-          if len(scripts) != 7:
+          if len(scripts) != 6:
               raise SystemExit(f'Nombre inattendu d’étapes shell : {len(scripts)}')
 
           for script_index, script in enumerate(scripts):
@@ -63,9 +63,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for step in 0 1 2 3 4 5; do
+          for step in 0 1 2 3 4; do
             "/tmp/reorganize-step-${step}.sh"
           done
+
+      - name: Vérifier Markdown
+        shell: bash
+        run: npx --yes markdownlint-cli2@0.18.1 '**/*.md'
 
       - name: Retirer les fichiers techniques
         shell: bash
@@ -78,4 +82,4 @@ jobs:
 
       - name: Commiter et pousser la réorganisation
         shell: bash
-        run: /tmp/reorganize-step-6.sh
+        run: /tmp/reorganize-step-5.sh
