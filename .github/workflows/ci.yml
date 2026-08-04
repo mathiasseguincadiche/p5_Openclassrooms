@@ -127,3 +127,24 @@ jobs:
           docker run --rm \
             --volume "$PWD/ansible/files/nginx-web-app.conf:/etc/nginx/conf.d/default.conf:ro" \
             nginx:1.28-alpine nginx -t
+
+  export-audit:
+    name: Archive d’audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v7
+
+      - name: Créer l’archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar --exclude=.git --exclude=repository.tgz -czf "$RUNNER_TEMP/repository.tgz" .
+
+      - name: Publier l’archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: p5-repository-audit
+          path: ${{ runner.temp }}/repository.tgz
+          if-no-files-found: error
+          retention-days: 1
