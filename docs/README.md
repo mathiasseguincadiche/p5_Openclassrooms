@@ -1,28 +1,35 @@
-# 📚 Wiki du projet P5
+# Wiki du projet P5
 
-Cette documentation suit le déroulé pédagogique OpenClassrooms : ressources,
-cours, trois exercices, livrables et bilan.
+La documentation suit le déroulé réel du lab : préparer la VM, comprendre le
+cadre, construire et déployer l’application, réaliser les trois exercices,
+produire les preuves puis nettoyer AWS.
 
 ## Parcours principal
 
+- [Étape 0 — Préparer la VM Ubuntu Server](00-preparation-environnement.md)
 - [00 — Cadre officiel et périmètre](00-cadre-officiel.md)
-- [01 — Parcours conseillé pour débuter](01-parcours-debutant.md)
-- [02 — Correspondance entre consignes et dépôt](02-correspondance-consignes-depot.md)
-- [03 — Audit structurel et décisions de nettoyage](03-audit-structurel.md)
+- [01 — Parcours conseillé](01-parcours-debutant.md)
+- [02 — Correspondance consignes, fichiers et preuves](02-correspondance-consignes-depot.md)
+- [03 — Audit structurel](03-audit-structurel.md)
+- [04 — Audit de non-régression](04-audit-non-regression.md)
+
+## Application unique
+
+- [Sources, build et artefact Angular](../application/README.md)
+- [Déploiement avec Ansible et NGINX](../ansible/README.md)
 
 ## Exercices officiels
 
 - [Exercice 1 — Terraform et Ansible](exercices/01-terraform-ansible.md)
-- [Exercice 2 — ELK / OpenSearch et dashboard](exercices/02-elk-opensearch.md)
-- [Exercice 3 — HAProxy, disponibilité et performance](exercices/03-haproxy.md)
+- [Exercice 2 — Amazon OpenSearch](exercices/02-elk-opensearch.md)
+- [Exercice 3 — HAProxy et disponibilité](exercices/03-haproxy.md)
 
 ## Compléments
 
 - [Ressources pédagogiques](ressources/README.md)
 - [Livrables et preuves](livrables/README.md)
 - [Suivi interne](suivi/README.md)
-- [Schémas SVG](schemas/README.md)
+- [Schémas](schemas/README.md)
 
-Les documents de `docs/livrables/` sont des gabarits. Ils ne deviennent des
-preuves recevables qu'après insertion de sorties et captures réellement
-produites pendant vos déploiements.
+Les documents de `docs/livrables/` sont des gabarits. Ils deviennent des preuves
+uniquement après insertion de sorties et captures produites sur le lab réel.
