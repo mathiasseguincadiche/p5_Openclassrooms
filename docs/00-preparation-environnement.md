@@ -3,7 +3,7 @@
 Cette étape est le socle local du projet. Sans VM correctement installée,
 sécurisée et équipée, les trois exercices AWS ne sont ni reproductibles ni
 démontrables. La validation du compte cloud est traitée ensuite dans
-[l'étape 0B — AWS Ready](00b-preparation-compte-aws.md).
+[l’étape 0B — AWS Ready](00b-preparation-compte-aws.md).
 
 ## Résultat attendu
 
@@ -12,8 +12,8 @@ Une VM nommée `p5-devops` sous **Ubuntu Server 26.04 LTS — Resolute Raccoon**
 - installation en ligne de commande, sans interface graphique ;
 - accès réseau et SSH fonctionnels ;
 - mises à jour système appliquées ;
-- Git, Python, Ansible, Terraform, AWS CLI, Docker, Node.js et les utilitaires
-  de diagnostic disponibles ;
+- Git, Python, Ansible, Terraform, AWS CLI, Docker et les outils de qualité ;
+- Node.js 22.22.0 installé avec NVM pour Angular 21 ;
 - dépôt cloné dans `~/labs/p5_Openclassrooms` ;
 - paire de clés SSH dédiée au lab ;
 - contrôles locaux du dépôt réussis.
@@ -40,7 +40,7 @@ consommatrices sont créées dans le cloud par Terraform.
 4. Configurer le clavier, le réseau et le stockage.
 5. Créer un utilisateur administrateur non `root`.
 6. Nommer la machine `p5-devops`.
-7. Activer l’installation d’OpenSSH Server.
+7. Activer OpenSSH Server.
 8. Ne sélectionner aucun environnement de bureau.
 9. Redémarrer puis retirer l’ISO.
 
@@ -52,28 +52,48 @@ sudo apt full-upgrade -y
 sudo reboot
 ```
 
-## Bootstrap du socle DevOps
-
-Depuis le dépôt :
+## Cloner le dépôt
 
 ```bash
-chmod +x scripts/commands/*.sh scripts/tools/*.sh
+mkdir -p ~/labs
+cd ~/labs
+git clone https://github.com/mathiasseguincadiche/p5_Openclassrooms.git
+cd p5_Openclassrooms
+```
+
+Les scripts utiles sont déjà exécutables dans Git.
+
+## Bootstrap du socle DevOps
+
+```bash
 ./scripts/commands/bootstrap-ubuntu-server.sh
 ```
 
 Le script :
 
-- refuse de s’exécuter sur une distribution non Ubuntu ;
+- refuse une distribution non Ubuntu ;
 - installe les paquets de base avec APT ;
 - installe Terraform depuis le dépôt HashiCorp ;
-- installe AWS CLI v2 avec l’installeur officiel ;
-- installe Docker Engine et le plugin Compose ;
-- installe Ansible, Git, Python, Node.js, npm, ShellCheck et les utilitaires ;
+- installe AWS CLI v2 ;
+- installe Docker Engine, Buildx et Compose ;
+- installe NVM puis la version Node.js définie dans `environment/versions.env` ;
+- fixe Node.js 22.22.0 comme version par défaut ;
+- installe `markdownlint-cli2` avec ce Node.js ;
 - ajoute l’utilisateur courant au groupe `docker` ;
-- ne configure pas les identifiants AWS ;
+- ne configure aucun identifiant AWS ;
 - ne lance aucun `terraform apply`.
 
-Une reconnexion est nécessaire après l’ajout au groupe `docker`.
+Déconnectez-vous puis reconnectez-vous. Cette reconnexion charge NVM dans le
+nouveau shell et applique l’appartenance au groupe `docker`.
+
+Vérifiez ensuite :
+
+```bash
+node --version
+docker info
+```
+
+Le résultat Node.js attendu est `v22.22.0`.
 
 ## Configuration utilisateur
 
@@ -109,17 +129,8 @@ aws sts get-caller-identity
 ```
 
 Un rôle IAM déjà fourni par une organisation peut également alimenter ce
-profil. Les clés d’accès longues durées ne sont pas recommandées et sont
-refusées par défaut par le contrôle AWS Ready.
-
-## Cloner et préparer le dépôt
-
-```bash
-mkdir -p ~/labs
-cd ~/labs
-git clone https://github.com/mathiasseguincadiche/p5_Openclassrooms.git
-cd p5_Openclassrooms
-```
+profil. Les clés d’accès longues durées sont refusées par défaut par le contrôle
+AWS Ready.
 
 ## Validation de l’étape 0A
 
@@ -127,20 +138,30 @@ cd p5_Openclassrooms
 ./scripts/commands/setup.sh --check-only
 ```
 
-Le contrôle doit confirmer :
+Le contrôle confirme notamment :
 
 - Ubuntu Server 26.04 ;
-- outils présents ;
-- Docker fonctionnel ;
-- arborescence du dépôt complète ;
-- Terraform, YAML, Bash et Ansible valides.
+- Node.js 22.22.0 et les outils obligatoires ;
+- moteur Docker accessible ;
+- application Angular, verrouillage npm et build Ansible présents ;
+- composants OpenSearch et HAProxy présents ;
+- scripts exécutables ;
+- validations locales du dépôt réussies.
 
-Ce verdict signifie uniquement que **la VM est prête**. Il ne garantit pas
-encore les permissions, quotas, coûts ou paramètres du compte AWS.
+La validation locale complète peut aussi être relancée directement :
+
+```bash
+./scripts/commands/validate.sh
+```
+
+Elle reconstruit Angular, compare le build Ansible, convertit l’échantillon
+OpenSearch, valide HAProxy lorsque Docker est disponible et contrôle Terraform,
+Ansible, YAML, Markdown, Bash et les livrables.
+
+Ce verdict signifie uniquement que **la VM et le dépôt sont prêts**. Il ne
+garantit pas encore les permissions, quotas, coûts ou paramètres du compte AWS.
 
 ## Étape suivante obligatoire
-
-Poursuivez avec :
 
 ```bash
 cp environment/aws-readiness.env.example environment/aws-readiness.env
@@ -154,16 +175,14 @@ La procédure complète se trouve dans
 
 ## Snapshot recommandé
 
-Créer un snapshot de la VM après validation, nommé par exemple
-`p5-etape-0a-socle-valide`. Il permet de revenir à un environnement propre sans
-réinstaller tout le lab.
+Créer un snapshot nommé par exemple `p5-etape-0a-socle-valide` après validation.
+Il permet de revenir à un environnement propre sans réinstaller le lab.
 
 ## Ce que l’étape 0A ne fait pas
 
 - elle ne crée aucune ressource AWS ;
 - elle ne sécurise pas automatiquement le compte root ;
-- elle ne crée pas le budget AWS ;
-- elle ne vérifie pas les quotas ou les permissions du compte ;
-- elle ne construit pas automatiquement les dashboards ;
-- elle ne remplace pas la lecture des plans Terraform ;
+- elle ne crée pas le budget sans commande explicite ;
+- elle ne vérifie pas les quotas ou permissions AWS ;
+- elle ne produit pas de fausses preuves de déploiement ;
 - elle ne stocke aucun secret dans le dépôt.

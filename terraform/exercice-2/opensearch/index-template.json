@@ -1,0 +1,64 @@
+{
+  "index_patterns": [
+    "nginx-access-*"
+  ],
+  "priority": 100,
+  "template": {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0,
+      "refresh_interval": "5s"
+    },
+    "mappings": {
+      "dynamic": "strict",
+      "properties": {
+        "@timestamp": {
+          "type": "date",
+          "format": "strict_date_time"
+        },
+        "remote_addr": {
+          "type": "ip"
+        },
+        "remote_user": {
+          "type": "keyword",
+          "index": false
+        },
+        "http_method": {
+          "type": "keyword"
+        },
+        "url_path": {
+          "type": "keyword"
+        },
+        "http_protocol": {
+          "type": "keyword"
+        },
+        "status": {
+          "type": "short"
+        },
+        "bytes_sent": {
+          "type": "long"
+        },
+        "referrer": {
+          "type": "keyword",
+          "index": false
+        },
+        "user_agent": {
+          "type": "keyword"
+        },
+        "request": {
+          "type": "keyword"
+        },
+        "source_file": {
+          "type": "keyword"
+        },
+        "line_number": {
+          "type": "integer"
+        }
+      }
+    }
+  },
+  "_meta": {
+    "project": "p5-openclassrooms",
+    "purpose": "nginx-access-log-training"
+  }
+}

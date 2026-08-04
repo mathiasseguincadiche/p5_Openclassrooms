@@ -12,13 +12,17 @@ Thumbs.db
 venv/
 env/
 .venv/
+__pycache__/
+*.pyc
 
 # =============================================
-# Node.js
+# Node.js et Angular
 # =============================================
 node_modules/
 npm-debug.log*
 .yarn/install-state.gz
+.angular/
+coverage/
 
 # =============================================
 # Docker
@@ -35,11 +39,12 @@ npm-debug.log*
 *~
 
 # =============================================
-# Logs et fichiers temporaires
+# Logs, preuves runtime et fichiers temporaires
 # =============================================
 *.log
 *.tmp
 *.temp
+proofs/runtime/
 
 # =============================================
 # Fichiers de configuration locaux
@@ -69,7 +74,7 @@ ansible/inventories/hosts_aws
 scripts/haproxy.cfg
 
 # =============================================
-# Build et artefacts
+# Build et artefacts locaux
 # =============================================
 dist/
 build/

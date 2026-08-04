@@ -3,26 +3,33 @@
 # Ne configure aucun secret et ne crée aucune ressource AWS.
 set -euo pipefail
 
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
+VERSIONS_FILE="$PROJECT_ROOT/environment/versions.env"
+
 if [[ "${EUID}" -eq 0 ]]; then
     printf 'Exécutez ce script avec votre utilisateur habituel, pas avec root.\n' >&2
     exit 1
 fi
 
-if [[ ! -r /etc/os-release ]]; then
-    printf 'Impossible d’identifier le système.\n' >&2
+if [[ ! -r /etc/os-release || ! -r "$VERSIONS_FILE" ]]; then
+    printf 'Impossible de lire le système ou environment/versions.env.\n' >&2
     exit 1
 fi
 
 # shellcheck source=/dev/null
 source /etc/os-release
+# shellcheck source=/dev/null
+source "$VERSIONS_FILE"
+
 if [[ "${ID:-}" != "ubuntu" ]]; then
     printf 'Système non pris en charge : Ubuntu Server est requis.\n' >&2
     exit 1
 fi
 
-if [[ "${VERSION_ID:-}" != "26.04" ]]; then
-    printf 'Avertissement : script prévu pour Ubuntu 26.04, version détectée : %s.\n' \
-        "${VERSION_ID:-inconnue}" >&2
+if [[ "${VERSION_ID:-}" != "$P5_UBUNTU_VERSION_ID" ]]; then
+    printf 'Avertissement : Ubuntu %s attendu, version détectée : %s.\n' \
+        "$P5_UBUNTU_VERSION_ID" "${VERSION_ID:-inconnue}" >&2
 fi
 
 export DEBIAN_FRONTEND=noninteractive
@@ -34,11 +41,11 @@ if [[ -z "$CODENAME" ]]; then
     exit 1
 fi
 
-printf '1/7 — Mise à jour du système\n'
+printf '1/8 — Mise à jour du système\n'
 sudo apt-get update
 sudo apt-get full-upgrade -y
 
-printf '2/7 — Paquets de base\n'
+printf '2/8 — Paquets de base\n'
 sudo apt-get install -y \
     ansible-core \
     bash-completion \
@@ -49,8 +56,6 @@ sudo apt-get install -y \
     gnupg \
     jq \
     make \
-    nodejs \
-    npm \
     openssh-client \
     pipx \
     python3 \
@@ -64,7 +69,7 @@ sudo apt-get install -y \
     yamllint \
     zip
 
-printf '3/7 — Terraform depuis HashiCorp\n'
+printf '3/8 — Terraform depuis HashiCorp\n'
 sudo install -m 0755 -d /etc/apt/keyrings
 curl -fsSL https://apt.releases.hashicorp.com/gpg \
     | sudo gpg --dearmor --yes -o /etc/apt/keyrings/hashicorp-archive-keyring.gpg
@@ -74,7 +79,7 @@ printf 'deb [arch=%s signed-by=/etc/apt/keyrings/hashicorp-archive-keyring.gpg] 
 sudo apt-get update
 sudo apt-get install -y terraform
 
-printf '4/7 — Docker Engine et Compose\n'
+printf '4/8 — Docker Engine et Compose\n'
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
     | sudo gpg --dearmor --yes -o /etc/apt/keyrings/docker.gpg
 sudo chmod a+r /etc/apt/keyrings/docker.gpg
@@ -91,7 +96,7 @@ sudo apt-get install -y \
 sudo systemctl enable --now docker
 sudo usermod -aG docker "$USER"
 
-printf '5/7 — AWS CLI v2\n'
+printf '5/8 — AWS CLI v2\n'
 case "$ARCH" in
     amd64) AWS_ARCH="x86_64" ;;
     arm64) AWS_ARCH="aarch64" ;;
@@ -111,10 +116,21 @@ else
     sudo "$TMP_DIR/aws/install"
 fi
 
-printf '6/7 — Outils Markdown locaux\n'
-sudo npm install --global markdownlint-cli2
+printf '6/8 — Node.js %s avec NVM\n' "$NODE_VERSION"
+export NVM_DIR="$HOME/.nvm"
+if [[ ! -s "$NVM_DIR/nvm.sh" ]]; then
+    curl -fsSL "https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VERSION}/install.sh" | bash
+fi
+# shellcheck source=/dev/null
+source "$NVM_DIR/nvm.sh"
+nvm install "$NODE_VERSION"
+nvm alias default "$NODE_VERSION"
+nvm use "$NODE_VERSION"
 
-printf '7/7 — Vérification des versions\n'
+printf '7/8 — Outils de qualité Markdown\n'
+npm install --global markdownlint-cli2
+
+printf '8/8 — Vérification des versions\n'
 printf 'Ubuntu      : %s\n' "${PRETTY_NAME:-inconnu}"
 printf 'Git         : %s\n' "$(git --version)"
 printf 'Python      : %s\n' "$(python3 --version)"
@@ -127,5 +143,11 @@ printf 'Docker      : %s\n' "$(docker --version)"
 printf 'Compose     : %s\n' "$(docker compose version)"
 printf 'ShellCheck  : %s\n' "$(shellcheck --version | awk '/version:/ {print $2}')"
 
-printf '\nSocle installé. Déconnectez-vous puis reconnectez-vous pour utiliser Docker sans sudo.\n'
+if [[ "$(node --version)" != "v${NODE_VERSION}" ]]; then
+    printf 'La version Node.js installée ne correspond pas à %s.\n' "$NODE_VERSION" >&2
+    exit 1
+fi
+
+printf '\nSocle installé. Déconnectez-vous puis reconnectez-vous pour Docker.\n'
+printf 'NVM chargera Node.js %s dans les nouveaux shells.\n' "$NODE_VERSION"
 printf 'Ensuite : ./scripts/commands/setup.sh --check-only\n'
