@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   coherence:
-    name: Périmètre, AWS Ready et Bash
+    name: Périmètre, parcours complet et Bash
     runs-on: ubuntu-latest
     steps:
       - name: Récupérer le dépôt
@@ -50,23 +50,27 @@ jobs:
             aws/budgets/p5-monthly-budget.json.example
             application/README.md
             application/angular/README.md
+            application/angular/package.json
+            application/angular/angular.json
+            application/angular/src/main.ts
             scripts/commands/bootstrap-ubuntu-server.sh
             scripts/commands/check-aws-readiness.sh
             scripts/commands/setup-aws-guardrails.sh
             scripts/commands/check-aws-cleanup.sh
             scripts/commands/pre-deployment-check.sh
             scripts/commands/prepare-angular-artifact.sh
+            scripts/commands/verify-angular-deployment.sh
+            scripts/commands/import-opensearch-data.sh
+            scripts/commands/verify-opensearch-data.sh
+            scripts/commands/test-haproxy-roundrobin.sh
+            scripts/commands/test-haproxy-failover.sh
+            scripts/tools/convert-nginx-logs.py
+            terraform/exercice-2/opensearch/index-template.json
             ansible/files/angular-app/index.html
             ansible/files/nginx-angular.conf
             ansible/playbooks/deploy.yml
           )
           for path in "${required[@]}"; do test -e "$path"; done
-          for script in \
-            scripts/commands/check-aws-readiness.sh \
-            scripts/commands/setup-aws-guardrails.sh \
-            scripts/commands/check-aws-cleanup.sh; do
-            test -x "$script"
-          done
           test ! -e environment/aws-readiness.env
           grep -q '../files/angular-app/' ansible/playbooks/deploy.yml
           grep -q '../files/nginx-angular.conf' ansible/playbooks/deploy.yml
@@ -100,13 +104,15 @@ jobs:
       - name: Analyser les scripts avec ShellCheck
         run: find scripts -type f -name '*.sh' -print0 | xargs -0 -r shellcheck --severity=error
 
-      - name: Valider les fichiers JSON AWS
+      - name: Valider les fichiers JSON AWS et OpenSearch
         shell: bash
         run: |
           set -euo pipefail
           python3 -m json.tool aws/iam/p5-lab-policy.json >/dev/null
           python3 -m json.tool \
             aws/budgets/p5-monthly-budget.json.example >/dev/null
+          python3 -m json.tool \
+            terraform/exercice-2/opensearch/index-template.json >/dev/null
 
       - name: Vérifier les schémas compacts
         shell: bash
@@ -123,6 +129,89 @@ jobs:
               if file.stat().st_size > 12000:
                   raise SystemExit(f'{file.name} est trop lourd')
           PY
+
+  angular:
+    name: Application Angular
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22.22.0
+      - name: Installer les dépendances et créer le verrouillage initial
+        run: npm install --prefix application/angular --no-audit --no-fund
+      - name: Construire l'application
+        run: npm run build --prefix application/angular
+      - name: Préparer l'artefact de synchronisation
+        shell: bash
+        run: |
+          set -euo pipefail
+          build_index="$(find application/angular/dist -type f -name index.html | head -n 1)"
+          test -n "$build_index"
+          build_dir="$(dirname "$build_index")"
+          mkdir -p generated/angular-app
+          cp application/angular/package-lock.json generated/package-lock.json
+          cp -a "$build_dir/." generated/angular-app/
+          test -f generated/angular-app/index.html
+      - uses: actions/upload-artifact@v4
+        with:
+          name: p5-angular-generated
+          path: generated/
+          if-no-files-found: error
+          retention-days: 3
+
+  opensearch_data:
+    name: Données OpenSearch
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Compiler et exécuter le convertisseur
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/tools/convert-nginx-logs.py
+          python3 scripts/tools/convert-nginx-logs.py \
+            terraform/exercice-2/samples/nginx-access.log.sample \
+            --output /tmp/nginx-access.bulk.ndjson
+          test "$(wc -l < /tmp/nginx-access.bulk.ndjson)" -eq 128
+      - name: Vérifier la richesse temporelle des données
+        run: |
+          python3 - <<'PY'
+          import json
+          from datetime import datetime
+          from pathlib import Path
+
+          lines = Path('/tmp/nginx-access.bulk.ndjson').read_text().splitlines()
+          documents = [json.loads(line) for line in lines[1::2]]
+          if len(documents) != 64:
+              raise SystemExit('64 documents attendus')
+          methods = {doc['http_method'] for doc in documents}
+          paths = {doc['url_path'] for doc in documents}
+          buckets = {
+              (stamp.date().isoformat(), 0 if stamp.hour < 12 else 12)
+              for stamp in (
+                  datetime.fromisoformat(doc['@timestamp']) for doc in documents
+              )
+          }
+          if len(methods) < 3 or len(paths) < 5 or len(buckets) < 4:
+              raise SystemExit('Échantillon insuffisant pour les visualisations')
+          PY
+
+  haproxy:
+    name: Configuration HAProxy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Générer et valider la configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./scripts/tools/generer-haproxy-config.sh \
+            10.0.1.10 10.0.2.10 /tmp/haproxy.cfg
+          docker run --rm \
+            --volume /tmp/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro \
+            haproxy:3.2-alpine \
+            haproxy -c -f /usr/local/etc/haproxy/haproxy.cfg
 
   yaml:
     name: YAML
