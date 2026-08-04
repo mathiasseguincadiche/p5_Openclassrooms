@@ -1,22 +1,29 @@
 # Application du projet P5
 
-Le projet fait fonctionner **une seule application web Angular**. Elle est
-construite sur la VM de lab, copiée dans l’artefact Ansible, puis servie par
-NGINX sur l’instance EC2 de l’exercice 1.
+Le dépôt contient **une application web Angular réelle et autonome**. Elle est
+construite sur la VM de lab, copiée dans l'artefact Ansible, puis servie par
+NGINX sur l'instance EC2 de l'exercice 1.
+
+L'interface présente le parcours complet du projet : VM, préparation AWS,
+Terraform, Ansible, OpenSearch et HAProxy. Elle ne dépend d'aucun service ou
+asset graphique externe.
 
 ```text
 application/
-└── angular/                  # sources du starter Angular fourni
-    ├── package.json
+└── angular/
     ├── angular.json
-    ├── src/
-    └── dist/                 # résultat local de ng build, ignoré par Git
+    ├── package.json
+    ├── package-lock.json
+    ├── tsconfig.json
+    ├── public/
+    └── src/
 
 scripts/commands/
-└── prepare-angular-artifact.sh
+├── prepare-angular-artifact.sh
+└── verify-angular-deployment.sh
 
 ansible/
-├── files/angular-app/        # artefact normalisé à déployer
+├── files/angular-app/        # build Angular versionné
 ├── files/nginx-angular.conf
 └── playbooks/deploy.yml
 ```
@@ -39,9 +46,33 @@ EC2 : /var/www/p5
 Application accessible
 ```
 
-Le dépôt ne contient pas le starter OpenClassrooms s’il n’a pas été fourni avec
-une licence permettant de le republier. Copiez ses sources dans
-`application/angular/`, puis utilisez le script de préparation.
+## Construire l'artefact
 
-La page versionnée dans `ansible/files/angular-app/` sert uniquement de témoin
-technique. Elle doit être remplacée par le build réel avant la remise.
+Depuis la racine du dépôt :
+
+```bash
+./scripts/commands/prepare-angular-artifact.sh
+```
+
+Le script exige le fichier de verrouillage npm, exécute un build de production,
+détecte l'unique artefact navigateur puis remplace proprement
+`ansible/files/angular-app/`.
+
+La CI reconstruit également l'application et compare le résultat au build
+versionné. Une modification des sources qui n'a pas été répercutée dans
+l'artefact Ansible bloque donc la pull request.
+
+## Vérifier le déploiement réel
+
+Après Terraform et Ansible :
+
+```bash
+./scripts/commands/verify-angular-deployment.sh
+```
+
+Le contrôle vérifie la réponse HTTP, la présence de la racine Angular, le bundle
+JavaScript, le fallback SPA NGINX et un en-tête de sécurité. Les résultats sont
+enregistrés localement sous `proofs/runtime/exercice-1/`.
+
+Un starter imposé par une consigne ultérieure peut remplacer cette application,
+mais il n'est plus nécessaire pour rendre le dépôt exécutable de bout en bout.
