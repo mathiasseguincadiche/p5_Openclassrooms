@@ -32,6 +32,7 @@
         "ec2:DeleteRouteTable",
         "ec2:DeleteSecurityGroup",
         "ec2:DeleteSubnet",
+        "ec2:DeleteTags",
         "ec2:DeleteVpc",
         "ec2:Describe*",
         "ec2:DetachInternetGateway",
@@ -39,6 +40,7 @@
         "ec2:ImportKeyPair",
         "ec2:ModifySubnetAttribute",
         "ec2:ModifyVpcAttribute",
+        "ec2:ReplaceRoute",
         "ec2:RevokeSecurityGroupEgress",
         "ec2:RevokeSecurityGroupIngress",
         "ec2:RunInstances",
@@ -64,6 +66,17 @@
         "es:UpdateElasticsearchDomainConfig"
       ],
       "Resource": "*"
+    },
+    {
+      "Sid": "CreateOpenSearchServiceLinkedRole",
+      "Effect": "Allow",
+      "Action": "iam:CreateServiceLinkedRole",
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "iam:AWSServiceName": "opensearchservice.amazonaws.com"
+        }
+      }
     },
     {
       "Sid": "ManageP5Budget",
