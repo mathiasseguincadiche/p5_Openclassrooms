@@ -1,0 +1,120 @@
+<main>
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="hero__content">
+      <p class="eyebrow">OpenClassrooms · Projet P5 · Parcours AWS</p>
+      <h1 id="hero-title">Déployer et suivre une infrastructure as code</h1>
+      <p class="hero__lead">
+        Une application Angular réelle, construite sur la VM de lab, déployée par
+        Ansible derrière NGINX, observée avec OpenSearch et complétée par une
+        démonstration de haute disponibilité avec HAProxy.
+      </p>
+      <div class="hero__badges" aria-label="Technologies principales">
+        <span>Angular</span>
+        <span>Terraform</span>
+        <span>Ansible</span>
+        <span>AWS</span>
+        <span>OpenSearch</span>
+        <span>HAProxy</span>
+      </div>
+    </div>
+    <aside class="hero__summary" aria-label="Résumé du projet">
+      <span class="summary__label">Résultat attendu</span>
+      <strong>Une chaîne complète, lisible et démontrable</strong>
+      <p>Code source → build → infrastructure → déploiement → logs → résilience.</p>
+    </aside>
+  </section>
+
+  <section class="section" aria-labelledby="journey-title">
+    <div class="section__heading">
+      <p class="eyebrow">Parcours contrôlé</p>
+      <h2 id="journey-title">Du lab jusqu’aux preuves finales</h2>
+      <p>Chaque étape possède un objectif, une validation et un livrable distinct.</p>
+    </div>
+
+    <ol class="journey">
+      @for (stage of stages; track stage.step) {
+        <li class="journey__item">
+          <div class="journey__step">{{ stage.step }}</div>
+          <div class="journey__body">
+            <div class="journey__title-row">
+              <h3>{{ stage.title }}</h3>
+              <span class="status" [class.status--ready]="stage.status === 'Prêt'">
+                {{ stage.status }}
+              </span>
+            </div>
+            <p>{{ stage.detail }}</p>
+          </div>
+        </li>
+      }
+    </ol>
+  </section>
+
+  <section class="section section--soft" aria-labelledby="architecture-title">
+    <div class="section__heading">
+      <p class="eyebrow">Architecture fonctionnelle</p>
+      <h2 id="architecture-title">Une seule application, plusieurs compétences</h2>
+    </div>
+
+    <div class="flow" role="list" aria-label="Chaîne de déploiement">
+      <div class="flow__node" role="listitem">
+        <span class="flow__number">1</span>
+        <strong>Source Angular</strong>
+        <small>application/angular</small>
+      </div>
+      <span class="flow__arrow" aria-hidden="true">→</span>
+      <div class="flow__node" role="listitem">
+        <span class="flow__number">2</span>
+        <strong>Build reproductible</strong>
+        <small>npm ci · ng build</small>
+      </div>
+      <span class="flow__arrow" aria-hidden="true">→</span>
+      <div class="flow__node" role="listitem">
+        <span class="flow__number">3</span>
+        <strong>Ansible + NGINX</strong>
+        <small>/var/www/p5</small>
+      </div>
+      <span class="flow__arrow" aria-hidden="true">→</span>
+      <div class="flow__node" role="listitem">
+        <span class="flow__number">4</span>
+        <strong>Logs OpenSearch</strong>
+        <small>index nginx-access</small>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="capabilities-title">
+    <div class="section__heading">
+      <p class="eyebrow">Compétences démontrées</p>
+      <h2 id="capabilities-title">Ce que le dépôt doit prouver</h2>
+    </div>
+
+    <div class="capabilities">
+      @for (capability of capabilities; track capability.title) {
+        <article class="capability">
+          <h3>{{ capability.title }}</h3>
+          <p>{{ capability.description }}</p>
+          <div class="capability__proof">
+            <span>Preuve</span>
+            <strong>{{ capability.proof }}</strong>
+          </div>
+        </article>
+      }
+    </div>
+  </section>
+
+  <section class="final-check" aria-labelledby="final-check-title">
+    <div>
+      <p class="eyebrow">Critère de réussite</p>
+      <h2 id="final-check-title">Aucune étape déclarée terminée sans preuve réelle</h2>
+    </div>
+    <p>
+      La CI valide le code et les configurations. Les scripts de vérification
+      produisent ensuite les éléments factuels issus du véritable lab AWS.
+    </p>
+  </section>
+</main>
+
+<footer>
+  <p>P5 OpenClassrooms · Mathias Seguin-Cadiche · {{ currentYear }}</p>
+  <p>Application Angular servie par NGINX et déployée avec Ansible.</p>
+</footer>
