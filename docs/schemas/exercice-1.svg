@@ -1,15 +1,62 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="260" viewBox="0 0 960 260" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="300" viewBox="0 0 960 300" role="img" aria-labelledby="title desc">
 <title id="title">Exercice 1 : déployer l’application Angular sur AWS</title>
-<desc id="desc">Le build Angular est préparé sur la VM, Terraform crée EC2 et Ansible déploie NGINX.</desc>
-<defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#475569"/></marker></defs>
-<rect width="960" height="260" rx="12" fill="#f8fafc"/>
-<text x="32" y="38" font-family="Arial,sans-serif" font-size="22" font-weight="700" fill="#0f172a">Exercice 1 · construire, provisionner, déployer</text>
-<g font-family="Arial,sans-serif" text-anchor="middle">
-<rect x="32" y="78" width="180" height="112" rx="10" fill="#fff" stroke="#2563eb" stroke-width="2"/><text x="122" y="115" font-size="16" font-weight="700" fill="#0f172a">Angular</text><text x="122" y="142" font-size="13" fill="#475569">npm ci · build</text><text x="122" y="164" font-size="13" fill="#475569">artefact navigateur</text>
-<rect x="272" y="78" width="180" height="112" rx="10" fill="#fff" stroke="#7c3aed" stroke-width="2"/><text x="362" y="115" font-size="16" font-weight="700" fill="#0f172a">Terraform</text><text x="362" y="142" font-size="13" fill="#475569">VPC · sécurité · EC2</text><text x="362" y="164" font-size="13" fill="#475569">init · plan · apply</text>
-<rect x="512" y="78" width="180" height="112" rx="10" fill="#fff" stroke="#d97706" stroke-width="2"/><text x="602" y="115" font-size="16" font-weight="700" fill="#0f172a">Ansible</text><text x="602" y="142" font-size="13" fill="#475569">inventaire · playbook</text><text x="602" y="164" font-size="13" fill="#475569">copie et configuration</text>
-<rect x="752" y="78" width="176" height="112" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="2"/><text x="840" y="115" font-size="16" font-weight="700" fill="#065f46">EC2 + NGINX</text><text x="840" y="142" font-size="13" fill="#065f46">/var/www/p5</text><text x="840" y="164" font-size="13" fill="#065f46">application sur :80</text>
+<desc id="desc">Le build Angular devient un artefact, Terraform crée l’infrastructure AWS et Ansible configure NGINX sur EC2.</desc>
+<defs>
+  <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#475569"/></marker>
+  <style>
+    .title{font:700 22px Arial,sans-serif;fill:#0f172a}.card-title{font:700 16px Arial,sans-serif;fill:#0f172a}.label{font:13px Arial,sans-serif;fill:#475569}.ok-title{font:700 16px Arial,sans-serif;fill:#065f46}.ok-label{font:13px Arial,sans-serif;fill:#065f46}.line{fill:none;stroke:#475569;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  </style>
+</defs>
+<rect width="960" height="300" rx="12" fill="#f8fafc"/>
+<text x="32" y="38" class="title">Exercice 1 · de la source Angular à l’application sur EC2</text>
+
+<g text-anchor="middle">
+  <rect x="28" y="72" width="190" height="134" rx="10" fill="#fff" stroke="#2563eb" stroke-width="2"/>
+  <g transform="translate(102 89)" class="line" stroke="#2563eb">
+    <rect x="0" y="0" width="42" height="31" rx="4"/>
+    <line x1="0" y1="8" x2="42" y2="8"/>
+    <circle cx="6" cy="4" r="1.5" fill="#2563eb" stroke="none"/><circle cx="11" cy="4" r="1.5" fill="#2563eb" stroke="none"/>
+    <path d="M11 17l-5 4 5 4M31 17l5 4-5 4M24 15l-6 12"/>
+  </g>
+  <text x="123" y="139" class="card-title">Source Angular</text>
+  <text x="123" y="164" class="label">npm ci · npm run build</text>
+  <text x="123" y="185" class="label">artefact navigateur</text>
+
+  <rect x="266" y="72" width="190" height="134" rx="10" fill="#fff" stroke="#7c3aed" stroke-width="2"/>
+  <g transform="translate(338 88)" class="line" stroke="#7c3aed">
+    <path d="M8 29h30a8 8 0 0 0 1-16 12 12 0 0 0-23-2A9 9 0 0 0 8 29Z"/>
+    <circle cx="14" cy="21" r="2" fill="#7c3aed" stroke="none"/><circle cx="27" cy="21" r="2" fill="#7c3aed" stroke="none"/><circle cx="36" cy="21" r="2" fill="#7c3aed" stroke="none"/>
+    <line x1="16" y1="21" x2="25" y2="21"/><line x1="29" y1="21" x2="34" y2="21"/>
+  </g>
+  <text x="361" y="139" class="card-title">Terraform</text>
+  <text x="361" y="164" class="label">VPC · sécurité · EC2</text>
+  <text x="361" y="185" class="label">init · plan · apply</text>
+
+  <rect x="504" y="72" width="190" height="134" rx="10" fill="#fff" stroke="#d97706" stroke-width="2"/>
+  <g transform="translate(577 89)" class="line" stroke="#d97706">
+    <rect x="0" y="0" width="42" height="31" rx="4"/>
+    <path d="M8 10l4 4 7-8M8 23l4 4 7-8"/><line x1="24" y1="10" x2="34" y2="10"/><line x1="24" y1="23" x2="34" y2="23"/>
+  </g>
+  <text x="599" y="139" class="card-title">Ansible</text>
+  <text x="599" y="164" class="label">inventaire · playbook</text>
+  <text x="599" y="185" class="label">NGINX + artefact</text>
+
+  <rect x="742" y="72" width="190" height="134" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+  <g transform="translate(806 87)" class="line" stroke="#059669">
+    <rect x="0" y="0" width="28" height="35" rx="3"/><line x1="6" y1="9" x2="22" y2="9"/><line x1="6" y1="16" x2="22" y2="16"/><circle cx="21" cy="28" r="2" fill="#059669" stroke="none"/>
+    <circle cx="37" cy="25" r="10" fill="#ecfdf5"/><path d="M32 25l4 4 7-8"/>
+  </g>
+  <text x="837" y="139" class="ok-title">EC2 + NGINX</text>
+  <text x="837" y="164" class="ok-label">/var/www/p5 · HTTP :80</text>
+  <text x="837" y="185" class="ok-label">application accessible</text>
 </g>
-<g stroke="#475569" stroke-width="2" marker-end="url(#a)"><line x1="212" y1="134" x2="264" y2="134"/><line x1="452" y1="134" x2="504" y2="134"/><line x1="692" y1="134" x2="744" y2="134"/></g>
-<text x="32" y="226" font-family="Arial,sans-serif" font-size="14" fill="#475569">Preuves : plan relu · ping Ansible · playbook idempotent · application réelle accessible.</text>
+
+<g class="line" marker-end="url(#arrow)">
+  <line x1="218" y1="139" x2="258" y2="139"/>
+  <line x1="456" y1="139" x2="496" y2="139"/>
+  <line x1="694" y1="139" x2="734" y2="139"/>
+</g>
+
+<rect x="28" y="230" width="904" height="42" rx="8" fill="#e2e8f0"/>
+<text x="480" y="257" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" font-weight="700" fill="#334155">Preuves : plan relu · ping Ansible · playbook réussi · véritable application accessible</text>
 </svg>
