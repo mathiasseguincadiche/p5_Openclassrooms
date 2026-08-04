@@ -1,81 +1,150 @@
-# Exercice 2 — Monitoring et logging avec ELK / OpenSearch
+# Exercice 2 — Monitoring et logging avec OpenSearch
 
 ![Flux de l'exercice 2](../schemas/exercice-2.svg)
 
 ## Objectif officiel
 
-Démarrer un environnement de logs, importer un échantillon NGINX, explorer les
+Démarrer un environnement de logs, importer des événements NGINX, explorer les
 données puis construire un dashboard avec trois visualisations précises.
 
-## Option retenue : Amazon OpenSearch sur AWS
+## Option retenue : Amazon OpenSearch
 
-OpenClassrooms autorise une stack ELK locale ou un service Cloud. Pour cette
-réalisation, le choix validé est **Amazon OpenSearch** avec OpenSearch
-Dashboards. L’infrastructure se trouve dans `terraform/exercice-2/`. Le mode
-Docker Compose local n’est pas implémenté dans ce dépôt.
+Le parcours utilise Amazon OpenSearch Service et OpenSearch Dashboards. Le terme
+« Kibana » des consignes correspond ici à OpenSearch Dashboards. Le mode Docker
+Compose local n’est pas une seconde implémentation du dépôt.
 
-Le terme « Kibana » employé dans les consignes correspond à OpenSearch
-Dashboards dans le parcours AWS retenu.
-
-## Étapes attendues
-
-1. démarrer l’environnement ;
-2. importer `nginx-access.log` ;
-3. créer l’index ou le motif `nginx-access` ;
-4. vérifier les champs dans Discover ;
-5. créer les trois visualisations ;
-6. assembler le dashboard ;
-7. produire quatre captures lisibles.
-
-## Trois visualisations obligatoires
-
-1. **Donut** : répartition des verbes HTTP (`GET`, `POST`, etc.).
-2. **Histogramme** : quantité cumulée de données envoyées par tranches de
-   12 heures.
-3. **Histogramme cumulé ou empilé** : top 5 des requêtes HTTP par tranches de
-   12 heures.
-
-Une courbe ou une heatmap peut servir à expérimenter, mais ne remplace aucun de
-ces trois graphiques.
-
-## Implémentation du dépôt
+## Implémentation complète
 
 ```text
 terraform/exercice-2/
 ├── main.tf
-├── variables.tf
 ├── outputs.tf
-└── samples/nginx-access.log.sample
+├── variables.tf
+├── opensearch/
+│   ├── README.md
+│   └── index-template.json
+└── samples/
+    └── nginx-access.log.sample
+
+scripts/
+├── commands/import-opensearch-data.sh
+├── commands/verify-opensearch-data.sh
+├── commands/generate-nginx-traffic.sh
+├── commands/collect-nginx-access-log.sh
+└── tools/convert-nginx-logs.py
 ```
 
-Les visualisations ne sont pas automatisées. Leur création manuelle permet de
-comprendre les champs, les agrégations et la plage temporelle demandés.
+L’échantillon contient 64 événements, plusieurs méthodes HTTP, au moins cinq
+chemins et quatre tranches temporelles de douze heures. Il permet donc de créer
+les trois visualisations demandées. Les logs réels de l’exercice 1 peuvent aussi
+être collectés puis importés.
 
-## Commandes Cloud
+## 1. Contrôler et déployer le domaine
 
 ```bash
+./scripts/commands/pre-deployment-check.sh --stage exercice-2
+
 cp terraform/exercice-2/terraform.tfvars.example \
   terraform/exercice-2/terraform.tfvars
+$EDITOR terraform/exercice-2/terraform.tfvars
+
 terraform -chdir=terraform/exercice-2 init
-terraform -chdir=terraform/exercice-2 plan
-terraform -chdir=terraform/exercice-2 apply
-terraform -chdir=terraform/exercice-2 output -raw opensearch_dashboards_endpoint
+terraform -chdir=terraform/exercice-2 validate
+terraform -chdir=terraform/exercice-2 plan -out=tfplan
+terraform -chdir=terraform/exercice-2 show tfplan
+terraform -chdir=terraform/exercice-2 apply tfplan
 ```
 
-Amazon OpenSearch peut être coûteux. Après les captures :
+Attendre que le domaine soit en état actif avant l’import.
+
+## 2. Prévisualiser puis importer les données
 
 ```bash
-terraform -chdir=terraform/exercice-2 destroy
+./scripts/commands/import-opensearch-data.sh
+./scripts/commands/import-opensearch-data.sh --apply
 ```
 
-## Livrables et preuves
+Sans `--apply`, le script valide le format NGINX et génère uniquement le Bulk
+NDJSON local. Avec `--apply`, il :
 
-- capture du dashboard complet avec les trois graphiques ;
-- capture lisible du donut ;
-- capture lisible de l’histogramme des octets par 12 heures ;
-- capture lisible du top 5 des requêtes par 12 heures ;
-- preuve de l’index et des données dans Discover ;
-- aucune adresse, clé ou identité AWS sensible visible.
+1. crée ou met à jour le template `p5-nginx-access` ;
+2. importe les documents dans `nginx-access-*` ;
+3. refuse les erreurs Bulk ;
+4. enregistre les réponses sous `proofs/runtime/exercice-2/`.
+
+Pour importer les véritables logs NGINX :
+
+```bash
+./scripts/commands/generate-nginx-traffic.sh --requests 64
+./scripts/commands/collect-nginx-access-log.sh \
+  --output proofs/runtime/exercice-2/nginx-access-real.log
+./scripts/commands/import-opensearch-data.sh \
+  --input proofs/runtime/exercice-2/nginx-access-real.log --apply
+```
+
+L’échantillon temporel fourni reste utile pour démontrer plusieurs tranches de
+12 heures lorsque les logs réels ont été produits sur une période trop courte.
+
+## 3. Vérifier les champs et les agrégations
+
+```bash
+./scripts/commands/verify-opensearch-data.sh
+```
+
+Le script vérifie :
+
+- les mappings `@timestamp`, `http_method`, `url_path` et `bytes_sent` ;
+- au moins 64 documents ;
+- au moins trois méthodes HTTP ;
+- au moins quatre tranches de douze heures ;
+- au moins cinq chemins exploitables ;
+- les agrégations utilisées par le dashboard.
+
+Le verdict attendu est :
+
+```text
+DONNÉES OPENSEARCH PRÊTES POUR LE DASHBOARD
+```
+
+## 4. Créer les trois visualisations
+
+Dans OpenSearch Dashboards, créer un motif de données `nginx-access-*` avec
+`@timestamp` comme champ temporel.
+
+1. **Donut des verbes HTTP**
+   - agrégation Terms sur `http_method` ;
+   - afficher `GET`, `POST`, `HEAD`, `OPTIONS` ou les méthodes présentes.
+2. **Octets par tranches de 12 heures**
+   - Date histogram sur `@timestamp` avec intervalle fixe `12h` ;
+   - somme de `bytes_sent`.
+3. **Top 5 des requêtes par tranches de 12 heures**
+   - Date histogram fixe `12h` ;
+   - Terms sur `url_path`, taille 5 ;
+   - affichage empilé ou cumulé.
+
+Assembler ensuite les trois visualisations dans un dashboard unique avec des
+titres explicites.
+
+## Preuves attendues
+
+- domaine OpenSearch actif ;
+- template, index et documents visibles ;
+- verdict du script de vérification ;
+- capture Discover avec les champs typés ;
+- capture du donut ;
+- capture des octets par 12 heures ;
+- capture du top 5 par 12 heures ;
+- capture du dashboard complet ;
+- aucune URL complète, identité ou donnée sensible visible.
 
 Gabarit :
 [`SEGUIN-CADICHE_Mathias_2_dashboard_kibana_02082026.md`](../livrables/SEGUIN-CADICHE_Mathias_2_dashboard_kibana_02082026.md).
+
+## Nettoyage
+
+```bash
+terraform -chdir=terraform/exercice-2 destroy
+./scripts/commands/check-aws-cleanup.sh
+```
+
+OpenSearch doit être supprimé dès que les captures sont terminées.
