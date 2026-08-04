@@ -18,7 +18,11 @@ Chaque suppression est classée dans l’une des catégories suivantes :
 | Capacité utile | Régression constatée | Correction actuelle |
 | --- | --- | --- |
 | Préparation de la VM | ancienne phase 0 supprimée | guide Ubuntu Server 26.04 et bootstrap autonome |
+| Préparation du compte AWS | identité seulement détectée | étape 0B avec compte, région, quotas, budget et collisions |
 | Contrôle avant déploiement | script supprimé | `pre-deployment-check.sh` rétabli et renforcé |
+| Garde-fou de compte | risque de mauvais compte Terraform | `allowed_account_ids` dans les trois modules |
+| Suivi des coûts | aucune condition préalable | budget volontaire et alertes 50 %, 80 % et 100 % |
+| Nettoyage vérifiable | contrôle manuel uniquement | audit AWS non destructif après `destroy` |
 | Chaîne de l’application | simple page témoin sans sources structurées | `application/angular/` et build vers Ansible |
 | Diagnostic du lab | contrôle devenu trop minimal | vérification OS, Docker, AWS, SSH, Terraform et structure |
 | Compréhension de l’arborescence | fichiers techniques dispersés | flux source → build → Ansible → EC2 documenté |
@@ -41,6 +45,10 @@ Chaque suppression est classée dans l’une des catégories suivantes :
 Une évolution ne doit pas être fusionnée si elle retire ou casse :
 
 - l’installation et la validation de la VM de lab ;
+- l’étape 0B, son fichier d’exemple et le verdict `GO AWS` ;
+- le verrouillage du compte et les tags communs Terraform ;
+- la vérification des quotas, d’OpenSearch et du budget ;
+- le contrôle des ressources AWS restantes ;
 - les trois modules Terraform ;
 - la source ou la préparation de l’application Angular ;
 - le playbook et la configuration NGINX ;
@@ -49,9 +57,12 @@ Une évolution ne doit pas être fusionnée si elle retire ou casse :
 - les livrables, les preuves ou le nettoyage AWS ;
 - les contrôles de sécurité relatifs aux secrets et aux états Terraform.
 
-## Limite honnête
+## Limites honnêtes
 
 Le dépôt ne peut pas contenir le véritable starter Angular tant que ses sources
 n’ont pas été fournies ou que leur redistribution n’est pas autorisée. Cette
-absence est visible, documentée et contrôlée comme avertissement. Elle ne doit
-jamais être masquée par la page HTML de démonstration.
+absence est visible, documentée et contrôlée comme avertissement.
+
+Le dépôt ne peut pas prouver seul l’état du MFA root, l’absence de clés root,
+la validité du moyen de paiement ou la réception d’un courriel de budget. Ces
+points restent des confirmations manuelles obligatoires de l’étape 0B.
