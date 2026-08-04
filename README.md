@@ -283,7 +283,7 @@ tente toujours de restaurer le backend en cas d’interruption.
 
 ## Finalisation — Prouver, détruire et auditer
 
-![Finalisation, livrables et nettoyage AWS](docs/schemas/finalisation.svg)
+![Finalisation, livrables et nettoyage AWS](docs/schemas/finalisation/finalisation.svg)
 
 ### 1. Organiser les preuves
 
@@ -350,7 +350,7 @@ p5_Openclassrooms/
 ├── docs/
 │   ├── exercices/             # trois guides d’exécution
 │   ├── livrables/             # gabarits et contrôle de complétude
-│   └── schemas/               # six schémas pédagogiques
+│   └── schemas/               # six vues pédagogiques, dont la finalisation
 ├── proofs/                    # convention ; runtime ignoré par Git
 ├── scripts/
 │   ├── commands/              # préparation, vérifications, tests et nettoyage
