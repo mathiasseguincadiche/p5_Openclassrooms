@@ -61,6 +61,12 @@ jobs:
             ansible/playbooks/deploy.yml
           )
           for path in "${required[@]}"; do test -e "$path"; done
+          for script in \
+            scripts/commands/check-aws-readiness.sh \
+            scripts/commands/setup-aws-guardrails.sh \
+            scripts/commands/check-aws-cleanup.sh; do
+            test -x "$script"
+          done
           test ! -e environment/aws-readiness.env
           grep -q '../files/angular-app/' ansible/playbooks/deploy.yml
           grep -q '../files/nginx-angular.conf' ansible/playbooks/deploy.yml
