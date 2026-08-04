@@ -28,18 +28,33 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python -m pip install --disable-pip-version-check pyyaml
           python3 <<'PY'
           from pathlib import Path
-          import yaml
 
-          workflow = yaml.safe_load(Path('.github/workflows/reorganize-repository.yml').read_text(encoding='utf-8'))
-          steps = workflow['jobs']['reorganize']['steps']
-          scripts = [step['run'] for step in steps if 'run' in step]
+          lines = Path('.github/workflows/reorganize-repository.yml').read_text(encoding='utf-8').splitlines()
+          scripts = []
+          index = 0
+
+          while index < len(lines):
+              if lines[index] != '        run: |':
+                  index += 1
+                  continue
+
+              index += 1
+              block = []
+              while index < len(lines) and not lines[index].startswith('      - name: '):
+                  line = lines[index]
+                  if line.startswith('          '):
+                      line = line[10:]
+                  block.append(line)
+                  index += 1
+              scripts.append('\n'.join(block).rstrip())
+
           if len(scripts) != 7:
               raise SystemExit(f'Nombre inattendu d’étapes shell : {len(scripts)}')
-          for index, script in enumerate(scripts):
-              path = Path(f'/tmp/reorganize-step-{index}.sh')
+
+          for script_index, script in enumerate(scripts):
+              path = Path(f'/tmp/reorganize-step-{script_index}.sh')
               path.write_text('#!/usr/bin/env bash\n' + script + '\n', encoding='utf-8')
               path.chmod(0o700)
           PY
