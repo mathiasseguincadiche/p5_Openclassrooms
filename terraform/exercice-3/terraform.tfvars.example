@@ -1,8 +1,9 @@
 # Copiez ce fichier en terraform.tfvars puis adaptez les valeurs.
-aws_region    = "us-east-1"
-ami_id        = null
-instance_type = "t3.micro"
-key_name      = "p5-key"
+aws_region              = "us-east-1"
+expected_aws_account_id = "000000000000"
+ami_id                  = null
+instance_type           = "t3.micro"
+key_name                = "p5-key"
 
 # Remplacez cette valeur par votre adresse IPv4 publique suivie de /32.
 your_ip_cidr = "203.0.113.10/32"
