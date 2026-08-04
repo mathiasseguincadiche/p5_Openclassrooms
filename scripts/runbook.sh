@@ -7,9 +7,9 @@
 # =============================================================================
 
 # Charger les utilitaires
-source "$(dirname "$0")/utils/colors.sh"
-source "$(dirname "$0")/utils/checks.sh"
-source "$(dirname "$0")/utils/prompts.sh"
+source "$(dirname "$0")/lib/colors.sh"
+source "$(dirname "$0")/lib/checks.sh"
+source "$(dirname "$0")/lib/prompts.sh"
 
 # =============================================================================
 # FONCTIONS PRINCIPALES
@@ -42,8 +42,8 @@ run_phase_0() {
     info "Ce script va vérifier et configurer votre environnement."
 
     if confirm "Voulez-vous exécuter la Phase 0 ?"; then
-        command "Exécution : ./scripts/phase-0-preparation.sh"
-        ./scripts/phase-0-preparation.sh
+        command "Exécution : ./scripts/phases/phase-0-preparation.sh"
+        ./scripts/phases/phase-0-preparation.sh
     fi
 }
 
@@ -53,8 +53,8 @@ run_phase_1() {
     info "Ce script va déployer 2 VMs AWS avec NGINX + interface web P5."
 
     if confirm "Voulez-vous exécuter la Phase 1 ?"; then
-        command "Exécution : ./scripts/phase-1-terraform-ansible.sh"
-        ./scripts/phase-1-terraform-ansible.sh
+        command "Exécution : ./scripts/phases/phase-1-terraform-ansible.sh"
+        ./scripts/phases/phase-1-terraform-ansible.sh
     fi
 }
 
@@ -64,8 +64,8 @@ run_phase_2() {
     info "Ce script va déployer OpenSearch + Kibana et créer un dashboard avec 3 diagrammes."
 
     if confirm "Voulez-vous exécuter la Phase 2 ?"; then
-        command "Exécution : ./scripts/phase-2-opensearch-kibana.sh"
-        ./scripts/phase-2-opensearch-kibana.sh
+        command "Exécution : ./scripts/phases/phase-2-opensearch-kibana.sh"
+        ./scripts/phases/phase-2-opensearch-kibana.sh
     fi
 }
 
@@ -75,8 +75,8 @@ run_phase_3() {
     info "Ce script va déployer HAProxy devant 2 instances de nginxdemos/hello."
 
     if confirm "Voulez-vous exécuter la Phase 3 ?"; then
-        command "Exécution : ./scripts/phase-3-haproxy.sh"
-        ./scripts/phase-3-haproxy.sh
+        command "Exécution : ./scripts/phases/phase-3-haproxy.sh"
+        ./scripts/phases/phase-3-haproxy.sh
     fi
 }
 
@@ -86,8 +86,8 @@ run_phase_4() {
     info "Ce script va générer les livrables au format OpenClassrooms."
 
     if confirm "Voulez-vous exécuter la Phase 4 ?"; then
-        command "Exécution : ./scripts/phase-4-livrables.sh"
-        ./scripts/phase-4-livrables.sh
+        command "Exécution : ./scripts/phases/phase-4-livrables.sh"
+        ./scripts/phases/phase-4-livrables.sh
     fi
 }
 
@@ -97,8 +97,8 @@ run_phase_5() {
     warning "⚠️ ATTENTION : Ce script va SUPPRIMER toutes vos ressources AWS."
 
     if confirm_strict "Voulez-vous VRAIMENT exécuter la Phase 5 ?"; then
-        command "Exécution : ./scripts/phase-5-nettoyage.sh"
-        ./scripts/phase-5-nettoyage.sh
+        command "Exécution : ./scripts/phases/phase-5-nettoyage.sh"
+        ./scripts/phases/phase-5-nettoyage.sh
     fi
 }
 
@@ -135,7 +135,7 @@ check_environment() {
 
     echo ""
     if confirm "Voulez-vous exécuter une vérification plus détaillée ?"; then
-        ./scripts/phase-0-preparation.sh --check-only
+        ./scripts/phases/phase-0-preparation.sh --check-only
     fi
 }
 
@@ -145,7 +145,7 @@ check_environment() {
 
 # Vérifier que les scripts existent
 for script in phase-0-preparation.sh phase-1-terraform-ansible.sh phase-2-opensearch-kibana.sh phase-3-haproxy.sh phase-4-livrables.sh phase-5-nettoyage.sh; do
-    if [ ! -f "$(dirname "$0")/$script" ]; then
+    if [ ! -f "$(dirname "$0")/phases/$script" ]; then
         error "Le script $script n'existe pas. Vérifiez que tous les scripts sont présents."
         exit 1
     fi

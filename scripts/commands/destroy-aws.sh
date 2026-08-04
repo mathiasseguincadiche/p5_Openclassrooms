@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # =============================================================================
 # SCRIPT DE NETTOYAGE COMPLET
 # Projet P5 OpenClassrooms - Déployer et suivre l'infrastructure as code
@@ -15,7 +15,7 @@ NC='\033[0m' # No Color
 
 # Chemins des dossiers (adaptés à votre environnement)
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
 
 # Fonction pour afficher un message de confirmation
 confirm() {

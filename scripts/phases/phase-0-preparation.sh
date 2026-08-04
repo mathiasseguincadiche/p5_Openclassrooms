@@ -6,9 +6,9 @@
 # =============================================================================
 
 # Charger les utilitaires
-source "$(dirname "$0")/utils/colors.sh"
-source "$(dirname "$0")/utils/checks.sh"
-source "$(dirname "$0")/utils/prompts.sh"
+source "$(dirname "$0")/../lib/colors.sh"
+source "$(dirname "$0")/../lib/checks.sh"
+source "$(dirname "$0")/../lib/prompts.sh"
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd)"
@@ -217,4 +217,4 @@ check_and_install_prerequisites
 echo ""
 title "PHASE 0 TERMINÉE"
 info "Votre environnement est prêt pour la Phase 1 !"
-info "Prochaine étape : ./runbook.sh → Option 1 (Exercice 1)"
+info "Prochaine étape : ./scripts/runbook.sh → Option 1 (Exercice 1)"

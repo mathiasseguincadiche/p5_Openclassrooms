@@ -4,32 +4,33 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
+cd "$PROJECT_ROOT"
 
 show_help() {
-    cat <<'EOF'
-Usage: ./setup-and-run.sh [--check-only] [--auto]
+    cat <<'HELP'
+Usage: ./scripts/commands/setup.sh [--check-only] [--auto]
 
-  --check-only  Vérifie l'environnement et le dépôt sans installer ni déployer.
+  --check-only  Vérifie l'environnement et le dépôt sans déployer.
   --auto        Transmet le mode automatique à la phase de préparation.
   --help        Affiche cette aide.
 
-Ce script ne déploie aucune ressource AWS. Le déploiement reste une action
-explicite depuis le runbook afin que le coût et le plan Terraform soient relus.
-EOF
+Ce script ne crée aucune ressource AWS. Le déploiement reste une action
+explicite depuis le runbook afin que le coût et le plan soient relus.
+HELP
 }
 
-PHASE_ARGS=()
-CHECK_ONLY=false
+phase_args=()
+check_only=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --check-only)
-            CHECK_ONLY=true
-            PHASE_ARGS+=(--check-only)
+            check_only=true
+            phase_args+=(--check-only)
             ;;
         --auto)
-            PHASE_ARGS+=(--auto)
+            phase_args+=(--auto)
             ;;
         --help|-h)
             show_help
@@ -45,14 +46,14 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [ "$(id -u)" -eq 0 ]; then
-    printf 'Erreur : exécutez ce script avec un utilisateur normal ; sudo sera demandé au besoin.\n' >&2
+    printf 'Exécutez ce script avec un utilisateur normal ; sudo sera demandé au besoin.\n' >&2
     exit 1
 fi
 
-./scripts/phase-0-preparation.sh "${PHASE_ARGS[@]}"
-./scripts/validate.sh
+./scripts/phases/phase-0-preparation.sh "${phase_args[@]}"
+./scripts/commands/validate.sh
 
-if [ "$CHECK_ONLY" = true ]; then
+if [ "$check_only" = true ]; then
     printf '\n✅ Environnement et dépôt vérifiés.\n'
     exit 0
 fi

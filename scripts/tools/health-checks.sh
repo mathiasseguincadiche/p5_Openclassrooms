@@ -7,9 +7,9 @@
 # =============================================================================
 
 # Charger les utilitaires
-source "$(dirname "$0")/colors.sh"
-source "$(dirname "$0")/prompts.sh"
-source "$(dirname "$0")/logging.sh"
+source "$(dirname "$0")/../lib/colors.sh"
+source "$(dirname "$0")/../lib/prompts.sh"
+source "$(dirname "$0")/../lib/logging.sh"
 
 UTILS_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$UTILS_DIR/../.." && pwd)"
@@ -548,19 +548,19 @@ show_report() {
  echo ""
  info "Recommandations :"
  if [ "${PHASE_RESULTS[0]}" != "0" ]; then
- info "  → Exécutez : ./scripts/phase-0-preparation.sh"
+ info "  → Exécutez : ./scripts/phases/phase-0-preparation.sh"
  fi
  if [ "${PHASE_RESULTS[1]}" != "0" ]; then
- info "  → Exécutez : ./scripts/phase-1-terraform-ansible.sh"
+ info "  → Exécutez : ./scripts/phases/phase-1-terraform-ansible.sh"
  fi
  if [ "${PHASE_RESULTS[2]}" != "0" ]; then
- info "  → Exécutez : ./scripts/phase-2-opensearch-kibana.sh"
+ info "  → Exécutez : ./scripts/phases/phase-2-opensearch-kibana.sh"
  fi
  if [ "${PHASE_RESULTS[3]}" != "0" ]; then
- info "  → Exécutez : ./scripts/phase-3-haproxy.sh"
+ info "  → Exécutez : ./scripts/phases/phase-3-haproxy.sh"
  fi
  if [ "${PHASE_RESULTS[4]}" != "0" ]; then
- info "  → Exécutez : ./scripts/phase-4-livrables.sh"
+ info "  → Exécutez : ./scripts/phases/phase-4-livrables.sh"
  fi
 }
 

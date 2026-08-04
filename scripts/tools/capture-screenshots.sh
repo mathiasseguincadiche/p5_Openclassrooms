@@ -7,9 +7,9 @@
 # =============================================================================
 
 # Charger les utilitaires
-source "$(dirname "$0")/colors.sh"
-source "$(dirname "$0")/prompts.sh"
-source "$(dirname "$0")/logging.sh"
+source "$(dirname "$0")/../lib/colors.sh"
+source "$(dirname "$0")/../lib/prompts.sh"
+source "$(dirname "$0")/../lib/logging.sh"
 
 # =============================================================================
 # VARIABLES GLOBALES
@@ -309,7 +309,7 @@ check_dashboard_exists() {
  if [ "$elapsed" -ge "$CHECK_TIMEOUT" ]; then
  error "Timeout atteint ($CHECK_TIMEOUT s). Aucun dashboard trouvé."
  log_error "Timeout dashboard introuvable"
- info "Exécutez d'abord : ./scripts/utils/kibana-api.sh"
+ info "Exécutez d'abord : ./scripts/tools/kibana-api.sh"
  return 1
  fi
 
@@ -527,7 +527,7 @@ show_summary() {
  echo ""
  info "Prochaine étape :"
  info "  1. Vérifiez que les 4 captures sont présentes"
- info "  2. Exécutez la Phase 4 : ./scripts/phase-4-livrables.sh --auto"
+ info "  2. Exécutez la Phase 4 : ./scripts/phases/phase-4-livrables.sh --auto"
 }
 
 # =============================================================================
@@ -634,4 +634,4 @@ info "Elles sont dans le dossier : $CAPTURES_DIR/"
 info ""
 info "Prochaine étape :"
 info "  1. Vérifiez que les 4 captures sont présentes"
-info "  2. Exécutez la Phase 4 : ./scripts/phase-4-livrables.sh --auto"
+info "  2. Exécutez la Phase 4 : ./scripts/phases/phase-4-livrables.sh --auto"

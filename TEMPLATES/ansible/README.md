@@ -38,7 +38,7 @@ Ici, vous trouverez des **fichiers de configuration prêts à l'emploi** pour An
 cp TEMPLATES/ansible/playbook.yml ./playbook.yml
 
 # 2. Créez un fichier d'inventaire (ex: inventory.ini)
-cp TEMPLATES/ansible/inventory.ini ./inventory.ini
+cp TEMPLATES/ansible/inventories/hosts_aws.example.ini ./inventory.ini
 
 # 3. Personnalisez le playbook et l'inventaire
 
@@ -68,7 +68,7 @@ ansible-playbook -i inventory.ini playbook.yml
 
 ```bash
 # 1. Copiez le template dans votre projet
-cp TEMPLATES/ansible/inventory.ini ./inventory.ini
+cp TEMPLATES/ansible/inventories/hosts_aws.example.ini ./inventory.ini
 
 # 2. Personnalisez le fichier avec vos serveurs
 

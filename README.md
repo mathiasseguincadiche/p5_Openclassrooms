@@ -1,127 +1,106 @@
-# 🚀 P5 OpenClassrooms - Projet DevOps
+# 🚀 P5 OpenClassrooms — Infrastructure as Code et automatisation
 
-**Bienvenue dans le dépôt du projet P5 OpenClassrooms !**
-Ce dépôt est conçu pour vous accompagner dans votre apprentissage des **outils DevOps** et des **bonnes pratiques** en infrastructure et automatisation. Que vous soyez débutant ou que vous souhaitiez approfondir vos connaissances, vous trouverez ici des **guides pédagogiques**, des **exercices pratiques**, et des **templates prêts à l'emploi** pour vous lancer.
+[![CI](https://github.com/mathiasseguincadiche/p5_Openclassrooms/actions/workflows/ci.yml/badge.svg)](https://github.com/mathiasseguincadiche/p5_Openclassrooms/actions/workflows/ci.yml)
 
----
+Ce dépôt regroupe les trois exercices du projet P5 : provisionnement AWS
+avec Terraform, configuration avec Ansible, observabilité OpenSearch et
+répartition de charge avec HAProxy. Les scripts accompagnent chaque étape
+sans masquer les actions susceptibles de créer des coûts.
 
-## 📌 À propos du projet
+## 🧭 Navigation rapide
 
-Ce projet a pour objectif de vous faire découvrir et maîtriser les outils et méthodologies DevOps modernes à travers des **exercices concrets** et des **fiches explicatives**. Vous y trouverez :
+- [Documentation générale](docs/README.md)
+- [Scripts et commandes](scripts/README.md)
+- [Infrastructure Terraform](terraform/README.md)
+- [Déploiement Ansible](ansible/README.md)
+- [Livrables](docs/livrables/README.md)
+- [Rapport de validation](docs/reports/validation.md)
+- [Templates réutilisables](TEMPLATES/README.md)
 
-- 📚 **Des guides pédagogiques** pour comprendre les concepts.
-- 🎯 **Des exercices pratiques** avec des étapes détaillées et des commandes commentées.
-- 📁 **Des templates de configuration** pour démarrer rapidement.
-- 🏗️ **Des schémas d'architecture** pour visualiser les infrastructures.
+## 🏗️ Parcours du projet
 
----
+| Exercice | Infrastructure | Automatisation | Livrable |
+| --- | --- | --- | --- |
+| 1 — Terraform, Ansible et NGINX | [`terraform/exercice-1`](terraform/exercice-1/) | [`phase-1-terraform-ansible.sh`](scripts/phases/phase-1-terraform-ansible.sh) | [Preuves Exercice 1](docs/livrables/SEGUIN-CADICHE_Mathias_1_terraform_ansible_nginx_02082026.md) |
+| 2 — OpenSearch et Dashboards | [`terraform/exercice-2`](terraform/exercice-2/) | [`phase-2-opensearch-kibana.sh`](scripts/phases/phase-2-opensearch-kibana.sh) | [Preuves Exercice 2](docs/livrables/SEGUIN-CADICHE_Mathias_2_dashboard_kibana_02082026.md) |
+| 3 — HAProxy et nginxdemos/hello | [`terraform/exercice-3`](terraform/exercice-3/) | [`phase-3-haproxy.sh`](scripts/phases/phase-3-haproxy.sh) | [Preuves Exercice 3](docs/livrables/SEGUIN-CADICHE_Mathias_3_haproxy_nginxdemos_02082026.md) |
 
-## 🗂️ Structure du dépôt
+## 🚀 Démarrage sécurisé
+
+```bash
+./scripts/commands/setup.sh --check-only
+./scripts/commands/pre-deployment-check.sh
+./scripts/runbook.sh
+```
+
+Le premier contrôle vérifie la machine et le dépôt. Le second vérifie les
+prérequis AWS sans créer de ressource. Le runbook conserve une confirmation
+explicite avant chaque déploiement ou destruction.
+
+## 🗂️ Arborescence
 
 ```text
 p5_Openclassrooms/
-├── .github/                  # CI et modèles GitHub
-├── ansible/                  # Playbook, inventaires et interface web P5
-├── docs/                     # 📚 Guides, exercices, aides-mémoire et livrables
-├── scripts/                  # Orchestration des phases et contrôles locaux
-├── terraform/                # Modules AWS des trois exercices du projet
-│   ├── exercice-1/           # VPC, deux EC2 et NGINX
-│   ├── exercice-2/           # Amazon OpenSearch
-│   └── exercice-3/           # Deux backends hello et HAProxy
-├── TEMPLATES/                # 📁 Exemples Ansible, Docker, CI, Kubernetes et Terraform
-├── .gitignore                # Fichiers locaux, états et secrets à ignorer
-├── RAPPORT_VALIDATION.md     # Résumé des contrôles reproductibles
-├── setup-and-run.sh          # Assistant de préparation
-└── README.md                 # Ce fichier
+├── .github/
+│   ├── ISSUE_TEMPLATE/
+│   └── workflows/ci.yml
+├── ansible/
+│   ├── files/web-app/
+│   ├── inventories/hosts_aws.example
+│   └── playbooks/deploy.yml
+├── docs/
+│   ├── architecture/
+│   ├── cheatsheets/
+│   ├── exercises/
+│   ├── guides/
+│   ├── livrables/
+│   └── reports/validation.md
+├── scripts/
+│   ├── commands/
+│   ├── phases/
+│   ├── tools/
+│   ├── lib/
+│   ├── run-all.sh
+│   └── runbook.sh
+├── terraform/
+│   ├── exercice-1/
+│   ├── exercice-2/
+│   └── exercice-3/
+├── TEMPLATES/
+├── LICENSE
+└── README.md
 ```
 
----
+## 🛠️ Commandes principales
 
-## 🚀 Pour commencer
-
-### 1️⃣ Lire la présentation du projet
-
-Consultez le guide **[Présentation du Projet](./docs/guides/project-overview.md)** pour comprendre les objectifs, l'infrastructure, et les outils utilisés.
-
-### 2️⃣ Explorer les exercices
-
-Chaque exercice est documenté dans `docs/exercises/` avec :
-
-- Une **description claire** des objectifs.
-- Des **étapes détaillées** à suivre.
-- Des **commandes commentées** pour comprendre chaque action.
-- Les **résultats attendus** et des astuces pour déboguer.
-
-👉 **[Liste des exercices](./docs/exercises/)**
-
-### 3️⃣ Utiliser les templates
-
-Les templates dans `TEMPLATES/` sont prêts à l'emploi. Copiez-les dans votre projet et adaptez-les selon vos besoins.
-
-👉 **[Liste des templates](./TEMPLATES/)**
-
-### 4️⃣ Contribuer
-
-Vous pouvez :
-
-- **Ouvrir une issue** pour poser une question ou signaler un problème.
-- **Proposer une pull request** pour améliorer la documentation ou ajouter un exercice.
-
----
-
-## 🛠️ Prérequis
-
-Pour suivre les exercices, assurez-vous d'avoir installé :
-
-| Outil          | Version recommandée | Lien d'installation                          |
-|----------------|---------------------|---------------------------------------------|
-| Git            | 2.x                 | [git-scm.com](https://git-scm.com/)         |
-| Docker         | 28.x                | [docker.com](https://www.docker.com/)       |
-| Node.js        | 24.x                | [nodejs.org](https://nodejs.org/)           |
-| Python         | 3.12+               | [python.org](https://www.python.org/)       |
-| Ansible Core   | 2.18+               | [ansible.com](https://www.ansible.com/)     |
-| Terraform      | 1.15.8              | [terraform.io](https://www.terraform.io/)   |
-| kubectl        | 1.28.x              | [kubernetes.io](https://kubernetes.io/)    |
-
----
+| Action | Commande |
+| --- | --- |
+| Préparer et contrôler l'environnement | `./scripts/commands/setup.sh --check-only` |
+| Valider le dépôt | `./scripts/commands/validate.sh` |
+| Ouvrir le runbook interactif | `./scripts/runbook.sh` |
+| Exécuter une plage de phases | `./scripts/run-all.sh --from 1 --to 3 --validate` |
+| Nettoyer les artefacts locaux | `./scripts/commands/clean-local.sh` |
+| Détruire les ressources AWS | `./scripts/commands/destroy-aws.sh` |
 
 ## 📚 Documentation
 
-| Section               | Description                                                                 |
-|-----------------------|-----------------------------------------------------------------------------|
-| [📖 Guides](./docs/guides/) | Présentation du projet, outils DevOps, bonnes pratiques.                 |
-| [🏗️ Architecture](./docs/architecture/) | Schémas et explications de l'infrastructure.                            |
-| [🎯 Exercices](./docs/exercises/) | Fiches détaillées pour chaque exercice.                                   |
-| [📋 Cheatsheets](./docs/cheatsheets/) | Aides-mémoire pour les commandes utiles.                                  |
-| [📁 Templates](./TEMPLATES/) | Fichiers de configuration prêts à l'emploi.                              |
+Les guides pédagogiques et aides-mémoire sont indexés dans
+[`docs/README.md`](docs/README.md). Les exemples génériques sont séparés du
+projet dans [`TEMPLATES/`](TEMPLATES/README.md), afin de ne pas les confondre
+avec les fichiers réellement utilisés pour les livrables.
 
----
+## ⚠️ AWS, coûts et secrets
 
-## 🤝 Contribuer
+- Exécutez toujours `terraform plan` avant `terraform apply`.
+- OpenSearch peut générer des coûts importants hors offre gratuite.
+- Ne versionnez jamais les états Terraform, variables locales, inventaires
+  réels, clés SSH ou mots de passe.
+- Les zones « preuve à insérer » doivent être remplacées uniquement par des
+  captures et sorties produites pendant un déploiement réel.
+- La destruction AWS est volontairement séparée du nettoyage local.
 
-Les contributions sont les bienvenues ! Voici comment contribuer :
+## 🤝 Contribution et licence
 
-1. **Forker** le dépôt.
-2. **Créer une branche** pour votre fonctionnalité (`git checkout -b feature/ma-fonctionnalité`).
-3. **Commiter** vos changements (`git commit -m "Ajout de ma fonctionnalité"`).
-4. **Pusher** vers la branche (`git push origin feature/ma-fonctionnalité`).
-5. **Ouvrir une pull request**.
-
----
-
-## 📜 Licence
-
-Ce projet est sous licence **MIT**. Consultez le fichier [LICENSE](./LICENSE) pour plus de détails.
-
----
-
-## 📞 Contact
-
-Pour toute question ou suggestion, n'hésitez pas à :
-
-- Ouvrir une **issue** dans ce dépôt.
-- Me contacter directement via [GitHub](https://github.com/mathiasseguincadiche).
-
----
-
-**Bonne exploration et bon apprentissage !** 🎉
+Les améliorations passent par une branche et une pull request afin que la CI
+valide Bash, Terraform, YAML, Ansible, Docker, NGINX et Markdown. Le projet
+est distribué sous licence [MIT](LICENSE).

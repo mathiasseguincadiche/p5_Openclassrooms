@@ -7,9 +7,9 @@
 # =============================================================================
 
 # Charger les utilitaires
-source "$(dirname "$0")/utils/colors.sh"
-source "$(dirname "$0")/utils/prompts.sh"
-source "$(dirname "$0")/utils/logging.sh"
+source "$(dirname "$0")/lib/colors.sh"
+source "$(dirname "$0")/lib/prompts.sh"
+source "$(dirname "$0")/lib/logging.sh"
 
 SCRIPTS_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$SCRIPTS_DIR/.." && pwd)"
@@ -161,7 +161,7 @@ check_project_files() {
 
  # Vérifier les scripts principaux
  for script in "phase-0-preparation.sh" "phase-1-terraform-ansible.sh" "phase-2-opensearch-kibana.sh" "phase-3-haproxy.sh" "phase-4-livrables.sh" "phase-5-nettoyage.sh"; do
- if [ -f "$SCRIPTS_DIR/$script" ]; then
+ if [ -f "$SCRIPTS_DIR/phases/$script" ]; then
  check "Script $script existe"
  log_info "Script $script existe"
  else
@@ -171,14 +171,26 @@ check_project_files() {
  fi
  done
 
- # Vérifier les utilitaires
- for util in "colors.sh" "prompts.sh" "checks.sh" "logging.sh" "kibana-api.sh" "capture-screenshots.sh" "health-checks.sh"; do
- if [ -f "$SCRIPTS_DIR/utils/$util" ]; then
- check "Utilitaire $util existe"
- log_info "Utilitaire $util existe"
+ # Vérifier les bibliothèques partagées
+ for util in "colors.sh" "prompts.sh" "checks.sh" "logging.sh"; do
+ if [ -f "$SCRIPTS_DIR/lib/$util" ]; then
+ check "Bibliothèque $util existe"
+ log_info "Bibliothèque $util existe"
  else
- error "Utilitaire $util introuvable"
- log_error "Utilitaire $util introuvable"
+ error "Bibliothèque $util introuvable"
+ log_error "Bibliothèque $util introuvable"
+ all_ok=false
+ fi
+ done
+
+ # Vérifier les outils autonomes
+ for util in "kibana-api.sh" "capture-screenshots.sh" "health-checks.sh" "generer-haproxy-config.sh"; do
+ if [ -f "$SCRIPTS_DIR/tools/$util" ]; then
+ check "Outil $util existe"
+ log_info "Outil $util existe"
+ else
+ error "Outil $util introuvable"
+ log_error "Outil $util introuvable"
  all_ok=false
  fi
  done
@@ -221,8 +233,8 @@ run_health_checks() {
  info "Exécution des health checks..."
  log_info "Exécution health checks"
 
- if [ -f "$SCRIPTS_DIR/utils/health-checks.sh" ]; then
- if bash "$SCRIPTS_DIR/utils/health-checks.sh" --auto; then
+ if [ -f "$SCRIPTS_DIR/tools/health-checks.sh" ]; then
+ if bash "$SCRIPTS_DIR/tools/health-checks.sh" --auto; then
  success "Health checks terminés avec succès"
  log_success "Health checks réussis"
  return 0
@@ -323,7 +335,7 @@ show_final_summary() {
  info "Prochaines étapes :"
  info "  1. Vérifiez le fichier de log : $LOG_FILE"
  info "  2. Vérifiez les livrables dans le dossier 05_LIVRABLES/"
- info "  3. Exécutez les health checks : ./scripts/utils/health-checks.sh"
+ info "  3. Exécutez les health checks : ./scripts/tools/health-checks.sh"
  info "  4. Nettoyez les ressources AWS si nécessaire (Phase 5)"
 }
 
@@ -344,7 +356,7 @@ show_error_report() {
  echo ""
  info "Pour résoudre ces erreurs :"
  info "  1. Consultez le fichier de log complet : $LOG_FILE"
- info "  2. Exécutez les health checks : ./scripts/utils/health-checks.sh"
+ info "  2. Exécutez les health checks : ./scripts/tools/health-checks.sh"
  info "  3. Corrigez les problèmes identifiés"
  info "  4. Réexécutez avec --force pour ignorer les erreurs"
 }
@@ -486,7 +498,7 @@ for phase in "${PHASES[@]}"; do
  info "Début de la Phase $phase_num : $phase_name"
  log_info "Début Phase $phase_num"
 
- if run_phase "$phase_num" "$phase_name" "$SCRIPTS_DIR/$phase_script" "$phase_description"; then
+ if run_phase "$phase_num" "$phase_name" "$SCRIPTS_DIR/phases/$phase_script" "$phase_description"; then
  # Succès, continuer
  continue
  else
