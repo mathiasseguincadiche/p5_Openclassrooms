@@ -1,104 +1,121 @@
-# 🚀 P5 OpenClassrooms — Terraform, Ansible, ELK et HAProxy
+# P5 OpenClassrooms — Infrastructure as Code sur AWS
 
 [![CI](https://github.com/mathiasseguincadiche/p5_Openclassrooms/actions/workflows/ci.yml/badge.svg)](https://github.com/mathiasseguincadiche/p5_Openclassrooms/actions/workflows/ci.yml)
 
-Ce dépôt est un **wiki pédagogique du projet P5**. Il suit les documents
-OpenClassrooms fournis et distingue clairement les ressources, les cours et les
-**trois exercices officiels**.
+Ce dépôt est le **wiki technique et l’implémentation du projet P5**. Il conserve
+les trois exercices officiels, mais commence par une étape indispensable : la
+préparation de la VM de lab qui pilote toute la réalisation.
 
-> **Choix de réalisation validé : parcours 100 % AWS.** Les trois exercices sont
-> implémentés sur AWS : EC2 pour Terraform et Ansible, Amazon OpenSearch pour le
-> monitoring, puis EC2 avec HAProxy et deux backends pour la disponibilité.
-> Les variantes locales restent citées uniquement pour expliquer les choix
-> proposés par OpenClassrooms ; elles ne constituent pas une seconde
-> implémentation dans ce dépôt.
+> **Parcours retenu : 100 % AWS pour les trois exercices.** La VM Ubuntu Server
+> sert de poste DevOps en ligne de commande. Elle exécute Terraform, Ansible,
+> AWS CLI et les outils de construction ; les infrastructures évaluées sont
+> créées sur AWS.
 
-![Vue d'ensemble des trois exercices](docs/schemas/vue-ensemble.svg)
+![Chaîne complète du projet P5](docs/schemas/vue-ensemble.svg)
 
-## 🧭 Parcours conseillé
+## Parcours du projet
 
-1. [Lire le cadre officiel](docs/00-cadre-officiel.md).
-2. [Suivre le parcours débutant](docs/01-parcours-debutant.md).
-3. [Consulter la correspondance consigne → fichier → preuve](docs/02-correspondance-consignes-depot.md).
-4. Réaliser un seul exercice à la fois.
-5. [Préparer les trois livrables](docs/livrables/README.md).
+| Étape | Objectif | Résultat |
+| --- | --- | --- |
+| 0 — Lab | Installer Ubuntu Server 26.04 et le socle DevOps | VM reproductible et contrôlée |
+| 1 — Terraform et Ansible | Créer EC2 puis déployer l’application Angular avec NGINX | Application accessible sur AWS |
+| 2 — OpenSearch | Importer les logs NGINX et créer trois visualisations | Dashboard et quatre captures |
+| 3 — HAProxy | Répartir la charge entre deux backends et tester la reprise | Disponibilité démontrée |
+| Finalisation | Préparer les preuves puis détruire les ressources | Livrables propres, aucun coût oublié |
 
-## 🎯 Les trois exercices
+## Commencer ici
 
-| Exercice | Objectif | Implémentation principale | Preuve attendue |
-| --- | --- | --- | --- |
-| 1 — Terraform et Ansible | Créer une infrastructure puis déployer une application Angular avec NGINX | **AWS : VPC + EC2**, puis Ansible dans [`terraform/exercice-1/`](terraform/exercice-1/) et [`ansible/`](ansible/) | Fichiers Terraform, inventaire, playbook et application accessible |
-| 2 — OpenSearch | Importer des logs NGINX et construire trois visualisations | **AWS : Amazon OpenSearch** dans [`terraform/exercice-2/`](terraform/exercice-2/) | Dashboard complet et captures des trois graphiques |
-| 3 — HAProxy | Répartir la charge entre deux backends et tester la reprise après panne | **AWS : trois EC2** dans [`terraform/exercice-3/`](terraform/exercice-3/) | `haproxy.cfg`, alternance, panne et réintégration |
+1. [Installer et préparer la VM Ubuntu Server](docs/00-preparation-environnement.md).
+2. [Lire le cadre officiel](docs/00-cadre-officiel.md).
+3. [Suivre le parcours guidé](docs/01-parcours-debutant.md).
+4. [Contrôler la correspondance consigne → fichier → preuve](docs/02-correspondance-consignes-depot.md).
+5. [Consulter l’audit de non-régression](docs/04-audit-non-regression.md).
 
-## 🚦 Démarrage sans risque
+Après installation du système :
 
 ```bash
+./scripts/commands/bootstrap-ubuntu-server.sh
+# Reconnexion nécessaire pour le groupe docker
 ./scripts/commands/setup.sh --check-only
-./scripts/commands/validate.sh
+./scripts/commands/pre-deployment-check.sh
 ```
 
-Ces commandes n’installent rien et ne créent aucune ressource. Les commandes
-`terraform plan`, `apply` et `destroy` restent manuelles afin que le débutant
-puisse comprendre chaque étape et relire les coûts avant validation.
+Aucune de ces vérifications ne lance `terraform apply`.
 
-## 🗂️ Arborescence
+## Une seule application, une chaîne complète
+
+Le projet fait fonctionner une application Angular unique :
+
+```text
+application/angular/        sources du starter
+          │ npm ci + npm run build
+          ▼
+ansible/files/angular-app/  artefact navigateur normalisé
+          │ ansible-playbook
+          ▼
+EC2 /var/www/p5             fichiers déployés
+          │ NGINX :80
+          ▼
+Application web             logs exploités dans OpenSearch
+```
+
+La procédure est documentée dans [`application/`](application/). Le script
+[`prepare-angular-artifact.sh`](scripts/commands/prepare-angular-artifact.sh)
+construit le starter et prépare exactement l’artefact copié par Ansible.
+
+## Arborescence utile
 
 ```text
 p5_Openclassrooms/
-├── ansible/                 # Exercice 1 : inventaire, playbook, application et NGINX
+├── application/
+│   └── angular/              # sources du starter Angular
+├── ansible/
+│   ├── files/angular-app/    # build à déployer
+│   ├── files/nginx-angular.conf
+│   ├── inventories/
+│   └── playbooks/deploy.yml
 ├── docs/
-│   ├── exercices/           # Une fiche pour chacun des trois exercices
-│   ├── livrables/           # Gabarits de preuves à compléter
-│   ├── ressources/          # Cours et ressources préparatoires
-│   ├── schemas/             # Quatre schémas SVG, sans Mermaid
-│   └── suivi/               # Journal et décisions techniques
+│   ├── exercices/            # trois exercices, pas davantage
+│   ├── livrables/
+│   ├── ressources/
+│   ├── schemas/              # schémas légers adaptés au Markdown
+│   └── suivi/
 ├── scripts/
-│   ├── commands/            # Vérification, livrables et nettoyage
-│   └── tools/               # Générateur HAProxy facultatif
+│   ├── commands/             # bootstrap, contrôles, build et nettoyage
+│   └── tools/
 └── terraform/
     ├── exercice-1/
     ├── exercice-2/
     └── exercice-3/
 ```
 
-## ✅ Périmètre conservé
+## Éléments protégés contre les régressions
 
-- Terraform, Ansible, NGINX et l’application Angular pour l’exercice 1.
-- Amazon OpenSearch sur AWS et les trois visualisations imposées pour
-  l’exercice 2.
-- HAProxy, deux instances `nginxdemos/hello`, les health checks et le test de
-  panne pour l’exercice 3.
-- Les preuves, le suivi des coûts et la destruction des ressources.
+La CI vérifie notamment :
 
-## 🧹 Éléments retirés
+- l’existence de l’étape 0, du bootstrap et du contrôle pré-déploiement ;
+- la présence de la chaîne applicative Angular → Ansible → NGINX ;
+- exactement trois exercices officiels ;
+- l’absence de Mermaid et de contenus génériques hors périmètre ;
+- Bash, ShellCheck, YAML, Terraform, Ansible, NGINX, Markdown et liens ;
+- la présence et la validité des schémas pédagogiques.
 
-Les cinq anciens exercices génériques, les templates Kubernetes, les guides
-Prometheus, Grafana, Vault et les automatisations volumineuses ne répondaient
-pas directement au P5. Ils ont été retirés pour que le dépôt reste lisible par
-un débutant.
+La suppression de milliers de lignes génériques n’est pas considérée comme une
+perte lorsqu’elles concernaient Kubernetes, Prometheus, Grafana, Vault ou de
+faux exercices. En revanche, les capacités utiles qui avaient disparu pendant
+la simplification sont réintégrées et testées.
 
-Aucun diagramme Mermaid n’est utilisé. Les schémas sont des SVG lisibles dans
-GitHub et dans les documents exportés.
+## Sécurité et coûts
 
-## ⚠️ Limites connues
+Ne versionnez jamais de clé privée, `terraform.tfvars`, état Terraform,
+inventaire réel ou identifiant AWS. Relisez chaque plan avant application. À la
+fin, exécutez :
 
-- Le dépôt implémente **exclusivement le parcours AWS retenu pour la réalisation**.
-  Les modes locaux proposés par OpenClassrooms sont seulement rappelés comme
-  alternatives officielles ; aucun parcours Docker local parallèle n’est maintenu.
-- `ansible/files/angular-app/` contient une page de démonstration. Elle doit être
-  remplacée par le véritable résultat de `ng build` avant la remise.
-- Les PDF emploient parfois GitLab et parfois GitHub, et se contredisent sur le
-  type d’instance EC2 et le troisième livrable. Le détail de chaque exercice et
-  la consigne visible sur la plateforme au moment de la remise restent
-  prioritaires.
+```bash
+./scripts/commands/destroy-aws.sh
+```
 
-## 🔐 Sécurité et coûts
-
-Ne versionnez jamais une clé privée, un fichier `terraform.tfvars`, un état
-Terraform, un inventaire réel ou une capture contenant des identifiants. Les
-instances EC2 et Amazon OpenSearch peuvent être facturés. Après les preuves,
-utilisez [`scripts/commands/destroy-aws.sh`](scripts/commands/destroy-aws.sh),
-puis vérifiez la console AWS.
+Puis vérifiez manuellement EC2, OpenSearch, les volumes et les adresses dans la
+console AWS.
 
 Licence : [MIT](LICENSE).
