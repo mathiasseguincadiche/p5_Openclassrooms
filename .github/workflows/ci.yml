@@ -1,45 +1,153 @@
-name: Appliquer la reconstruction P5 AWS
+# =============================================================================
+# CI : validation reproductible du dépôt P5
+# =============================================================================
+name: CI - Qualité du dépôt
 
 on:
+  push:
+    branches: [main]
   pull_request:
-    branches:
-      - main
+    branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: p5-rewrite-${{ github.head_ref }}
-  cancel-in-progress: false
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  apply:
-    if: github.actor != 'github-actions[bot]' && github.head_ref == 'apply/final-p5-aws'
+  coherence:
+    name: Périmètre et Bash
     runs-on: ubuntu-latest
     steps:
-      - name: Récupérer la branche d’application
+      - name: Récupérer le dépôt
         uses: actions/checkout@v7
-        with:
-          ref: apply/final-p5-aws
-          fetch-depth: 0
 
-      - name: Reconstruire le dépôt P5 AWS
+      - name: Vérifier les trois exercices officiels
         shell: bash
         run: |
           set -euo pipefail
+          test ! -d TEMPLATES
+          test ! -d docs/exercises
+          test "$(find docs/exercices -maxdepth 1 -type f -name '*.md' | wc -l)" -eq 3
+          if grep -RIl --include='*.md' '```mermaid' . | grep -q .; then
+            echo 'Des blocs Mermaid subsistent.' >&2
+            exit 1
+          fi
 
-          cp .github/workflows/ci.yml "$RUNNER_TEMP/reconstruction-ci.yml"
-          cat .p5-rewrite/* | base64 --decode > "$RUNNER_TEMP/p5-final.tgz"
-          tar -tzf "$RUNNER_TEMP/p5-final.tgz" >/dev/null
+      - name: Vérifier les chemins Ansible
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d ansible/files/angular-app
+          test -f ansible/files/nginx-angular.conf
+          grep -q '../files/angular-app/' ansible/playbooks/deploy.yml
+          grep -q '../files/nginx-angular.conf' ansible/playbooks/deploy.yml
 
-          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
-          tar -xzf "$RUNNER_TEMP/p5-final.tgz" -C .
-          mkdir -p .github/workflows
-          cp "$RUNNER_TEMP/reconstruction-ci.yml" .github/workflows/ci.yml
+      - name: Vérifier la syntaxe Bash
+        run: find scripts -type f -name '*.sh' -print0 | xargs -0 -r -n1 bash -n
 
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git diff --cached --check
-          git commit -m "refactor: publier le wiki P5 sur le parcours AWS"
-          git push origin HEAD:apply/final-p5-aws
+      - name: Analyser les scripts avec ShellCheck
+        run: find scripts -type f -name '*.sh' -print0 | xargs -0 -r shellcheck --severity=error
+
+      - name: Vérifier les schémas SVG
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          files = sorted(Path('docs/schemas').glob('*.svg'))
+          if len(files) != 4:
+              raise SystemExit(f'4 schémas attendus, {len(files)} trouvés')
+          for file in files:
+              ET.parse(file)
+          PY
+
+  yaml:
+    name: YAML
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v7
+
+      - name: Installer yamllint
+        run: python -m pip install --disable-pip-version-check yamllint==1.37.1
+
+      - name: Vérifier les fichiers YAML
+        run: yamllint --config-file .yamllint.yml .
+
+  terraform:
+    name: Terraform
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v7
+
+      - name: Installer Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.15.8
+
+      - name: Vérifier le format Terraform
+        run: terraform fmt -check -recursive terraform
+
+      - name: Initialiser et valider les trois modules
+        shell: bash
+        run: |
+          set -euo pipefail
+          for module in exercice-1 exercice-2 exercice-3; do
+            echo "Validation de terraform/${module}"
+            terraform -chdir="terraform/${module}" init \
+              -backend=false -input=false -no-color
+            terraform -chdir="terraform/${module}" validate -no-color
+          done
+
+  documentation:
+    name: Markdown et liens
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v7
+
+      - name: Vérifier la présentation Markdown
+        uses: DavidAnson/markdownlint-cli2-action@v24
+        with:
+          globs: |
+            **/*.md
+            #node_modules
+
+      - name: Vérifier les liens et ancres internes
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: --offline --no-progress './**/*.md'
+          fail: true
+
+  configurations:
+    name: Ansible et NGINX
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v7
+
+      - name: Vérifier les Dockerfiles présents
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' dockerfile; do
+            docker run --rm -i hadolint/hadolint:v2.14.0-alpine \
+              hadolint --failure-threshold error - < "${dockerfile}"
+          done < <(find . -type f -name 'Dockerfile*' -print0)
+
+      - name: Installer Ansible
+        run: python -m pip install --disable-pip-version-check 'ansible-core>=2.18,<2.20'
+
+      - name: Vérifier le playbook Ansible
+        run: ansible-playbook --syntax-check --inventory ansible/inventories/hosts_aws.example ansible/playbooks/deploy.yml
+
+      - name: Vérifier la configuration NGINX
+        run: |
+          docker run --rm \
+            --volume "$PWD/ansible/files/nginx-angular.conf:/etc/nginx/conf.d/default.conf:ro" \
+            nginx:1.28-alpine nginx -t
