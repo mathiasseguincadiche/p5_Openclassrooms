@@ -1,18 +1,72 @@
 #!/usr/bin/env bash
-# Contrôle non destructif à exécuter avant le premier terraform apply.
+# Contrôle non destructif à exécuter avant chaque étape Terraform.
 set -uo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
+CONFIG_FILE="$PROJECT_ROOT/environment/aws-readiness.env"
+STAGE="initial"
 ERRORS=0
 WARNINGS=0
 
-ok() { printf '  OK  %s\n' "$1"; }
-warn() { printf '  AVERTISSEMENT  %s\n' "$1"; WARNINGS=$((WARNINGS + 1)); }
-ko() { printf '  KO  %s\n' "$1" >&2; ERRORS=$((ERRORS + 1)); }
+show_help() {
+    cat <<'HELP'
+Usage: pre-deployment-check.sh [options]
+
+Options:
+  --stage ETAPE     initial, exercice-2 ou exercice-3
+  --config CHEMIN   fichier aws-readiness.env à utiliser
+  -h, --help        afficher cette aide
+
+Le contrôle ne crée et ne modifie aucune ressource AWS.
+HELP
+}
+
+while (($# > 0)); do
+    case "$1" in
+        --stage)
+            [[ $# -ge 2 ]] || { printf 'Valeur manquante pour --stage.\n' >&2; exit 2; }
+            STAGE="$2"
+            shift 2
+            ;;
+        --config)
+            [[ $# -ge 2 ]] || { printf 'Valeur manquante pour --config.\n' >&2; exit 2; }
+            CONFIG_FILE="$2"
+            shift 2
+            ;;
+        -h|--help)
+            show_help
+            exit 0
+            ;;
+        *)
+            printf 'Option inconnue : %s\n' "$1" >&2
+            show_help >&2
+            exit 2
+            ;;
+    esac
+done
+
+case "$STAGE" in
+    initial|exercice-2|exercice-3) ;;
+    *) printf 'Étape inconnue : %s\n' "$STAGE" >&2; exit 2 ;;
+esac
+
+ok() {
+    printf '  OK  %s\n' "$1"
+}
+
+warn() {
+    printf '  AVERTISSEMENT  %s\n' "$1"
+    WARNINGS=$((WARNINGS + 1))
+}
+
+ko() {
+    printf '  KO  %s\n' "$1" >&2
+    ERRORS=$((ERRORS + 1))
+}
 
 cd "$PROJECT_ROOT" || exit 1
-printf 'Contrôle pré-déploiement P5 AWS\n\n'
+printf 'Contrôle pré-déploiement P5 — %s\n\n' "$STAGE"
 
 printf 'Système\n'
 if [[ -r /etc/os-release ]]; then
@@ -21,7 +75,7 @@ if [[ -r /etc/os-release ]]; then
     if [[ "${ID:-}" == "ubuntu" && "${VERSION_ID:-}" == "26.04" ]]; then
         ok "Ubuntu Server 26.04 détecté"
     else
-        warn "environnement prévu pour Ubuntu Server 26.04, détecté : ${PRETTY_NAME:-inconnu}"
+        warn "lab prévu pour Ubuntu Server 26.04, détecté : ${PRETTY_NAME:-inconnu}"
     fi
 else
     ko "/etc/os-release absent"
@@ -53,15 +107,6 @@ if command -v docker >/dev/null 2>&1; then
     fi
 fi
 
-printf '\nIdentité AWS\n'
-if command -v aws >/dev/null 2>&1 && aws sts get-caller-identity >/dev/null 2>&1; then
-    AWS_ACCOUNT="$(aws sts get-caller-identity --query Account --output text 2>/dev/null)"
-    AWS_ARN="$(aws sts get-caller-identity --query Arn --output text 2>/dev/null)"
-    ok "compte ${AWS_ACCOUNT}, identité ${AWS_ARN}"
-else
-    ko "aucune identité AWS active ; définissez AWS_PROFILE ou configurez un profil"
-fi
-
 printf '\nClé SSH du lab\n'
 KEY_PATH="${P5_SSH_KEY_PATH:-$HOME/.ssh/p5-key}"
 if [[ -f "$KEY_PATH" && -f "${KEY_PATH}.pub" ]]; then
@@ -80,7 +125,7 @@ for module in exercice-1 exercice-2 exercice-3; do
     if [[ -f "terraform/${module}/terraform.tfvars" ]]; then
         ok "terraform/${module}/terraform.tfvars"
     else
-        warn "créez terraform/${module}/terraform.tfvars depuis le fichier .example"
+        ko "créez terraform/${module}/terraform.tfvars depuis le fichier .example"
     fi
 done
 
@@ -103,9 +148,18 @@ else
     ko "au moins un contrôle local a échoué"
 fi
 
+printf '\nValidation AWS Ready\n'
+if "$SCRIPT_DIR/check-aws-readiness.sh" \
+    --config "$CONFIG_FILE" --stage "$STAGE"; then
+    ok "verdict GO AWS obtenu"
+else
+    ko "contrôle AWS Ready en échec"
+fi
+
 printf '\nSynthèse : %s erreur(s), %s avertissement(s).\n' "$ERRORS" "$WARNINGS"
-if (( ERRORS > 0 )); then
-    printf 'Verdict : environnement non prêt pour terraform apply.\n' >&2
+if ((ERRORS > 0)); then
+    printf 'Verdict : environnement non prêt pour Terraform.\n' >&2
     exit 1
 fi
-printf 'Verdict : environnement techniquement prêt. Relisez le plan et les coûts avant apply.\n'
+
+printf 'Verdict : GO TERRAFORM — relisez encore le plan et les coûts avant apply.\n'
