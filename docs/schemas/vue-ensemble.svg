@@ -1,41 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650" role="img" aria-labelledby="title desc">
-<title id="title">Vue d’ensemble du projet P5</title>
-<desc id="desc">Trois exercices officiels réalisés intégralement sur AWS et leurs livrables.</desc>
-<defs>
-  <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
-    <path d="M0,0 L0,6 L9,3 z" fill="#5f5a73"/>
-  </marker>
-  <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
-    <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000000" flood-opacity="0.14"/>
-  </filter>
-</defs>
-<rect width="100%" height="100%" rx="24" fill="#f7f7fb"/>
-<text x="60" y="65" font-family="Arial, sans-serif" font-size="30" font-weight="700" fill="#242038">P5 : trois exercices, un seul parcours AWS</text>
-<text x="60" y="96" font-family="Arial, sans-serif" font-size="17" fill="#5f5a73">Terraform, Ansible, OpenSearch et HAProxy sont mis en œuvre sur AWS.</text>
-<g filter="url(#shadow)"><rect x="55" y="150" width="330" height="340" rx="18" fill="#ffffff" stroke="#7451eb" stroke-width="3"/></g>
-<rect x="55" y="150" width="330" height="10" rx="5" fill="#7451eb"/>
-<text x="79" y="195" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#242038">1 · AWS + Terraform + Ansible</text>
-<text x="79" y="228" font-family="Arial, sans-serif" font-size="16" fill="#5f5a73">Infrastructure déclarative</text>
-<text x="79" y="253" font-family="Arial, sans-serif" font-size="16" fill="#5f5a73">Inventaire et playbook</text>
-<text x="79" y="278" font-family="Arial, sans-serif" font-size="16" fill="#5f5a73">NGINX + application Angular</text>
-<text x="79" y="303" font-family="Arial, sans-serif" font-size="16" fill="#5f5a73"></text>
-<text x="79" y="328" font-family="Arial, sans-serif" font-size="16" fill="#5f5a73">Livrable : HCL + Ansible</text><g filter="url(#shadow)"><rect x="435" y="150" width="330" height="340" rx="18" fill="#ffffff" stroke="#2d7dd2" stroke-width="3"/></g>
-<rect x="435" y="150" width="330" height="10" rx="5" fill="#2d7dd2"/>
-<text x="459" y="195" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#242038">2 · Amazon OpenSearch</text>
-<text x="459" y="228" font-family="Arial, sans-serif" font-size="16" fill="#5f5a73">Logs NGINX</text>
-<text x="459" y="253" font-family="Arial, sans-serif" font-size="16" fill="#5f5a73">Index et exploration</text>
-<text x="459" y="278" font-family="Arial, sans-serif" font-size="16" fill="#5f5a73">Trois visualisations</text>
-<text x="459" y="303" font-family="Arial, sans-serif" font-size="16" fill="#5f5a73"></text>
-<text x="459" y="328" font-family="Arial, sans-serif" font-size="16" fill="#5f5a73">Livrable : dashboard</text>
-<text x="459" y="353" font-family="Arial, sans-serif" font-size="16" fill="#5f5a73">et captures réelles</text><g filter="url(#shadow)"><rect x="815" y="150" width="330" height="340" rx="18" fill="#ffffff" stroke="#2f9e6f" stroke-width="3"/></g>
-<rect x="815" y="150" width="330" height="10" rx="5" fill="#2f9e6f"/>
-<text x="839" y="195" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#242038">3 · HAProxy sur AWS</text>
-<text x="839" y="228" font-family="Arial, sans-serif" font-size="16" fill="#5f5a73">Deux backends identiques</text>
-<text x="839" y="253" font-family="Arial, sans-serif" font-size="16" fill="#5f5a73">Répartition roundrobin</text>
-<text x="839" y="278" font-family="Arial, sans-serif" font-size="16" fill="#5f5a73">Health checks</text>
-<text x="839" y="303" font-family="Arial, sans-serif" font-size="16" fill="#5f5a73">Test de panne et reprise</text>
-<text x="839" y="328" font-family="Arial, sans-serif" font-size="16" fill="#5f5a73"></text>
-<text x="839" y="353" font-family="Arial, sans-serif" font-size="16" fill="#5f5a73">Livrable : haproxy.cfg</text><line x1="385" y1="320" x2="435" y2="320" stroke="#5f5a73" stroke-width="3" marker-end="url(#arrow)"/>
-<text x="410.0" y="310.0" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="700" fill="#5f5a73">puis</text><line x1="765" y1="320" x2="815" y2="320" stroke="#5f5a73" stroke-width="3" marker-end="url(#arrow)"/>
-<text x="790.0" y="310.0" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="700" fill="#5f5a73">puis</text><rect x="50" y="585" width="1100" height="42" rx="12" fill="#ebe8fb"/><text x="600" y="612" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="700" fill="#7451eb">À chaque étape : comprendre → déployer → vérifier → capturer les preuves → nettoyer</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="300" viewBox="0 0 960 300" role="img" aria-labelledby="title desc">
+<title id="title">Chaîne complète du projet P5</title>
+<desc id="desc">La VM de lab prépare une application unique puis pilote les trois exercices AWS.</desc>
+<defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#475569"/></marker></defs>
+<rect width="960" height="300" rx="12" fill="#f8fafc"/>
+<text x="32" y="38" font-family="Arial,sans-serif" font-size="22" font-weight="700" fill="#0f172a">P5 · un lab, une application, trois exercices AWS</text>
+<g font-family="Arial,sans-serif" text-anchor="middle">
+<rect x="28" y="78" width="150" height="118" rx="10" fill="#fff" stroke="#64748b" stroke-width="2"/><text x="103" y="113" font-size="16" font-weight="700" fill="#0f172a">0 · VM de lab</text><text x="103" y="141" font-size="13" fill="#475569">Ubuntu Server</text><text x="103" y="163" font-size="13" fill="#475569">socle DevOps</text>
+<rect x="222" y="78" width="150" height="118" rx="10" fill="#fff" stroke="#2563eb" stroke-width="2"/><text x="297" y="113" font-size="16" font-weight="700" fill="#0f172a">Application</text><text x="297" y="141" font-size="13" fill="#475569">Angular → build</text><text x="297" y="163" font-size="13" fill="#475569">artefact Ansible</text>
+<rect x="416" y="78" width="150" height="118" rx="10" fill="#fff" stroke="#7c3aed" stroke-width="2"/><text x="491" y="113" font-size="16" font-weight="700" fill="#0f172a">1 · Déployer</text><text x="491" y="141" font-size="13" fill="#475569">Terraform · EC2</text><text x="491" y="163" font-size="13" fill="#475569">Ansible · NGINX</text>
+<rect x="610" y="78" width="150" height="118" rx="10" fill="#fff" stroke="#d97706" stroke-width="2"/><text x="685" y="113" font-size="16" font-weight="700" fill="#0f172a">2 · Observer</text><text x="685" y="141" font-size="13" fill="#475569">logs NGINX</text><text x="685" y="163" font-size="13" fill="#475569">OpenSearch</text>
+<rect x="804" y="78" width="128" height="118" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="2"/><text x="868" y="113" font-size="16" font-weight="700" fill="#065f46">3 · Résister</text><text x="868" y="141" font-size="13" fill="#065f46">HAProxy</text><text x="868" y="163" font-size="13" fill="#065f46">panne · reprise</text>
+</g>
+<g stroke="#475569" stroke-width="2" marker-end="url(#a)"><line x1="178" y1="137" x2="214" y2="137"/><line x1="372" y1="137" x2="408" y2="137"/><line x1="566" y1="137" x2="602" y2="137"/><line x1="760" y1="137" x2="796" y2="137"/></g>
+<rect x="28" y="230" width="904" height="42" rx="8" fill="#e2e8f0"/><text x="480" y="257" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" font-weight="700" fill="#334155">À chaque étape : comprendre · exécuter · vérifier · prouver · nettoyer</text>
 </svg>
