@@ -44,7 +44,7 @@ aws opensearch describe-domain --domain-name p5-opensearch
 Le fichier d'exemple se trouve dans `terraform/exercice-2/samples/nginx-access.log.sample`.
 
 ```bash
-./scripts/phase-2-opensearch-kibana.sh
+./scripts/phases/phase-2-opensearch-kibana.sh
 ```
 
 **Preuves à insérer** :

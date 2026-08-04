@@ -4,13 +4,12 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
 ERRORS=0
 
 run_check() {
     local label="$1"
     shift
-
     printf '\n▶ %s\n' "$label"
     if "$@"; then
         printf '✅ %s\n' "$label"
@@ -45,12 +44,11 @@ validate_terraform_format() {
 }
 
 cd "$PROJECT_ROOT" || exit 1
-
 run_check "Syntaxe Bash" validate_bash
 
 if command -v shellcheck >/dev/null 2>&1; then
-    run_check "ShellCheck" shellcheck --severity=error --external-sources --source-path=SCRIPTDIR \
-        scripts/*.sh scripts/utils/*.sh setup-and-run.sh TEST_PRE_DEPLOIEMENT.sh
+    run_check "ShellCheck" bash -c \
+        'find scripts -type f -name "*.sh" -print0 | xargs -0 shellcheck --severity=error --external-sources --source-path=SCRIPTDIR'
 fi
 
 if command -v terraform >/dev/null 2>&1; then

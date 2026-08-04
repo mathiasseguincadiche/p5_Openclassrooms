@@ -78,7 +78,7 @@ terraform -chdir=terraform/exercice-3 output
 ## ⚙️️ 3. Configuration HAProxy
 
 ```bash
-./scripts/generer-haproxy-config.sh \
+./scripts/tools/generer-haproxy-config.sh \
   "ADRESSE_PRIVEE_BACKEND_1" \
   "ADRESSE_PRIVEE_BACKEND_2" \
   scripts/haproxy.cfg

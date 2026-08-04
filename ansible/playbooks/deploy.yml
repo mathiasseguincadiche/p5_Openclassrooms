@@ -54,7 +54,7 @@
 
     - name: Installer la configuration NGINX du projet
       ansible.builtin.copy:
-        src: ../files/nginx-angular.conf
+        src: ../files/nginx-web-app.conf
         dest: /etc/nginx/sites-available/p5
         owner: root
         group: root

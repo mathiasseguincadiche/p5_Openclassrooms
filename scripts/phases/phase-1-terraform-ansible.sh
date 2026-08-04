@@ -6,9 +6,9 @@
 # =============================================================================
 
 # Charger les utilitaires
-source "$(dirname "$0")/utils/colors.sh"
-source "$(dirname "$0")/utils/checks.sh"
-source "$(dirname "$0")/utils/prompts.sh"
+source "$(dirname "$0")/../lib/colors.sh"
+source "$(dirname "$0")/../lib/checks.sh"
+source "$(dirname "$0")/../lib/prompts.sh"
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
@@ -336,5 +336,5 @@ verify_deployment
 echo ""
 title "PHASE 1 TERMINÉE"
 success "2 VMs AWS déployées avec NGINX + interface web P5 !"
-info "Prochaine étape : ./runbook.sh → Option 2 (Exercice 2)"
+info "Prochaine étape : ./scripts/runbook.sh → Option 2 (Exercice 2)"
 info "N'oubliez pas de noter les IPs des VMs pour l'Exercice 3 !"

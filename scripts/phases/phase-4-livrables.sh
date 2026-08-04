@@ -6,9 +6,9 @@
 # =============================================================================
 
 # Charger les utilitaires
-source "$(dirname "$0")/utils/colors.sh"
-source "$(dirname "$0")/utils/checks.sh"
-source "$(dirname "$0")/utils/prompts.sh"
+source "$(dirname "$0")/../lib/colors.sh"
+source "$(dirname "$0")/../lib/checks.sh"
+source "$(dirname "$0")/../lib/prompts.sh"
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd)"
@@ -149,9 +149,9 @@ copy_exercice_2_captures() {
 
             # Proposer de générer les captures automatiquement
             if confirm "Voulez-vous essayer de générer les captures automatiquement ?"; then
-                if [ -f "$(dirname "$0")/utils/capture-screenshots.sh" ]; then
+                if [ -f "$(dirname "$0")/../lib/capture-screenshots.sh" ]; then
                     info "Lancement du script de génération automatique des captures..."
-                    bash "$(dirname "$0")/utils/capture-screenshots.sh" --auto
+                    bash "$(dirname "$0")/../lib/capture-screenshots.sh" --auto
 
                     # Re-essayer la copie
                     copy_exercice_2_captures
@@ -232,9 +232,9 @@ create_documentation_files() {
 
 | Heure      | Action                                      | Commande                          | Résultat                     |
 |------------|---------------------------------------------|-----------------------------------|------------------------------|
-| 10:00-11:00 | Configuration de l'environnement            | `./scripts/phase-0-preparation.sh` | À compléter                  |
-| 11:00-12:00 | Validation locale                           | `./scripts/validate.sh` | À compléter                  |
-| 14:00-18:00 | Exercice 1 : Terraform + Ansible + interface web | `./scripts/phase-1-terraform-ansible.sh` | À compléter          |
+| 10:00-11:00 | Configuration de l'environnement            | `./scripts/phases/phase-0-preparation.sh` | À compléter                  |
+| 11:00-12:00 | Validation locale                           | `./scripts/commands/validate.sh` | À compléter                  |
+| 14:00-18:00 | Exercice 1 : Terraform + Ansible + interface web | `./scripts/phases/phase-1-terraform-ansible.sh` | À compléter          |
 
 ---
 

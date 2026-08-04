@@ -47,7 +47,7 @@ ansible/
 ├── inventories/hosts_aws.example
 └── files/
     ├── angular-app/index.html
-    └── nginx-angular.conf
+    └── nginx-web-app.conf
 ```
 
 Le fichier `terraform.tfstate`, les valeurs réelles de `terraform.tfvars` et l'inventaire `hosts_aws` ne doivent pas être commités.
