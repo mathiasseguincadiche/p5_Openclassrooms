@@ -87,7 +87,7 @@ jobs:
             environment/aws-readiness.env.example
           grep -q 'P5_REQUIRED_STANDARD_VCPUS=8' \
             environment/aws-readiness.env.example
-          if grep -Eq 'terraform[[:space:]]+(apply|destroy)' \
+          if grep -Eq '^[[:space:]]*terraform[[:space:]]+(apply|destroy)([[:space:]]|$)' \
             scripts/commands/check-aws-readiness.sh \
             scripts/commands/check-aws-cleanup.sh; then
             echo 'Un contrôle AWS non destructif lance Terraform.' >&2
