@@ -1,91 +1,62 @@
-# 📊 Captures Exercice 2 : OpenSearch + Dashboard
+# Livrable 2 — Dashboard ELK / OpenSearch
 
-> ⚠️️ **Gabarit de collecte** — les captures et résultats doivent provenir d'un déploiement réel.
-> Aucun visuel de substitution ni résultat AWS fictif n'est utilisé dans ce document.
+> **Gabarit à compléter.** Les captures doivent provenir de l'environnement
+> réellement utilisé pendant l'exercice.
 
----
+## 1. Mode choisi
 
-## 📋 Contexte
+- Mode retenu : **Amazon OpenSearch**.
+- Infrastructure : `terraform/exercice-2/`.
+- Données : `terraform/exercice-2/samples/nginx-access.log.sample` ou le
+  fichier fourni par le starter officiel.
 
-**But** : déployer un domaine Amazon OpenSearch, charger des logs NGINX et produire un tableau de bord avec trois visualisations.
-**Outils utilisés** : Terraform, AWS CLI, OpenSearch Dashboards.
-
----
-
-## 🚀 1. Déploiement du domaine OpenSearch
-
-### 🔎 1.1. Validation et plan Terraform
+## 2. Déploiement et index
 
 ```bash
-cp terraform/exercice-2/terraform.tfvars.example terraform/exercice-2/terraform.tfvars
 terraform -chdir=terraform/exercice-2 init
 terraform -chdir=terraform/exercice-2 validate
-terraform -chdir=terraform/exercice-2 plan -out=tfplan
+terraform -chdir=terraform/exercice-2 plan
+terraform -chdir=terraform/exercice-2 apply
 ```
 
-La variable `your_ip_cidr` doit contenir une adresse unique au format `/32`. Le module impose HTTPS, le chiffrement au repos et le chiffrement nœud à nœud.
+**Preuves à insérer :** domaine disponible, URL OpenSearch Dashboards
+anonymisée, index `nginx-access` visible et données consultables dans Discover.
 
-**Preuves à insérer** : validation réussie et résumé du plan.
+## 3. Visualisation 1 — Donut des verbes HTTP
 
-### ✅ 1.2. Application Terraform
+- Agrégation sur le champ de méthode HTTP.
+- Les catégories `GET`, `POST` et autres méthodes présentes sont lisibles.
 
-```bash
-terraform -chdir=terraform/exercice-2 apply tfplan
-terraform -chdir=terraform/exercice-2 output
-aws opensearch describe-domain --domain-name p5-opensearch
-```
+**Capture réelle à insérer.**
 
-**Preuves à insérer** : résumé de l'application, état du domaine et endpoints anonymisés si nécessaire.
+## 4. Visualisation 2 — Octets par tranches de 12 heures
 
----
+- Axe temporel par intervalles de 12 heures.
+- Somme ou quantité cumulée du champ représentant les octets transférés.
 
-## 📥 2. Chargement des logs NGINX
+**Capture réelle à insérer.**
 
-Le fichier d'exemple se trouve dans `terraform/exercice-2/samples/nginx-access.log.sample`.
+## 5. Visualisation 3 — Top 5 des requêtes par 12 heures
 
-```bash
-./scripts/phases/phase-2-opensearch-kibana.sh
-```
+- Axe temporel par intervalles de 12 heures.
+- Cinq requêtes ou URL les plus fréquentes.
+- Affichage cumulé ou empilé conformément à l'interface utilisée.
 
-**Preuves à insérer** :
+**Capture réelle à insérer.**
 
-1. Index `nginx-access-*` visible.
-2. Nombre de documents chargés.
-3. Extrait de Discover contenant les champs `client_ip`, `method`, `url`, `status` et `size`.
+## 6. Dashboard complet
 
----
+Le dashboard doit montrer les trois visualisations simultanément avec des
+titres explicites.
 
-## 📈 3. Création du dashboard
+**Capture réelle du dashboard complet à insérer.**
 
-Le dashboard attendu doit contenir :
-
-- 🍩 une répartition des verbes HTTP ;
-- 📊 une quantité de données par tranche de douze heures ;
-- 📉 une évolution cumulée de la quantité de données.
-
-**Preuves à insérer** : une capture lisible de chaque visualisation et une capture du dashboard complet.
-
----
-
-## 🔐 4. Contrôles de sécurité
-
-- L'endpoint répond uniquement en HTTPS.
-- La stratégie d'accès limite les requêtes à `your_ip_cidr`.
-- Aucun identifiant AWS, mot de passe ou token ne figure dans les captures.
-- La configuration Terraform ne contient pas de règle `0.0.0.0/0` pour OpenSearch.
-
----
-
-## 🧹 5. Nettoyage
+## 7. Nettoyage
 
 ```bash
 terraform -chdir=terraform/exercice-2 destroy
+aws opensearch list-domain-names
 ```
 
-**Preuve à insérer** : absence du domaine après destruction, vérifiée avec `aws opensearch list-domain-names`.
-
----
-
-## 📌 Conclusion
-
-Ce fichier constitue la trame du livrable. Il devient une preuve recevable uniquement une fois complété avec les captures réelles du compte AWS utilisé pour l'exercice.
+**Preuve à insérer :** domaine supprimé. OpenSearch peut générer des coûts tant
+qu'il reste actif.

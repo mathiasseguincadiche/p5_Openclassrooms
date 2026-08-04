@@ -1,132 +1,85 @@
-# SEGUIN-CADICHE_Mathias_1_Terraform_Ansible_NGINX
+# Livrable 1 — Terraform, Ansible, NGINX et application Angular
 
-# Preuves Exercice 1 : Déploiement Infrastructure as Code avec Terraform + Ansible
+> **Gabarit à compléter.** Les preuves doivent être issues d'un déploiement
+> réel. La présence de ce fichier ne prouve pas que l'exercice est terminé.
 
-> ⚠️️ **Gabarit de collecte** — ce document ne prétend pas qu'un déploiement AWS a été exécuté.
-> Remplacez chaque zone « preuve à insérer » par une capture ou une sortie obtenue dans votre propre compte AWS.
+## 1. Choix de réalisation
 
----
+- Mode retenu : **AWS**.
+- Région : `us-east-1`.
+- Infrastructure du dépôt : VPC, deux sous-réseaux et une cible EC2.
+- Une seule cible est utilisée, conformément au besoin minimal de l’exercice.
 
-## 📋 Contexte
-
-**Projet** : P5 OpenClassrooms - Déployer et suivre l'infrastructure as code
-**Exercice** : 1 - Déploiement de deux serveurs web NGINX
-**Auteur** : SEGUIN-CADICHE Mathias
-
----
-
-## 🎯 Objectifs
-
-- ✅ Provisionner un VPC, deux sous-réseaux publics et deux instances EC2 avec Terraform.
-- ✅ Limiter l'accès SSH à l'adresse IP d'administration.
-- ✅ Configurer NGINX avec Ansible.
-- ✅ Déployer l'interface web P5 de manière reproductible.
-
----
-
-## 🛠️ Outils utilisés
-
-- **Terraform** 1.15.8.
-- **Ansible Core** 2.18 ou 2.19.
-- **AWS CLI v2**.
-- **NGINX**.
-
----
-
-## 📁 Structure des fichiers
+## 2. Fichiers remis
 
 ```text
 terraform/exercice-1/
 ├── main.tf
 ├── variables.tf
 ├── outputs.tf
-└── terraform.tfvars.example
+├── terraform.tfvars.example
+└── .terraform.lock.hcl
 
 ansible/
-├── playbooks/deploy.yml
 ├── inventories/hosts_aws.example
+├── playbooks/deploy.yml
 └── files/
-    ├── angular-app/index.html
-    └── nginx-web-app.conf
+    ├── angular-app/
+    └── nginx-angular.conf
 ```
 
-Le fichier `terraform.tfstate`, les valeurs réelles de `terraform.tfvars` et l'inventaire `hosts_aws` ne doivent pas être commités.
+Les fichiers `terraform.tfvars`, `terraform.tfstate`, l'inventaire réel et les
+clés SSH sont exclus de la remise publique.
 
----
+## 3. Preuves Terraform
 
-## ✅ 1. Préparation de l'environnement
-
-```bash
-terraform version
-ansible --version
-aws --version
-aws sts get-caller-identity
-```
-
-**Preuve à insérer** : sortie anonymisée des versions et de l'identité AWS, sans clé ni jeton.
-
----
-
-## ✅ 2. Déploiement Terraform
+### Validation
 
 ```bash
-cp terraform/exercice-1/terraform.tfvars.example terraform/exercice-1/terraform.tfvars
 terraform -chdir=terraform/exercice-1 init
-terraform -chdir=terraform/exercice-1 fmt -check
 terraform -chdir=terraform/exercice-1 validate
-terraform -chdir=terraform/exercice-1 plan -out=tfplan
-terraform -chdir=terraform/exercice-1 apply tfplan
+terraform -chdir=terraform/exercice-1 plan
+```
+
+**Preuves à insérer :** validation réussie, résumé du plan et ressources
+attendues clairement identifiables.
+
+### Application
+
+```bash
+terraform -chdir=terraform/exercice-1 apply
 terraform -chdir=terraform/exercice-1 output
 ```
 
-**Preuves à insérer** :
+**Preuves à insérer :** résumé de l'application et cible EC2 en état
+`running`, sans exposer de donnée sensible.
 
-1. Résultat de `terraform validate`.
-2. Résumé du plan avant application.
-3. Résumé de l'application et outputs, après anonymisation si nécessaire.
-4. Vue AWS des deux instances et de leurs groupes de sécurité.
-
----
-
-## ✅ 3. Configuration Ansible et NGINX
+## 4. Preuves Ansible
 
 ```bash
-cp ansible/inventories/hosts_aws.example ansible/inventories/hosts_aws
 ansible all -i ansible/inventories/hosts_aws -m ping
-ansible-playbook -i ansible/inventories/hosts_aws ansible/playbooks/deploy.yml
+ansible-playbook \
+  -i ansible/inventories/hosts_aws \
+  ansible/playbooks/deploy.yml
 ```
 
-Le groupe d'inventaire attendu est `webservers`. La clé privée recommandée est `~/.ssh/p5-key`.
+**Preuves à insérer :** ping réussi, récapitulatif du playbook sans échec et
+seconde exécution idempotente.
 
-**Preuves à insérer** :
+## 5. Preuve de l'application
 
-1. Résultat du ping Ansible pour les deux hôtes.
-2. Récapitulatif du playbook avec `failed=0` et `unreachable=0`.
-3. Résultat distant de `sudo nginx -t`.
+La page actuellement versionnée dans `ansible/files/angular-app/` est un
+support statique de démonstration. Avant la remise, remplacez-la par le build
+réel de l'application Angular fourni par le starter.
 
----
+**Preuves à insérer :** application Angular réelle accessible sur le port 80,
+configuration NGINX valide et réponse HTTP attendue.
 
-## ✅ 4. Vérification fonctionnelle
-
-```bash
-curl --fail "http://ADRESSE_SERVEUR_1"
-curl --fail "http://ADRESSE_SERVEUR_2"
-```
-
-**Preuves à insérer** : captures des deux pages P5 et sorties HTTP correspondantes.
-
----
-
-## 🧹 5. Nettoyage
+## 6. Nettoyage
 
 ```bash
 terraform -chdir=terraform/exercice-1 destroy
 ```
 
-**Preuve à insérer** : confirmation que les ressources de l'exercice ont été supprimées afin d'éviter des coûts résiduels.
-
----
-
-## 📌 Conclusion
-
-Le livrable est complet uniquement après remplacement de toutes les zones « preuve à insérer » par des éléments réellement produits pendant le déploiement.
+**Preuve à insérer :** confirmation de destruction et absence des ressources
+résiduelles dans AWS.

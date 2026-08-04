@@ -1,135 +1,76 @@
-# SEGUIN-CADICHE_Mathias_3_HAProxy_nginxdemos
+# Livrable 3 — HAProxy et `nginxdemos/hello`
 
-# Preuves Exercice 3 : Load Balancing avec HAProxy + nginxdemos/hello
+> **Gabarit à compléter.** Les tests de répartition, de panne et de reprise
+> doivent être exécutés réellement.
 
-> ⚠️️ **Gabarit de collecte** — remplacez les zones indiquées par des preuves issues de votre déploiement.
-> Les anciennes IP et le mot de passe d'exemple ont été retirés pour éviter de présenter des données fictives ou sensibles comme réelles.
+## 1. Architecture
 
----
+- un serveur HAProxy ;
+- deux backends `nginxdemos/hello` ;
+- algorithme `roundrobin` ;
+- health checks HTTP ;
+- mode du dépôt : AWS avec Terraform.
 
-## 📋 Contexte
+## 2. Fichier `haproxy.cfg`
 
-**Projet** : P5 OpenClassrooms - Déployer et suivre l'infrastructure as code
-**Exercice** : 3 - HAProxy devant deux serveurs `nginxdemos/hello`
-**Auteur** : SEGUIN-CADICHE Mathias
-
----
-
-## 🎯 Objectifs
-
-- ✅ Déployer deux serveurs `nginxdemos/hello`.
-- ✅ Déployer HAProxy en mode `roundrobin`.
-- ✅ Autoriser les backends HTTP uniquement depuis le groupe de sécurité HAProxy.
-- ✅ Vérifier l'alternance et la tolérance à la panne.
-- ✅ Protéger les statistiques HAProxy par un secret externe au dépôt.
-
----
-
-## 🛠️ Outils utilisés
-
-- **Terraform** 1.15.8.
-- **Docker** et l'image `nginxdemos/hello:plain-text`.
-- **HAProxy**.
-- **AWS CLI v2**.
-
----
-
-## 📁 Structure des fichiers
+Le fichier généré doit contenir au minimum :
 
 ```text
-terraform/exercice-3/
-├── main.tf
-├── variables.tf
-├── outputs.tf
-└── terraform.tfvars.example
+frontend http-in
+    bind *:80
+    default_backend hello-servers
 
-scripts/
-└── generer-haproxy-config.sh
+backend hello-servers
+    balance roundrobin
+    option httpchk GET /
+    http-check expect status 200
+    server hello-1 ADRESSE_PRIVEE_1:80 check
+    server hello-2 ADRESSE_PRIVEE_2:80 check
 ```
 
----
-
-## ✅ 1. Préparation de l'environnement
-
-```bash
-cp terraform/exercice-3/terraform.tfvars.example terraform/exercice-3/terraform.tfvars
-export HAPROXY_STATS_PASSWORD='UNE_PHRASE_SECRETE_D_AU_MOINS_16_CARACTERES'
-export TF_VAR_haproxy_stats_password="$HAPROXY_STATS_PASSWORD"
-```
-
-Ne placez jamais ce mot de passe dans Git, dans une capture ou dans la commande transmise au livrable.
-
----
-
-## ✅ 2. Déploiement Terraform
-
-```bash
-terraform -chdir=terraform/exercice-3 init
-terraform -chdir=terraform/exercice-3 validate
-terraform -chdir=terraform/exercice-3 plan -out=tfplan
-terraform -chdir=terraform/exercice-3 apply tfplan
-terraform -chdir=terraform/exercice-3 output
-```
-
-**Preuves à insérer** : validation, résumé du plan, résumé de l'application et outputs réels.
-
----
-
-## ⚙️️ 3. Configuration HAProxy
+Génération pour le déploiement :
 
 ```bash
 ./scripts/tools/generer-haproxy-config.sh \
-  "ADRESSE_PRIVEE_BACKEND_1" \
-  "ADRESSE_PRIVEE_BACKEND_2" \
-  scripts/haproxy.cfg
+  ADRESSE_PRIVEE_1 ADRESSE_PRIVEE_2 /tmp/haproxy.cfg
 ```
 
-Le fichier généré est ignoré par Git, car il contient le secret des statistiques.
+**À joindre :** une copie lisible de `haproxy.cfg`, sans donnée sensible.
 
-**Preuves à insérer** : résultat de `haproxy -c -f /etc/haproxy/haproxy.cfg` et état des deux backends, sans exposer le mot de passe.
+## 3. Validation de la configuration
 
----
+```bash
+sudo haproxy -c -f /etc/haproxy/haproxy.cfg
+```
 
-## 🔄 4. Vérification du load balancing
+**Preuve réelle à insérer.**
+
+## 4. Répartition de charge
 
 ```bash
 for _ in {1..10}; do
-  curl --fail --silent "http://ADRESSE_HAPROXY"
+  curl --fail --silent http://ADRESSE_HAPROXY
+  printf '\n'
 done
 ```
 
-**Preuve à insérer** : alternance visible entre les deux noms de serveur.
+**Preuve à insérer :** alternance visible des noms ou adresses de serveur.
 
----
+## 5. Panne et continuité de service
 
-## 🧯 5. Tolérance à la panne
+1. arrêter le premier backend ;
+2. répéter les requêtes via HAProxy ;
+3. vérifier que le second backend répond seul ;
+4. redémarrer le premier backend ;
+5. vérifier son retour automatique dans la rotation.
 
-1. Arrêter temporairement le conteneur du premier backend.
-2. Répéter plusieurs requêtes via HAProxy.
-3. Vérifier que le second backend traite toutes les requêtes.
-4. Redémarrer le premier conteneur et confirmer son retour à l'état `UP`.
+**Preuves à insérer :** état avant la panne, pendant la panne et après la
+reprise.
 
-**Preuves à insérer** : état HAProxy avant, pendant et après le test.
-
----
-
-## 📊 6. Statistiques HAProxy
-
-L'URL est fournie par l'output `haproxy_stats_url` et n'est accessible que depuis `your_ip_cidr`.
-
-**Preuve à insérer** : capture anonymisée de la page de statistiques montrant les deux backends.
-
----
-
-## 🧹 7. Nettoyage
+## 6. Nettoyage
 
 ```bash
 terraform -chdir=terraform/exercice-3 destroy
-unset HAPROXY_STATS_PASSWORD TF_VAR_haproxy_stats_password
 ```
 
----
-
-## 📌 Conclusion
-
-Le livrable est prêt à être complété, mais il ne doit être remis qu'après insertion de preuves réelles et vérification qu'aucun secret n'y apparaît.
+**Preuve à insérer :** trois instances et groupes de sécurité supprimés.

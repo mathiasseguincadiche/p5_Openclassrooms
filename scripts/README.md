@@ -1,44 +1,20 @@
-# 🤖 Scripts d'automatisation du projet P5
+# Scripts du projet P5
 
-Ce dossier sépare les points d'entrée, les phases de déploiement, les outils
-autonomes et les bibliothèques partagées. Les scripts calculent leurs chemins
-depuis la racine du dépôt et peuvent être lancés depuis n'importe quel dossier.
-
-## 🗂️ Organisation
-
-```text
-scripts/
-├── commands/   # Points d'entrée : préparation, validation et nettoyage
-├── phases/     # Phases 0 à 5 du parcours P5
-├── tools/      # Commandes autonomes pour Kibana, HAProxy et les captures
-├── lib/        # Fonctions partagées : contrôles, couleurs, logs et prompts
-├── run-all.sh  # Orchestrateur non interactif
-└── runbook.sh  # Menu interactif pédagogique
-```
-
-## 🚀 Points d'entrée
+Le dépôt évite volontairement le déploiement « en un clic ». Un débutant doit
+lire le plan Terraform, exécuter les commandes de chaque fiche et comprendre ce
+qui est créé.
 
 | Besoin | Commande |
 | --- | --- |
-| Vérifier la machine sans déployer | `./scripts/commands/setup.sh --check-only` |
-| Contrôler les prérequis AWS | `./scripts/commands/pre-deployment-check.sh` |
-| Valider les fichiers du dépôt | `./scripts/commands/validate.sh` |
-| Utiliser le menu interactif | `./scripts/runbook.sh` |
-| Exécuter plusieurs phases | `./scripts/run-all.sh --from 1 --to 4 --validate` |
-| Supprimer les caches locaux | `./scripts/commands/clean-local.sh` |
-| Détruire les ressources AWS | `./scripts/commands/destroy-aws.sh` |
+| Vérifier l’environnement sans rien installer | `./scripts/commands/setup.sh --check-only` |
+| Valider la structure et les fichiers | `./scripts/commands/validate.sh` |
+| Contrôler les trois gabarits de remise | `./scripts/commands/prepare-livrables.sh` |
+| Supprimer les caches et plans locaux, sans toucher aux états | `./scripts/commands/clean-local.sh` |
+| Détruire les ressources Terraform AWS | `./scripts/commands/destroy-aws.sh` |
+| Générer un `haproxy.cfg` minimal | `./scripts/tools/generer-haproxy-config.sh IP1 IP2` |
 
-## 🧩 Phases
+`destroy-aws.sh` détruit les modules dans l’ordre **3 → 2 → 1** afin de
+respecter la dépendance réseau entre les exercices 3 et 1. Une vérification
+manuelle dans la console AWS reste obligatoire.
 
-1. `phase-0-preparation.sh` vérifie l'environnement.
-2. `phase-1-terraform-ansible.sh` déploie et configure les serveurs web.
-3. `phase-2-opensearch-kibana.sh` déploie OpenSearch et le dashboard.
-4. `phase-3-haproxy.sh` déploie HAProxy et les backends.
-5. `phase-4-livrables.sh` prépare les fichiers de remise.
-6. `phase-5-nettoyage.sh` détruit les ressources après confirmation stricte.
-
-## ⚠️ Sécurité
-
-`clean-local.sh` ne touche jamais à AWS. À l'inverse,
-`destroy-aws.sh` et la phase 5 sont destructifs : ils affichent les ressources
-concernées et demandent une confirmation avant `terraform destroy`.
+`clean-local.sh` conserve toujours les fichiers `terraform.tfstate`, car les supprimer avant `terraform destroy` pourrait laisser des ressources AWS orphelines.

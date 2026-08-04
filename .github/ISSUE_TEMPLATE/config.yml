@@ -1,5 +1,8 @@
-blank_issues_enabled: true
+blank_issues_enabled: false
 contact_links:
-  - name: Cadre du projet P5
-    url: https://github.com/mathiasseguincadiche/p5_Openclassrooms/blob/main/docs/00-cadre-officiel.md
-    about: Vérifiez le périmètre officiel et le choix du parcours AWS avant de proposer une modification.
+  - name: 📚 Documentation
+    url: https://github.com/mathiasseguincadiche/p5_Openclassrooms/tree/main/docs
+    about: Consultez la documentation complète du projet.
+  - name: 💬 Discussions
+    url: https://github.com/mathiasseguincadiche/p5_Openclassrooms/discussions
+    about: Posez des questions ou discutez avec la communauté.

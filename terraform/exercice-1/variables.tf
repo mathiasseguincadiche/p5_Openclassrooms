@@ -1,44 +1,24 @@
-# =============================================================================
-# EXERCICE 1 : Variables Terraform
-# Projet P5 OpenClassrooms - Déployer et suivre l'infrastructure as code
-# Région AWS : us-east-1 (OBLIGATOIRE)
-# =============================================================================
-
-# -----------------------------------------------------------------------------
-# Variables AWS
-# -----------------------------------------------------------------------------
 variable "aws_region" {
-  description = "Région AWS (us-east-1 OBLIGATOIRE pour ce projet)"
+  description = "Région AWS choisie pour le projet"
   type        = string
   default     = "us-east-1"
-
-  validation {
-    condition     = var.aws_region == "us-east-1"
-    error_message = "Le projet P5 doit être déployé dans la région us-east-1."
-  }
 }
 
-# -----------------------------------------------------------------------------
-# Variables pour les Instances EC2
-# -----------------------------------------------------------------------------
 variable "ami_id" {
-  description = "AMI Ubuntu à utiliser, ou null pour sélectionner la dernière Ubuntu 24.04 LTS"
+  description = "AMI Ubuntu personnalisée ; null sélectionne automatiquement Ubuntu 24.04 LTS"
   type        = string
   default     = null
   nullable    = true
 }
 
 variable "instance_type" {
-  description = "Type d'instance EC2 (t2.micro est gratuit avec Free Tier)"
+  description = "Type de l'instance EC2 ; vérifiez son coût et son éligibilité dans votre compte"
   type        = string
-  default     = "t2.micro"
+  default     = "t3.micro"
 }
 
-# -----------------------------------------------------------------------------
-# Variables de Sécurité
-# -----------------------------------------------------------------------------
 variable "your_ip_cidr" {
-  description = "Votre IP publique en notation CIDR (ex: 192.168.1.1/32)"
+  description = "Adresse IPv4 publique du poste d'administration au format x.x.x.x/32"
   type        = string
 
   validation {
@@ -47,8 +27,14 @@ variable "your_ip_cidr" {
   }
 }
 
+variable "key_name" {
+  description = "Nom de la paire de clés EC2 créée par Terraform"
+  type        = string
+  default     = "p5-key"
+}
+
 variable "ssh_public_key_path" {
-  description = "Chemin vers votre clé publique SSH"
+  description = "Chemin vers la clé publique SSH"
   type        = string
   default     = "~/.ssh/p5-key.pub"
 }

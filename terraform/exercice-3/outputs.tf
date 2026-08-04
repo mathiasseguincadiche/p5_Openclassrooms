@@ -46,8 +46,3 @@ output "haproxy_url" {
   description = "URL publique du répartiteur"
   value       = "http://${aws_instance.p5_haproxy.public_ip}"
 }
-
-output "haproxy_stats_url" {
-  description = "URL de la page de statistiques, accessible uniquement depuis your_ip_cidr"
-  value       = "http://${aws_instance.p5_haproxy.public_ip}:8404/stats"
-}

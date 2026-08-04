@@ -1,23 +1,26 @@
-# 🏗️ Infrastructure Terraform du projet P5
+# Infrastructure Terraform du P5 — parcours AWS
 
-Ce dossier contient les trois modules racines correspondant aux livrables du
-projet. Chaque exercice possède son propre état Terraform et doit être exécuté
-depuis son dossier.
+Les trois dossiers correspondent aux trois exercices officiels et à la
+réalisation **100 % AWS** retenue pour ce projet. Terraform n’a pas le même rôle
+dans chacun d’eux.
 
-| Module | Objectif |
-| --- | --- |
-| `exercice-1/` | VPC, deux instances NGINX et déploiement Ansible |
-| `exercice-2/` | Domaine Amazon OpenSearch et chargement des logs |
-| `exercice-3/` | Deux backends `nginxdemos/hello` et HAProxy |
+| Dossier | Rôle | Choix du dépôt |
+| --- | --- | --- |
+| `exercice-1/` | Cœur du livrable IaC | VPC, deux sous-réseaux et une cible EC2 pour Ansible |
+| `exercice-2/` | Monitoring Cloud retenu | Domaine Amazon OpenSearch limité à une adresse `/32` |
+| `exercice-3/` | Disponibilité Cloud retenue | Une EC2 HAProxy et deux EC2 `nginxdemos/hello` dans le VPC de l’exercice 1 |
 
-## ✅ Validation
+Chaque module possède son propre état. Exécutez les commandes dans le dossier
+concerné et ne versionnez jamais `terraform.tfvars` ni les fichiers d’état.
 
 ```bash
-for module in terraform/exercice-{1,2,3}; do
-  terraform -chdir="$module" init -backend=false
-  terraform -chdir="$module" validate
-done
+cp terraform/exercice-1/terraform.tfvars.example \
+  terraform/exercice-1/terraform.tfvars
+terraform -chdir=terraform/exercice-1 init
+terraform -chdir=terraform/exercice-1 plan
+terraform -chdir=terraform/exercice-1 apply
 ```
 
-Les valeurs locales doivent être copiées depuis `terraform.tfvars.example`
-vers un fichier `terraform.tfvars` non versionné.
+La région et le type d’instance sont configurables. Vérifiez toujours les
+quotas et les coûts de votre compte. Détruisez l’exercice 3 avant l’exercice 1,
+car il réutilise le réseau et la paire de clés créés par l’exercice 1.
