@@ -51,6 +51,7 @@ jobs:
             application/README.md
             application/angular/README.md
             application/angular/package.json
+            application/angular/package-lock.json
             application/angular/angular.json
             application/angular/src/main.ts
             scripts/commands/bootstrap-ubuntu-server.sh
@@ -74,6 +75,12 @@ jobs:
           test ! -e environment/aws-readiness.env
           grep -q '../files/angular-app/' ansible/playbooks/deploy.yml
           grep -q '../files/nginx-angular.conf' ansible/playbooks/deploy.yml
+          grep -q '<app-root' ansible/files/angular-app/index.html
+          if grep -q 'Interface web pour l.Exercice 1' \
+            ansible/files/angular-app/index.html; then
+            echo 'La page HTML témoin a été réintroduite.' >&2
+            exit 1
+          fi
 
       - name: Vérifier les garde-fous AWS
         shell: bash
@@ -138,27 +145,22 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 22.22.0
-      - name: Installer les dépendances et créer le verrouillage initial
-        run: npm install --prefix application/angular --no-audit --no-fund
+          cache: npm
+          cache-dependency-path: application/angular/package-lock.json
+      - name: Installer les dépendances verrouillées
+        run: npm ci --prefix application/angular --no-audit --no-fund
       - name: Construire l'application
         run: npm run build --prefix application/angular
-      - name: Préparer l'artefact de synchronisation
+      - name: Vérifier la synchronisation avec Ansible
         shell: bash
         run: |
           set -euo pipefail
-          build_index="$(find application/angular/dist -type f -name index.html | head -n 1)"
-          test -n "$build_index"
-          build_dir="$(dirname "$build_index")"
-          mkdir -p generated/angular-app
-          cp application/angular/package-lock.json generated/package-lock.json
-          cp -a "$build_dir/." generated/angular-app/
-          test -f generated/angular-app/index.html
-      - uses: actions/upload-artifact@v4
-        with:
-          name: p5-angular-generated
-          path: generated/
-          if-no-files-found: error
-          retention-days: 3
+          mapfile -t build_indexes < <(
+            find application/angular/dist -type f -name index.html | sort
+          )
+          test "${#build_indexes[@]}" -eq 1
+          build_dir="$(dirname "${build_indexes[0]}")"
+          diff -qr "$build_dir" ansible/files/angular-app
 
   opensearch_data:
     name: Données OpenSearch
