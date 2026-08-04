@@ -3,13 +3,13 @@ name: Appliquer la reconstruction P5 AWS
 on:
   push:
     branches:
-      - refactor/aligner-p5-openclassrooms
+      - main
 
 permissions:
   contents: write
 
 concurrency:
-  group: p5-rewrite-${{ github.ref }}
+  group: p5-rewrite-main
   cancel-in-progress: false
 
 jobs:
@@ -38,4 +38,4 @@ jobs:
           git add -A
           git diff --cached --check
           git commit -m "refactor: aligner le dépôt sur le parcours P5 AWS"
-          git push origin HEAD:refactor/aligner-p5-openclassrooms
+          git push origin HEAD:"${GITHUB_REF_NAME}"
