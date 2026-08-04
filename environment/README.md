@@ -1,40 +1,45 @@
 # Environnement de lab — Étape 0
 
-Ce dossier décrit et automatise le **poste de contrôle** du P5 : une VM Ubuntu
-Server 26.04 LTS « Resolute Raccoon », administrée uniquement en ligne de
-commande.
+Ce dossier décrit le **poste de contrôle** du P5 : une VM Ubuntu Server 26.04
+LTS « Resolute Raccoon », administrée en ligne de commande.
 
 ```text
 environment/
 ├── README.md
-├── apt-packages.txt   paquets système nécessaires au projet
-└── versions.env       OS, canaux et contraintes de versions
+├── apt-packages.txt   # paquets système utiles au lab
+└── versions.env       # versions et canaux de référence
 ```
 
-## Ce qui est installé
+## Rôle du dossier
 
-- administration : OpenSSH, Git, curl, rsync, jq et outils réseau ;
-- Infrastructure as Code : Terraform depuis le dépôt officiel HashiCorp ;
-- automatisation : Ansible Core isolé avec `pipx` ;
-- cloud : AWS CLI version 2 depuis l’installeur officiel AWS ;
-- application : Node.js LTS avec `nvm`, npm et Angular CLI ;
-- conteneurs et validation : Docker Engine, Buildx et Compose ;
-- qualité : ShellCheck, yamllint et markdownlint-cli2 ;
-- intégration VM : `qemu-guest-agent`.
-
-## Commandes
+Les fichiers d’`environment/` centralisent les choix de la VM. L’installation
+réelle est effectuée par :
 
 ```bash
-make vm-bootstrap   # installation, avec sudo ; aucune ressource AWS créée
-# Fermer puis rouvrir la session pour le groupe docker.
-make vm-check       # vérification complète
-make validate       # validation du dépôt
-make preflight      # contrôle avant le premier déploiement
+./scripts/commands/bootstrap-ubuntu-server.sh
 ```
 
-Le bootstrap est idempotent : il peut être relancé après une mise à jour ou sur
-une VM reconstruite. Il n’exécute ni `aws configure`, ni `terraform apply`, ni
-la création de clés SSH sans décision explicite de l’utilisateur.
+Le contrôle non destructif est effectué par :
 
-La procédure d’installation détaillée se trouve dans
-[`docs/etape-0/README.md`](../docs/etape-0/README.md).
+```bash
+./scripts/commands/setup.sh --check-only
+./scripts/commands/pre-deployment-check.sh
+```
+
+## Socle attendu
+
+- administration : OpenSSH, Git, curl, jq et outils réseau ;
+- Infrastructure as Code : Terraform ;
+- automatisation : Ansible Core ;
+- cloud : AWS CLI version 2 ;
+- application : Node.js, npm et build Angular ;
+- conteneurs : Docker Engine, Buildx et Compose ;
+- qualité : ShellCheck, yamllint et markdownlint-cli2 ;
+- intégration VM : `qemu-guest-agent` lorsque la VM tourne sous QEMU/KVM.
+
+Le bootstrap ne lance ni `aws configure`, ni `terraform apply`, ni création de
+clé SSH. Les secrets et décisions d’accès restent sous le contrôle de
+l’utilisateur.
+
+La procédure complète se trouve dans
+[`docs/00-preparation-environnement.md`](../docs/00-preparation-environnement.md).
