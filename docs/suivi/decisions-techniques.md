@@ -10,7 +10,6 @@ Docker, GitHub Actions et Kubernetes ont été retirés.
 Décision validée : **AWS pour les trois exercices**. Aucun parcours Docker local
 parallèle n’est maintenu dans le dépôt.
 
-
 | Exercice | Choix principal | Conséquence |
 | --- | --- | --- |
 | 1 | AWS + Terraform + Ansible | Une cible EC2, plus deux sous-réseaux réutilisables par l’exercice 3 |
