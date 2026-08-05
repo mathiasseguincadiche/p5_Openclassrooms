@@ -1,71 +1,86 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="300" viewBox="0 0 960 300" role="img" aria-labelledby="title desc">
-<title id="title">Exercice 2 : analyser les logs avec Amazon OpenSearch</title>
-<desc id="desc">Les logs NGINX sont indexés dans OpenSearch, explorés puis transformés en trois visualisations réunies dans un dashboard.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
+<title id="title">Exercice 2 : pipeline d’observabilité NGINX vers OpenSearch</title>
+<desc id="desc">Pipeline de données montrant les logs, la transformation, l’indexation, l’exploration et un tableau de bord composé de trois visualisations.</desc>
 <defs>
-  <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#475569"/></marker>
+  <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
   <style>
-    .title{font:700 22px Arial,sans-serif;fill:#0f172a}.card-title{font:700 16px Arial,sans-serif;fill:#0f172a}.label{font:13px Arial,sans-serif;fill:#475569}.mini{font:11px Arial,sans-serif;fill:#475569}.ok-title{font:700 16px Arial,sans-serif;fill:#065f46}.ok-label{font:13px Arial,sans-serif;fill:#065f46}.line{fill:none;stroke:#475569;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-  </style>
+  .title{font:700 28px Inter,Arial,sans-serif;fill:#0f172a}
+  .subtitle{font:15px Inter,Arial,sans-serif;fill:#475569}
+  .section{font:700 16px Inter,Arial,sans-serif;fill:#0f172a}
+  .label{font:14px Inter,Arial,sans-serif;fill:#334155}
+  .small{font:12px Inter,Arial,sans-serif;fill:#475569}
+  .tiny{font:11px Inter,Arial,sans-serif;fill:#64748b}
+  .mono{font:600 12px ui-monospace,SFMono-Regular,Consolas,monospace;fill:#334155}
+  .line{fill:none;stroke:#475569;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .soft{fill:#f8fafc;stroke:#cbd5e1;stroke-width:1.5}
+  .panel{fill:#fff;stroke:#cbd5e1;stroke-width:1.5}
+</style>
 </defs>
-<rect width="960" height="300" rx="12" fill="#f8fafc"/>
-<text x="32" y="38" class="title">Exercice 2 · transformer les logs NGINX en dashboard</text>
-
-<g text-anchor="middle">
-  <rect x="28" y="72" width="176" height="134" rx="10" fill="#fff" stroke="#d97706" stroke-width="2"/>
-  <g transform="translate(94 88)" class="line" stroke="#d97706">
-    <path d="M0 0h35l9 9v27H0Z"/><path d="M35 0v9h9"/>
-    <line x1="8" y1="15" x2="34" y2="15"/><line x1="8" y1="22" x2="34" y2="22"/><line x1="8" y1="29" x2="27" y2="29"/>
+<rect width="1200" height="560" rx="18" fill="#fffaf5"/>
+<text x="40" y="48" class="title">Exercice 2 · transformer des logs bruts en informations exploitables</text>
+<text x="40" y="76" class="subtitle">Ici, le schéma se comporte comme un pipeline de données et se termine par un vrai aperçu de dashboard.</text>
+<g>
+  <rect x="44" y="126" width="190" height="304" rx="16" fill="#fff" stroke="#d97706" stroke-width="2"/>
+  <text x="139" y="160" text-anchor="middle" class="section">LOGS NGINX</text>
+  <path d="M82 185h80l18 18v150H82Z" fill="#fff7ed" stroke="#d97706" stroke-width="2"/>
+  <path d="M162 185v18h18" fill="none" stroke="#d97706" stroke-width="2"/>
+  <g class="mono">
+    <text x="94" y="226">GET / 200</text>
+    <text x="94" y="249">GET /app.js 200</text>
+    <text x="94" y="272">POST /api 404</text>
+    <text x="94" y="295">GET /img 304</text>
+    <text x="94" y="318">bytes=18432</text>
   </g>
-  <text x="116" y="139" class="card-title">Logs NGINX</text>
-  <text x="116" y="164" class="label">date · verbe · URL</text>
-  <text x="116" y="185" class="label">statut · octets</text>
-
-  <rect x="244" y="72" width="190" height="134" rx="10" fill="#fff" stroke="#2563eb" stroke-width="2"/>
-  <g transform="translate(317 89)" class="line" stroke="#2563eb">
-    <ellipse cx="18" cy="7" rx="18" ry="7"/><path d="M0 7v20c0 4 8 7 18 7s18-3 18-7V7M0 17c0 4 8 7 18 7s18-3 18-7"/>
-    <circle cx="39" cy="28" r="8" fill="#fff"/><line x1="45" y1="34" x2="51" y2="40"/>
-  </g>
-  <text x="339" y="139" class="card-title">Amazon OpenSearch</text>
-  <text x="339" y="164" class="label">index · mapping · Discover</text>
-  <text x="339" y="185" class="label">champs vérifiés</text>
-
-  <rect x="474" y="72" width="260" height="134" rx="10" fill="#fff" stroke="#7c3aed" stroke-width="2"/>
-  <text x="604" y="98" class="card-title">3 visualisations</text>
-
-  <g transform="translate(500 108)">
-    <circle cx="27" cy="25" r="17" fill="none" stroke="#cbd5e1" stroke-width="8"/>
-    <circle cx="27" cy="25" r="17" fill="none" stroke="#7c3aed" stroke-width="8" stroke-dasharray="55 52" transform="rotate(-90 27 25)"/>
-    <circle cx="27" cy="25" r="7" fill="#fff"/>
-    <text x="27" y="62" text-anchor="middle" class="mini">verbes HTTP</text>
-  </g>
-
-  <g transform="translate(577 108)" fill="#7c3aed">
-    <line x1="4" y1="48" x2="55" y2="48" stroke="#94a3b8" stroke-width="1.5"/>
-    <rect x="8" y="32" width="8" height="16" rx="1"/><rect x="21" y="19" width="8" height="29" rx="1"/><rect x="34" y="26" width="8" height="22" rx="1"/><rect x="47" y="10" width="8" height="38" rx="1"/>
-    <text x="31" y="70" text-anchor="middle" class="mini" fill="#475569">octets / 12 h</text>
-  </g>
-
-  <g transform="translate(657 108)" fill="#7c3aed">
-    <rect x="2" y="9" width="50" height="6" rx="2"/><rect x="2" y="19" width="40" height="6" rx="2"/><rect x="2" y="29" width="31" height="6" rx="2"/><rect x="2" y="39" width="23" height="6" rx="2"/><rect x="2" y="49" width="15" height="6" rx="2"/>
-    <text x="27" y="70" text-anchor="middle" class="mini" fill="#475569">top 5 / 12 h</text>
-  </g>
-
-  <rect x="774" y="72" width="158" height="134" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
-  <g transform="translate(827 89)" class="line" stroke="#059669">
-    <rect x="0" y="0" width="52" height="34" rx="4"/>
-    <path d="M8 25l8-8 7 5 10-13 11 8"/><line x1="20" y1="40" x2="32" y2="40"/><line x1="26" y1="34" x2="26" y2="40"/>
-  </g>
-  <text x="853" y="139" class="ok-title">Dashboard</text>
-  <text x="853" y="164" class="ok-label">3 graphiques réunis</text>
-  <text x="853" y="185" class="ok-label">+ 4 captures lisibles</text>
+  <text x="139" y="389" text-anchor="middle" class="small">réels ou échantillon</text>
+  <text x="139" y="410" text-anchor="middle" class="small">format combined</text>
 </g>
-
-<g class="line" marker-end="url(#arrow)">
-  <line x1="204" y1="139" x2="236" y2="139"/>
-  <line x1="434" y1="139" x2="466" y2="139"/>
-  <line x1="734" y1="139" x2="766" y2="139"/>
+<g>
+  <path d="M234 278H286" class="line" marker-end="url(#arrow)"/>
+  <rect x="296" y="156" width="228" height="244" rx="16" fill="#fff" stroke="#2563eb" stroke-width="2"/>
+  <text x="410" y="190" text-anchor="middle" class="section">PRÉPARER LES DONNÉES</text>
+  <rect x="326" y="218" width="168" height="48" rx="10" fill="#eff6ff" stroke="#2563eb"/>
+  <text x="410" y="240" text-anchor="middle" class="label">conversion Python</text>
+  <text x="410" y="258" text-anchor="middle" class="tiny">NGINX → Bulk NDJSON</text>
+  <path d="M410 266V294" class="line" marker-end="url(#arrow)"/>
+  <rect x="326" y="304" width="168" height="62" rx="10" fill="#eff6ff" stroke="#2563eb"/>
+  <text x="410" y="328" text-anchor="middle" class="label">mapping strict</text>
+  <text x="410" y="348" text-anchor="middle" class="tiny">date · keyword · long</text>
+  <text x="410" y="384" text-anchor="middle" class="mono">import --apply</text>
 </g>
-
-<rect x="28" y="230" width="904" height="42" rx="8" fill="#e2e8f0"/>
-<text x="480" y="257" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" font-weight="700" fill="#334155">Importer · explorer · agréger · visualiser — les graphiques sont construits manuellement</text>
+<g>
+  <path d="M524 278H576" class="line" marker-end="url(#arrow)"/>
+  <rect x="586" y="156" width="210" height="244" rx="16" fill="#fff" stroke="#7c3aed" stroke-width="2"/>
+  <text x="691" y="190" text-anchor="middle" class="section">AMAZON OPENSEARCH</text>
+  <ellipse cx="691" cy="230" rx="58" ry="18" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2"/>
+  <path d="M633 230v70c0 10 26 18 58 18s58-8 58-18v-70M633 264c0 10 26 18 58 18s58-8 58-18" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2"/>
+  <text x="691" y="347" text-anchor="middle" class="label">index nginx-access-*</text>
+  <text x="691" y="370" text-anchor="middle" class="small">Discover · champs vérifiés</text>
+</g>
+<g>
+  <path d="M796 278H838" class="line" marker-end="url(#arrow)"/>
+  <rect x="848" y="118" width="308" height="350" rx="18" fill="#fff" stroke="#059669" stroke-width="2"/>
+  <rect x="848" y="118" width="308" height="48" rx="18" fill="#ecfdf5"/>
+  <rect x="848" y="148" width="308" height="18" fill="#ecfdf5"/>
+  <text x="1002" y="149" text-anchor="middle" class="section" fill="#047857">DASHBOARD ATTENDU</text>
+  <rect x="872" y="188" width="118" height="116" rx="10" fill="#f8fafc" stroke="#cbd5e1"/>
+  <circle cx="931" cy="239" r="28" fill="none" stroke="#e2e8f0" stroke-width="13"/>
+  <circle cx="931" cy="239" r="28" fill="none" stroke="#d97706" stroke-width="13" stroke-dasharray="110 66" transform="rotate(-90 931 239)"/>
+  <circle cx="931" cy="239" r="13" fill="#fff"/>
+  <text x="931" y="288" text-anchor="middle" class="tiny">verbes HTTP</text>
+  <rect x="1008" y="188" width="124" height="116" rx="10" fill="#f8fafc" stroke="#cbd5e1"/>
+  <line x1="1025" y1="273" x2="1115" y2="273" stroke="#94a3b8"/>
+  <rect x="1032" y="245" width="13" height="28" fill="#2563eb"/>
+  <rect x="1052" y="218" width="13" height="55" fill="#2563eb"/>
+  <rect x="1072" y="232" width="13" height="41" fill="#2563eb"/>
+  <rect x="1092" y="202" width="13" height="71" fill="#2563eb"/>
+  <text x="1070" y="288" text-anchor="middle" class="tiny">octets / 12 h</text>
+  <rect x="872" y="322" width="260" height="116" rx="10" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="888" y="347" class="tiny">top 5 URL / 12 h</text>
+  <rect x="888" y="360" width="188" height="10" rx="3" fill="#7c3aed"/>
+  <rect x="888" y="378" width="152" height="10" rx="3" fill="#8b5cf6"/>
+  <rect x="888" y="396" width="118" height="10" rx="3" fill="#a78bfa"/>
+  <rect x="888" y="414" width="84" height="10" rx="3" fill="#c4b5fd"/>
+</g>
+<rect x="44" y="472" width="752" height="42" rx="10" fill="#ffedd5"/>
+<text x="420" y="499" text-anchor="middle" class="label">Comprendre les champs → vérifier les agrégations → construire manuellement les 3 visualisations</text>
 </svg>
