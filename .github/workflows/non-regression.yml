@@ -1,0 +1,25 @@
+name: CI - Non-régression P5
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: non-regression-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: Contrat fonctionnel et documentaire
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v7
+
+      - name: Vérifier le contrat de non-régression
+        run: python3 scripts/tools/audit_non_regression.py
