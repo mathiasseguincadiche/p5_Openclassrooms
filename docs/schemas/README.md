@@ -3,39 +3,50 @@
 Les schémas sont conçus pour rester lisibles directement dans un README, un
 fichier Markdown, un navigateur et un export PDF.
 
-## Charte visuelle
+## Principe directeur
 
-- canevas uniforme de `960 × 300` pixels ;
-- fond neutre, cartes blanches et bordures arrondies ;
-- palette stable : gris pour le lab, bleu pour l’application et les données,
-  violet pour l’orchestration, orange pour l’observation, vert pour le résultat ;
-- flèches uniquement lorsqu’elles expliquent un flux réel ;
-- pictogrammes vectoriels simples pour reconnaître les composants sans lire
-  chaque ligne ;
-- une idée principale et un résultat attendu par schéma ;
-- texte court, contrasté et compréhensible sans légende externe ;
-- bandeau inférieur réservé à la méthode, aux preuves ou au comportement testé ;
-- aucun Mermaid, moteur externe, filtre, ombre ou illustration décorative.
+La cohérence visuelle ne signifie pas que tous les schémas doivent partager le
+même gabarit. Chaque vue adopte la composition la plus adaptée à ce qu'elle doit
+faire comprendre, tout en conservant une grammaire commune.
 
-Un schéma ne doit pas reproduire toute la documentation. Il doit permettre de
-comprendre en quelques secondes **ce qui entre, ce qui se passe et ce qui doit
-être obtenu ou prouvé**.
+### Repères communs
 
-## Schémas du projet
+- même typographie système et même niveau de contraste ;
+- mêmes couleurs sémantiques : gris pour le lab, bleu pour l'application et les
+  données, violet pour l'orchestration, orange pour l'observation, vert pour un
+  résultat valide et rouge pour une interruption ou une destruction ;
+- flèches réservées aux flux ou transitions réels ;
+- titres courts, libellés autonomes et descriptions accessibles dans chaque
+  SVG ;
+- aucun Mermaid, script, moteur externe, filtre, image encodée, ombre ou élément
+  décoratif sans fonction explicative ;
+- six fichiers autonomes de moins de 8 Kio, avec un ratio horizontal adapté à
+  GitHub et au Markdown ;
+- quantité de texte limitée : le schéma montre l'essentiel, le guide porte les
+  commandes et les précautions détaillées.
 
-- [Étape 0 — VM de lab](etape-0.svg) : installation, socle DevOps, accès et
-  validation de l’environnement.
-- [Vue d’ensemble](vue-ensemble.svg) : chaîne globale du lab aux trois exercices
-  AWS.
-- [Exercice 1](exercice-1.svg) : source Angular, Terraform, Ansible et résultat
-  servi par NGINX sur EC2.
-- [Exercice 2](exercice-2.svg) : logs, OpenSearch, trois visualisations et
-  dashboard attendu.
-- [Exercice 3](exercice-3.svg) : répartition HAProxy, état des backends, panne et
-  reprise automatique.
-- [Finalisation](finalisation/finalisation.svg) : collecte des preuves, contrôle
-  des trois livrables, destruction des ressources et audit du nettoyage AWS.
+### Identité de chaque schéma
 
-Le README principal utilise ces six vues comme un parcours continu. Chaque
-schéma introduit une étape ; les commandes et preuves détaillées restent dans
-les guides correspondants.
+| Schéma | Composition choisie | Message principal |
+| --- | --- | --- |
+| [Vue d'ensemble](vue-ensemble.svg) | carte du parcours local → AWS → finalisation | comprendre la chaîne de bout en bout |
+| [Étape 0](etape-0.svg) | fondations empilées et porte de validation | vérifier que le socle est prêt avant Terraform |
+| [Exercice 1](exercice-1.svg) | couloirs local, AWS et validation | distinguer build, provisionnement, configuration et contrôle |
+| [Exercice 2](exercice-2.svg) | pipeline de données terminé par un dashboard | suivre la transformation des logs en visualisations |
+| [Exercice 3](exercice-3.svg) | topologie réseau et chronologie des états | montrer la répartition, la panne et la reprise |
+| [Finalisation](finalisation/finalisation.svg) | procédure de sortie et audit | prouver, détruire puis confirmer l'absence de résidu |
+
+Un schéma ne reproduit pas toute la documentation. Il doit permettre de
+comprendre en quelques secondes le système, la transformation ou le
+comportement qu'il illustre.
+
+Le contrôle suivant protège les dimensions, le poids, l'accessibilité,
+l'intégration et la diversité des canevas :
+
+```bash
+python3 scripts/tools/audit_non_regression.py --schemas-only
+```
+
+Le README principal utilise ces six vues comme un parcours continu. Les
+commandes, preuves détaillées et précautions restent dans les guides
+correspondants.

@@ -1,67 +1,92 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="300" viewBox="0 0 960 300" role="img" aria-labelledby="title desc">
-<title id="title">Exercice 3 : HAProxy et reprise après panne</title>
-<desc id="desc">Le client contacte HAProxy, qui contrôle deux backends EC2, écarte celui en panne et le réintègre après son retour.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+<title id="title">Exercice 3 : topologie HAProxy et cycle panne reprise</title>
+<desc id="desc">Topologie réseau d’un client vers HAProxy et deux backends, complétée par une chronologie des états normal, panne et reprise.</desc>
 <defs>
-  <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#475569"/></marker>
-  <style>
-    .title{font:700 22px Arial,sans-serif;fill:#0f172a}.card-title{font:700 16px Arial,sans-serif;fill:#0f172a}.label{font:13px Arial,sans-serif;fill:#475569}.small{font:12px Arial,sans-serif;fill:#475569}.ok-title{font:700 16px Arial,sans-serif;fill:#065f46}.ok-label{font:13px Arial,sans-serif;fill:#065f46}.line{fill:none;stroke:#475569;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-  </style>
+  <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+  
+<style>
+  .title{font:700 28px Inter,Arial,sans-serif;fill:#0f172a}
+  .subtitle{font:15px Inter,Arial,sans-serif;fill:#475569}
+  .section{font:700 16px Inter,Arial,sans-serif;fill:#0f172a}
+  .label{font:14px Inter,Arial,sans-serif;fill:#334155}
+  .small{font:13px Inter,Arial,sans-serif;fill:#475569}
+  .tiny{font:12px Inter,Arial,sans-serif;fill:#64748b}
+  .mono{font:600 13px ui-monospace,SFMono-Regular,Consolas,monospace;fill:#334155}
+  .line{fill:none;stroke:#475569;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .soft{fill:#f8fafc;stroke:#cbd5e1;stroke-width:1.5}
+  .panel{fill:#fff;stroke:#cbd5e1;stroke-width:1.5}
+</style>
+
 </defs>
-<rect width="960" height="300" rx="12" fill="#f8fafc"/>
-<text x="32" y="38" class="title">Exercice 3 · répartir, détecter la panne et maintenir le service</text>
+<rect width="1200" height="620" rx="18" fill="#f8fafc"/>
+<text x="40" y="48" class="title">Exercice 3 · observer la haute disponibilité en action</text>
+<text x="40" y="76" class="subtitle">La partie haute montre la topologie ; la partie basse montre le comportement dans le temps.</text>
 
-<g text-anchor="middle">
-  <rect x="28" y="72" width="154" height="134" rx="10" fill="#fff" stroke="#64748b" stroke-width="2"/>
-  <g transform="translate(79 89)" class="line">
-    <rect x="0" y="0" width="52" height="34" rx="4"/><line x1="0" y1="8" x2="52" y2="8"/>
-    <circle cx="7" cy="4" r="1.5" fill="#64748b" stroke="none"/><circle cx="12" cy="4" r="1.5" fill="#64748b" stroke="none"/>
-    <path d="M9 24h34M14 17h24"/>
-  </g>
-  <text x="105" y="139" class="card-title">Client HTTP</text>
-  <text x="105" y="164" class="small">requêtes HTTP</text>
-  <text x="105" y="185" class="small">rafraîchir pour tester</text>
+<rect x="40" y="108" width="1120" height="300" rx="18" fill="#fff" stroke="#cbd5e1" stroke-width="1.5"/>
+<text x="66" y="140" class="section">TOPOLOGIE RÉSEAU</text>
 
-  <rect x="222" y="72" width="202" height="134" rx="10" fill="#fff" stroke="#7c3aed" stroke-width="2"/>
-  <g transform="translate(297 87)" class="line" stroke="#7c3aed">
-    <circle cx="26" cy="18" r="10"/><path d="M16 18H2M36 18h14M26 8V0M26 28v8"/>
-    <path d="M7 14l-5 4 5 4M45 14l5 4-5 4M22 5l4-5 4 5M22 31l4 5 4-5"/>
-  </g>
-  <text x="323" y="139" class="card-title">HAProxy EC2</text>
-  <text x="323" y="164" class="label">roundrobin · health checks</text>
-  <text x="323" y="185" class="label">retire un backend DOWN</text>
-
-  <rect x="500" y="62" width="250" height="154" rx="10" fill="#fff" stroke="#2563eb" stroke-width="2"/>
-  <text x="625" y="88" class="card-title">Pool de backends EC2</text>
-
-  <rect x="522" y="101" width="206" height="42" rx="8" fill="#ecfdf5" stroke="#059669" stroke-width="1.5"/>
-  <g transform="translate(536 110)" class="line" stroke="#059669"><rect x="0" y="0" width="20" height="24" rx="2"/><line x1="5" y1="7" x2="15" y2="7"/><line x1="5" y1="13" x2="15" y2="13"/><circle cx="14" cy="19" r="1.5" fill="#059669" stroke="none"/></g>
-  <text x="565" y="127" text-anchor="start" font-family="Arial,sans-serif" font-size="12" fill="#065f46">backend 1 · hello · UP</text>
-
-  <rect x="522" y="157" width="206" height="42" rx="8" fill="#ecfdf5" stroke="#059669" stroke-width="1.5"/>
-  <g transform="translate(536 166)" class="line" stroke="#059669"><rect x="0" y="0" width="20" height="24" rx="2"/><line x1="5" y1="7" x2="15" y2="7"/><line x1="5" y1="13" x2="15" y2="13"/><circle cx="14" cy="19" r="1.5" fill="#059669" stroke="none"/></g>
-  <text x="565" y="183" text-anchor="start" font-family="Arial,sans-serif" font-size="12" fill="#065f46">backend 2 · hello · UP</text>
-
-  <rect x="790" y="72" width="142" height="134" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
-  <g transform="translate(841 84) scale(.8)" class="line" stroke="#059669">
-    <path d="M24 0l20 8v14c0 12-8 21-20 27C12 43 4 34 4 22V8Z"/>
-    <path d="M14 23l7 7 14-17"/>
-  </g>
-  <text x="861" y="145" class="ok-title">Service disponible</text>
-  <text x="861" y="172" class="ok-label">même avec 1 panne</text>
-  <text x="861" y="193" class="ok-label">retour automatique</text>
+<g>
+  <rect x="86" y="202" width="172" height="92" rx="14" fill="#f8fafc" stroke="#64748b" stroke-width="2"/>
+  <rect x="119" y="222" width="106" height="54" rx="6" fill="#fff" stroke="#64748b" stroke-width="2"/>
+  <line x1="119" y1="235" x2="225" y2="235" stroke="#64748b"/>
+  <text x="172" y="322" text-anchor="middle" class="section">Client HTTP</text>
+  <text x="172" y="345" text-anchor="middle" class="small">requêtes répétées</text>
 </g>
 
-<g class="line" marker-end="url(#arrow)">
-  <line x1="182" y1="139" x2="214" y2="139"/>
-  <path d="M424 139H462V122H492"/>
-  <path d="M424 139H462V178H492"/>
-  <line x1="750" y1="139" x2="782" y2="139"/>
+<path d="M258 248H390" class="line" marker-end="url(#arrow)"/>
+<text x="324" y="237" text-anchor="middle" class="tiny">HTTP</text>
+<g>
+  <circle cx="480" cy="248" r="68" fill="#f5f3ff" stroke="#7c3aed" stroke-width="3"/>
+  <circle cx="480" cy="248" r="25" fill="#fff" stroke="#7c3aed" stroke-width="2"/>
+  <path d="M455 248h-28M505 248h28M480 223v-28M480 273v28" class="line" stroke="#7c3aed"/>
+  <text x="480" y="253" text-anchor="middle" class="small" fill="#6d28d9">HAProxy</text>
+  <text x="480" y="337" text-anchor="middle" class="label">round-robin + health checks</text>
 </g>
 
-<rect x="28" y="232" width="904" height="40" rx="8" fill="#e2e8f0"/>
-<g font-family="Arial,sans-serif" font-size="13" font-weight="700" text-anchor="middle">
-  <circle cx="184" cy="252" r="6" fill="#059669"/><text x="270" y="257" fill="#334155">Normal : 2 backends UP</text>
-  <circle cx="444" cy="252" r="6" fill="#dc2626"/><text x="542" y="257" fill="#334155">Panne : 1 DOWN, service OK</text>
-  <circle cx="732" cy="252" r="6" fill="#059669"/><text x="824" y="257" fill="#334155">Reprise : 2 backends UP</text>
+<path d="M548 248H635V188H708" class="line" marker-end="url(#arrow)"/>
+<path d="M548 248H635V308H708" class="line" marker-end="url(#arrow)"/>
+
+<g>
+  <rect x="718" y="146" width="294" height="84" rx="14" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+  <rect x="742" y="166" width="46" height="46" rx="5" fill="#fff" stroke="#059669" stroke-width="2"/>
+  <line x1="752" y1="178" x2="778" y2="178" stroke="#059669"/><line x1="752" y1="190" x2="778" y2="190" stroke="#059669"/>
+  <text x="812" y="178" class="section">backend 1 · p5-hello-1</text>
+  <text x="812" y="204" class="small">répond avec son propre nom</text>
+  <circle cx="980" cy="188" r="10" fill="#059669"/><text x="980" y="193" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#fff">UP</text>
+
+  <rect x="718" y="266" width="294" height="84" rx="14" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+  <rect x="742" y="286" width="46" height="46" rx="5" fill="#fff" stroke="#059669" stroke-width="2"/>
+  <line x1="752" y1="298" x2="778" y2="298" stroke="#059669"/><line x1="752" y1="310" x2="778" y2="310" stroke="#059669"/>
+  <text x="812" y="298" class="section">backend 2 · p5-hello-2</text>
+  <text x="812" y="324" class="small">répond avec son propre nom</text>
+  <circle cx="980" cy="308" r="10" fill="#059669"/><text x="980" y="313" text-anchor="middle" font-family="Arial" font-size="11" font-weight="700" fill="#fff">UP</text>
 </g>
+
+<rect x="1035" y="181" width="92" height="134" rx="18" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+<path d="M1081 204l26 10v20c0 16-10 29-26 37-16-8-26-21-26-37v-20Z" fill="#fff" stroke="#059669" stroke-width="2"/>
+<path d="M1068 235l9 9 18-21" fill="none" stroke="#059669" stroke-width="3"/>
+<text x="1081" y="340" text-anchor="middle" class="small" fill="#047857">service</text>
+<text x="1081" y="358" text-anchor="middle" class="small" fill="#047857">disponible</text>
+
+<text x="40" y="452" class="section">SCÉNARIO DE TEST</text>
+<line x1="128" y1="524" x2="1072" y2="524" stroke="#94a3b8" stroke-width="4"/>
+<circle cx="220" cy="524" r="18" fill="#059669"/>
+<circle cx="600" cy="524" r="18" fill="#dc2626"/>
+<circle cx="980" cy="524" r="18" fill="#059669"/>
+
+<rect x="96" y="468" width="248" height="44" rx="12" fill="#ecfdf5" stroke="#059669"/>
+<text x="220" y="487" text-anchor="middle" class="section" fill="#047857">1 · ÉTAT NORMAL</text>
+<text x="220" y="505" text-anchor="middle" class="tiny">les deux noms alternent</text>
+
+<rect x="476" y="468" width="248" height="44" rx="12" fill="#fef2f2" stroke="#dc2626"/>
+<text x="600" y="487" text-anchor="middle" class="section" fill="#b91c1c">2 · PANNE CONTRÔLÉE</text>
+<text x="600" y="505" text-anchor="middle" class="tiny">1 backend DOWN, HTTP reste OK</text>
+
+<rect x="856" y="468" width="248" height="44" rx="12" fill="#ecfdf5" stroke="#059669"/>
+<text x="980" y="487" text-anchor="middle" class="section" fill="#047857">3 · REPRISE</text>
+<text x="980" y="505" text-anchor="middle" class="tiny">backend redémarré puis réintégré</text>
+
+<text x="220" y="570" text-anchor="middle" class="mono">roundrobin.sh</text>
+<text x="600" y="570" text-anchor="middle" class="mono">failover.sh --apply</text>
+<text x="980" y="570" text-anchor="middle" class="mono">2 backends UP</text>
 </svg>
