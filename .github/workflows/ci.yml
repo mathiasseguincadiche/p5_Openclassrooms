@@ -135,6 +135,7 @@ jobs:
           set -euo pipefail
           find scripts -type f -name '*.sh' -print0 \
             | xargs -0 -r -n1 bash -n
+
           find scripts -type f -name '*.sh' -print0 \
             | xargs -0 -r shellcheck --severity=error
 
@@ -151,21 +152,8 @@ jobs:
           python3 -m json.tool application/angular/package-lock.json >/dev/null
           ./scripts/commands/prepare-livrables.sh --structure-only
 
-      - name: Vérifier les schémas compacts
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import xml.etree.ElementTree as ET
-
-          files = sorted(Path('docs/schemas').glob('*.svg'))
-          if len(files) != 5:
-              raise SystemExit(f'5 schémas attendus, {len(files)} trouvés')
-          for file in files:
-              ET.parse(file)
-              if file.stat().st_size > 12000:
-                  raise SystemExit(f'{file.name} est trop lourd')
-          PY
+      - name: Vérifier les six schémas du parcours
+        run: python3 scripts/tools/audit_non_regression.py --schemas-only
 
   angular:
     name: Application Angular
