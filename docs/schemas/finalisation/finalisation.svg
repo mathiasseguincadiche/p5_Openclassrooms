@@ -5,37 +5,43 @@
   <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
   <marker id="redArrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#dc2626"/></marker>
   <marker id="greenArrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#059669"/></marker>
-  <style>
+  
+<style>
   .title{font:700 28px Inter,Arial,sans-serif;fill:#0f172a}
   .subtitle{font:15px Inter,Arial,sans-serif;fill:#475569}
   .section{font:700 16px Inter,Arial,sans-serif;fill:#0f172a}
   .label{font:14px Inter,Arial,sans-serif;fill:#334155}
-  .small{font:12px Inter,Arial,sans-serif;fill:#475569}
-  .tiny{font:11px Inter,Arial,sans-serif;fill:#64748b}
-  .mono{font:600 12px ui-monospace,SFMono-Regular,Consolas,monospace;fill:#334155}
+  .small{font:13px Inter,Arial,sans-serif;fill:#475569}
+  .tiny{font:12px Inter,Arial,sans-serif;fill:#64748b}
+  .mono{font:600 13px ui-monospace,SFMono-Regular,Consolas,monospace;fill:#334155}
   .line{fill:none;stroke:#475569;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   .soft{fill:#f8fafc;stroke:#cbd5e1;stroke-width:1.5}
   .panel{fill:#fff;stroke:#cbd5e1;stroke-width:1.5}
 </style>
+
 </defs>
 <rect width="1100" height="540" rx="18" fill="#f8fafc"/>
 <text x="40" y="48" class="title">Finalisation · fermer le projet proprement et sans coût résiduel</text>
 <text x="40" y="76" class="subtitle">Ce schéma adopte la logique d’une procédure de sortie : constituer, contrôler, détruire, auditer.</text>
+
 <rect x="44" y="120" width="320" height="330" rx="18" fill="#fff" stroke="#2563eb" stroke-width="2"/>
 <text x="68" y="154" class="section" fill="#1d4ed8">DOSSIER DE PREUVES</text>
 <g>
   <rect x="72" y="184" width="264" height="54" rx="10" fill="#eff6ff" stroke="#93c5fd"/>
   <text x="92" y="208" class="label">Exercice 1</text><text x="192" y="208" class="small">plan · Ansible · HTTP</text>
   <circle cx="311" cy="211" r="10" fill="#059669"/><path d="M305 211l4 4 8-10" fill="none" stroke="#fff" stroke-width="2"/>
+
   <rect x="72" y="252" width="264" height="54" rx="10" fill="#fff7ed" stroke="#fdba74"/>
   <text x="92" y="276" class="label">Exercice 2</text><text x="192" y="276" class="small">Discover · 3 graphes</text>
   <circle cx="311" cy="279" r="10" fill="#059669"/><path d="M305 279l4 4 8-10" fill="none" stroke="#fff" stroke-width="2"/>
+
   <rect x="72" y="320" width="264" height="54" rx="10" fill="#ecfdf5" stroke="#6ee7b7"/>
   <text x="92" y="344" class="label">Exercice 3</text><text x="192" y="344" class="small">round-robin · failover</text>
   <circle cx="311" cy="347" r="10" fill="#059669"/><path d="M305 347l4 4 8-10" fill="none" stroke="#fff" stroke-width="2"/>
 </g>
 <text x="68" y="410" class="mono">proofs/runtime/</text>
 <text x="68" y="432" class="small">sorties, journaux et captures hors Git</text>
+
 <path d="M364 285H430" class="line" marker-end="url(#arrow)"/>
 <path d="M520 124l96 48v104c0 69-39 121-96 153-57-32-96-84-96-153V172Z" fill="#fff" stroke="#d97706" stroke-width="2"/>
 <text x="520" y="197" text-anchor="middle" class="section">CONTRÔLE</text>
@@ -45,6 +51,7 @@
 <text x="516" y="307" class="small">secrets masqués</text>
 <text x="516" y="351" class="small">preuves lisibles</text>
 <text x="520" y="391" text-anchor="middle" class="mono">prepare-livrables.sh</text>
+
 <path d="M616 285H694" class="line" marker-end="url(#redArrow)"/>
 <rect x="704" y="120" width="166" height="330" rx="18" fill="#fff" stroke="#dc2626" stroke-width="2"/>
 <text x="787" y="154" text-anchor="middle" class="section" fill="#b91c1c">DÉTRUIRE</text>
@@ -56,6 +63,7 @@
 <text x="787" y="328" text-anchor="middle" class="small">EC2 · VPC · OpenSearch</text>
 <text x="787" y="354" text-anchor="middle" class="small">budget et restes du lab</text>
 <text x="787" y="410" text-anchor="middle" class="mono">destroy-aws.sh</text>
+
 <path d="M870 285H926" class="line" marker-end="url(#greenArrow)"/>
 <rect x="936" y="162" width="128" height="246" rx="24" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
 <path d="M1000 200l34 13v27c0 23-13 41-34 53-21-12-34-30-34-53v-27Z" fill="#fff" stroke="#059669" stroke-width="2"/>
@@ -63,6 +71,7 @@
 <text x="1000" y="330" text-anchor="middle" class="section" fill="#047857">AUDIT</text>
 <text x="1000" y="353" text-anchor="middle" class="small" fill="#047857">0 ressource P5</text>
 <text x="1000" y="374" text-anchor="middle" class="small" fill="#047857">0 coût oublié</text>
+
 <rect x="704" y="470" width="360" height="44" rx="22" fill="#059669"/>
 <text x="884" y="498" text-anchor="middle" font-family="Inter,Arial" font-size="17" font-weight="700" fill="#fff">VERDICT FINAL · LAB PROPRE</text>
 </svg>
