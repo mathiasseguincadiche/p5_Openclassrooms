@@ -1,97 +1,56 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="340" viewBox="0 0 1200 340" role="img" aria-labelledby="title desc" preserveAspectRatio="xMidYMid meet">
 <title id="title">Vue d’ensemble du projet P5</title>
-<desc id="desc">Carte du parcours reliant le poste DevOps local, les trois exercices AWS, les preuves et le nettoyage final.</desc>
+<desc id="desc">Parcours compact du poste DevOps local vers les trois exercices AWS, puis les preuves et le nettoyage.</desc>
 <defs>
-  <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
-  <marker id="arrowGreen" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#059669"/></marker>
-  
-<style>
-  .title{font:700 28px Inter,Arial,sans-serif;fill:#0f172a}
-  .subtitle{font:15px Inter,Arial,sans-serif;fill:#475569}
-  .section{font:700 16px Inter,Arial,sans-serif;fill:#0f172a}
-  .label{font:14px Inter,Arial,sans-serif;fill:#334155}
-  .small{font:13px Inter,Arial,sans-serif;fill:#475569}
-  .tiny{font:12px Inter,Arial,sans-serif;fill:#64748b}
-  .mono{font:600 13px ui-monospace,SFMono-Regular,Consolas,monospace;fill:#334155}
-  .line{fill:none;stroke:#475569;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-  .soft{fill:#f8fafc;stroke:#cbd5e1;stroke-width:1.5}
-  .panel{fill:#fff;stroke:#cbd5e1;stroke-width:1.5}
-</style>
-
+  <marker id="arrow" markerWidth="10" markerHeight="10" refX="8.8" refY="5" orient="auto">
+    <path d="M0 0L10 5L0 10Z" fill="#64748b"/>
+  </marker>
+  <marker id="arrowGreen" markerWidth="10" markerHeight="10" refX="8.8" refY="5" orient="auto">
+    <path d="M0 0L10 5L0 10Z" fill="#059669"/>
+  </marker>
 </defs>
-<rect width="1200" height="560" rx="18" fill="#f8fafc"/>
-<text x="40" y="48" class="title">P5 · une chaîne DevOps complète, du lab au nettoyage AWS</text>
-<text x="40" y="76" class="subtitle">La cohérence vient du parcours et des responsabilités, pas d’un gabarit répété.</text>
 
-<!-- Poste local -->
-<rect x="40" y="126" width="250" height="318" rx="18" fill="#fff" stroke="#64748b" stroke-width="2"/>
-<rect x="40" y="126" width="250" height="54" rx="18" fill="#e2e8f0"/>
-<rect x="40" y="162" width="250" height="18" fill="#e2e8f0"/>
-<text x="165" y="159" text-anchor="middle" class="section">POSTE DEVOPS LOCAL</text>
-<g transform="translate(128 194)" class="line" stroke="#64748b">
-  <rect x="0" y="0" width="74" height="50" rx="5"/>
-  <line x1="10" y1="14" x2="64" y2="14"/><line x1="10" y1="25" x2="64" y2="25"/><line x1="10" y1="36" x2="44" y2="36"/>
-  <line x1="28" y1="58" x2="46" y2="58"/><line x1="37" y1="50" x2="37" y2="58"/>
-</g>
-<text x="165" y="276" text-anchor="middle" class="section">Ubuntu Server 26.04</text>
-<text x="165" y="300" text-anchor="middle" class="small">Terraform · Ansible · AWS CLI</text>
-<text x="165" y="321" text-anchor="middle" class="small">Docker · Node.js · Git · scripts</text>
-<line x1="66" y1="342" x2="264" y2="342" stroke="#cbd5e1"/>
-<text x="68" y="370" class="label">1. Préparer et contrôler</text>
-<text x="68" y="392" class="small">identité · quotas · budget · SSH</text>
-<text x="68" y="419" class="label">2. Construire Angular</text>
-
-<!-- AWS cloud -->
-<path d="M390 126h640c55 0 100 42 100 94v176c0 27-22 48-49 48H390c-35 0-64-28-64-63V189c0-35 29-63 64-63Z" fill="#fff" stroke="#7c3aed" stroke-width="2"/>
-<text x="358" y="159" class="section" fill="#6d28d9">AWS · TROIS EXERCICES COMPLÉMENTAIRES</text>
-
-<!-- Ex1 -->
-<rect x="370" y="194" width="226" height="192" rx="16" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
-<circle cx="405" cy="228" r="18" fill="#2563eb"/><text x="405" y="234" text-anchor="middle" font-family="Inter,Arial" font-size="16" font-weight="700" fill="#fff">1</text>
-<text x="436" y="233" class="section">DÉPLOYER</text>
-<text x="392" y="271" class="label">Terraform crée</text>
-<text x="392" y="294" class="small">VPC · sécurité · EC2</text>
-<path d="M410 322h82" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow)"/>
-<text x="392" y="351" class="label">Ansible configure</text>
-<text x="392" y="374" class="small">NGINX + véritable build Angular</text>
-
-<!-- Ex2 -->
-<rect x="625" y="194" width="226" height="192" rx="16" fill="#fff7ed" stroke="#d97706" stroke-width="2"/>
-<circle cx="660" cy="228" r="18" fill="#d97706"/><text x="660" y="234" text-anchor="middle" font-family="Inter,Arial" font-size="16" font-weight="700" fill="#fff">2</text>
-<text x="691" y="233" class="section">OBSERVER</text>
-<path d="M654 277h44l10 10v45h-54Z" fill="none" stroke="#d97706" stroke-width="2"/>
-<line x1="665" y1="294" x2="697" y2="294" stroke="#d97706" stroke-width="2"/>
-<line x1="665" y1="306" x2="697" y2="306" stroke="#d97706" stroke-width="2"/>
-<path d="M730 335c0-18 15-33 33-33s33 15 33 33" fill="none" stroke="#d97706" stroke-width="3"/>
-<rect x="748" y="314" width="8" height="21" fill="#d97706"/><rect x="762" y="303" width="8" height="32" fill="#d97706"/><rect x="776" y="322" width="8" height="13" fill="#d97706"/>
-<text x="648" y="363" class="small">logs NGINX → OpenSearch</text>
-<text x="648" y="382" class="small">Discover + 3 visualisations</text>
-
-<!-- Ex3 -->
-<rect x="880" y="194" width="206" height="192" rx="16" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
-<circle cx="915" cy="228" r="18" fill="#059669"/><text x="915" y="234" text-anchor="middle" font-family="Inter,Arial" font-size="16" font-weight="700" fill="#fff">3</text>
-<text x="946" y="233" class="section">RÉSISTER</text>
-<circle cx="983" cy="292" r="24" fill="#fff" stroke="#059669" stroke-width="2"/>
-<text x="983" y="297" text-anchor="middle" class="small" fill="#047857">HAProxy</text>
-<path d="M983 316v25M983 341h-42M983 341h42" class="line" stroke="#059669"/>
-<rect x="919" y="347" width="44" height="28" rx="5" fill="#fff" stroke="#059669" stroke-width="2"/>
-<rect x="1003" y="347" width="44" height="28" rx="5" fill="#fff" stroke="#059669" stroke-width="2"/>
-<text x="902" y="395" class="small">round-robin · panne · reprise</text>
-
-<!-- Connecteurs -->
-<path d="M290 272H352" class="line" marker-end="url(#arrow)"/>
-<path d="M596 290H615" class="line" marker-end="url(#arrow)"/>
-<path d="M851 290H870" class="line" marker-end="url(#arrow)"/>
-
-<!-- Finalisation -->
-<rect x="360" y="474" width="770" height="56" rx="14" fill="#0f172a"/>
-<text x="388" y="509" font-family="Inter,Arial" font-size="15" font-weight="700" fill="#fff">FINALISER</text>
-<text x="492" y="509" font-family="Inter,Arial" font-size="14" fill="#e2e8f0">preuves réelles</text>
-<circle cx="612" cy="502" r="4" fill="#94a3b8"/>
-<text x="628" y="509" font-family="Inter,Arial" font-size="14" fill="#e2e8f0">3 livrables contrôlés</text>
-<circle cx="805" cy="502" r="4" fill="#94a3b8"/>
-<text x="821" y="509" font-family="Inter,Arial" font-size="14" fill="#e2e8f0">terraform destroy</text>
-<circle cx="963" cy="502" r="4" fill="#94a3b8"/>
-<text x="979" y="509" font-family="Inter,Arial" font-size="14" fill="#86efac">audit : LAB PROPRE</text>
-<path d="M1086 386v76" class="line" stroke="#059669" marker-end="url(#arrowGreen)"/>
+<style>
+  text{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+  .h{font-size:22px;font-weight:750;fill:#0f172a}
+  .k{font-size:12px;font-weight:800;letter-spacing:1.3px;fill:#64748b}
+  .t{font-size:16px;font-weight:750;fill:#0f172a}
+  .b{font-size:14px;font-weight:600;fill:#334155}
+  .s{font-size:12.5px;font-weight:500;fill:#475569}
+  .m{font-family:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;font-size:12px;font-weight:650;fill:#334155}
+  .arrow{fill:none;stroke:#64748b;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrow)}
+  .flow{fill:none;stroke:#94a3b8;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .card{fill:#fff;stroke:#cbd5e1;stroke-width:1.5}
+  .chip{fill:#fff;stroke:#cbd5e1;stroke-width:1.2}
+</style>
+<rect width="1200" height="340" rx="22" fill="#f8fafc"/>
+<text x="42" y="48" class="k" text-anchor="start">DU LAB LOCAL AU NETTOYAGE AWS</text>
+<text x="42" y="78" class="h" text-anchor="start">Une seule chaîne exécutable, cinq portes de validation.</text>
+<rect x="308" y="105" width="650" height="164" rx="20" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.8"/><text x="332" y="133" class="k" text-anchor="start" fill="#7c3aed">PÉRIMÈTRE AWS</text>
+<rect x="42" y="132" width="220" height="116" rx="16" fill="#f1f5f9" stroke="#64748b" stroke-width="1.8"/><circle cx="72" cy="162" r="17" fill="#64748b"/><text x="72" y="167" class="t" text-anchor="middle" fill="#fff">0</text>
+<text x="98" y="161" class="t" text-anchor="start" fill="#0f172a">PRÉPARER</text>
+<text x="62" y="198" class="s" text-anchor="start" fill="#475569">Ubuntu · outils · accès</text>
+<text x="62" y="221" class="s" text-anchor="start" fill="#475569">GO TERRAFORM</text>
+<rect x="332" y="151" width="176" height="90" rx="16" fill="#eff6ff" stroke="#2563eb" stroke-width="1.8"/><circle cx="362" cy="181" r="17" fill="#2563eb"/><text x="362" y="186" class="t" text-anchor="middle" fill="#fff">1</text>
+<text x="388" y="180" class="t" text-anchor="start" fill="#0f172a">DÉPLOYER</text>
+<text x="352" y="217" class="s" text-anchor="start" fill="#475569">Terraform + Ansible</text>
+<text x="352" y="240" class="s" text-anchor="start" fill="#475569">Angular sur EC2</text>
+<rect x="533" y="151" width="176" height="90" rx="16" fill="#fff7ed" stroke="#d97706" stroke-width="1.8"/><circle cx="563" cy="181" r="17" fill="#d97706"/><text x="563" y="186" class="t" text-anchor="middle" fill="#fff">2</text>
+<text x="589" y="180" class="t" text-anchor="start" fill="#0f172a">OBSERVER</text>
+<text x="553" y="217" class="s" text-anchor="start" fill="#475569">NGINX → OpenSearch</text>
+<text x="553" y="240" class="s" text-anchor="start" fill="#475569">3 visualisations</text>
+<rect x="734" y="151" width="176" height="90" rx="16" fill="#ecfdf5" stroke="#059669" stroke-width="1.8"/><circle cx="764" cy="181" r="17" fill="#059669"/><text x="764" y="186" class="t" text-anchor="middle" fill="#fff">3</text>
+<text x="790" y="180" class="t" text-anchor="start" fill="#0f172a">RÉSISTER</text>
+<text x="754" y="217" class="s" text-anchor="start" fill="#475569">HAProxy + 2 backends</text>
+<text x="754" y="240" class="s" text-anchor="start" fill="#475569">panne et reprise</text>
+<rect x="984" y="132" width="174" height="116" rx="16" fill="#0f172a" stroke="#0f172a" stroke-width="1.8"/><circle cx="1014" cy="162" r="17" fill="#059669"/><text x="1014" y="167" class="t" text-anchor="middle" fill="#fff">✓</text>
+<text x="1040" y="161" class="t" text-anchor="start" fill="#fff">FINALISER</text>
+<text x="1004" y="198" class="s" text-anchor="start" fill="#cbd5e1">preuves · livrables</text>
+<text x="1004" y="221" class="s" text-anchor="start" fill="#cbd5e1">destroy + audit</text>
+<path d="M262 190H322" class="arrow"/><path d="M508 196H523" class="arrow"/><path d="M709 196H724" class="arrow"/><path d="M910 190H974" class="arrow"/><text x="42" y="304" class="k" text-anchor="start">SORTIE ATTENDUE</text>
+<rect x="178" y="284" width="190" height="30" rx="15" fill="#eff6ff" stroke="#93c5fd"/><text x="273.0" y="304" class="s" text-anchor="middle" fill="#1d4ed8">application accessible</text>
+<rect x="382" y="284" width="178" height="30" rx="15" fill="#fff7ed" stroke="#fdba74"/><text x="471.0" y="304" class="s" text-anchor="middle" fill="#b45309">dashboard exploitable</text>
+<rect x="574" y="284" width="184" height="30" rx="15" fill="#ecfdf5" stroke="#6ee7b7"/><text x="666.0" y="304" class="s" text-anchor="middle" fill="#047857">service disponible</text>
+<rect x="772" y="284" width="156" height="30" rx="15" fill="#f5f3ff" stroke="#c4b5fd"/><text x="850.0" y="304" class="s" text-anchor="middle" fill="#6d28d9">preuves prêtes</text>
+<rect x="942" y="284" width="216" height="30" rx="15" fill="#0f172a" stroke="#0f172a"/><text x="1050.0" y="304" class="s" text-anchor="middle" fill="#fff">LAB PROPRE · 0 coût</text>
 </svg>
