@@ -19,8 +19,8 @@ test('le composant racine conserve le contrat Angular attendu', () => {
   assert.match(componentSource, /standalone:\s*true/);
   assert.match(componentSource, /ChangeDetectionStrategy\.OnPush/);
   assert.equal((componentSource.match(/step:\s*'/g) ?? []).length, 5);
-  assert.equal((componentSource.match(/status:\s*'Prêt'/g) ?? []).length, 2);
-  assert.equal((componentSource.match(/status:\s*'À exécuter'/g) ?? []).length, 3);
+  assert.equal((componentSource.match(/^\s+status:\s*'Prêt',/gm) ?? []).length, 2);
+  assert.equal((componentSource.match(/^\s+status:\s*'À exécuter',/gm) ?? []).length, 3);
 });
 
 test('le template présente le parcours, les preuves et une structure accessible', () => {
@@ -34,6 +34,6 @@ test('le template présente le parcours, les preuves et une structure accessible
 
 test('le démarrage Angular échoue explicitement en cas d’erreur', () => {
   assert.match(bootstrapSource, /bootstrapApplication\(AppComponent/);
-  assert.match(bootstrapSource, /catch\(\(error\)/);
+  assert.match(bootstrapSource, /catch\(\(error(?::\s*unknown)?\)/);
   assert.match(bootstrapSource, /console\.error/);
 });
