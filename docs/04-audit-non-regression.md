@@ -1,68 +1,116 @@
 # 04 — Audit de non-régression
 
-Cet audit compare la version précédant la simplification à la structure actuelle.
-Son objectif n’est pas de restaurer tout l’ancien volume, mais de garantir
-qu’aucune capacité utile au P5 n’a été perdue.
+Cet audit protège le projet P5 contre deux dérives opposées : l'accumulation de
+contenus génériques hors périmètre et la simplification qui supprimerait une
+capacité utile. Le parcours principal doit rester simple, mais aucune fonction
+nécessaire à la réalisation, à la preuve ou au nettoyage ne doit disparaître.
 
-## Méthode
+## Référence comparée
 
-Chaque suppression est classée dans l’une des catégories suivantes :
+La référence précédant la simplification est le commit
+`2e0600fbf573815077cf541e30a0d9d01591a180`.
 
-1. **hors périmètre** : ne correspond pas aux trois exercices évalués ;
-2. **doublon** : même information disponible ailleurs dans une forme plus claire ;
-3. **automatisation opaque** : masque les commandes que l’étudiant doit apprendre ;
-4. **capacité utile** : doit être conservée ou réintroduite.
+La comparaison avec l'état actuel porte sur les fichiers, les fonctions, les
+commandes, les contrôles de sécurité et les informations propres au P5. Le
+nombre de lignes ou de fichiers n'est pas un critère de qualité : une suppression
+n'est acceptable que lorsque son contenu est hors périmètre, faux, redondant ou
+remplacé par une solution plus sûre.
 
-## Capacités réintroduites
+## Résultat de l'audit
 
-| Capacité utile | Régression constatée | Correction actuelle |
+Aucune capacité indispensable aux trois exercices officiels n'est perdue dans
+l'état actuel. Plusieurs suppressions anciennes étaient légitimes, mais des
+informations utiles avaient été trop résumées et deux affirmations étaient
+devenues obsolètes. Elles sont maintenant corrigées et protégées par un contrat
+exécutable.
+
+### Capacités conservées ou renforcées
+
+| Capacité | Avant la simplification | État actuel |
 | --- | --- | --- |
-| Préparation de la VM | ancienne phase 0 supprimée | guide Ubuntu Server 26.04 et bootstrap autonome |
-| Préparation du compte AWS | identité seulement détectée | étape 0B avec compte, région, quotas, budget et collisions |
-| Contrôle avant déploiement | script supprimé | `pre-deployment-check.sh` rétabli et renforcé |
-| Garde-fou de compte | risque de mauvais compte Terraform | `allowed_account_ids` dans les trois modules |
-| Suivi des coûts | aucune condition préalable | budget volontaire et alertes 50 %, 80 % et 100 % |
-| Nettoyage vérifiable | contrôle manuel uniquement | audit AWS non destructif après `destroy` |
-| Chaîne de l’application | simple page témoin sans sources structurées | `application/angular/` et build vers Ansible |
-| Diagnostic du lab | contrôle devenu trop minimal | vérification OS, Docker, AWS, SSH, Terraform et structure |
-| Compréhension de l’arborescence | fichiers techniques dispersés | flux source → build → Ansible → EC2 documenté |
-| Protection CI | aucune vérification de l’étape 0 | contrôles dédiés ajoutés à la CI |
-| Schémas | SVG trop larges et chargés | schémas compacts, sans filtre ni effet décoratif |
+| Préparation du poste | phase interactive dépendante de bibliothèques Bash | bootstrap autonome, contrôle du lab et versions fixées |
+| Préparation AWS | vérifications partielles | identité, compte autorisé, région, quotas, budget et garde-fous Terraform |
+| Application de l'exercice 1 | page statique présentée comme substitut | véritable projet Angular, verrouillage npm et build comparé à l'artefact Ansible |
+| Infrastructure | modules Terraform présents | trois modules conservés, compte verrouillé, tags communs et accès `/32` |
+| Déploiement Ansible | chemins devenus incohérents | playbook, artefact Angular et configuration NGINX synchronisés |
+| OpenSearch | procédure peu reproductible | mapping strict, 64 événements, import contrôlé et vérification des agrégations |
+| Haute disponibilité | déploiement sans preuve complète | round-robin, panne contrôlée, restauration par `trap` et réintégration vérifiée |
+| Livrables | gabarits isolés | trois livrables, contrôle de structure et refus des preuves fictives |
+| Nettoyage | destruction insuffisamment vérifiée | ordre 3 → 2 → 1, confirmation stricte puis audit AWS non destructif |
+| Documentation | contenu volumineux et parfois contradictoire | parcours principal ciblé, décisions techniques et journal séparés |
+| Schémas | Mermaid ou gabarit SVG répété | six SVG légers, autonomes et spécialisés selon le message à expliquer |
 
-## Suppressions maintenues volontairement
+## Suppressions acceptées après comparaison
 
-| Élément ancien | Décision | Justification |
+| Élément supprimé | Classement | Motif |
 | --- | --- | --- |
-| Exercices génériques 4 et 5 | supprimés | le P5 évalué contient trois exercices |
-| Templates Kubernetes | supprimés | technologie hors périmètre du projet |
-| Prometheus, Grafana et Vault | supprimés | ne participent pas aux livrables demandés |
-| Déploiement intégral en un clic | supprimé | empêche la lecture des plans et la compréhension |
-| Automatisation du dashboard | supprimée | les visualisations doivent être construites et comprises |
-| Bibliothèques Bash volumineuses | remplacées | scripts autonomes plus faciles à auditer |
+| `docs/exercises/` avec cinq exercices génériques | hors périmètre | décrivait Docker, CI et Kubernetes au lieu des trois exercices officiels |
+| `TEMPLATES/` Docker, Kubernetes, GitHub Actions et Terraform | hors périmètre | modèles généralistes sans rôle dans les livrables P5 |
+| anciens schémas Mermaid d'architecture générique | trompeur | représentaient Kubernetes, plusieurs clouds et une production inexistante |
+| `run-all.sh`, `runbook.sh` et les phases automatiques | automatisation dangereuse | masquaient `plan`, `apply`, la création manuelle du dashboard et les décisions humaines |
+| `kibana-api.sh` | automatisation contraire à l'évaluation | les trois visualisations doivent être comprises et construites manuellement |
+| bibliothèques Bash partagées volumineuses | doublon | les scripts critiques sont autonomes et plus simples à auditer |
+| guides et antisèches généralistes | ressource non spécifique | ne constituaient pas une source de vérité du projet P5 |
 
-## Contrat de non-régression
+Ces suppressions ne doivent pas être interprétées comme une autorisation de
+retirer une fonction équivalente du parcours actuel. Par exemple, le lanceur
+« tout en un » reste supprimé, mais la préparation, les contrôles, les tests,
+les preuves et le nettoyage restent tous disponibles séparément.
 
-Une évolution ne doit pas être fusionnée si elle retire ou casse :
+## Contrat exécutable
 
-- l’installation et la validation de la VM de lab ;
-- l’étape 0B, son fichier d’exemple et le verdict `GO AWS` ;
-- le verrouillage du compte et les tags communs Terraform ;
-- la vérification des quotas, d’OpenSearch et du budget ;
-- le contrôle des ressources AWS restantes ;
-- les trois modules Terraform ;
-- la source ou la préparation de l’application Angular ;
-- le playbook et la configuration NGINX ;
-- l’échantillon de logs et la procédure OpenSearch ;
-- la configuration HAProxy et les tests de panne ;
-- les livrables, les preuves ou le nettoyage AWS ;
-- les contrôles de sécurité relatifs aux secrets et aux états Terraform.
+Le contrôle central est :
+
+```bash
+python3 scripts/tools/audit_non_regression.py
+```
+
+Il vérifie notamment :
+
+- les trois guides et les trois modules Terraform ;
+- le parcours complet de la préparation au nettoyage ;
+- les sources Angular et l'artefact réellement compilé ;
+- les garde-fous de compte, de région, d'adresse `/32` et de chiffrement ;
+- les données OpenSearch et les tests HAProxy ;
+- la présence des trois livrables et des scripts de destruction et d'audit ;
+- l'absence d'états, de variables réelles et d'inventaires sensibles ;
+- l'absence d'affirmations documentaires devenues fausses ;
+- exactement six SVG intégrés au README, valides, accessibles et inférieurs à
+  8 Kio chacun ;
+- plusieurs canevas afin d'empêcher le retour à un gabarit unique appliqué à
+  tous les schémas.
+
+Le workflow `.github/workflows/non-regression.yml` exécute ce contrat sur chaque
+pull request et chaque push vers `main`. Une refonte qui retire une capacité
+critique ou réintroduit une incohérence doit donc échouer avant fusion.
+
+## Règles de conception des schémas
+
+La cohérence repose sur une grammaire commune, pas sur la répétition du même
+composant :
+
+- une seule question principale par schéma ;
+- une composition choisie selon le besoin : carte, fondations, couloirs,
+  pipeline de données, topologie avec chronologie ou procédure de fermeture ;
+- couleurs sémantiques stables et texte court ;
+- aucun élément décoratif sans fonction explicative ;
+- aucun script, image encodée, filtre ou dépendance externe ;
+- dimensions adaptées à un README et conservation de la lisibilité après mise
+  à l'échelle ;
+- détails d'exécution conservés dans le texte Markdown, pas entassés dans le
+  dessin.
 
 ## Limites honnêtes
 
-Le dépôt ne peut pas contenir le véritable starter Angular tant que ses sources
-n’ont pas été fournies ou que leur redistribution n’est pas autorisée. Cette
-absence est visible, documentée et contrôlée comme avertissement.
+Cet audit garantit la présence et la cohérence des capacités du dépôt. Il ne
+peut pas certifier sans exécution réelle :
 
-Le dépôt ne peut pas prouver seul l’état du MFA root, l’absence de clés root,
-la validité du moyen de paiement ou la réception d’un courriel de budget. Ces
-points restent des confirmations manuelles obligatoires de l’étape 0B.
+- le résultat d'un `terraform apply` dans le compte AWS de l'étudiant ;
+- l'état du MFA root, du moyen de paiement ou des quotas à un instant donné ;
+- la réception des alertes budgétaires ;
+- les captures et sorties qui doivent provenir du véritable environnement ;
+- l'absence de toute ressource AWS en dehors du périmètre inspecté par les
+  scripts.
+
+Ces points restent des preuves humaines et opérationnelles obligatoires. Ils ne
+doivent jamais être simulés dans le dépôt.
