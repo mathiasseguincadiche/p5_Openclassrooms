@@ -4,23 +4,26 @@
 <defs>
   <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
   <marker id="arrowGreen" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#059669"/></marker>
-  <style>
+  
+<style>
   .title{font:700 28px Inter,Arial,sans-serif;fill:#0f172a}
   .subtitle{font:15px Inter,Arial,sans-serif;fill:#475569}
   .section{font:700 16px Inter,Arial,sans-serif;fill:#0f172a}
   .label{font:14px Inter,Arial,sans-serif;fill:#334155}
-  .small{font:12px Inter,Arial,sans-serif;fill:#475569}
-  .tiny{font:11px Inter,Arial,sans-serif;fill:#64748b}
-  .mono{font:600 12px ui-monospace,SFMono-Regular,Consolas,monospace;fill:#334155}
+  .small{font:13px Inter,Arial,sans-serif;fill:#475569}
+  .tiny{font:12px Inter,Arial,sans-serif;fill:#64748b}
+  .mono{font:600 13px ui-monospace,SFMono-Regular,Consolas,monospace;fill:#334155}
   .line{fill:none;stroke:#475569;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   .soft{fill:#f8fafc;stroke:#cbd5e1;stroke-width:1.5}
   .panel{fill:#fff;stroke:#cbd5e1;stroke-width:1.5}
 </style>
+
 </defs>
 <rect width="1200" height="560" rx="18" fill="#f8fafc"/>
 <text x="40" y="48" class="title">P5 · une chaîne DevOps complète, du lab au nettoyage AWS</text>
 <text x="40" y="76" class="subtitle">La cohérence vient du parcours et des responsabilités, pas d’un gabarit répété.</text>
 
+<!-- Poste local -->
 <rect x="40" y="126" width="250" height="318" rx="18" fill="#fff" stroke="#64748b" stroke-width="2"/>
 <rect x="40" y="126" width="250" height="54" rx="18" fill="#e2e8f0"/>
 <rect x="40" y="162" width="250" height="18" fill="#e2e8f0"/>
@@ -38,9 +41,11 @@
 <text x="68" y="392" class="small">identité · quotas · budget · SSH</text>
 <text x="68" y="419" class="label">2. Construire Angular</text>
 
+<!-- AWS cloud -->
 <path d="M390 126h640c55 0 100 42 100 94v176c0 27-22 48-49 48H390c-35 0-64-28-64-63V189c0-35 29-63 64-63Z" fill="#fff" stroke="#7c3aed" stroke-width="2"/>
 <text x="358" y="159" class="section" fill="#6d28d9">AWS · TROIS EXERCICES COMPLÉMENTAIRES</text>
 
+<!-- Ex1 -->
 <rect x="370" y="194" width="226" height="192" rx="16" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
 <circle cx="405" cy="228" r="18" fill="#2563eb"/><text x="405" y="234" text-anchor="middle" font-family="Inter,Arial" font-size="16" font-weight="700" fill="#fff">1</text>
 <text x="436" y="233" class="section">DÉPLOYER</text>
@@ -50,6 +55,7 @@
 <text x="392" y="351" class="label">Ansible configure</text>
 <text x="392" y="374" class="small">NGINX + véritable build Angular</text>
 
+<!-- Ex2 -->
 <rect x="625" y="194" width="226" height="192" rx="16" fill="#fff7ed" stroke="#d97706" stroke-width="2"/>
 <circle cx="660" cy="228" r="18" fill="#d97706"/><text x="660" y="234" text-anchor="middle" font-family="Inter,Arial" font-size="16" font-weight="700" fill="#fff">2</text>
 <text x="691" y="233" class="section">OBSERVER</text>
@@ -61,6 +67,7 @@
 <text x="648" y="363" class="small">logs NGINX → OpenSearch</text>
 <text x="648" y="382" class="small">Discover + 3 visualisations</text>
 
+<!-- Ex3 -->
 <rect x="880" y="194" width="206" height="192" rx="16" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
 <circle cx="915" cy="228" r="18" fill="#059669"/><text x="915" y="234" text-anchor="middle" font-family="Inter,Arial" font-size="16" font-weight="700" fill="#fff">3</text>
 <text x="946" y="233" class="section">RÉSISTER</text>
@@ -71,10 +78,12 @@
 <rect x="1003" y="347" width="44" height="28" rx="5" fill="#fff" stroke="#059669" stroke-width="2"/>
 <text x="902" y="395" class="small">round-robin · panne · reprise</text>
 
+<!-- Connecteurs -->
 <path d="M290 272H352" class="line" marker-end="url(#arrow)"/>
 <path d="M596 290H615" class="line" marker-end="url(#arrow)"/>
 <path d="M851 290H870" class="line" marker-end="url(#arrow)"/>
 
+<!-- Finalisation -->
 <rect x="360" y="474" width="770" height="56" rx="14" fill="#0f172a"/>
 <text x="388" y="509" font-family="Inter,Arial" font-size="15" font-weight="700" fill="#fff">FINALISER</text>
 <text x="492" y="509" font-family="Inter,Arial" font-size="14" fill="#e2e8f0">preuves réelles</text>
