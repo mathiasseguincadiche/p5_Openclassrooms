@@ -26,6 +26,9 @@
     "@angular/compiler-cli": "^21.2.0",
     "typescript": "~5.9.2"
   },
+  "overrides": {
+    "undici": "7.29.0"
+  },
   "engines": {
     "node": ">=20.19.0 <25",
     "npm": ">=10"
