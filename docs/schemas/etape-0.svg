@@ -3,40 +3,49 @@
 <desc id="desc">Vue en fondations montrant le système, l’outillage, les accès, les garde-fous et la porte de validation GO TERRAFORM.</desc>
 <defs>
   <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
-  <style>
+  
+<style>
   .title{font:700 28px Inter,Arial,sans-serif;fill:#0f172a}
   .subtitle{font:15px Inter,Arial,sans-serif;fill:#475569}
   .section{font:700 16px Inter,Arial,sans-serif;fill:#0f172a}
   .label{font:14px Inter,Arial,sans-serif;fill:#334155}
-  .small{font:12px Inter,Arial,sans-serif;fill:#475569}
-  .tiny{font:11px Inter,Arial,sans-serif;fill:#64748b}
-  .mono{font:600 12px ui-monospace,SFMono-Regular,Consolas,monospace;fill:#334155}
+  .small{font:13px Inter,Arial,sans-serif;fill:#475569}
+  .tiny{font:12px Inter,Arial,sans-serif;fill:#64748b}
+  .mono{font:600 13px ui-monospace,SFMono-Regular,Consolas,monospace;fill:#334155}
   .line{fill:none;stroke:#475569;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   .soft{fill:#f8fafc;stroke:#cbd5e1;stroke-width:1.5}
   .panel{fill:#fff;stroke:#cbd5e1;stroke-width:1.5}
 </style>
+
 </defs>
 <rect width="1100" height="520" rx="18" fill="#f8fafc"/>
 <text x="40" y="48" class="title">Étape 0 · bâtir un socle fiable avant toute création AWS</text>
 <text x="40" y="76" class="subtitle">Chaque couche doit être valide avant d’ouvrir la porte vers Terraform.</text>
+
+<!-- Foundation stack -->
 <g>
   <rect x="54" y="366" width="670" height="72" rx="12" fill="#e2e8f0" stroke="#64748b" stroke-width="2"/>
   <text x="82" y="398" class="section">1 · SYSTÈME</text>
   <text x="235" y="398" class="label">Ubuntu Server 26.04 · OpenSSH · mises à jour · VM p5-devops</text>
   <text x="82" y="421" class="small">Base locale stable, sans interface graphique, administrable à distance.</text>
+
   <rect x="88" y="284" width="636" height="72" rx="12" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
   <text x="116" y="316" class="section">2 · OUTILLAGE</text>
   <text x="281" y="316" class="label">Terraform · Ansible · AWS CLI · Docker · Node.js · Git</text>
   <text x="116" y="339" class="small">Versions contrôlées par les scripts de bootstrap et de vérification.</text>
+
   <rect x="122" y="202" width="602" height="72" rx="12" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2"/>
   <text x="150" y="234" class="section">3 · ACCÈS</text>
   <text x="272" y="234" class="label">profil AWS · compte autorisé · région · clé SSH · dépôt</text>
   <text x="150" y="257" class="small">Permissions locales strictes et identité distante explicitement vérifiée.</text>
+
   <rect x="156" y="120" width="568" height="72" rx="12" fill="#fff7ed" stroke="#d97706" stroke-width="2"/>
   <text x="184" y="152" class="section">4 · GARDE-FOUS</text>
   <text x="354" y="152" class="label">quotas · budget · adresse /32 · variables Terraform · coûts</text>
   <text x="184" y="175" class="small">Les erreurs coûteuses ou dangereuses sont bloquées avant le plan.</text>
 </g>
+
+<!-- Gate -->
 <path d="M775 125h245v309H775Z" fill="#fff" stroke="#cbd5e1" stroke-width="2"/>
 <text x="898" y="158" text-anchor="middle" class="section">PORTE DE VALIDATION</text>
 <g transform="translate(830 190)">
@@ -50,6 +59,7 @@
 <text x="898" y="374" text-anchor="middle" class="mono">pre-deployment-check.sh</text>
 <rect x="812" y="398" width="172" height="48" rx="24" fill="#059669"/>
 <text x="898" y="428" text-anchor="middle" font-family="Inter,Arial" font-size="17" font-weight="700" fill="#fff">GO TERRAFORM</text>
+
 <path d="M724 279H764" class="line" marker-end="url(#arrow)"/>
 <text x="54" y="477" class="small">Principe de sécurité : aucune ressource AWS n’est créée pendant cette étape ; seule la préparation du budget peut être appliquée explicitement.</text>
 </svg>
