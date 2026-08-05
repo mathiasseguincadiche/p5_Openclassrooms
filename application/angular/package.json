@@ -6,7 +6,10 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
-    "build:production": "ng build --configuration production"
+    "build:production": "ng build --configuration production",
+    "test": "node --test tests/*.test.mjs",
+    "lint": "tsc -p tsconfig.app.json --noEmit",
+    "security:dependencies": "npm audit --audit-level=high"
   },
   "dependencies": {
     "@angular/common": "^21.2.0",
