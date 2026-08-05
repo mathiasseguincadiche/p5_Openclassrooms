@@ -1,6 +1,7 @@
 # =============================================================================
 # EXERCICE 2 : Domaine Amazon OpenSearch
 # Projet P5 OpenClassrooms - Déployer et suivre l'infrastructure as code
+# La valeur de référence OpenSearch_2.19 reste configurable par tfvars.
 # =============================================================================
 
 terraform {
