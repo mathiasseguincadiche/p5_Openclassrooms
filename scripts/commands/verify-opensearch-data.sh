@@ -13,7 +13,7 @@ show_help() {
 Usage: verify-opensearch-data.sh [options]
 
 Options:
-  --endpoint URL       URL HTTPS du domaine OpenSearch
+  --endpoint URL       URL HTTPS AWS ou URL HTTP locale sur localhost
   --min-documents N    nombre minimal de documents attendu (défaut : 64)
   --proof-dir CHEMIN   dossier local des preuves techniques
   -h, --help           afficher cette aide
@@ -62,13 +62,20 @@ done
     exit 2
 }
 
+valid_endpoint() {
+    local endpoint="$1"
+    [[ "$endpoint" =~ ^https://[A-Za-z0-9.-]+(:[0-9]+)?$ ]] \
+        || [[ "$endpoint" =~ ^http://(127[.]0[.]0[.]1|localhost)(:[0-9]+)?$ ]]
+}
+
 if [[ -z "$ENDPOINT" ]]; then
     ENDPOINT="$(terraform -chdir="$PROJECT_ROOT/terraform/exercice-2" \
         output -raw opensearch_endpoint 2>/dev/null || true)"
 fi
 ENDPOINT="${ENDPOINT%/}"
-if [[ ! "$ENDPOINT" =~ ^https://[A-Za-z0-9.-]+$ ]]; then
-    printf 'Endpoint OpenSearch HTTPS invalide ou absent : %s\n' "$ENDPOINT" >&2
+if ! valid_endpoint "$ENDPOINT"; then
+    printf 'Endpoint OpenSearch invalide ou absent : %s\n' "$ENDPOINT" >&2
+    printf 'HTTP sans TLS est accepté uniquement sur localhost pour les tests.\n' >&2
     exit 1
 fi
 

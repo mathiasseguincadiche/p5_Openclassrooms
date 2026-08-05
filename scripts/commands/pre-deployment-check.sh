@@ -92,6 +92,16 @@ if command -v node >/dev/null 2>&1; then
         && ok "Node.js ${NODE_VERSION}" \
         || ko "Node.js ${NODE_VERSION} attendu ; $(node --version) détecté"
 fi
+if command -v terraform >/dev/null 2>&1; then
+    [[ "$(terraform version -json 2>/dev/null | jq -r '.terraform_version' 2>/dev/null)" == "$TERRAFORM_VERSION" ]] \
+        && ok "Terraform ${TERRAFORM_VERSION}" \
+        || ko "Terraform ${TERRAFORM_VERSION} attendu"
+fi
+if command -v ansible-playbook >/dev/null 2>&1; then
+    ansible-playbook --version | head -n 1 | grep -Fq "core ${ANSIBLE_CORE_VERSION}" \
+        && ok "Ansible Core ${ANSIBLE_CORE_VERSION}" \
+        || ko "Ansible Core ${ANSIBLE_CORE_VERSION} attendu"
+fi
 
 if command -v docker >/dev/null 2>&1; then
     docker info >/dev/null 2>&1 \
@@ -114,8 +124,16 @@ printf '\nVariables Terraform locales\n'
 for module in exercice-1 exercice-2 exercice-3; do
     [[ -f "terraform/${module}/terraform.tfvars" ]] \
         && ok "terraform/${module}/terraform.tfvars" \
-        || ko "créez terraform/${module}/terraform.tfvars depuis le fichier .example"
+        || ko "créez terraform/${module}/terraform.tfvars depuis environment/aws-readiness.env"
 done
+
+printf '\nSynchronisation environnement vers Terraform\n'
+if bash "$SCRIPT_DIR/sync-terraform-tfvars.sh" \
+    --config "$CONFIG_FILE" --check; then
+    ok "les trois terraform.tfvars correspondent à aws-readiness.env"
+else
+    ko "relancez sync-terraform-tfvars.sh --config '$CONFIG_FILE' --apply"
+fi
 
 printf '\nApplication Angular et NGINX\n'
 angular_files=(

@@ -4,3 +4,8 @@ expected_aws_account_id = "000000000000"
 
 # Remplacez cette valeur par votre adresse IPv4 publique suivie de /32.
 your_ip_cidr = "203.0.113.10/32"
+
+opensearch_domain_name    = "p5-opensearch"
+opensearch_engine_version = "OpenSearch_2.19"
+opensearch_instance_type  = "t3.small.search"
+opensearch_volume_size_gb = 10

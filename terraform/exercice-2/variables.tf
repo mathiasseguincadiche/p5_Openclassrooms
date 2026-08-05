@@ -31,3 +31,47 @@ variable "your_ip_cidr" {
     error_message = "your_ip_cidr doit être votre véritable adresse IPv4 publique au format x.x.x.x/32."
   }
 }
+
+variable "opensearch_domain_name" {
+  description = "Nom du domaine Amazon OpenSearch"
+  type        = string
+  default     = "p5-opensearch"
+
+  validation {
+    condition     = can(regex("^[a-z][a-z0-9-]{2,27}$", var.opensearch_domain_name))
+    error_message = "opensearch_domain_name doit contenir 3 à 28 caractères minuscules, chiffres ou tirets."
+  }
+}
+
+variable "opensearch_engine_version" {
+  description = "Version du moteur Amazon OpenSearch"
+  type        = string
+  default     = "OpenSearch_2.19"
+
+  validation {
+    condition     = can(regex("^OpenSearch_[0-9]+[.][0-9]+$", var.opensearch_engine_version))
+    error_message = "opensearch_engine_version doit utiliser le format OpenSearch_X.Y."
+  }
+}
+
+variable "opensearch_instance_type" {
+  description = "Type d'instance du domaine Amazon OpenSearch"
+  type        = string
+  default     = "t3.small.search"
+
+  validation {
+    condition     = endswith(var.opensearch_instance_type, ".search")
+    error_message = "opensearch_instance_type doit être un type d'instance OpenSearch se terminant par .search."
+  }
+}
+
+variable "opensearch_volume_size_gb" {
+  description = "Taille du volume EBS gp3 du domaine OpenSearch"
+  type        = number
+  default     = 10
+
+  validation {
+    condition     = var.opensearch_volume_size_gb >= 10 && var.opensearch_volume_size_gb <= 100
+    error_message = "opensearch_volume_size_gb doit être compris entre 10 et 100 Gio pour ce lab."
+  }
+}

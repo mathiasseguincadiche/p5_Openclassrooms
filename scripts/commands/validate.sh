@@ -39,6 +39,7 @@ validate_required_files() {
         application/angular/package.json
         application/angular/package-lock.json
         application/angular/src/main.ts
+        application/angular/tests/app-contract.test.mjs
         ansible/files/angular-app/index.html
         ansible/files/nginx-angular.conf
         ansible/playbooks/deploy.yml
@@ -47,6 +48,7 @@ validate_required_files() {
         scripts/tools/audit_non_regression.py
         scripts/tools/convert-nginx-logs.py
         scripts/tools/generer-haproxy-config.sh
+        scripts/commands/sync-terraform-tfvars.sh
         scripts/commands/prepare-angular-artifact.sh
         scripts/commands/verify-angular-deployment.sh
         scripts/commands/generate-nginx-traffic.sh
@@ -57,6 +59,9 @@ validate_required_files() {
         scripts/commands/test-haproxy-failover.sh
         scripts/commands/destroy-aws.sh
         scripts/commands/check-aws-cleanup.sh
+        scripts/tests/test-nginx-angular.sh
+        scripts/tests/test-haproxy-containers.sh
+        scripts/tests/test-opensearch-local.sh
     )
     local path
     for path in "${required[@]}"; do
@@ -126,6 +131,9 @@ validate_schemas() {
 
 validate_angular() {
     npm ci --prefix "$PROJECT_ROOT/application/angular" --no-audit --no-fund
+    npm run lint --prefix "$PROJECT_ROOT/application/angular"
+    npm test --prefix "$PROJECT_ROOT/application/angular"
+    npm run security:dependencies --prefix "$PROJECT_ROOT/application/angular"
     npm run build --prefix "$PROJECT_ROOT/application/angular"
 
     local build_index build_dir
@@ -167,18 +175,6 @@ if len(methods) < 3 or len(paths) < 5 or len(buckets) < 4:
 PY
 }
 
-validate_haproxy() {
-    local config
-    config="$(mktemp)"
-    trap 'rm -f "$config"' RETURN
-    "$PROJECT_ROOT/scripts/tools/generer-haproxy-config.sh" \
-        10.0.1.10 10.0.2.10 "$config"
-    docker run --rm \
-        --volume "$config:/usr/local/etc/haproxy/haproxy.cfg:ro" \
-        haproxy:3.2-alpine \
-        haproxy -c -f /usr/local/etc/haproxy/haproxy.cfg
-}
-
 validate_terraform() {
     local module
     for module in exercice-1 exercice-2 exercice-3; do
@@ -192,7 +188,7 @@ cd "$PROJECT_ROOT" || exit 1
 run_check 'Périmètre : trois exercices et aucun Mermaid' validate_scope
 run_check 'Fichiers critiques du parcours' validate_required_files
 run_check 'Contrat exécutable de non-régression' validate_non_regression
-run_check 'Permissions exécutables des scripts' validate_permissions
+run_check 'Permissions exécutables des scripts historiques' validate_permissions
 run_check 'Chemins Ansible' validate_paths
 run_check 'JSON du projet' validate_json
 run_check 'Six schémas SVG adaptés au README' validate_schemas
@@ -205,10 +201,20 @@ if command -v shellcheck >/dev/null 2>&1; then
         'find scripts -type f -name "*.sh" -print0 | xargs -0 -r shellcheck --severity=error'
 fi
 if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1; then
-    run_check 'Build Angular identique à l’artefact Ansible' validate_angular
+    run_check 'Angular : tests, lint, audit et build reproductible' validate_angular
 fi
 if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
-    run_check 'Configuration HAProxy' validate_haproxy
+    if [[ -d "$PROJECT_ROOT/application/angular/dist" ]]; then
+        run_check 'Intégration Angular + NGINX' \
+            bash "$PROJECT_ROOT/scripts/tests/test-nginx-angular.sh"
+    fi
+    run_check 'HAProxy : round-robin, panne et reprise' \
+        bash "$PROJECT_ROOT/scripts/tests/test-haproxy-containers.sh"
+    if [[ "${P5_FULL_INTEGRATION:-0}" == 1 ]] \
+        && command -v terraform >/dev/null 2>&1; then
+        run_check 'OpenSearch local complet' \
+            bash "$PROJECT_ROOT/scripts/tests/test-opensearch-local.sh"
+    fi
 fi
 if command -v terraform >/dev/null 2>&1; then
     run_check 'Format Terraform' terraform fmt -check -recursive "$PROJECT_ROOT/terraform"
@@ -229,6 +235,9 @@ fi
 printf '\n'
 if [[ "$ERRORS" -eq 0 ]]; then
     printf '✅ Tous les contrôles disponibles ont réussi.\n'
+    if [[ "${P5_FULL_INTEGRATION:-0}" != 1 ]]; then
+        printf 'ℹ️  Utilisez P5_FULL_INTEGRATION=1 pour inclure OpenSearch local.\n'
+    fi
     exit 0
 fi
 printf '❌ %s contrôle(s) en échec.\n' "$ERRORS"

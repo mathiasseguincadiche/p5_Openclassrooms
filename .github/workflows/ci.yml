@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   coherence:
-    name: Périmètre, parcours complet et Bash
+    name: Périmètre, variables, sécurité et Bash
     runs-on: ubuntu-latest
     steps:
       - name: Récupérer le dépôt
@@ -54,6 +54,7 @@ jobs:
             application/angular/package.json
             application/angular/package-lock.json
             application/angular/src/main.ts
+            application/angular/tests/app-contract.test.mjs
             ansible/files/angular-app/index.html
             ansible/files/nginx-angular.conf
             ansible/playbooks/deploy.yml
@@ -62,6 +63,7 @@ jobs:
             proofs/README.md
             scripts/tools/convert-nginx-logs.py
             scripts/tools/generer-haproxy-config.sh
+            scripts/commands/sync-terraform-tfvars.sh
             scripts/commands/prepare-angular-artifact.sh
             scripts/commands/verify-angular-deployment.sh
             scripts/commands/generate-nginx-traffic.sh
@@ -71,6 +73,9 @@ jobs:
             scripts/commands/test-haproxy-roundrobin.sh
             scripts/commands/test-haproxy-failover.sh
             scripts/commands/prepare-livrables.sh
+            scripts/tests/test-nginx-angular.sh
+            scripts/tests/test-haproxy-containers.sh
+            scripts/tests/test-opensearch-local.sh
           )
           for path in "${required[@]}"; do test -e "$path"; done
           test ! -e environment/aws-readiness.env
@@ -78,13 +83,15 @@ jobs:
           grep -q '../files/nginx-angular.conf' ansible/playbooks/deploy.yml
           grep -q '<app-root' ansible/files/angular-app/index.html
           grep -q 'NODE_VERSION=22.22.0' environment/versions.env
+          grep -q 'ANSIBLE_CORE_VERSION=2.20.1' environment/versions.env
+          grep -q 'TERRAFORM_VERSION=1.15.8' environment/versions.env
           if grep -q 'Interface web pour l.Exercice 1' \
             ansible/files/angular-app/index.html; then
             echo 'La page HTML témoin a été réintroduite.' >&2
             exit 1
           fi
 
-      - name: Vérifier les permissions exécutables
+      - name: Vérifier les permissions exécutables historiques
         shell: bash
         run: |
           set -euo pipefail
@@ -106,7 +113,7 @@ jobs:
           )
           for script in "${scripts[@]}"; do test -x "$script"; done
 
-      - name: Vérifier les garde-fous AWS
+      - name: Vérifier les garde-fous AWS et EC2
         shell: bash
         run: |
           set -euo pipefail
@@ -118,10 +125,18 @@ jobs:
             grep -q 'expected_aws_account_id' \
               "terraform/${module}/terraform.tfvars.example"
           done
-          grep -q 'P5_ROOT_MFA_CONFIRMED=no' \
-            environment/aws-readiness.env.example
-          grep -q 'P5_REQUIRED_STANDARD_VCPUS=8' \
-            environment/aws-readiness.env.example
+          for module in exercice-1 exercice-3; do
+            grep -q 'http_tokens.*=.*"required"' "terraform/${module}/main.tf"
+            grep -q 'encrypted.*=.*true' "terraform/${module}/main.tf"
+          done
+          grep -q 'opensearch_domain_name' terraform/exercice-2/variables.tf
+          grep -q 'opensearch_engine_version' terraform/exercice-2/variables.tf
+          grep -q 'opensearch_instance_type' terraform/exercice-2/variables.tf
+          grep -q 'opensearch_volume_size_gb' terraform/exercice-2/variables.tf
+          grep -q 'P5_SSH_PUBLIC_KEY_PATH=' environment/aws-readiness.env.example
+          grep -q 'P5_OPENSEARCH_VOLUME_SIZE_GB=10' environment/aws-readiness.env.example
+          grep -q 'P5_ROOT_MFA_CONFIRMED=no' environment/aws-readiness.env.example
+          grep -q 'P5_REQUIRED_STANDARD_VCPUS=8' environment/aws-readiness.env.example
           if grep -Eq '^[[:space:]]*terraform[[:space:]]+(apply|destroy)([[:space:]]|$)' \
             scripts/commands/check-aws-readiness.sh \
             scripts/commands/check-aws-cleanup.sh; then
@@ -129,13 +144,29 @@ jobs:
             exit 1
           fi
 
+      - name: Tester la génération et la cohérence des tfvars
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp environment/aws-readiness.env.example /tmp/aws-readiness.env
+          sed -i \
+            -e 's/P5_EXPECTED_ACCOUNT_ID=000000000000/P5_EXPECTED_ACCOUNT_ID=123456789012/' \
+            -e 's#P5_PUBLIC_IP_CIDR=203.0.113.10/32#P5_PUBLIC_IP_CIDR=198.51.100.42/32#' \
+            /tmp/aws-readiness.env
+          bash scripts/commands/sync-terraform-tfvars.sh \
+            --config /tmp/aws-readiness.env --apply
+          bash scripts/commands/sync-terraform-tfvars.sh \
+            --config /tmp/aws-readiness.env --check
+          for module in exercice-1 exercice-2 exercice-3; do
+            test "$(stat -c '%a' "terraform/${module}/terraform.tfvars")" = 600
+          done
+
       - name: Vérifier la syntaxe et la qualité Bash
         shell: bash
         run: |
           set -euo pipefail
           find scripts -type f -name '*.sh' -print0 \
             | xargs -0 -r -n1 bash -n
-
           find scripts -type f -name '*.sh' -print0 \
             | xargs -0 -r shellcheck --severity=error
 
@@ -156,7 +187,7 @@ jobs:
         run: python3 scripts/tools/audit_non_regression.py --schemas-only
 
   angular:
-    name: Application Angular
+    name: Angular, TypeScript et NGINX réel
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -165,10 +196,16 @@ jobs:
           node-version: 22.22.0
           cache: npm
           cache-dependency-path: application/angular/package-lock.json
-      - name: Installer et construire
+      - name: Installer les dépendances verrouillées
+        run: npm ci --prefix application/angular --no-audit --no-fund
+      - name: Vérifier TypeScript et le contrat applicatif
         run: |
-          npm ci --prefix application/angular --no-audit --no-fund
-          npm run build --prefix application/angular
+          npm run lint --prefix application/angular
+          npm test --prefix application/angular
+      - name: Auditer les dépendances de production
+        run: npm run security:dependencies --prefix application/angular
+      - name: Construire l’application
+        run: npm run build --prefix application/angular
       - name: Vérifier la synchronisation avec Ansible
         shell: bash
         run: |
@@ -179,57 +216,31 @@ jobs:
           test "${#build_indexes[@]}" -eq 1
           build_dir="$(dirname "${build_indexes[0]}")"
           diff -qr "$build_dir" ansible/files/angular-app
+      - name: Servir le build avec la vraie configuration NGINX
+        run: bash scripts/tests/test-nginx-angular.sh
 
-  opensearch_data:
-    name: Données OpenSearch
+  opensearch:
+    name: OpenSearch local, Bulk et agrégations
     runs-on: ubuntu-latest
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v7
-      - name: Convertir et contrôler l’échantillon
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 -m py_compile scripts/tools/convert-nginx-logs.py
-          python3 scripts/tools/convert-nginx-logs.py \
-            terraform/exercice-2/samples/nginx-access.log.sample \
-            --output /tmp/nginx-access.bulk.ndjson
-          test "$(wc -l < /tmp/nginx-access.bulk.ndjson)" -eq 128
-          python3 - <<'PY'
-          import json
-          from datetime import datetime
-          from pathlib import Path
-
-          lines = Path('/tmp/nginx-access.bulk.ndjson').read_text().splitlines()
-          documents = [json.loads(line) for line in lines[1::2]]
-          methods = {doc['http_method'] for doc in documents}
-          paths = {doc['url_path'] for doc in documents}
-          buckets = {
-              (stamp.date().isoformat(), 0 if stamp.hour < 12 else 12)
-              for stamp in (
-                  datetime.fromisoformat(doc['@timestamp']) for doc in documents
-              )
-          }
-          if len(documents) != 64:
-              raise SystemExit('64 documents attendus')
-          if len(methods) < 3 or len(paths) < 5 or len(buckets) < 4:
-              raise SystemExit('Échantillon insuffisant pour les visualisations')
-          PY
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.15.8
+      - name: Préparer le noyau pour OpenSearch
+        run: sudo sysctl -w vm.max_map_count=262144
+      - name: Tester OpenSearch en conteneur éphémère
+        run: bash scripts/tests/test-opensearch-local.sh
 
   haproxy:
-    name: Configuration HAProxy
+    name: HAProxy round-robin, panne et reprise
     runs-on: ubuntu-latest
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v7
-      - name: Générer et valider la configuration
-        shell: bash
-        run: |
-          set -euo pipefail
-          ./scripts/tools/generer-haproxy-config.sh \
-            10.0.1.10 10.0.2.10 /tmp/haproxy.cfg
-          docker run --rm \
-            --volume /tmp/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro \
-            haproxy:3.2-alpine \
-            haproxy -c -f /usr/local/etc/haproxy/haproxy.cfg
+      - name: Tester la haute disponibilité en conteneurs
+        run: bash scripts/tests/test-haproxy-containers.sh
 
   yaml:
     name: YAML
@@ -274,7 +285,7 @@ jobs:
           fail: true
 
   configurations:
-    name: Ansible et NGINX
+    name: Ansible 2.20.1 et NGINX
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -286,9 +297,13 @@ jobs:
             docker run --rm -i hadolint/hadolint:v2.14.0-alpine \
               hadolint --failure-threshold error - < "${dockerfile}"
           done < <(find . -type f -name 'Dockerfile*' -print0)
-      - run: >-
-          python -m pip install --disable-pip-version-check
-          'ansible-core>=2.18,<2.20'
+      - name: Installer la version Ansible du lab
+        shell: bash
+        run: |
+          set -euo pipefail
+          source environment/versions.env
+          python -m pip install --disable-pip-version-check "$ANSIBLE_CORE_SPEC"
+          ansible-playbook --version | head -n 1 | grep -F "core ${ANSIBLE_CORE_VERSION}"
       - run: >-
           ansible-playbook --syntax-check
           --inventory ansible/inventories/hosts_aws.example

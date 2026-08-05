@@ -35,19 +35,20 @@ fi
 export DEBIAN_FRONTEND=noninteractive
 ARCH="$(dpkg --print-architecture)"
 CODENAME="${UBUNTU_CODENAME:-${VERSION_CODENAME:-}}"
+TMP_DIR="$(mktemp -d)"
+trap 'rm -rf "$TMP_DIR"' EXIT
 
 if [[ -z "$CODENAME" ]]; then
     printf 'Nom de version Ubuntu introuvable dans /etc/os-release.\n' >&2
     exit 1
 fi
 
-printf '1/8 — Mise à jour du système\n'
+printf '1/9 — Mise à jour du système\n'
 sudo apt-get update
 sudo apt-get full-upgrade -y
 
-printf '2/8 — Paquets de base\n'
+printf '2/9 — Paquets de base\n'
 sudo apt-get install -y \
-    ansible-core \
     bash-completion \
     build-essential \
     ca-certificates \
@@ -69,17 +70,32 @@ sudo apt-get install -y \
     yamllint \
     zip
 
-printf '3/8 — Terraform depuis HashiCorp\n'
-sudo install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://apt.releases.hashicorp.com/gpg \
-    | sudo gpg --dearmor --yes -o /etc/apt/keyrings/hashicorp-archive-keyring.gpg
-printf 'deb [arch=%s signed-by=/etc/apt/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com %s main\n' \
-    "$ARCH" "$CODENAME" \
-    | sudo tee /etc/apt/sources.list.d/hashicorp.list >/dev/null
-sudo apt-get update
-sudo apt-get install -y terraform
+printf '3/9 — Terraform %s depuis l’archive officielle\n' "$TERRAFORM_VERSION"
+case "$ARCH" in
+    amd64) TERRAFORM_ARCH="amd64" ;;
+    arm64) TERRAFORM_ARCH="arm64" ;;
+    *)
+        printf 'Architecture Terraform non gérée automatiquement : %s.\n' "$ARCH" >&2
+        exit 1
+        ;;
+esac
+TERRAFORM_ARCHIVE="terraform_${TERRAFORM_VERSION}_linux_${TERRAFORM_ARCH}.zip"
+TERRAFORM_BASE_URL="https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}"
+curl -fsSL "$TERRAFORM_BASE_URL/$TERRAFORM_ARCHIVE" \
+    -o "$TMP_DIR/$TERRAFORM_ARCHIVE"
+curl -fsSL "$TERRAFORM_BASE_URL/terraform_${TERRAFORM_VERSION}_SHA256SUMS" \
+    -o "$TMP_DIR/terraform_${TERRAFORM_VERSION}_SHA256SUMS"
+(
+    cd "$TMP_DIR"
+    grep " ${TERRAFORM_ARCHIVE}$" "terraform_${TERRAFORM_VERSION}_SHA256SUMS" \
+        | sha256sum -c -
+)
+mkdir -p "$TMP_DIR/terraform"
+unzip -q -o "$TMP_DIR/$TERRAFORM_ARCHIVE" -d "$TMP_DIR/terraform"
+sudo install -m 0755 "$TMP_DIR/terraform/terraform" /usr/local/bin/terraform
 
-printf '4/8 — Docker Engine et Compose\n'
+printf '4/9 — Docker Engine et Compose\n'
+sudo install -m 0755 -d /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
     | sudo gpg --dearmor --yes -o /etc/apt/keyrings/docker.gpg
 sudo chmod a+r /etc/apt/keyrings/docker.gpg
@@ -96,7 +112,7 @@ sudo apt-get install -y \
 sudo systemctl enable --now docker
 sudo usermod -aG docker "$USER"
 
-printf '5/8 — AWS CLI v2\n'
+printf '5/9 — AWS CLI v2\n'
 case "$ARCH" in
     amd64) AWS_ARCH="x86_64" ;;
     arm64) AWS_ARCH="aarch64" ;;
@@ -105,8 +121,6 @@ case "$ARCH" in
         exit 1
         ;;
 esac
-TMP_DIR="$(mktemp -d)"
-trap 'rm -rf "$TMP_DIR"' EXIT
 curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-${AWS_ARCH}.zip" \
     -o "$TMP_DIR/awscliv2.zip"
 unzip -q "$TMP_DIR/awscliv2.zip" -d "$TMP_DIR"
@@ -116,7 +130,11 @@ else
     sudo "$TMP_DIR/aws/install"
 fi
 
-printf '6/8 — Node.js %s avec NVM\n' "$NODE_VERSION"
+printf '6/9 — Ansible Core %s avec pipx\n' "$ANSIBLE_CORE_VERSION"
+pipx install --force "$ANSIBLE_CORE_SPEC"
+export PATH="$HOME/.local/bin:$PATH"
+
+printf '7/9 — Node.js %s avec NVM\n' "$NODE_VERSION"
 export NVM_DIR="$HOME/.nvm"
 if [[ ! -s "$NVM_DIR/nvm.sh" ]]; then
     curl -fsSL "https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VERSION}/install.sh" | bash
@@ -127,10 +145,10 @@ nvm install "$NODE_VERSION"
 nvm alias default "$NODE_VERSION"
 nvm use "$NODE_VERSION"
 
-printf '7/8 — Outils de qualité Markdown\n'
+printf '8/9 — Outils de qualité Markdown\n'
 npm install --global markdownlint-cli2
 
-printf '8/8 — Vérification des versions\n'
+printf '9/9 — Vérification des versions\n'
 printf 'Ubuntu      : %s\n' "${PRETTY_NAME:-inconnu}"
 printf 'Git         : %s\n' "$(git --version)"
 printf 'Python      : %s\n' "$(python3 --version)"
@@ -145,6 +163,15 @@ printf 'ShellCheck  : %s\n' "$(shellcheck --version | awk '/version:/ {print $2}
 
 if [[ "$(node --version)" != "v${NODE_VERSION}" ]]; then
     printf 'La version Node.js installée ne correspond pas à %s.\n' "$NODE_VERSION" >&2
+    exit 1
+fi
+if [[ "$(terraform version -json | jq -r '.terraform_version')" != "$TERRAFORM_VERSION" ]]; then
+    printf 'La version Terraform installée ne correspond pas à %s.\n' "$TERRAFORM_VERSION" >&2
+    exit 1
+fi
+if ! ansible-playbook --version | head -n 1 | grep -Fq "core ${ANSIBLE_CORE_VERSION}"; then
+    printf 'La version Ansible Core installée ne correspond pas à %s.\n' \
+        "$ANSIBLE_CORE_VERSION" >&2
     exit 1
 fi
 

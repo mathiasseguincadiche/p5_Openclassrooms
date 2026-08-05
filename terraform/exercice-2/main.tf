@@ -1,6 +1,7 @@
 # =============================================================================
 # EXERCICE 2 : Domaine Amazon OpenSearch
 # Projet P5 OpenClassrooms - Déployer et suivre l'infrastructure as code
+# La valeur de référence OpenSearch_2.19 reste configurable par tfvars.
 # =============================================================================
 
 terraform {
@@ -31,11 +32,11 @@ provider "aws" {
 data "aws_caller_identity" "current" {}
 
 resource "aws_opensearch_domain" "p5" {
-  domain_name    = "p5-opensearch"
-  engine_version = "OpenSearch_2.19"
+  domain_name    = var.opensearch_domain_name
+  engine_version = var.opensearch_engine_version
 
   cluster_config {
-    instance_type            = "t3.small.search"
+    instance_type            = var.opensearch_instance_type
     instance_count           = 1
     dedicated_master_enabled = false
     zone_awareness_enabled   = false
@@ -43,7 +44,7 @@ resource "aws_opensearch_domain" "p5" {
 
   ebs_options {
     ebs_enabled = true
-    volume_size = 10
+    volume_size = var.opensearch_volume_size_gb
     volume_type = "gp3"
   }
 
@@ -69,7 +70,7 @@ resource "aws_opensearch_domain" "p5" {
           AWS = "*"
         }
         Action   = "es:*"
-        Resource = "arn:aws:es:${var.aws_region}:${data.aws_caller_identity.current.account_id}:domain/p5-opensearch/*"
+        Resource = "arn:aws:es:${var.aws_region}:${data.aws_caller_identity.current.account_id}:domain/${var.opensearch_domain_name}/*"
         Condition = {
           IpAddress = {
             "aws:SourceIp" = [var.your_ip_cidr]
@@ -80,6 +81,6 @@ resource "aws_opensearch_domain" "p5" {
   })
 
   tags = {
-    Domain = "p5-opensearch"
+    Domain = var.opensearch_domain_name
   }
 }

@@ -148,10 +148,23 @@ resource "aws_instance" "p5_hello" {
   count                       = 2
   ami                         = coalesce(var.ami_id, data.aws_ami.ubuntu.id)
   instance_type               = var.instance_type
-  subnet_id                   = data.aws_subnets.p5_public_subnets.ids[count.index % length(data.aws_subnets.p5_public_subnets.ids)]
+  subnet_id                   = sort(data.aws_subnets.p5_public_subnets.ids)[count.index % length(data.aws_subnets.p5_public_subnets.ids)]
+  associate_public_ip_address = true
   vpc_security_group_ids      = [aws_security_group.p5_hello_sg.id]
   key_name                    = var.key_name
   user_data_replace_on_change = true
+
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 1
+  }
+
+  root_block_device {
+    encrypted             = true
+    volume_type           = "gp3"
+    delete_on_termination = true
+  }
 
   user_data = <<-EOF
     #!/usr/bin/env bash
@@ -180,10 +193,23 @@ resource "aws_instance" "p5_hello" {
 resource "aws_instance" "p5_haproxy" {
   ami                         = coalesce(var.ami_id, data.aws_ami.ubuntu.id)
   instance_type               = var.instance_type
-  subnet_id                   = data.aws_subnets.p5_public_subnets.ids[0]
+  subnet_id                   = sort(data.aws_subnets.p5_public_subnets.ids)[0]
+  associate_public_ip_address = true
   vpc_security_group_ids      = [aws_security_group.p5_haproxy_sg.id]
   key_name                    = var.key_name
   user_data_replace_on_change = true
+
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 1
+  }
+
+  root_block_device {
+    encrypted             = true
+    volume_type           = "gp3"
+    delete_on_termination = true
+  }
 
   user_data = <<-EOF
     #!/usr/bin/env bash
