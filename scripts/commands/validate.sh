@@ -44,6 +44,7 @@ validate_required_files() {
         ansible/playbooks/deploy.yml
         terraform/exercice-2/opensearch/index-template.json
         terraform/exercice-2/samples/nginx-access.log.sample
+        scripts/tools/audit_non_regression.py
         scripts/tools/convert-nginx-logs.py
         scripts/tools/generer-haproxy-config.sh
         scripts/commands/prepare-angular-artifact.sh
@@ -54,6 +55,8 @@ validate_required_files() {
         scripts/commands/verify-opensearch-data.sh
         scripts/commands/test-haproxy-roundrobin.sh
         scripts/commands/test-haproxy-failover.sh
+        scripts/commands/destroy-aws.sh
+        scripts/commands/check-aws-cleanup.sh
     )
     local path
     for path in "${required[@]}"; do
@@ -79,6 +82,8 @@ validate_permissions() {
         test-haproxy-roundrobin.sh
         test-haproxy-failover.sh
         prepare-livrables.sh
+        destroy-aws.sh
+        check-aws-cleanup.sh
     )
     local script
     for script in "${scripts[@]}"; do
@@ -111,21 +116,12 @@ validate_json() {
     python3 -m json.tool "$PROJECT_ROOT/application/angular/package-lock.json" >/dev/null
 }
 
-validate_svg() {
-    python3 - "$PROJECT_ROOT" <<'PYXML'
-from pathlib import Path
-import sys
-import xml.etree.ElementTree as ET
+validate_non_regression() {
+    python3 "$PROJECT_ROOT/scripts/tools/audit_non_regression.py"
+}
 
-root = Path(sys.argv[1])
-files = sorted((root / 'docs/schemas').glob('*.svg'))
-if len(files) != 5:
-    raise SystemExit(f'5 schémas SVG attendus, {len(files)} trouvés')
-for file in files:
-    ET.parse(file)
-    if file.stat().st_size > 12000:
-        raise SystemExit(f'{file.name} est trop lourd pour la documentation')
-PYXML
+validate_schemas() {
+    python3 "$PROJECT_ROOT/scripts/tools/audit_non_regression.py" --schemas-only
 }
 
 validate_angular() {
@@ -194,11 +190,12 @@ validate_terraform() {
 
 cd "$PROJECT_ROOT" || exit 1
 run_check 'Périmètre : trois exercices et aucun Mermaid' validate_scope
-run_check 'Contrat de non-régression complet' validate_required_files
+run_check 'Fichiers critiques du parcours' validate_required_files
+run_check 'Contrat exécutable de non-régression' validate_non_regression
 run_check 'Permissions exécutables des scripts' validate_permissions
 run_check 'Chemins Ansible' validate_paths
 run_check 'JSON du projet' validate_json
-run_check 'Cinq schémas SVG compacts' validate_svg
+run_check 'Six schémas SVG adaptés au README' validate_schemas
 run_check 'Syntaxe Bash' validate_bash
 run_check 'Données OpenSearch reproductibles' validate_opensearch_data
 run_check 'Structure des livrables' "$SCRIPT_DIR/prepare-livrables.sh" --structure-only
