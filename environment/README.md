@@ -8,8 +8,8 @@ administrée en ligne de commande.
 environment/
 ├── README.md
 ├── apt-packages.txt             # paquets système utiles au lab
-├── versions.env                 # versions et canaux de référence
-└── aws-readiness.env.example    # paramètres AWS sans secret
+├── versions.env                 # versions exactes de référence
+└── aws-readiness.env.example    # paramètres AWS et Terraform sans secret
 ```
 
 Le fichier réel `aws-readiness.env` est local et ignoré par Git.
@@ -21,6 +21,10 @@ L’installation est effectuée par :
 ```bash
 ./scripts/commands/bootstrap-ubuntu-server.sh
 ```
+
+Terraform est installé depuis l’archive officielle avec vérification SHA-256,
+sans dépendre de la disponibilité d’un dépôt APT pour Ubuntu 26.04. Ansible Core
+est installé avec `pipx` dans la version exacte déclarée dans `versions.env`.
 
 Le contrôle local est effectué par :
 
@@ -40,16 +44,25 @@ cp environment/aws-readiness.env.example environment/aws-readiness.env
 $EDITOR environment/aws-readiness.env
 ```
 
+Générez ensuite les trois fichiers Terraform depuis cette source unique :
+
+```bash
+bash scripts/commands/sync-terraform-tfvars.sh --apply
+bash scripts/commands/sync-terraform-tfvars.sh --check
+```
+
 Puis exécutez :
 
 ```bash
 ./scripts/commands/setup-aws-guardrails.sh --apply
 ./scripts/commands/check-aws-readiness.sh --stage initial
+./scripts/commands/pre-deployment-check.sh --stage initial
 ```
 
-Ce contrôle vérifie le compte autorisé, l’identité, la région, l’adresse `/32`,
-les quotas, EC2, OpenSearch, le budget et la cohérence des variables Terraform.
-Il ne crée aucune infrastructure des exercices.
+Le contrôle pré-déploiement refuse le verdict `GO TERRAFORM` si un
+`terraform.tfvars` diverge de `aws-readiness.env`. Il vérifie également le compte
+autorisé, l’identité, la région, l’adresse `/32`, les quotas, EC2, OpenSearch et
+le budget. Il ne crée aucune infrastructure des exercices.
 
 Le bootstrap ne lance ni `aws configure`, ni `terraform apply`, ni création de
 clé SSH. La création du budget exige explicitement `--apply`. Les secrets et les
