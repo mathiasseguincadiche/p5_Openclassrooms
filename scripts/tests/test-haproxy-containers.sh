@@ -42,7 +42,7 @@ docker network create "$network" >/dev/null
 for backend in 1 2; do
     name_variable="backend_${backend}"
     container_name="${!name_variable}"
-    docker run --rm -d \
+    docker run -d \
         --name "$container_name" \
         --network "$network" \
         --volume "$tmp_dir/backend-${backend}:/usr/share/nginx/html:ro" \
