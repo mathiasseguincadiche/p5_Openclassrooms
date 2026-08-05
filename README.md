@@ -2,51 +2,51 @@
 
 [![CI](https://github.com/mathiasseguincadiche/p5_Openclassrooms/actions/workflows/ci.yml/badge.svg)](https://github.com/mathiasseguincadiche/p5_Openclassrooms/actions/workflows/ci.yml)
 
-Ce dépôt contient l’**implémentation exécutable** et le **parcours technique** du
-projet P5. Il conserve exactement les trois exercices officiels et les relie
-dans une seule chaîne : préparer le lab, valider AWS, déployer, observer,
-tester la disponibilité, produire les preuves puis supprimer les ressources.
+Ce dépôt contient l’**implémentation exécutable** du projet P5 et son parcours de validation. Les trois exercices officiels sont reliés dans une chaîne unique : préparer le lab, valider AWS, déployer, observer, tester la disponibilité, constituer les preuves, puis supprimer les ressources.
 
-> **Choix d’implémentation : 100 % AWS.** La VM Ubuntu Server 26.04 sert de
-> poste DevOps. Terraform, Ansible, AWS CLI, Angular, Docker et les scripts de
-> preuve s’exécutent depuis cette VM ; les infrastructures évaluées sont créées
-> dans AWS.
+> **Périmètre : 100 % AWS.** La VM Ubuntu Server 26.04 est le poste DevOps. Terraform, Ansible, AWS CLI, Angular, Docker et les scripts de preuve s’y exécutent ; les infrastructures évaluées sont créées dans AWS.
 
 ## Le projet en une vue
 
-![Chaîne complète du projet P5](docs/schemas/vue-ensemble.svg)
+<p align="center">
+  <img src="docs/schemas/vue-ensemble.svg" alt="Parcours complet du projet P5, du poste DevOps local au nettoyage AWS" width="960">
+</p>
 
-| Étape | Transformation | Verdict attendu |
+| Phase | Objectif | Validation |
 | --- | --- | --- |
-| 0 — Fondations | VM Ubuntu + outils + compte AWS validé | `GO TERRAFORM` |
-| 1 — Déploiement | Angular → Terraform → Ansible → NGINX sur EC2 | Application accessible |
-| 2 — Observation | Logs NGINX → OpenSearch → trois visualisations | Dashboard exploitable |
-| 3 — Disponibilité | Client → HAProxy → deux backends EC2 | Bascule et reprise validées |
-| Finalisation | Preuves → livrables → destruction → audit | Lab propre, aucun coût oublié |
+| **0 — Préparer** | Construire le poste DevOps et contrôler le compte AWS | `GO TERRAFORM` |
+| **1 — Déployer** | Livrer la véritable application Angular sur EC2 | Application HTTP accessible |
+| **2 — Observer** | Transformer les logs NGINX en visualisations OpenSearch | Dashboard exploitable |
+| **3 — Résister** | Vérifier le round-robin, la panne et la reprise | Service disponible |
+| **Finaliser** | Contrôler les preuves, détruire et auditer | `NETTOYAGE AWS COMPLET` |
 
-## Navigation rapide
+### Navigation
 
-- [Étape 0 — Préparer le lab et AWS](#étape-0--préparer-le-lab-et-aws)
-- [Exercice 1 — Déployer Angular avec Terraform et Ansible](#exercice-1--déployer-angular-avec-terraform-et-ansible)
-- [Exercice 2 — Exploiter les logs dans OpenSearch](#exercice-2--exploiter-les-logs-dans-opensearch)
-- [Exercice 3 — Tester HAProxy et la reprise](#exercice-3--tester-haproxy-et-la-reprise)
-- [Finalisation — Prouver, détruire et auditer](#finalisation--prouver-détruire-et-auditer)
+[Étape 0](#étape-0--préparer-le-lab-et-aws) ·
+[Exercice 1](#exercice-1--déployer-angular-avec-terraform-et-ansible) ·
+[Exercice 2](#exercice-2--exploiter-les-logs-dans-opensearch) ·
+[Exercice 3](#exercice-3--tester-haproxy-et-la-reprise) ·
+[Finalisation](#finalisation--prouver-détruire-et-auditer) ·
+[Validation continue](#validation-continue)
 
 ---
 
 ## Étape 0 — Préparer le lab et AWS
 
-![Préparation de la VM et des accès](docs/schemas/etape-0.svg)
+<p align="center">
+  <img src="docs/schemas/etape-0.svg" alt="Fondations locales, accès AWS, garde-fous et porte GO TERRAFORM" width="900">
+</p>
 
-### Ce que cette étape construit
+Cette étape prépare un poste DevOps reproductible et bloque les erreurs de compte, de région, de quota, de réseau ou de coût **avant** le premier `terraform plan`.
 
-| Entrée | Actions automatisées | Résultat |
+| Entrée | Contrôles | Résultat |
 | --- | --- | --- |
-| VM Ubuntu Server 26.04 | Installation de Terraform, Ansible, AWS CLI, Docker, Node.js 22.22.0 et outils de contrôle | Poste DevOps reproductible |
-| Compte AWS sécurisé | Vérification du profil, du compte, de la région, des quotas, du budget et des paramètres Terraform | Compte autorisé et dimensionné |
-| Clé SSH et configuration locale | Contrôle des permissions, des fichiers `terraform.tfvars` et de l’adresse `/32` | Accès prêts pour les exercices |
+| VM Ubuntu Server 26.04 | Terraform, Ansible, AWS CLI, Docker, Node.js 22.22.0 et outils système | Poste DevOps prêt |
+| Compte AWS sécurisé | Profil, identité, région, quotas, budget et paramètres Terraform | Compte autorisé |
+| Accès locaux | Clé SSH, permissions, `terraform.tfvars` et adresse `/32` | Accès prêts |
 
-### Commandes essentielles
+<details>
+<summary><strong>Commandes de préparation</strong></summary>
 
 ```bash
 ./scripts/commands/bootstrap-ubuntu-server.sh
@@ -60,51 +60,37 @@ $EDITOR environment/aws-readiness.env
 ./scripts/commands/pre-deployment-check.sh --stage initial
 ```
 
-### Verdict obligatoire
+</details>
 
-```text
-GO TERRAFORM
-```
+**Verdict obligatoire :** `GO TERRAFORM`
 
-Aucun `terraform apply` n’est lancé par les contrôles de préparation. La seule
-mutation volontaire de l’étape 0B est la création du budget avec `--apply`.
+Aucun `terraform apply` n’est lancé par les contrôles de préparation. La seule mutation volontaire est la création du budget avec `setup-aws-guardrails.sh --apply`.
 
-**Guides détaillés :**
-[préparation de la VM](docs/00-preparation-environnement.md) ·
-[préparation du compte AWS](docs/00b-preparation-compte-aws.md)
+**Guides :** [préparation de la VM](docs/00-preparation-environnement.md) · [préparation du compte AWS](docs/00b-preparation-compte-aws.md)
 
 ---
 
 ## Exercice 1 — Déployer Angular avec Terraform et Ansible
 
-![Flux Terraform, Ansible, Angular et NGINX](docs/schemas/exercice-1.svg)
+<p align="center">
+  <img src="docs/schemas/exercice-1.svg" alt="Chaîne de livraison Angular, Terraform, EC2, Ansible et NGINX" width="920">
+</p>
 
-### Flux réel
+L’exercice construit le véritable artefact Angular, crée l’infrastructure AWS avec Terraform, puis configure l’instance EC2 avec Ansible et NGINX.
 
-```text
-Sources Angular
-      │ npm ci + npm run build
-      ▼
-Artefact navigateur versionné
-      │ Terraform crée le réseau et EC2
-      ▼
-Ansible installe NGINX et copie le build
-      │ contrôles HTTP et fallback SPA
-      ▼
-Application Angular accessible sur AWS
-```
-
-### 1. Construire l’application
+<details>
+<summary><strong>1. Construire l’application</strong></summary>
 
 ```bash
 ./scripts/commands/prepare-angular-artifact.sh
 ```
 
-La CI reconstruit l’application et compare exactement le résultat au contenu de
-`ansible/files/angular-app/`. Une page HTML témoin ne peut donc pas remplacer le
-véritable build Angular.
+La CI reconstruit l’application et compare exactement le résultat au contenu de `ansible/files/angular-app/`. Une page HTML témoin ne peut donc pas remplacer le build Angular.
 
-### 2. Créer l’infrastructure
+</details>
+
+<details>
+<summary><strong>2. Créer l’infrastructure</strong></summary>
 
 ```bash
 terraform -chdir=terraform/exercice-1 init
@@ -113,10 +99,12 @@ terraform -chdir=terraform/exercice-1 show tfplan
 terraform -chdir=terraform/exercice-1 apply tfplan
 ```
 
-Le plan doit être relu avant application : compte, région, réseau, instance,
-volume, clé SSH et coûts.
+Le plan doit être relu avant application : compte, région, réseau, instance, volume, clé SSH et coûts.
 
-### 3. Déployer avec Ansible
+</details>
+
+<details>
+<summary><strong>3. Déployer avec Ansible</strong></summary>
 
 ```bash
 ansible all \
@@ -128,7 +116,10 @@ ansible-playbook \
   ansible/playbooks/deploy.yml
 ```
 
-### 4. Vérifier et produire des logs réels
+</details>
+
+<details>
+<summary><strong>4. Vérifier et produire des logs</strong></summary>
 
 ```bash
 ./scripts/commands/verify-angular-deployment.sh
@@ -136,39 +127,29 @@ ansible-playbook \
 ./scripts/commands/collect-nginx-access-log.sh
 ```
 
-### Preuve attendue
+</details>
+
+### Preuves attendues
 
 - application Angular accessible en HTTP ;
-- bundle JavaScript chargé ;
-- fallback SPA assuré par NGINX ;
+- bundle JavaScript chargé et fallback SPA assuré par NGINX ;
 - seconde exécution Ansible idempotente ;
 - logs NGINX réels récupérés pour l’exercice 2.
 
-**Guide détaillé :**
-[Terraform, Ansible, Angular et NGINX](docs/exercices/01-terraform-ansible.md)
+**Guide :** [Terraform, Ansible, Angular et NGINX](docs/exercices/01-terraform-ansible.md)
 
 ---
 
 ## Exercice 2 — Exploiter les logs dans OpenSearch
 
-![Flux NGINX, OpenSearch et dashboard](docs/schemas/exercice-2.svg)
+<p align="center">
+  <img src="docs/schemas/exercice-2.svg" alt="Pipeline des logs NGINX vers Amazon OpenSearch et ses trois visualisations" width="920">
+</p>
 
-### Flux réel
+Les logs NGINX sont convertis en Bulk NDJSON, validés par un mapping strict, importés dans OpenSearch puis exploités dans Discover et Dashboards.
 
-```text
-Logs NGINX combined
-      │ conversion Python
-      ▼
-Bulk NDJSON + mapping strict
-      │ import contrôlé avec --apply
-      ▼
-Index nginx-access-*
-      │ agrégations vérifiées
-      ▼
-Donut + octets/12 h + top 5/12 h
-```
-
-### 1. Valider et créer le domaine
+<details>
+<summary><strong>1. Valider et créer le domaine</strong></summary>
 
 ```bash
 ./scripts/commands/pre-deployment-check.sh --stage exercice-2
@@ -178,7 +159,10 @@ terraform -chdir=terraform/exercice-2 plan -out=tfplan
 terraform -chdir=terraform/exercice-2 apply tfplan
 ```
 
-### 2. Préparer puis importer les données
+</details>
+
+<details>
+<summary><strong>2. Préparer, importer et vérifier les données</strong></summary>
 
 ```bash
 # Aperçu local, sans écriture dans OpenSearch.
@@ -191,52 +175,41 @@ terraform -chdir=terraform/exercice-2 apply tfplan
 ./scripts/commands/verify-opensearch-data.sh
 ```
 
-Le dépôt fournit un échantillon de **64 événements**, répartis sur quatre
-tranches de douze heures. Les véritables logs de l’exercice 1 peuvent également
-être fournis avec `--input`.
+Le dépôt fournit un échantillon de **64 événements**, répartis sur quatre tranches de douze heures. Les logs réels de l’exercice 1 peuvent également être fournis avec `--input`.
+
+</details>
 
 ### Visualisations obligatoires
 
-| Visualisation | Champ ou agrégation | Ce qu’elle démontre |
+| Visualisation | Agrégation | Démonstration |
 | --- | --- | --- |
 | Donut | `http_method` | Répartition des verbes HTTP |
 | Histogramme | somme de `bytes_sent` par 12 h | Volume de données envoyé |
 | Top 5 temporel | `url_path` par 12 h | Requêtes les plus fréquentes |
 
-La création des graphiques dans OpenSearch Dashboards reste volontairement
-manuelle : elle constitue une partie de la compréhension évaluée.
+La création des graphiques dans OpenSearch Dashboards reste volontairement manuelle : elle fait partie de la compréhension évaluée.
 
-### Preuve attendue
+### Preuves attendues
 
 - index et champs visibles dans Discover ;
-- trois visualisations conformes ;
-- dashboard complet ;
+- trois visualisations conformes et dashboard complet ;
 - quatre captures lisibles ;
 - aucune donnée sensible visible.
 
-**Guide détaillé :**
-[logs NGINX et Amazon OpenSearch](docs/exercices/02-elk-opensearch.md)
+**Guide :** [logs NGINX et Amazon OpenSearch](docs/exercices/02-elk-opensearch.md)
 
 ---
 
 ## Exercice 3 — Tester HAProxy et la reprise
 
-![Flux HAProxy, backends, panne et reprise](docs/schemas/exercice-3.svg)
+<p align="center">
+  <img src="docs/schemas/exercice-3.svg" alt="Topologie HAProxy avec deux backends et scénario normal, panne, reprise" width="920">
+</p>
 
-### Flux réel
+HAProxy répartit les requêtes entre deux backends. Les scripts vérifient d’abord le round-robin, puis arrêtent volontairement un backend afin de prouver la continuité du service et sa réintégration.
 
-```text
-Client HTTP
-    │
-    ▼
-HAProxy en round-robin
-    ├── p5-hello-1
-    └── p5-hello-2
-
-État normal → arrêt d’un backend → continuité → réintégration
-```
-
-### 1. Valider et déployer
+<details>
+<summary><strong>1. Valider et déployer</strong></summary>
 
 ```bash
 ./scripts/commands/pre-deployment-check.sh --stage exercice-3
@@ -246,16 +219,21 @@ terraform -chdir=terraform/exercice-3 plan -out=tfplan
 terraform -chdir=terraform/exercice-3 apply tfplan
 ```
 
-### 2. Vérifier la répartition
+</details>
+
+<details>
+<summary><strong>2. Vérifier la répartition</strong></summary>
 
 ```bash
 ./scripts/commands/test-haproxy-roundrobin.sh
 ```
 
-Le test doit observer les deux noms de serveur dans plusieurs réponses
-successives.
+Le test doit observer les deux noms de serveur dans plusieurs réponses successives.
 
-### 3. Démontrer la panne et la reprise
+</details>
+
+<details>
+<summary><strong>3. Démontrer la panne et la reprise</strong></summary>
 
 ```bash
 # Simulation et vérification préalable, sans arrêt de backend.
@@ -265,33 +243,31 @@ successives.
 ./scripts/commands/test-haproxy-failover.sh --apply
 ```
 
-Avec `--apply`, le script arrête un conteneur backend, contrôle la continuité du
-service, redémarre le conteneur et vérifie sa réintégration. Un piège de sortie
-tente toujours de restaurer le backend en cas d’interruption.
+Avec `--apply`, le script arrête un conteneur backend, contrôle la continuité du service, redémarre le conteneur et vérifie sa réintégration. Un piège de sortie tente toujours de restaurer le backend en cas d’interruption.
 
-### Preuve attendue
+</details>
+
+### Preuves attendues
 
 - configuration HAProxy valide ;
 - deux backends observés avant la panne ;
-- un backend sain et service continu pendant la panne ;
+- service HTTP continu avec un backend indisponible ;
 - retour des deux backends après la reprise.
 
-**Guide détaillé :**
-[HAProxy, round-robin et failover](docs/exercices/03-haproxy.md)
+**Guide :** [HAProxy, round-robin et failover](docs/exercices/03-haproxy.md)
 
 ---
 
 ## Finalisation — Prouver, détruire et auditer
 
-![Finalisation, livrables et nettoyage AWS](docs/schemas/finalisation/finalisation.svg)
+<p align="center">
+  <img src="docs/schemas/finalisation/finalisation.svg" alt="Chaîne de finalisation des preuves au verdict LAB PROPRE" width="900">
+</p>
 
-### 1. Organiser les preuves
+Les sorties, journaux et captures d’exécution sont conservés sous `proofs/runtime/`. Ce dossier est ignoré par Git afin de ne pas publier d’adresses, d’identités ou de données liées au compte AWS.
 
-Les sorties, journaux et captures produits pendant l’exécution sont conservés
-sous `proofs/runtime/`. Ce dossier est ignoré par Git afin d’éviter de publier
-des adresses, identités ou données propres au compte AWS.
-
-### 2. Contrôler les trois livrables
+<details>
+<summary><strong>1. Contrôler les trois livrables</strong></summary>
 
 ```bash
 # Contrôle de structure utilisé par la CI.
@@ -301,43 +277,44 @@ des adresses, identités ou données propres au compte AWS.
 ./scripts/commands/prepare-livrables.sh
 ```
 
-Le mode strict échoue tant qu’un marqueur tel que « preuve à insérer » subsiste.
-Le dépôt organise les preuves, mais n’en invente aucune.
+Le mode strict échoue tant qu’un marqueur tel que « preuve à insérer » subsiste. Le dépôt organise les preuves, mais n’en invente aucune.
 
-### 3. Détruire et vérifier
+</details>
+
+<details>
+<summary><strong>2. Détruire et auditer AWS</strong></summary>
 
 ```bash
 ./scripts/commands/destroy-aws.sh
 ./scripts/commands/check-aws-cleanup.sh
 ```
 
-### Verdict final
+</details>
+
+**Verdicts finaux :**
 
 ```text
 LIVRABLES PRÊTS POUR RELECTURE FINALE
 NETTOYAGE AWS COMPLET
 ```
 
-Le budget AWS reste actif après la démonstration afin de signaler une ressource
-oubliée.
+Le budget AWS reste actif après la démonstration afin de signaler une ressource oubliée.
 
-**Guides détaillés :**
-[livrables et preuves](docs/livrables/README.md) ·
-[convention de collecte](proofs/README.md)
+**Guides :** [livrables et preuves](docs/livrables/README.md) · [convention de collecte](proofs/README.md)
 
 ---
 
-## Ce qui est automatisé et ce qui reste humain
+## Automatisation et validation humaine
 
 | Automatisé par le dépôt | À réaliser et valider humainement |
 | --- | --- |
 | Installation du socle DevOps | MFA et récupération du compte root |
 | Contrôles AWS Ready | Lecture et approbation des plans Terraform |
 | Build Angular reproductible | Création des visualisations OpenSearch |
-| Déploiement Ansible et configuration NGINX | Captures provenant du véritable environnement |
-| Conversion et import des logs | Vérification qu’aucun secret n’apparaît dans les livrables |
+| Déploiement Ansible et configuration NGINX | Captures du véritable environnement |
+| Conversion et import des logs | Vérification de l’absence de secrets |
 | Tests HAProxy | Remise finale selon les consignes de la plateforme |
-| Destruction et audit des ressources P5 | Confirmation de la réception des alertes budgétaires |
+| Destruction et audit des ressources P5 | Confirmation des alertes budgétaires |
 
 ## Arborescence utile
 
@@ -350,7 +327,7 @@ p5_Openclassrooms/
 ├── docs/
 │   ├── exercices/             # trois guides d’exécution
 │   ├── livrables/             # gabarits et contrôle de complétude
-│   └── schemas/               # six vues pédagogiques, dont la finalisation
+│   └── schemas/               # vues vectorielles du parcours
 ├── proofs/                    # convention ; runtime ignoré par Git
 ├── scripts/
 │   ├── commands/              # préparation, vérifications, tests et nettoyage
@@ -366,8 +343,7 @@ p5_Openclassrooms/
 
 La CI vérifie notamment :
 
-- les permissions exécutables des scripts ;
-- Bash et ShellCheck ;
+- les permissions exécutables, Bash et ShellCheck ;
 - Angular avec `npm ci` et l’égalité exacte du build Ansible ;
 - le mapping et les données OpenSearch ;
 - la configuration HAProxy ;
