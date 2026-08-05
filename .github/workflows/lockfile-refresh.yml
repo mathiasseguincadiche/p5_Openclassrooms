@@ -1,0 +1,34 @@
+name: Temp - Régénérer package-lock
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lockfile:
+    name: Régénérer le verrou npm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22.22.0
+          cache: npm
+          cache-dependency-path: application/angular/package-lock.json
+      - name: Régénérer le package-lock
+        run: >-
+          npm install --prefix application/angular --package-lock-only
+          --ignore-scripts --no-audit --no-fund
+      - name: Vérifier la résolution sécurisée
+        run: |
+          node -e "const lock=require('./application/angular/package-lock.json'); const pkg=lock.packages['node_modules/undici']; if (!pkg || pkg.version !== '7.29.0') process.exit(1);"
+      - name: Publier le package-lock
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-lock-regenerated
+          path: application/angular/package-lock.json
+          if-no-files-found: error
+          retention-days: 1
