@@ -17,7 +17,7 @@ Usage: import-opensearch-data.sh [options]
 
 Options:
   --input CHEMIN      fichier NGINX combined à importer
-  --endpoint URL      URL HTTPS du domaine OpenSearch
+  --endpoint URL      URL HTTPS AWS ou URL HTTP locale sur localhost
   --proof-dir CHEMIN  dossier local des preuves techniques
   --apply             créer le template et importer les documents
   -h, --help          afficher cette aide
@@ -73,6 +73,12 @@ done
     exit 1
 }
 
+valid_endpoint() {
+    local endpoint="$1"
+    [[ "$endpoint" =~ ^https://[A-Za-z0-9.-]+(:[0-9]+)?$ ]] \
+        || [[ "$endpoint" =~ ^http://(127[.]0[.]0[.]1|localhost)(:[0-9]+)?$ ]]
+}
+
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 BULK_FILE="$TMP_DIR/nginx-access.bulk.ndjson"
@@ -100,8 +106,9 @@ if [[ -z "$ENDPOINT" ]]; then
         output -raw opensearch_endpoint 2>/dev/null || true)"
 fi
 ENDPOINT="${ENDPOINT%/}"
-if [[ ! "$ENDPOINT" =~ ^https://[A-Za-z0-9.-]+$ ]]; then
-    printf 'Endpoint OpenSearch HTTPS invalide ou absent : %s\n' "$ENDPOINT" >&2
+if ! valid_endpoint "$ENDPOINT"; then
+    printf 'Endpoint OpenSearch invalide ou absent : %s\n' "$ENDPOINT" >&2
+    printf 'HTTP sans TLS est accepté uniquement sur localhost pour les tests.\n' >&2
     exit 1
 fi
 
