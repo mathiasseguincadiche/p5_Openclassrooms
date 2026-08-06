@@ -7,6 +7,9 @@ pédagogiques. Aucun script ne lance automatiquement les trois exercices AWS.
 | --- | --- |
 | Installer le socle sur Ubuntu Server 26.04 | `./scripts/commands/bootstrap-ubuntu-server.sh` |
 | Vérifier la VM et l’arborescence | `./scripts/commands/setup.sh --check-only` |
+| Produire une archive diagnostic partageable | `bash scripts/commands/collect-diagnostics.sh` |
+| Produire le diagnostic local complet avec OpenSearch | `bash scripts/commands/collect-diagnostics.sh --complet` |
+| Joindre aussi les preuves runtime existantes | `bash scripts/commands/collect-diagnostics.sh --complet --avec-preuves` |
 | Générer les trois `terraform.tfvars` | `bash scripts/commands/sync-terraform-tfvars.sh --apply` |
 | Vérifier la cohérence des variables | `bash scripts/commands/sync-terraform-tfvars.sh --check` |
 | Contrôler avant le premier `apply` | `./scripts/commands/pre-deployment-check.sh` |
@@ -21,10 +24,30 @@ pédagogiques. Aucun script ne lance automatiquement les trois exercices AWS.
 | Détruire les ressources AWS | `./scripts/commands/destroy-aws.sh` |
 | Générer un `haproxy.cfg` minimal | `./scripts/tools/generer-haproxy-config.sh IP1 IP2` |
 
+## Diagnostic à transmettre
+
+Le collecteur crée un dossier horodaté sous `proofs/runtime/diagnostics/` et une
+archive `p5-diagnostic-<UTC>.tar.gz`. L’archive contient :
+
+- un résumé `OK / AVERTISSEMENTS / KO` ;
+- les versions et ressources principales de la VM ;
+- le résultat de `setup.sh` et de la validation locale ;
+- le précontrôle AWS lorsqu’une configuration locale existe ;
+- un journal nettoyé des clés AWS, jetons, en-têtes d’autorisation et blocs de
+  clé privée détectables ;
+- le manifeste des preuves déjà produites.
+
+Le journal complet non filtré reste local avec des permissions restrictives.
+L’archive nettoyée est le fichier à transmettre pour diagnostic. L’option
+`--avec-preuves` ajoute les dossiers runtime des exercices ; leur contenu doit
+être relu avant toute publication publique.
+
 ## Règles de sécurité
 
 - `bootstrap-ubuntu-server.sh` installe des outils, mais ne configure aucun
   secret et ne crée aucune ressource AWS.
+- `collect-diagnostics.sh` est non destructif, écrit avec un `umask 077` et
+  n’inclut le journal complet non filtré dans aucune archive.
 - `sync-terraform-tfvars.sh` écrit des fichiers locaux en mode `600` et refuse
   les valeurs d’exemple du compte AWS et de l’adresse IP.
 - `pre-deployment-check.sh` est non destructif et bloque les variables
