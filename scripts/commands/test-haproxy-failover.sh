@@ -4,8 +4,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
+CONFIG_FILE="$PROJECT_ROOT/environment/aws-readiness.env"
 PROOF_DIR="$PROJECT_ROOT/proofs/runtime/exercice-3"
-SSH_KEY="${HOME}/.ssh/p5-key"
+SSH_KEY=""
 SSH_USER="ubuntu"
 BACKEND=1
 REQUESTS=6
@@ -20,7 +21,7 @@ Usage: test-haproxy-failover.sh [options]
 Options:
   --backend 1|2        backend dont le conteneur sera arrêté (défaut : 1)
   --requests N         requêtes par phase (défaut : 6)
-  --ssh-key CHEMIN     clé SSH privée (défaut : ~/.ssh/p5-key)
+  --ssh-key CHEMIN     clé SSH privée ; sinon configuration locale du lab
   --ssh-user NOM       utilisateur SSH (défaut : ubuntu)
   --wait-down SEC      attente après l'arrêt (défaut : 12)
   --wait-up SEC        attente après la reprise (défaut : 10)
@@ -28,7 +29,8 @@ Options:
   --apply              exécuter réellement l'arrêt et le redémarrage
   -h, --help           afficher cette aide
 
-Le trap de sortie tente toujours de redémarrer le conteneur arrêté.
+Sans --apply, aucune connexion SSH n'est effectuée. Le trap de sortie tente
+toujours de redémarrer le conteneur si une panne réelle a été déclenchée.
 HELP
 }
 
@@ -96,13 +98,34 @@ for value in "$REQUESTS" "$WAIT_DOWN" "$WAIT_UP"; do
     }
 done
 
-for command_name in terraform curl ssh awk; do
+for command_name in terraform curl awk; do
     command -v "$command_name" >/dev/null 2>&1 || {
         printf 'Commande requise absente : %s\n' "$command_name" >&2
         exit 1
     }
 done
-[[ -f "$SSH_KEY" ]] || { printf 'Clé SSH absente : %s\n' "$SSH_KEY" >&2; exit 1; }
+
+if [[ -z "$SSH_KEY" && -r "$CONFIG_FILE" ]]; then
+    # shellcheck source=/dev/null
+    source "$CONFIG_FILE"
+    SSH_KEY="${P5_SSH_KEY_PATH:-}"
+    if [[ -z "$SSH_KEY" ]]; then
+        PUBLIC_KEY_PATH="${P5_SSH_PUBLIC_KEY_PATH:-$HOME/.ssh/p5-key.pub}"
+        SSH_KEY="${PUBLIC_KEY_PATH%.pub}"
+    fi
+fi
+SSH_KEY="${SSH_KEY:-$HOME/.ssh/p5-key}"
+
+if [[ "$APPLY" == true ]]; then
+    command -v ssh >/dev/null 2>&1 || {
+        printf 'Commande requise absente : ssh\n' >&2
+        exit 1
+    }
+    [[ -f "$SSH_KEY" ]] || {
+        printf 'Clé SSH absente : %s\n' "$SSH_KEY" >&2
+        exit 1
+    }
+fi
 
 HAPROXY_URL="$(terraform -chdir="$PROJECT_ROOT/terraform/exercice-3" \
     output -raw haproxy_url 2>/dev/null || true)"
@@ -117,6 +140,7 @@ if [[ ! "$BACKEND_IP" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]]; then
     exit 1
 fi
 
+umask 077
 mkdir -p "$PROOF_DIR"
 TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 SUMMARY_LOG="$PROOF_DIR/${TIMESTAMP}-failover-backend-${BACKEND}.log"

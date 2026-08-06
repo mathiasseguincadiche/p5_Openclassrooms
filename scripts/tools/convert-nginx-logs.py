@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import sys
@@ -53,7 +54,7 @@ def parse_line(
     line_number: int,
     source: Path,
     index_prefix: str,
-) -> tuple[str, dict[str, object]]:
+) -> tuple[str, str, dict[str, object]]:
     match = LOG_PATTERN.fullmatch(line)
     if match is None:
         raise ValueError(
@@ -63,6 +64,8 @@ def parse_line(
     fields = match.groupdict()
     timestamp = datetime.strptime(fields["time_local"], "%d/%b/%Y:%H:%M:%S %z")
     index_name = f"{index_prefix}-{timestamp:%Y.%m.%d}"
+    identity = f"{source.name}\0{line_number}\0{line}".encode("utf-8")
+    document_id = hashlib.sha256(identity).hexdigest()
 
     document: dict[str, object] = {
         "@timestamp": timestamp.isoformat(),
@@ -82,7 +85,7 @@ def parse_line(
         "source_file": source.name,
         "line_number": line_number,
     }
-    return index_name, document
+    return index_name, document_id, document
 
 
 def write_json(stream: TextIO, payload: dict[str, object]) -> None:
@@ -120,7 +123,7 @@ def main() -> int:
                 if not line.strip():
                     continue
 
-                index_name, document = parse_line(
+                index_name, document_id, document = parse_line(
                     line,
                     line_number,
                     args.input,
@@ -132,7 +135,10 @@ def main() -> int:
                 document_count += 1
 
                 if not args.validate_only:
-                    write_json(output_stream, {"index": {"_index": index_name}})
+                    write_json(
+                        output_stream,
+                        {"index": {"_index": index_name, "_id": document_id}},
+                    )
                     write_json(output_stream, document)
     except (OSError, ValueError) as error:
         print(error, file=sys.stderr)

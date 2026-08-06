@@ -61,8 +61,15 @@ if [[ ! -r "$VERSIONS_FILE" ]]; then
     printf 'Fichier de versions absent : %s\n' "$VERSIONS_FILE" >&2
     exit 1
 fi
+if [[ ! -r "$CONFIG_FILE" ]]; then
+    printf 'Configuration absente ou illisible : %s\n' "$CONFIG_FILE" >&2
+    printf 'Copiez environment/aws-readiness.env.example puis complétez-la.\n' >&2
+    exit 1
+fi
 # shellcheck source=/dev/null
 source "$VERSIONS_FILE"
+# shellcheck source=/dev/null
+source "$CONFIG_FILE"
 
 printf 'Contrôle pré-déploiement P5 — %s\n\n' "$STAGE"
 
@@ -110,7 +117,11 @@ if command -v docker >/dev/null 2>&1; then
 fi
 
 printf '\nClé SSH du lab\n'
-KEY_PATH="${P5_SSH_KEY_PATH:-$HOME/.ssh/p5-key}"
+KEY_PATH="${P5_SSH_KEY_PATH:-}"
+if [[ -z "$KEY_PATH" ]]; then
+    PUBLIC_KEY_PATH="${P5_SSH_PUBLIC_KEY_PATH:-$HOME/.ssh/p5-key.pub}"
+    KEY_PATH="${PUBLIC_KEY_PATH%.pub}"
+fi
 if [[ -f "$KEY_PATH" && -f "${KEY_PATH}.pub" ]]; then
     KEY_MODE="$(stat -c '%a' "$KEY_PATH" 2>/dev/null || true)"
     [[ "$KEY_MODE" == "600" ]] \
