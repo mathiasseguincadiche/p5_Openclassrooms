@@ -61,10 +61,30 @@ done
 }
 
 proof_dir="$tmp_dir/proofs"
-bash "$PROJECT_ROOT/scripts/commands/import-opensearch-data.sh" \
-    --endpoint "$endpoint" \
-    --proof-dir "$proof_dir" \
-    --apply
+import_data() {
+    bash "$PROJECT_ROOT/scripts/commands/import-opensearch-data.sh" \
+        --endpoint "$endpoint" \
+        --proof-dir "$proof_dir" \
+        --apply
+}
+
+import_data
+count_after_first="$(curl -fsS "$endpoint/nginx-access-*/_count" | jq -r '.count')"
+[[ "$count_after_first" == 64 ]] || {
+    printf '64 documents attendus après le premier import, %s trouvés.\n' \
+        "$count_after_first" >&2
+    exit 1
+}
+
+import_data
+count_after_second="$(curl -fsS "$endpoint/nginx-access-*/_count" | jq -r '.count')"
+[[ "$count_after_second" == "$count_after_first" ]] || {
+    printf 'Import non idempotent : %s puis %s documents.\n' \
+        "$count_after_first" "$count_after_second" >&2
+    exit 1
+}
+printf 'OK  second import sans duplication : %s documents.\n' "$count_after_second"
+
 bash "$PROJECT_ROOT/scripts/commands/verify-opensearch-data.sh" \
     --endpoint "$endpoint" \
     --proof-dir "$proof_dir" \
@@ -77,4 +97,4 @@ version="$(curl -fsS "$endpoint/" | jq -r '.version.number')"
 }
 
 printf 'OK  OpenSearch %s exécuté en conteneur éphémère.\n' "$version"
-printf 'Verdict : TEMPLATE, BULK, MAPPINGS ET AGRÉGATIONS VALIDÉS.\n'
+printf 'Verdict : TEMPLATE, BULK, MAPPINGS, AGRÉGATIONS ET IDÉMPOTENCE VALIDÉS.\n'
