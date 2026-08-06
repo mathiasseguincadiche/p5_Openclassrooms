@@ -5,6 +5,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
 VERSIONS_FILE="$PROJECT_ROOT/environment/versions.env"
+CONFIG_FILE="$PROJECT_ROOT/environment/aws-readiness.env"
 cd "$PROJECT_ROOT"
 
 show_help() {
@@ -32,6 +33,13 @@ if [[ ! -r "$VERSIONS_FILE" ]]; then
 fi
 # shellcheck source=/dev/null
 source "$VERSIONS_FILE"
+
+AWS_PROFILE_NAME=p5-lab
+if [[ -r "$CONFIG_FILE" ]]; then
+    # shellcheck source=/dev/null
+    source "$CONFIG_FILE"
+    AWS_PROFILE_NAME="${AWS_PROFILE:-$AWS_PROFILE_NAME}"
+fi
 
 missing=0
 ok() { printf '  OK  %s\n' "$1"; }
@@ -128,10 +136,11 @@ fi
 
 printf '\nAWS CLI\n'
 if command -v aws >/dev/null 2>&1 \
-    && aws --profile p5-lab sts get-caller-identity >/dev/null 2>&1; then
-    ok "identité du profil p5-lab active ; AWS Ready reste obligatoire"
+    && aws --profile "$AWS_PROFILE_NAME" sts get-caller-identity >/dev/null 2>&1; then
+    ok "identité du profil $AWS_PROFILE_NAME active ; AWS Ready reste obligatoire"
 else
-    printf '  --  profil p5-lab non actif ; utilisez aws sso login --profile p5-lab\n'
+    printf '  --  profil %s non actif ; connectez-vous avant AWS Ready\n' \
+        "$AWS_PROFILE_NAME"
 fi
 
 if ! "$SCRIPT_DIR/validate.sh"; then
