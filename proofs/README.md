@@ -9,10 +9,44 @@ propres au lab.
 proofs/
 ├── README.md
 └── runtime/                 # créé localement, non versionné
+    ├── diagnostics/
     ├── exercice-1/
     ├── exercice-2/
     └── exercice-3/
 ```
+
+## Diagnostic global de la VM
+
+Après le clonage et après toute étape importante, produire une archive de
+contrôle avec :
+
+```bash
+bash scripts/commands/collect-diagnostics.sh
+```
+
+Pour inclure l'intégration locale OpenSearch :
+
+```bash
+bash scripts/commands/collect-diagnostics.sh --complet
+```
+
+Après les trois exercices, joindre également leurs preuves existantes :
+
+```bash
+bash scripts/commands/collect-diagnostics.sh --complet --avec-preuves
+```
+
+Le script affiche le chemin exact de l'archive à transmettre :
+
+```text
+proofs/runtime/diagnostics/p5-diagnostic-<UTC>.tar.gz
+```
+
+Cette archive contient un résumé, un journal nettoyé pour partage et un
+manifeste. Le journal complet non filtré reste uniquement dans le dossier local
+horodaté. Les clés AWS, jetons, en-têtes d'autorisation et blocs de clé privée
+détectables sont masqués dans le journal partagé. Une relecture reste obligatoire
+avant toute publication publique.
 
 ## Exercice 1
 
