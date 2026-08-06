@@ -68,6 +68,7 @@ Le déploiement ne doit commencer qu’après le verdict **`GO TERRAFORM`**.
 - [Infrastructure Terraform](terraform/README.md)
 - [Déploiement Ansible](ansible/README.md)
 - [Application Angular](application/README.md)
+- [Schémas d’architecture](docs/schemas/README.md) : [vue d’ensemble](docs/schemas/vue-ensemble.svg), [préparation](docs/schemas/etape-0.svg), [exercice 1](docs/schemas/exercice-1.svg), [exercice 2](docs/schemas/exercice-2.svg), [exercice 3](docs/schemas/exercice-3.svg), [finalisation](docs/schemas/finalisation/finalisation.svg)
 
 ## Validation locale
 
