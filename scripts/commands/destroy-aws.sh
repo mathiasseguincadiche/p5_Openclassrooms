@@ -24,6 +24,12 @@ read -r confirmation
     exit 0
 }
 
+printf '\nDestruction confirmée. Démarrage dans :\n'
+for second in 3 2 1; do
+    printf '  %s\n' "$second"
+    sleep 1
+done
+
 for exercise in 3 2 1; do
     module="terraform/exercice-${exercise}"
     if [[ ! -f "$module/terraform.tfstate" ]]; then
@@ -35,7 +41,6 @@ for exercise in 3 2 1; do
     terraform -chdir="$module" state list || true
     printf 'Destruction de l’exercice %s...\n' "$exercise"
     terraform -chdir="$module" destroy -auto-approve
-
 done
 
 cat <<'INFO'
