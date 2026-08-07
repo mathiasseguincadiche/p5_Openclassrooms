@@ -1,82 +1,147 @@
-# Preuves d'exécution du P5
+# Preuves d’exécution et diagnostics du P5
 
-Les scripts du dépôt enregistrent leurs résultats techniques sous
-`proofs/runtime/`. Ce dossier est volontairement ignoré par Git, car il peut
-contenir des adresses publiques, des endpoints, des dates ou d'autres données
-propres au lab.
+Ce dossier documente la gestion des **preuves techniques locales**. Les fichiers
+réels sont écrits sous `proofs/runtime/`, volontairement ignoré par Git.
+
+## Principe
+
+```text
+Exécution réelle
+    ↓
+proofs/runtime/         # privé par défaut
+    ↓
+sélection + relecture
+    ↓
+anonymisation
+    ↓
+docs/livrables/        # preuve contextualisée
+```
+
+Une sortie runtime brute n’est pas automatiquement publiable.
+
+## Arborescence locale
 
 ```text
 proofs/
 ├── README.md
-└── runtime/                 # créé localement, non versionné
+└── runtime/                     # créé localement, ignoré par Git
     ├── diagnostics/
     ├── exercice-1/
     ├── exercice-2/
     └── exercice-3/
 ```
 
-## Diagnostic global de la VM
+## Diagnostic global
 
-Après le clonage et après toute étape importante, produire une archive de
-contrôle avec :
+Commande standard :
 
 ```bash
 bash scripts/commands/collect-diagnostics.sh
 ```
 
-Pour inclure l'intégration locale OpenSearch :
+Avec OpenSearch local :
 
 ```bash
 bash scripts/commands/collect-diagnostics.sh --complet
 ```
 
-Après les trois exercices, joindre également leurs preuves existantes :
+Après les exercices, pour joindre aussi les preuves runtime existantes :
 
 ```bash
 bash scripts/commands/collect-diagnostics.sh --complet --avec-preuves
 ```
 
-Le script affiche le chemin exact de l'archive à transmettre :
+Le script produit :
 
 ```text
-proofs/runtime/diagnostics/p5-diagnostic-<UTC>.tar.gz
+proofs/runtime/diagnostics/
+├── p5-diagnostic-<UTC>/
+│   ├── diagnostic-complet.log
+│   ├── diagnostic-partage.log
+│   ├── resume.txt
+│   └── manifest-preuves.txt
+└── p5-diagnostic-<UTC>.tar.gz
 ```
 
-Cette archive contient un résumé, un journal nettoyé pour partage et un
-manifeste. Le journal complet non filtré reste uniquement dans le dossier local
-horodaté. Les clés AWS, jetons, en-têtes d'autorisation et blocs de clé privée
-détectables sont masqués dans le journal partagé. Une relecture reste obligatoire
-avant toute publication publique.
+### Journal complet
+
+`diagnostic-complet.log` reste local avec des permissions restrictives.
+
+Il **n’est jamais placé dans l’archive partageable**.
+
+### Journal nettoyé
+
+Le collecteur tente de masquer notamment :
+
+- clés d’accès AWS détectables ;
+- secrets AWS CLI ;
+- jetons de session ;
+- en-têtes Authorization ;
+- blocs de clé privée.
+
+Cela réduit le risque mais ne remplace pas une relecture humaine.
 
 ## Exercice 1
 
+Commandes principales :
+
 ```bash
 ./scripts/commands/verify-angular-deployment.sh
-./scripts/commands/generate-nginx-traffic.sh
+./scripts/commands/generate-nginx-traffic.sh --requests 64
+./scripts/commands/collect-nginx-access-log.sh
 ```
 
-Conserver :
+Preuves typiques :
 
-- le résumé HTTP ;
-- les en-têtes NGINX ;
-- une capture navigateur de l'application Angular ;
-- le récapitulatif de la seconde exécution Ansible.
+- en-têtes HTTP ;
+- page Angular reçue ;
+- résultat du fallback SPA ;
+- journal de vérification ;
+- trafic généré ;
+- log NGINX réel collecté.
+
+Verdicts utiles :
+
+```text
+APPLICATION ANGULAR DÉPLOYÉE ET SERVIE PAR NGINX
+TRAFIC NGINX GÉNÉRÉ
+LOGS NGINX RÉELS COLLECTÉS
+```
+
+Les preuves Ansible et Terraform exécutées manuellement doivent également être
+conservées dans le livrable 1 : plan, apply, ping, playbook et idempotence.
 
 ## Exercice 2
 
+Commandes :
+
 ```bash
-./scripts/commands/collect-nginx-access-log.sh
 ./scripts/commands/import-opensearch-data.sh --apply
 ./scripts/commands/verify-opensearch-data.sh
 ```
 
-Conserver :
+Preuves techniques typiques :
 
-- la validation des logs réels ou de l'échantillon ;
-- les réponses du template, du Bulk et des agrégations ;
-- les quatre captures demandées dans OpenSearch Dashboards.
+- réponse du template ;
+- réponse Bulk ;
+- comptage des documents ;
+- mapping ;
+- agrégations ;
+- journaux d’import et de vérification.
+
+Verdicts :
+
+```text
+IMPORT OPENSEARCH RÉUSSI
+DONNÉES OPENSEARCH PRÊTES POUR LE DASHBOARD
+```
+
+Les captures de Discover, des trois visualisations et du dashboard doivent être
+produites manuellement dans OpenSearch Dashboards.
 
 ## Exercice 3
+
+Commandes :
 
 ```bash
 ./scripts/commands/test-haproxy-roundrobin.sh
@@ -84,17 +149,96 @@ Conserver :
 ./scripts/commands/test-haproxy-failover.sh --apply
 ```
 
-La première exécution du test de bascule est une simulation. L'option `--apply`
-arrête réellement le conteneur d'un backend, vérifie la continuité du service,
-le redémarre et confirme sa réintégration.
+Preuves :
 
-## Avant la remise
+- deux backends en round-robin ;
+- état avant la panne ;
+- un backend pendant la panne ;
+- continuité HTTP ;
+- retour des deux backends après reprise.
 
-1. relire chaque log et masquer les données inutiles ;
-2. reporter les éléments pertinents dans les trois gabarits de `docs/livrables/` ;
-3. remplacer toutes les zones « preuve à insérer » ;
-4. exécuter le contrôle strict des livrables ;
-5. détruire les ressources AWS et lancer l'audit de nettoyage.
+Verdicts :
 
-Les fichiers runtime ne doivent jamais être publiés automatiquement. Seules les
-preuves relues et anonymisées rejoignent les livrables finaux.
+```text
+ROUND-ROBIN OPÉRATIONNEL
+BASCULE ET RÉINTÉGRATION HAPROXY VALIDÉES
+```
+
+## États de publication
+
+| Type | Versionné ? | Publication |
+| --- | --- | --- |
+| `proofs/runtime/` brut | non | interdite sans relecture |
+| archive diagnostic nettoyée | non | partage privé après relecture |
+| capture anonymisée | selon le livrable | autorisée |
+| extrait CLI contextualisé | selon le livrable | autorisé |
+| gabarit non complété | oui | ce n’est pas une preuve |
+
+## Avant toute publication
+
+Vérifier qu’aucun élément ne contient :
+
+- clé AWS ;
+- token ;
+- clé privée SSH ;
+- identifiant sensible inutile ;
+- `terraform.tfvars` ;
+- état Terraform ;
+- inventaire Ansible réel ;
+- URL ou IP complète lorsqu’elle n’apporte rien à la démonstration.
+
+Audit du dépôt :
+
+```bash
+python3 scripts/tools/audit_secrets.py
+```
+
+## Passage des preuves vers les livrables
+
+1. exécuter réellement l’exercice ;
+2. conserver les sorties sous `proofs/runtime/` ;
+3. sélectionner les éléments qui démontrent une exigence ;
+4. anonymiser ;
+5. ajouter la commande ou le contexte ;
+6. expliquer le résultat ;
+7. compléter le gabarit associé ;
+8. exécuter le contrôle strict.
+
+```bash
+./scripts/commands/prepare-livrables.sh
+```
+
+Verdict attendu :
+
+```text
+LIVRABLES PRÊTS POUR RELECTURE FINALE
+```
+
+## Nettoyage
+
+Une preuve doit être conservée **avant** la destruction de la ressource qu’elle
+démontre.
+
+Fermeture globale :
+
+```bash
+./scripts/commands/destroy-aws.sh
+./scripts/commands/check-aws-cleanup.sh
+```
+
+Verdict :
+
+```text
+NETTOYAGE AWS COMPLET
+```
+
+L’audit de nettoyage est global : il est normal qu’il signale encore les
+ressources des exercices 1 ou 3 tant qu’elles sont volontairement conservées.
+
+## Documentation associée
+
+- [Validation, preuves et nettoyage](../docs/validation-preuves-nettoyage.md)
+- [Livrables](../docs/livrables/README.md)
+- [Traçabilité](../docs/02-correspondance-consignes-depot.md)
+- [Troubleshooting](../docs/troubleshooting.md)
+- [Sécurité](../SECURITY.md)
