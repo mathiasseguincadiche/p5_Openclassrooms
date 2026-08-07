@@ -1,8 +1,6 @@
 # Wiki du projet P5
 
-La documentation suit le déroulé réel du lab : préparer la VM, comprendre le
-cadre, construire et déployer l’application, réaliser les trois exercices,
-produire les preuves puis nettoyer AWS.
+La documentation suit le déroulé réel du lab : préparer la VM, comprendre le cadre, construire et déployer l’application, réaliser les trois exercices, produire les preuves puis nettoyer AWS.
 
 ## Parcours principal
 
@@ -24,6 +22,13 @@ produire les preuves puis nettoyer AWS.
 - [Exercice 2 — Amazon OpenSearch](exercices/02-elk-opensearch.md)
 - [Exercice 3 — HAProxy et disponibilité](exercices/03-haproxy.md)
 
+## Qualité, sécurité et exploitation
+
+- [Scripts et commandes](../scripts/README.md)
+- [Politique de sécurité](../SECURITY.md)
+- [Preuves et diagnostics](../proofs/README.md)
+- [Infrastructure Terraform](../terraform/README.md)
+
 ## Compléments
 
 - [Ressources pédagogiques](ressources/README.md)
@@ -31,5 +36,4 @@ produire les preuves puis nettoyer AWS.
 - [Suivi interne](suivi/README.md)
 - [Schémas](schemas/README.md)
 
-Les documents de `docs/livrables/` sont des gabarits. Ils deviennent des preuves
-uniquement après insertion de sorties et captures produites sur le lab réel.
+Les documents de `docs/livrables/` sont des gabarits. Ils deviennent des preuves uniquement après insertion de sorties et captures produites sur le lab réel.

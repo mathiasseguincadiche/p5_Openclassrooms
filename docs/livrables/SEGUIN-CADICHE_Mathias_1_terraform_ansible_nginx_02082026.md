@@ -1,7 +1,6 @@
 # Livrable 1 — Terraform, Ansible, NGINX et application Angular
 
-> **Gabarit à compléter.** Les preuves doivent être issues d'un déploiement
-> réel. La présence de ce fichier ne prouve pas que l'exercice est terminé.
+> **Gabarit à compléter.** Les preuves doivent être issues d'un déploiement réel. La présence de ce fichier ne prouve pas que l'exercice est terminé.
 
 ## 1. Choix de réalisation
 
@@ -20,16 +19,16 @@ terraform/exercice-1/
 ├── terraform.tfvars.example
 └── .terraform.lock.hcl
 
+application/angular/             # sources Angular
 ansible/
 ├── inventories/hosts_aws.example
 ├── playbooks/deploy.yml
 └── files/
-    ├── angular-app/
+    ├── angular-app/             # build de production
     └── nginx-angular.conf
 ```
 
-Les fichiers `terraform.tfvars`, `terraform.tfstate`, l'inventaire réel et les
-clés SSH sont exclus de la remise publique.
+Les fichiers `terraform.tfvars`, `terraform.tfstate`, l'inventaire réel et les clés SSH sont exclus de la remise publique.
 
 ## 3. Preuves Terraform
 
@@ -41,8 +40,7 @@ terraform -chdir=terraform/exercice-1 validate
 terraform -chdir=terraform/exercice-1 plan
 ```
 
-**Preuves à insérer :** validation réussie, résumé du plan et ressources
-attendues clairement identifiables.
+**Preuves à insérer :** validation réussie, résumé du plan et ressources attendues clairement identifiables.
 
 ### Application
 
@@ -51,8 +49,7 @@ terraform -chdir=terraform/exercice-1 apply
 terraform -chdir=terraform/exercice-1 output
 ```
 
-**Preuves à insérer :** résumé de l'application et cible EC2 en état
-`running`, sans exposer de donnée sensible.
+**Preuves à insérer :** résumé de l'application et cible EC2 en état `running`, sans exposer de donnée sensible.
 
 ## 4. Preuves Ansible
 
@@ -63,17 +60,19 @@ ansible-playbook \
   ansible/playbooks/deploy.yml
 ```
 
-**Preuves à insérer :** ping réussi, récapitulatif du playbook sans échec et
-seconde exécution idempotente.
+**Preuves à insérer :** ping réussi, récapitulatif du playbook sans échec et seconde exécution idempotente.
 
 ## 5. Preuve de l'application
 
-La page actuellement versionnée dans `ansible/files/angular-app/` est un
-support statique de démonstration. Avant la remise, remplacez-la par le build
-réel de l'application Angular fourni par le starter.
+Le dépôt contient les sources Angular dans `application/angular/` et le build de production correspondant dans `ansible/files/angular-app/`. La CI reconstruit l’application et refuse toute divergence entre ces deux éléments.
 
-**Preuves à insérer :** application Angular réelle accessible sur le port 80,
-configuration NGINX valide et réponse HTTP attendue.
+Avant le déploiement, confirmer leur synchronisation avec :
+
+```bash
+./scripts/commands/prepare-angular-artifact.sh
+```
+
+**Preuves à insérer :** application Angular accessible sur le port 80, configuration NGINX valide, bundle JavaScript chargé, fallback SPA opérationnel et réponse HTTP attendue.
 
 ## 6. Nettoyage
 
@@ -81,5 +80,4 @@ configuration NGINX valide et réponse HTTP attendue.
 terraform -chdir=terraform/exercice-1 destroy
 ```
 
-**Preuve à insérer :** confirmation de destruction et absence des ressources
-résiduelles dans AWS.
+**Preuve à insérer :** confirmation de destruction et absence des ressources résiduelles dans AWS.

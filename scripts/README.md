@@ -1,12 +1,12 @@
 # Scripts du projet P5
 
-Les scripts préparent et contrôlent le lab sans masquer les commandes
-pédagogiques. Aucun script ne lance automatiquement les trois exercices AWS.
+Les scripts préparent et contrôlent le lab sans masquer les commandes pédagogiques. Aucun script ne lance automatiquement les trois exercices AWS.
 
 | Besoin | Commande |
 | --- | --- |
 | Installer le socle sur Ubuntu Server 26.04 | `./scripts/commands/bootstrap-ubuntu-server.sh` |
 | Vérifier la VM et l’arborescence | `./scripts/commands/setup.sh --check-only` |
+| Auditer les secrets et fichiers sensibles suivis | `python3 scripts/tools/audit_secrets.py` |
 | Produire une archive diagnostic partageable | `bash scripts/commands/collect-diagnostics.sh` |
 | Produire le diagnostic local complet avec OpenSearch | `bash scripts/commands/collect-diagnostics.sh --complet` |
 | Joindre aussi les preuves runtime existantes | `bash scripts/commands/collect-diagnostics.sh --complet --avec-preuves` |
@@ -26,36 +26,25 @@ pédagogiques. Aucun script ne lance automatiquement les trois exercices AWS.
 
 ## Diagnostic à transmettre
 
-Le collecteur crée un dossier horodaté sous `proofs/runtime/diagnostics/` et une
-archive `p5-diagnostic-<UTC>.tar.gz`. L’archive contient :
+Le collecteur crée un dossier horodaté sous `proofs/runtime/diagnostics/` et une archive `p5-diagnostic-<UTC>.tar.gz`. L’archive contient :
 
 - un résumé `OK / AVERTISSEMENTS / KO` ;
 - les versions et ressources principales de la VM ;
 - le résultat de `setup.sh` et de la validation locale ;
 - le précontrôle AWS lorsqu’une configuration locale existe ;
-- un journal nettoyé des clés AWS, jetons, en-têtes d’autorisation et blocs de
-  clé privée détectables ;
+- un journal nettoyé des clés AWS, jetons, en-têtes d’autorisation et blocs de clé privée détectables ;
 - le manifeste des preuves déjà produites.
 
-Le journal complet non filtré reste local avec des permissions restrictives.
-L’archive nettoyée est le fichier à transmettre pour diagnostic. L’option
-`--avec-preuves` ajoute les dossiers runtime des exercices ; leur contenu doit
-être relu avant toute publication publique.
+Le journal complet non filtré reste local avec des permissions restrictives. L’archive nettoyée est le fichier à transmettre pour diagnostic. L’option `--avec-preuves` ajoute les dossiers runtime des exercices ; leur contenu doit être relu avant toute publication publique.
 
 ## Règles de sécurité
 
-- `bootstrap-ubuntu-server.sh` installe des outils, mais ne configure aucun
-  secret et ne crée aucune ressource AWS.
-- `collect-diagnostics.sh` est non destructif, écrit avec un `umask 077` et
-  n’inclut le journal complet non filtré dans aucune archive.
-- `sync-terraform-tfvars.sh` écrit des fichiers locaux en mode `600` et refuse
-  les valeurs d’exemple du compte AWS et de l’adresse IP.
-- `pre-deployment-check.sh` est non destructif et bloque les variables
-  Terraform désynchronisées.
-- les tests NGINX, HAProxy et OpenSearch utilisent uniquement des conteneurs
-  éphémères locaux ; ils sont supprimés par un `trap`, même en cas d’échec.
-- `prepare-angular-artifact.sh` remplace uniquement l’artefact sous
-  `ansible/files/angular-app/` après un build réussi.
+- `audit_secrets.py` analyse les fichiers suivis par Git et bloque les signatures de secrets à forte confiance ainsi que les fichiers locaux interdits.
+- `bootstrap-ubuntu-server.sh` installe des outils, mais ne configure aucun secret et ne crée aucune ressource AWS.
+- `collect-diagnostics.sh` est non destructif, écrit avec un `umask 077` et n’inclut le journal complet non filtré dans aucune archive.
+- `sync-terraform-tfvars.sh` écrit des fichiers locaux en mode `600` et refuse les valeurs d’exemple du compte AWS et de l’adresse IP.
+- `pre-deployment-check.sh` est non destructif et bloque les variables Terraform désynchronisées.
+- les tests NGINX, HAProxy et OpenSearch utilisent uniquement des conteneurs éphémères locaux ; ils sont supprimés par un `trap`, même en cas d’échec.
+- `prepare-angular-artifact.sh` remplace uniquement l’artefact sous `ansible/files/angular-app/` après un build réussi.
 - `destroy-aws.sh` détruit dans l’ordre **3 → 2 → 1**.
-- `clean-local.sh` conserve les états Terraform pour ne pas orpheliner des
-  ressources AWS.
+- `clean-local.sh` conserve les états Terraform pour ne pas orpheliner des ressources AWS.

@@ -1,8 +1,6 @@
 # 02 — Correspondance entre les consignes et le dépôt
 
-Cette matrice distingue la demande OpenClassrooms, l’implémentation du dépôt et
-la preuve qui reste à produire. Le choix de réalisation est **AWS pour les trois
-exercices**.
+Cette matrice distingue la demande OpenClassrooms, l’implémentation du dépôt et la preuve qui reste à produire. Le choix de réalisation est **AWS pour les trois exercices**.
 
 ## Exercice 1
 
@@ -14,12 +12,11 @@ exercices**.
 | Inventaire Ansible | `ansible/inventories/hosts_aws.example` | Exemple anonymisé |
 | Playbook `deploy.yml` | `ansible/playbooks/deploy.yml` | Présent |
 | Installation de NGINX | Playbook | Présente |
-| Déploiement Angular | `ansible/files/angular-app/` | **Build réel encore à fournir** |
+| Déploiement Angular | `application/angular/` et `ansible/files/angular-app/` | Sources et build réel synchronisés par la CI |
 | Handler de rechargement | Playbook | Présent |
-| Preuves | Gabarit du livrable 1 | À compléter |
+| Preuves | Gabarit du livrable 1 | À compléter après le déploiement AWS |
 
-Les deux sous-réseaux servent aussi à l’exercice 3 ; ils ne représentent pas
-deux exercices ni deux cibles Ansible.
+Les deux sous-réseaux servent aussi à l’exercice 3 ; ils ne représentent pas deux exercices ni deux cibles Ansible.
 
 ## Exercice 2
 
@@ -34,8 +31,7 @@ deux exercices ni deux cibles Ansible.
 | Top 5 des requêtes par 12 h | Dashboard | À créer |
 | Quatre captures | Gabarit du livrable 2 | À insérer |
 
-Le dépôt ne crée pas automatiquement les visualisations : la manipulation de
-l’interface fait partie de l’apprentissage demandé.
+Le dépôt ne crée pas automatiquement les visualisations : la manipulation de l’interface fait partie de l’apprentissage demandé.
 
 ## Exercice 3
 
@@ -48,14 +44,14 @@ l’interface fait partie de l’apprentissage demandé.
 | Test de panne et reprise | Fiche et gabarit du livrable 3 | À exécuter |
 | `haproxy.cfg` | `scripts/tools/generer-haproxy-config.sh` | À générer ou extraire |
 
-L’exercice 3 réutilise le VPC, les sous-réseaux et la paire de clés créés par
-l’exercice 1. Cette dépendance appartient à l’implémentation du dépôt.
+L’exercice 3 réutilise le VPC, les sous-réseaux et la paire de clés créés par l’exercice 1. Cette dépendance appartient à l’implémentation du dépôt.
 
 ## Éléments transverses
 
 | Élément | Rôle | Statut |
 | --- | --- | --- |
 | GitHub Actions | Contrôle qualité | Pas un exercice P5 |
+| Audit des secrets | Refus des données sensibles suivies par Git | Contrôle bloquant |
 | Scripts Bash courts | Vérification et nettoyage | Aides facultatives |
 | Journal et décisions | Traçabilité | Suivi, pas livrable principal |
 | Schémas SVG | Explication visuelle | Support pédagogique |
