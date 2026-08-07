@@ -34,7 +34,7 @@ cp environment/aws-readiness.env.example environment/aws-readiness.env
 $EDITOR environment/aws-readiness.env
 ```
 
-1. Copier et compléter les trois fichiers `terraform.tfvars`.
+1. Générer les trois fichiers `terraform.tfvars` depuis cette configuration.
 1. Prévisualiser puis créer le budget mensuel :
 
 ```bash
@@ -52,8 +52,8 @@ Guide complet : [préparation du compte AWS](00b-preparation-compte-aws.md).
 
 ## Étape 1 — Construire puis déployer l’application
 
-1. Copier le starter dans `application/angular/`.
-1. Construire l’artefact :
+1. Vérifier les sources Angular versionnées dans `application/angular/`.
+1. Reconstruire et synchroniser l’artefact Ansible :
 
 ```bash
 ./scripts/commands/prepare-angular-artifact.sh
@@ -106,11 +106,10 @@ Fiche : [Exercice 3](exercices/03-haproxy.md).
 ## Finalisation — Livrables et nettoyage
 
 ```bash
+python3 scripts/tools/audit_secrets.py
 ./scripts/commands/prepare-livrables.sh
 ./scripts/commands/destroy-aws.sh
 ./scripts/commands/check-aws-cleanup.sh
 ```
 
-La destruction s’effectue dans l’ordre 3 → 2 → 1. Le dernier script doit
-produire `NETTOYAGE AWS COMPLET`. Ne jamais supprimer les états Terraform avant
-la destruction et la vérification des ressources restantes.
+La destruction s’effectue dans l’ordre 3 → 2 → 1. Le dernier script doit produire `NETTOYAGE AWS COMPLET`. Ne jamais supprimer les états Terraform avant la destruction et la vérification des ressources restantes.
