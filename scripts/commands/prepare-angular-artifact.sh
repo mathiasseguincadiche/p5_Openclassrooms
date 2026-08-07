@@ -8,8 +8,8 @@ SOURCE_DIR="${1:-$PROJECT_ROOT/application/angular}"
 TARGET_DIR="$PROJECT_ROOT/ansible/files/angular-app"
 
 if [[ ! -f "$SOURCE_DIR/package.json" ]]; then
-    printf 'package.json absent dans %s.\n' "$SOURCE_DIR" >&2
-    printf 'Copiez d’abord le starter Angular dans application/angular/.\n' >&2
+    printf 'Projet Angular invalide : package.json absent dans %s.\n' "$SOURCE_DIR" >&2
+    printf 'Restaurez les sources versionnées dans application/angular/.\n' >&2
     exit 1
 fi
 
@@ -37,7 +37,7 @@ fi
 if [[ "${#INDEX_FILES[@]}" -gt 1 ]]; then
     printf 'Plusieurs artefacts Angular ont été détectés :\n' >&2
     printf '  %s\n' "${INDEX_FILES[@]}" >&2
-    printf 'Indiquez un projet Angular ne produisant qu’un artefact navigateur.\n' >&2
+    printf 'Le projet doit produire un unique artefact navigateur.\n' >&2
     exit 1
 fi
 
