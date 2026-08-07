@@ -1,45 +1,99 @@
-# Exercice 3 — HAProxy, disponibilité et performance
+# Exercice 3 — HAProxy, disponibilité et reprise
 
-![Flux de l'exercice 3](../schemas/exercice-3.svg)
+Cette fiche décrit l’exercice 3 dans le parcours AWS retenu. L’objectif est de
+démontrer une répartition réelle entre deux backends, la continuité du service
+pendant une panne et la réintégration automatique du backend restauré.
 
-## Objectif officiel
+![Flux de l’exercice 3](../schemas/exercice-3.svg)
 
-Placer HAProxy devant deux instances de la même application, répartir les
-requêtes, surveiller la santé des backends et vérifier la bascule lors d’une
-panne.
+## Objectif
 
-## Implémentation retenue
+Déployer HAProxy devant deux instances `nginxdemos/hello`, utiliser
+`roundrobin`, superviser la santé des backends et vérifier la bascule lors d’une
+panne contrôlée.
 
-Le module AWS déploie une instance HAProxy et deux instances EC2 exécutant
-`nginxdemos/hello:plain-text`. Les conteneurs portent les noms déterministes
-`p5-hello-1` et `p5-hello-2`, ce qui rend les preuves lisibles.
+## Résultat final attendu
 
-L’exercice 3 réutilise le VPC, les sous-réseaux publics et la paire de clés de
-l’exercice 1. L’exercice 1 doit donc rester déployé jusqu’à la fin de cette
-démonstration.
-
-## 1. Contrôler puis déployer
-
-```bash
-./scripts/commands/pre-deployment-check.sh --stage exercice-3
-
-cp terraform/exercice-3/terraform.tfvars.example \
-  terraform/exercice-3/terraform.tfvars
-$EDITOR terraform/exercice-3/terraform.tfvars
-
-terraform -chdir=terraform/exercice-3 init
-terraform -chdir=terraform/exercice-3 validate
-terraform -chdir=terraform/exercice-3 plan -out=tfplan
-terraform -chdir=terraform/exercice-3 show tfplan
-terraform -chdir=terraform/exercice-3 apply tfplan
+```text
+2 backends actifs
+      ↓
+ROUND-ROBIN OPÉRATIONNEL
+      ↓
+1 backend arrêté
+      ↓
+service toujours disponible
+      ↓
+backend redémarré
+      ↓
+BASCULE ET RÉINTÉGRATION HAPROXY VALIDÉES
 ```
 
-Terraform expose notamment `haproxy_url`, les adresses publiques des backends et
-leurs adresses privées.
+## Dépendance critique
 
-## 2. Valider la configuration HAProxy
+L’exercice 3 réutilise :
 
-La configuration utilise :
+- le VPC de l’exercice 1 ;
+- les deux sous-réseaux publics de l’exercice 1 ;
+- la paire de clés EC2 de l’exercice 1.
+
+L’exercice 1 doit donc être **encore déployé**.
+
+Le module recherche ces ressources par tags au lieu de créer un nouveau réseau.
+
+## Prérequis
+
+- étape 0A validée ;
+- AWS Ready validé ;
+- exercice 1 encore présent ;
+- clé privée SSH disponible ;
+- tfvars synchronisés ;
+- adresse publique `/32` actuelle ;
+- quota EC2 suffisant.
+
+Contrôles :
+
+```bash
+./scripts/commands/check-aws-readiness.sh --stage exercice-3
+./scripts/commands/pre-deployment-check.sh --stage exercice-3
+```
+
+Le contrôle doit confirmer le VPC et la clé de l’exercice 1.
+
+## Ce que Terraform crée
+
+Le module `terraform/exercice-3/` crée :
+
+- groupe de sécurité HAProxy ;
+- groupe de sécurité des backends ;
+- deux EC2 backends ;
+- une EC2 HAProxy.
+
+### HAProxy
+
+Le groupe de sécurité HAProxy autorise :
+
+- HTTP 80 publiquement ;
+- SSH 22 uniquement depuis le `/32` d’administration.
+
+### Backends
+
+Chaque backend :
+
+- utilise Ubuntu 24.04 LTS par défaut ;
+- installe Docker dans `user_data` ;
+- démarre `nginxdemos/hello:plain-text` ;
+- expose le conteneur sur le port 80 ;
+- n’autorise HTTP que depuis le groupe de sécurité HAProxy ;
+- autorise SSH uniquement depuis le `/32` du lab ;
+- impose IMDSv2 ;
+- utilise un volume racine `gp3` chiffré.
+
+Les noms des conteneurs sont identiques (`nginx-hello`) mais leurs hostnames
+sont déterministes : `p5-hello-1` et `p5-hello-2`.
+
+## Configuration HAProxy utilisée
+
+Le cœur du backend est :
 
 ```text
 backend hello-servers
@@ -50,12 +104,90 @@ backend hello-servers
     server hello-2 ADRESSE_PRIVEE_2:80 check inter 3s fall 3 rise 2
 ```
 
-Le générateur local permet de vérifier le format sans toucher à AWS :
+Interprétation :
+
+- `inter 3s` : contrôle toutes les 3 secondes ;
+- `fall 3` : retrait après trois échecs successifs ;
+- `rise 2` : réintégration après deux succès successifs.
+
+## Fichiers concernés
+
+```text
+terraform/exercice-3/
+├── main.tf
+├── variables.tf
+├── outputs.tf
+└── terraform.tfvars.example
+
+scripts/
+├── commands/test-haproxy-roundrobin.sh
+├── commands/test-haproxy-failover.sh
+├── tests/test-haproxy-containers.sh
+└── tools/generer-haproxy-config.sh
+```
+
+## Étape 1 — Initialiser et valider Terraform
+
+```bash
+terraform -chdir=terraform/exercice-3 init
+terraform -chdir=terraform/exercice-3 fmt -check
+terraform -chdir=terraform/exercice-3 validate
+```
+
+## Étape 2 — Produire et relire le plan
+
+```bash
+terraform -chdir=terraform/exercice-3 plan -out=tfplan
+terraform -chdir=terraform/exercice-3 show tfplan
+```
+
+Vérifier :
+
+- utilisation du bon VPC ;
+- deux backends ;
+- une instance HAProxy ;
+- règles réseau ;
+- types d’instance ;
+- clé EC2 ;
+- chiffrement ;
+- absence de ressource réseau dupliquée inutilement.
+
+## Étape 3 — Appliquer
+
+```bash
+terraform -chdir=terraform/exercice-3 apply tfplan
+terraform -chdir=terraform/exercice-3 output
+```
+
+Outputs :
+
+```text
+hello_1_public_ip
+hello_2_public_ip
+hello_1_private_ip
+hello_2_private_ip
+haproxy_public_ip
+haproxy_private_ip
+haproxy_public_dns
+haproxy_security_group_id
+haproxy_url
+```
+
+Les services démarrés par `user_data` peuvent nécessiter un court délai après la
+fin de `terraform apply`.
+
+## Étape 4 — Valider une configuration HAProxy localement
+
+Le générateur permet de vérifier la syntaxe indépendamment d’AWS :
 
 ```bash
 ./scripts/tools/generer-haproxy-config.sh \
   10.0.1.10 10.0.2.10 /tmp/haproxy.cfg
+```
 
+Puis :
+
+```bash
 docker run --rm \
   --volume /tmp/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro \
   haproxy:3.2-alpine \
@@ -69,32 +201,43 @@ sudo haproxy -c -f /etc/haproxy/haproxy.cfg
 sudo systemctl status haproxy --no-pager
 ```
 
-## 3. Tester le round-robin
+## Étape 5 — Vérifier le round-robin
 
 ```bash
 ./scripts/commands/test-haproxy-roundrobin.sh --requests 10
 ```
 
-Le script interroge l’URL Terraform, extrait le champ `Server name` et exige au
-moins deux backends distincts. La sortie est enregistrée sous
-`proofs/runtime/exercice-3/`.
+Le script :
 
-Le verdict attendu est :
+- lit `haproxy_url` ;
+- envoie plusieurs requêtes ;
+- extrait `Server name` ;
+- exige au moins deux backends distincts ;
+- écrit la preuve sous `proofs/runtime/exercice-3/`.
+
+Verdict :
 
 ```text
 ROUND-ROBIN OPÉRATIONNEL
 ```
 
-## 4. Prévisualiser le test de panne
+## Étape 6 — Prévisualiser le scénario de panne
 
 ```bash
 ./scripts/commands/test-haproxy-failover.sh
 ```
 
-Sans `--apply`, le script vérifie uniquement l’état initial des deux backends et
-affiche le scénario. Aucun conteneur n’est arrêté.
+Sans `--apply` :
 
-## 5. Exécuter la panne et la reprise
+- les deux backends sont observés ;
+- le scénario est préparé ;
+- aucune connexion SSH destructive n’arrête de conteneur.
+
+Utilisez ce mode avant chaque démonstration réelle.
+
+## Étape 7 — Exécuter la panne réelle
+
+Exemple :
 
 ```bash
 ./scripts/commands/test-haproxy-failover.sh \
@@ -103,46 +246,101 @@ affiche le scénario. Aucun conteneur n’est arrêté.
   --apply
 ```
 
-Le test réalise les phases suivantes :
+Le script :
 
-1. confirme que les deux backends répondent ;
-2. arrête `nginx-hello` sur le backend choisi par SSH ;
-3. attend la détection du health check ;
-4. confirme qu’un seul backend répond sans interruption ;
-5. redémarre le conteneur ;
-6. confirme le retour des deux backends dans la rotation.
+1. confirme les deux backends ;
+2. récupère l’IP publique du backend choisi ;
+3. se connecte en SSH ;
+4. arrête `nginx-hello` ;
+5. attend la détection de panne ;
+6. exige un seul backend en réponse ;
+7. redémarre `nginx-hello` ;
+8. attend la réintégration ;
+9. exige de nouveau deux backends.
 
-Un piège de sortie tente toujours de redémarrer le conteneur si le script est
-interrompu après l’arrêt.
+Valeurs de référence :
 
-Le verdict attendu est :
+- attente après arrêt : 12 secondes ;
+- attente après redémarrage : 10 secondes.
+
+Ces délais sont configurables par options du script.
+
+## Restauration de sécurité
+
+Après un arrêt réel, un `trap` est actif sur `EXIT`, `INT` et `TERM`.
+
+Si le script est interrompu alors que le backend est marqué arrêté, il tente :
+
+```text
+sudo docker start nginx-hello
+```
+
+Cette restauration réduit le risque d’une panne permanente mais ne dispense pas
+de vérifier manuellement l’état après une interruption.
+
+## Verdict final
 
 ```text
 BASCULE ET RÉINTÉGRATION HAPROXY VALIDÉES
 ```
 
-## Preuves attendues
+## Preuves à conserver
 
-- plan et application Terraform ;
-- trois instances EC2 actives ;
-- copie anonymisée de `haproxy.cfg` ;
-- validation `haproxy -c` ;
-- sortie du round-robin avec deux noms de serveur ;
-- sortie avant, pendant et après la panne ;
-- continuité du service pendant l’arrêt ;
-- réintégration automatique du backend ;
-- aucune clé SSH, IP sensible complète ou variable locale versionnée.
+### Infrastructure
+
+- plan Terraform ;
+- trois EC2 actives ;
+- outputs utiles anonymisés.
+
+### Configuration
+
+- copie lisible de `haproxy.cfg` ;
+- `haproxy -c` réussi ;
+- service HAProxy actif.
+
+### Round-robin
+
+- deux noms de serveur observés sur plusieurs requêtes.
+
+### Panne
+
+- deux backends avant la panne ;
+- un seul pendant la panne ;
+- service HTTP toujours disponible.
+
+### Reprise
+
+- conteneur redémarré ;
+- retour des deux backends ;
+- verdict final du script.
 
 Gabarit :
-[`SEGUIN-CADICHE_Mathias_3_haproxy_nginxdemos_02082026.md`](../livrables/SEGUIN-CADICHE_Mathias_3_haproxy_nginxdemos_02082026.md).
+[`Livrable 3`](../livrables/SEGUIN-CADICHE_Mathias_3_haproxy_nginxdemos_02082026.md).
 
-## Nettoyage final
+## Ce qu’il ne faut pas publier
 
-Détruire d’abord l’exercice 3, puis l’exercice 2 et enfin l’exercice 1 :
+- clé privée SSH ;
+- tfvars ;
+- état Terraform ;
+- adresse complète non nécessaire ;
+- contenu brut non relu de `proofs/runtime/`.
+
+## Nettoyage
+
+Une fois toutes les preuves de l’exercice 3 collectées :
 
 ```bash
 terraform -chdir=terraform/exercice-3 destroy
-terraform -chdir=terraform/exercice-2 destroy
-terraform -chdir=terraform/exercice-1 destroy
-./scripts/commands/check-aws-cleanup.sh
 ```
+
+Vous pouvez ensuite détruire l’exercice 1 si ses preuves et ses logs ne sont plus
+nécessaires.
+
+Ordre global recommandé :
+
+```text
+Exercice 3 → Exercice 2 → Exercice 1 → check-aws-cleanup.sh
+```
+
+La procédure complète se trouve dans
+[Validation, preuves et nettoyage](../validation-preuves-nettoyage.md).

@@ -1,74 +1,170 @@
 # Environnement de lab — Étapes 0A et 0B
 
-Ce dossier centralise le **poste de contrôle** du P5 et sa configuration AWS
-locale. La VM utilise Ubuntu Server 26.04 LTS « Resolute Raccoon » et reste
-administrée en ligne de commande.
+Ce dossier définit le **socle local reproductible** et la **source de configuration
+AWS** du projet P5.
 
 ```text
 environment/
 ├── README.md
-├── apt-packages.txt             # paquets système utiles au lab
-├── versions.env                 # versions exactes de référence
-└── aws-readiness.env.example    # paramètres AWS et Terraform sans secret
+├── apt-packages.txt
+├── versions.env
+└── aws-readiness.env.example
 ```
 
-Le fichier réel `aws-readiness.env` est local et ignoré par Git.
+Le fichier réel `environment/aws-readiness.env` est local, ignoré par Git et ne
+doit contenir aucune clé d'accès AWS.
 
-## Étape 0A — Socle de la VM
+## 1. `versions.env` — versions de référence
 
-L’installation est effectuée par :
+Ce fichier fixe les versions attendues par le lab et les contrôles :
+
+- Ubuntu Server 26.04 ;
+- Node.js 22.22.0 ;
+- Ansible Core 2.20.1 ;
+- Terraform 1.15.8 ;
+- versions des images Docker utilisées par les tests locaux.
+
+Le bootstrap et les validations lisent ce fichier. Pour modifier une version de
+référence, il faut donc vérifier le script d'installation, la CI et les tests
+associés dans la même évolution.
+
+## 2. Étape 0A — installer et contrôler la VM
+
+Installation :
 
 ```bash
 ./scripts/commands/bootstrap-ubuntu-server.sh
 ```
 
-Terraform est installé depuis l’archive officielle avec vérification SHA-256,
-sans dépendre de la disponibilité d’un dépôt APT pour Ubuntu 26.04. Ansible Core
-est installé avec `pipx` dans la version exacte déclarée dans `versions.env`.
+Le script installe le socle sans créer de ressource AWS ni configurer de secret.
+Terraform est installé depuis l'archive HashiCorp officielle avec vérification
+SHA-256. Ansible Core est installé avec `pipx`, Node.js avec NVM et Docker depuis
+le dépôt Docker officiel.
 
-Le contrôle local est effectué par :
+Après reconnexion :
 
 ```bash
 ./scripts/commands/setup.sh --check-only
 ```
 
-Le socle comprend OpenSSH, Git, Terraform, Ansible Core, AWS CLI v2, Node.js,
-npm, Docker, ShellCheck, yamllint et les outils de diagnostic.
+Ce contrôle valide la VM et la présence des composants critiques du dépôt.
 
-## Étape 0B — AWS Ready
+Guide canonique :
+[`docs/00-preparation-environnement.md`](../docs/00-preparation-environnement.md).
 
-Préparez le fichier local :
+## 3. `aws-readiness.env` — source unique des paramètres AWS
+
+Créer la configuration locale :
 
 ```bash
 cp environment/aws-readiness.env.example environment/aws-readiness.env
 $EDITOR environment/aws-readiness.env
 ```
 
-Générez ensuite les trois fichiers Terraform depuis cette source unique :
+Ce fichier centralise notamment :
+
+| Catégorie | Variables principales |
+| --- | --- |
+| Session | `AWS_PROFILE`, `AWS_REGION` |
+| Compte | `P5_EXPECTED_ACCOUNT_ID` |
+| Réseau d'administration | `P5_PUBLIC_IP_CIDR` |
+| EC2 | AMI optionnelle, type d'instance, clé SSH |
+| OpenSearch | moteur, type de nœud, domaine, stockage |
+| Quotas | vCPU Standard requis |
+| Coûts | budget, limite et e-mail de notification |
+| Sécurité | confirmations MFA, clés root, IAM et facturation |
+
+Les confirmations `..._CONFIRMED=yes` ne doivent être renseignées qu'après
+vérification réelle dans la console AWS.
+
+## 4. Génération des `terraform.tfvars`
+
+Les trois `terraform.tfvars` sont des **sorties générées**, pas des sources de
+configuration indépendantes.
+
+Aperçu sans écriture :
+
+```bash
+bash scripts/commands/sync-terraform-tfvars.sh
+```
+
+Écriture réelle en mode `600` :
 
 ```bash
 bash scripts/commands/sync-terraform-tfvars.sh --apply
+```
+
+Contrôle de cohérence :
+
+```bash
 bash scripts/commands/sync-terraform-tfvars.sh --check
 ```
 
-Puis exécutez :
+Toute modification de région, compte, IP, type d'instance ou paramètres
+OpenSearch doit être faite dans `aws-readiness.env`, puis propagée avec ce
+script.
+
+## 5. Étape 0B — garde-fous AWS
+
+Prévisualiser la création du budget :
+
+```bash
+./scripts/commands/setup-aws-guardrails.sh
+```
+
+Créer explicitement le budget :
 
 ```bash
 ./scripts/commands/setup-aws-guardrails.sh --apply
+```
+
+Puis vérifier le compte :
+
+```bash
 ./scripts/commands/check-aws-readiness.sh --stage initial
 ./scripts/commands/pre-deployment-check.sh --stage initial
 ```
 
-Le contrôle pré-déploiement refuse le verdict `GO TERRAFORM` si un
-`terraform.tfvars` diverge de `aws-readiness.env`. Il vérifie également le compte
-autorisé, l’identité, la région, l’adresse `/32`, les quotas, EC2, OpenSearch et
-le budget. Il ne crée aucune infrastructure des exercices.
+Le premier contrôle est centré sur le compte, l'identité, les quotas, les coûts
+et les dépendances AWS. Le second ajoute la cohérence locale du dépôt, des
+versions, de la clé SSH et des variables Terraform.
 
-Le bootstrap ne lance ni `aws configure`, ni `terraform apply`, ni création de
-clé SSH. La création du budget exige explicitement `--apply`. Les secrets et les
-décisions d’accès restent sous le contrôle de l’utilisateur.
+Verdicts recherchés :
 
-Procédures complètes :
+```text
+GO AWS
+GO TERRAFORM
+```
 
-- [préparation de la VM](../docs/00-preparation-environnement.md) ;
-- [préparation du compte AWS](../docs/00b-preparation-compte-aws.md).
+Guide canonique :
+[`docs/00b-preparation-compte-aws.md`](../docs/00b-preparation-compte-aws.md).
+
+## 6. Ce qui ne doit jamais être versionné
+
+- `environment/aws-readiness.env` ;
+- `terraform.tfvars` ;
+- états et plans Terraform ;
+- clés SSH privées ;
+- credentials AWS ;
+- preuves runtime brutes.
+
+Ces exclusions sont protégées par `.gitignore`, `audit_secrets.py` et la CI.
+
+## 7. Quand mettre à jour ce dossier
+
+Modifier `environment/` lorsqu'une évolution concerne :
+
+- la version officielle d'un outil du lab ;
+- une variable de configuration réellement utilisée ;
+- une nouvelle vérification AWS transversale ;
+- un nouveau garde-fou nécessaire avant Terraform.
+
+Éviter d'ajouter ici des variables propres à une seule commande si elles ne
+participent pas au contrat global du lab.
+
+## Références
+
+- [Architecture et flux](../docs/architecture-et-flux.md)
+- [Parcours complet](../docs/01-parcours-debutant.md)
+- [Garde-fous AWS](../aws/README.md)
+- [Troubleshooting](../docs/troubleshooting.md)
