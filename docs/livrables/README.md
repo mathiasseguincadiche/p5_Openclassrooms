@@ -1,74 +1,247 @@
 # Livrables et preuves du P5
 
-OpenClassrooms demande trois ensembles de livrables correspondant aux trois
-exercices officiels.
+Ce dossier contient les **trois structures de livrables** correspondant aux trois
+exercices du projet. Leur rôle est d’organiser les preuves réelles, pas de les
+remplacer.
 
-| Exercice | Éléments à remettre | Gabarit du dépôt |
+## Principe essentiel
+
+```text
+Code présent ≠ exercice exécuté
+Gabarit présent ≠ preuve produite
+Sortie runtime brute ≠ livrable publiable
+```
+
+Une preuve valide doit :
+
+1. provenir du véritable lab ;
+2. démontrer un résultat précis ;
+3. rester lisible ;
+4. être expliquée ;
+5. ne contenir aucun secret ou détail sensible inutile.
+
+## Les trois livrables
+
+| Exercice | Ce qui doit être démontré | Gabarit |
 | --- | --- | --- |
-| 1 — Terraform et Ansible | Terraform, playbook, NGINX, application Angular et preuves HTTP | [Livrable 1](SEGUIN-CADICHE_Mathias_1_terraform_ansible_nginx_02082026.md) |
-| 2 — OpenSearch | Index, Discover, trois visualisations et dashboard | [Livrable 2](SEGUIN-CADICHE_Mathias_2_dashboard_kibana_02082026.md) |
-| 3 — HAProxy | Configuration, round-robin, panne et réintégration | [Livrable 3](SEGUIN-CADICHE_Mathias_3_haproxy_nginxdemos_02082026.md) |
+| 1 — Terraform + Ansible | infrastructure, déploiement NGINX/Angular, idempotence | [Livrable 1](SEGUIN-CADICHE_Mathias_1_terraform_ansible_nginx_02082026.md) |
+| 2 — OpenSearch | données, Discover, 3 visualisations et dashboard | [Livrable 2](SEGUIN-CADICHE_Mathias_2_dashboard_kibana_02082026.md) |
+| 3 — HAProxy | config, round-robin, panne, continuité et reprise | [Livrable 3](SEGUIN-CADICHE_Mathias_3_haproxy_nginxdemos_02082026.md) |
 
-## Collecte technique
+## D’où viennent les preuves ?
 
-Les scripts écrivent leurs sorties dans un dossier local ignoré par Git :
+Les scripts conservent leurs sorties techniques sous :
 
 ```text
 proofs/runtime/
-├── exercice-1/  # HTTP, en-têtes, page Angular et trafic NGINX
-├── exercice-2/  # logs, import Bulk, mapping et agrégations
-└── exercice-3/  # round-robin, panne et reprise
+├── diagnostics/
+├── exercice-1/
+├── exercice-2/
+└── exercice-3/
 ```
 
-Ces fichiers facilitent la rédaction, mais ils ne remplacent pas les captures
-et explications demandées dans les livrables.
+Ce dossier est ignoré par Git et **privé par défaut**.
 
-## Règles de preuve
+La documentation complète du cycle de preuve se trouve dans
+[Validation, preuves, publication et nettoyage](../validation-preuves-nettoyage.md).
 
-- Une zone « preuve à insérer » n’est pas une preuve.
-- Les captures et sorties doivent venir du véritable lab.
-- Les IP peuvent être masquées partiellement si le résultat reste lisible.
-- Aucun secret, clé, mot de passe, identifiant AWS, inventaire réel ou état
-  Terraform ne doit apparaître.
-- Le livrable 1 doit montrer le build Angular réellement servi par NGINX.
-- Le livrable 2 doit contenir exactement le donut, les octets par 12 heures et
-  le top 5 des requêtes par 12 heures, puis le dashboard complet.
-- Le livrable 3 doit montrer les deux backends avant la panne, un seul pendant
-  la panne, puis les deux après la reprise.
-- Les commandes et conclusions doivent être expliquées ; une capture seule ne
-  démontre pas la compréhension.
+## Exercice 1 — preuves minimales
 
-## Contrôles
+### Terraform
 
-Validation de la structure, utilisable avant le déploiement :
+- `terraform validate` réussi ;
+- plan relu ;
+- ressources attendues identifiables ;
+- `apply` réussi ;
+- EC2 active.
+
+### Ansible
+
+- ping de la cible ;
+- première exécution du playbook ;
+- seconde exécution démontrant l’idempotence ;
+- aucune tâche en échec.
+
+### Application
+
+- application Angular réelle dans un navigateur ;
+- NGINX valide ;
+- bundle JavaScript chargé ;
+- fallback SPA ;
+- verdict :
+
+```text
+APPLICATION ANGULAR DÉPLOYÉE ET SERVIE PAR NGINX
+```
+
+### Dépendance de nettoyage
+
+Le réseau de l’exercice 1 est réutilisé par l’exercice 3. **La destruction de
+l’exercice 1 n’est donc pas une étape à effectuer juste après le livrable 1.**
+
+## Exercice 2 — preuves minimales
+
+- domaine OpenSearch actif ;
+- index `nginx-access-*` ;
+- données visibles dans Discover ;
+- mapping exploitable ;
+- verdict :
+
+```text
+DONNÉES OPENSEARCH PRÊTES POUR LE DASHBOARD
+```
+
+Puis quatre captures :
+
+1. donut des méthodes HTTP ;
+2. somme des octets par tranches de 12 h ;
+3. top 5 des URL par tranches de 12 h ;
+4. dashboard complet.
+
+OpenSearch peut être détruit après ces captures afin de limiter les coûts.
+
+## Exercice 3 — preuves minimales
+
+- trois EC2 actives ;
+- `haproxy.cfg` lisible ;
+- `haproxy -c` réussi ;
+- deux backends en round-robin ;
+- un backend pendant la panne ;
+- service disponible pendant cette panne ;
+- deux backends après la reprise ;
+- verdict :
+
+```text
+BASCULE ET RÉINTÉGRATION HAPROXY VALIDÉES
+```
+
+## État d’une preuve
+
+| État | Exemple | Peut être publié ? |
+| --- | --- | --- |
+| Brut | log, endpoint, sortie CLI complète | non |
+| Sélectionné | extrait utile | après relecture |
+| Anonymisé | IP ou identifiant masqué si inutile | oui |
+| Contextualisé | preuve + commande + explication | oui, état recommandé |
+
+## Règles d’anonymisation
+
+Ne jamais publier :
+
+- clé AWS ;
+- jeton de session ;
+- clé privée SSH ;
+- `environment/aws-readiness.env` ;
+- `terraform.tfvars` ;
+- état Terraform ;
+- inventaire Ansible réel ;
+- en-tête d’autorisation ;
+- archive ou journal runtime non relu.
+
+Les IP, endpoints, ARNs et identifiants peuvent être masqués partiellement
+lorsque leur valeur exacte n’est pas nécessaire pour comprendre la preuve.
+
+## Une capture seule n’est pas suffisante
+
+Pour chaque preuve importante, expliquer :
+
+- **ce qui est exécuté** ;
+- **ce que montre la sortie** ;
+- **pourquoi le résultat valide l’exercice**.
+
+Exemple de structure :
+
+```text
+Commande : test-haproxy-roundrobin.sh --requests 10
+Résultat : deux valeurs distinctes de Server name sont observées.
+Conclusion : HAProxy répartit bien les requêtes entre les deux backends.
+```
+
+## Contrôle avant exécution réelle
+
+La CI utilise :
 
 ```bash
 ./scripts/commands/prepare-livrables.sh --structure-only
 ```
 
-Validation finale stricte :
+Ce mode vérifie :
+
+- présence des trois fichiers ;
+- sections obligatoires ;
+- composants associés ;
+- absence de signatures de secrets évidentes.
+
+Il **n’exige pas encore les preuves réelles**.
+
+## Contrôle strict avant remise
 
 ```bash
 ./scripts/commands/prepare-livrables.sh
 ```
 
-Le contrôle final échoue tant que les trois gabarits contiennent des marqueurs
-de preuve, une section obligatoire manque ou une clé potentielle est détectée.
-Il ne peut toutefois pas juger la qualité visuelle d’une capture : une relecture
-humaine reste obligatoire.
+Ce mode échoue si un marqueur de preuve reste présent, par exemple :
 
-## Ordre conseillé
+```text
+Gabarit à compléter
+Preuve à insérer
+Capture réelle à insérer
+À joindre
+```
 
-1. exécuter l’exercice ;
-2. conserver les sorties sous `proofs/runtime/` ;
-3. sélectionner les preuves utiles et anonymiser les données sensibles ;
-4. compléter le gabarit correspondant ;
-5. exécuter le contrôle strict ;
-6. relire les trois documents comme un évaluateur ;
-7. détruire les ressources et joindre la preuve de nettoyage.
+Verdict attendu :
 
-## Nom et canal de remise
+```text
+LIVRABLES PRÊTS POUR RELECTURE FINALE
+```
 
-La page de bilan peut demander un ZIP et employer GitLab ou GitHub selon la
-version de la consigne. Vérifiez le libellé visible sur la plateforme et
-confirmez-le avec le mentor avant la remise finale.
+## Ordre de travail recommandé
+
+Pour chaque exercice :
+
+1. lire le guide ;
+2. exécuter réellement ;
+3. conserver les sorties techniques ;
+4. capturer les éléments visuels demandés ;
+5. sélectionner les preuves ;
+6. anonymiser ;
+7. compléter le livrable ;
+8. relire comme un évaluateur.
+
+Puis, une fois les trois exercices terminés :
+
+1. lancer l’audit des secrets ;
+2. exécuter le contrôle strict des livrables ;
+3. détruire AWS dans l’ordre 3 → 2 → 1 ;
+4. lancer l’audit global du nettoyage.
+
+## Nettoyage et preuve finale
+
+```bash
+./scripts/commands/destroy-aws.sh
+./scripts/commands/check-aws-cleanup.sh
+```
+
+Verdict final :
+
+```text
+NETTOYAGE AWS COMPLET
+```
+
+Ce verdict concerne **l’ensemble du projet**, pas un seul exercice.
+
+## Canal de remise
+
+Les formulations fournies par OpenClassrooms peuvent varier selon la version de
+la plateforme (GitHub/GitLab, ZIP ou liens). La consigne visible au moment de la
+remise et les indications du mentor restent prioritaires.
+
+Le dépôt organise le contenu technique indépendamment du canal final choisi.
+
+## Documents associés
+
+- [Traçabilité consignes → code → preuves](../02-correspondance-consignes-depot.md)
+- [Runbook complet](../01-parcours-debutant.md)
+- [Validation et nettoyage](../validation-preuves-nettoyage.md)
+- [Convention des preuves runtime](../../proofs/README.md)
+- [Sécurité](../../SECURITY.md)
