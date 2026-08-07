@@ -36,6 +36,16 @@ data "aws_vpc" "p5_vpc" {
     name   = "tag:Project"
     values = ["p5-openclassrooms"]
   }
+
+  filter {
+    name   = "tag:Exercise"
+    values = ["1"]
+  }
+
+  filter {
+    name   = "tag:Name"
+    values = ["p5-vpc"]
+  }
 }
 
 data "aws_subnets" "p5_public_subnets" {
@@ -47,6 +57,11 @@ data "aws_subnets" "p5_public_subnets" {
   filter {
     name   = "tag:Project"
     values = ["p5-openclassrooms"]
+  }
+
+  filter {
+    name   = "tag:Exercise"
+    values = ["1"]
   }
 
   filter {
