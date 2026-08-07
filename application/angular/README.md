@@ -1,8 +1,8 @@
 # Application Angular du P5
 
-Ce dossier contient l'application utilisée dans l'exercice 1. Elle est conçue
-comme une SPA légère, sans API ni ressource externe, afin que la démonstration
-reste centrée sur l'infrastructure et le déploiement.
+Ce dossier contient la SPA utilisée comme charge applicative de l'exercice 1.
+Elle doit rester **simple, autonome et reproductible** : le but du projet est de
+démontrer l'infrastructure et le déploiement, pas de développer un backend métier.
 
 ## Structure
 
@@ -15,6 +15,8 @@ application/angular/
 ├── tsconfig.app.json
 ├── public/
 │   └── favicon.svg
+├── tests/
+│   └── app-contract.test.mjs
 └── src/
     ├── index.html
     ├── main.ts
@@ -25,47 +27,97 @@ application/angular/
         └── app.component.css
 ```
 
-## Exécution locale
+## Commandes locales
+
+Depuis la racine du dépôt :
 
 ```bash
-cd application/angular
-npm ci
-npm start
+npm ci --prefix application/angular --no-audit --no-fund
+npm run lint --prefix application/angular
+npm test --prefix application/angular
+npm run security:dependencies --prefix application/angular
+npm run build --prefix application/angular
+```
+
+Pour lancer le serveur de développement :
+
+```bash
+npm start --prefix application/angular
 ```
 
 L'application est alors disponible sur `http://localhost:4200`.
 
-## Build de production
+## Versions et dépendances
 
-Depuis la racine du dépôt :
+La version Node.js de référence est définie dans `environment/versions.env`.
+`package-lock.json` est obligatoire : le pipeline utilise `npm ci` afin de
+reproduire exactement l'arbre des dépendances validé.
+
+Le dépôt contrôle :
+
+- la compilation TypeScript ;
+- le contrat fonctionnel minimal de l'application ;
+- les dépendances de production avec `npm audit` ;
+- le build de production ;
+- la synchronisation du build avec Ansible.
+
+## Build destiné à Ansible
+
+Ne copiez pas manuellement `dist/` vers Ansible. Utilisez :
 
 ```bash
 ./scripts/commands/prepare-angular-artifact.sh
 ```
 
-Cette commande :
+Le flux attendu est :
 
-1. installe exactement les dépendances du fichier `package-lock.json` ;
-2. lance le build Angular de production ;
-3. vérifie qu'un seul artefact navigateur contient `index.html` ;
-4. copie cet artefact dans `ansible/files/angular-app/` ;
-5. laisse le dossier `dist/` local ignoré par Git.
+```text
+sources Angular
+  → npm ci
+  → npm run build
+  → application/angular/dist/
+  → copie contrôlée
+  → ansible/files/angular-app/
+```
+
+Le dossier `dist/` est local et ignoré par Git. L'artefact dans
+`ansible/files/angular-app/` est versionné parce qu'il constitue le contenu
+exact copié sur l'EC2 pendant la démonstration.
 
 ## Contrat de synchronisation
 
-Le code source et l'artefact Ansible doivent toujours correspondre. La CI
-reconstruit l'application puis compare le résultat avec
-`ansible/files/angular-app/`. Une différence signifie qu'il faut relancer le
-script de préparation et examiner le nouveau build avant de le versionner.
+La CI reconstruit l'application puis compare le build à
+`ansible/files/angular-app/`. Toute divergence signifie que les sources et
+l'artefact déployable ne correspondent plus.
+
+Après une modification applicative :
+
+```bash
+./scripts/commands/prepare-angular-artifact.sh
+./scripts/commands/validate.sh
+```
 
 ## Vérification sur AWS
 
-Après le playbook Ansible :
+Après le déploiement Ansible :
 
 ```bash
 ./scripts/commands/verify-angular-deployment.sh
 ```
 
-Le contrôle HTTP ne remplace pas l'ouverture de l'application dans un
-navigateur. Il fournit cependant une preuve reproductible du document Angular,
-du bundle principal, du fallback SPA et de la configuration NGINX.
+Ce contrôle prouve de manière reproductible :
+
+- le document Angular ;
+- le bundle principal ;
+- le fallback SPA NGINX ;
+- l'accessibilité HTTP ;
+- un en-tête de sécurité attendu.
+
+L'ouverture dans un navigateur et la capture destinée au livrable restent une
+validation humaine complémentaire.
+
+## Références
+
+- [Application et chaîne de build](../README.md)
+- [Exercice 1 complet](../../docs/exercices/01-terraform-ansible.md)
+- [Déploiement Ansible](../../ansible/README.md)
