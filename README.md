@@ -64,6 +64,18 @@ Le déploiement ne doit commencer qu’après le verdict **`GO TERRAFORM`**.
 - [Schémas d’architecture](docs/schemas/README.md)
 - [Politique de sécurité](SECURITY.md)
 
+<details>
+<summary>Accès direct aux six schémas</summary>
+
+- [Vue d’ensemble](docs/schemas/vue-ensemble.svg)
+- [Préparation](docs/schemas/etape-0.svg)
+- [Exercice 1](docs/schemas/exercice-1.svg)
+- [Exercice 2](docs/schemas/exercice-2.svg)
+- [Exercice 3](docs/schemas/exercice-3.svg)
+- [Finalisation](docs/schemas/finalisation/finalisation.svg)
+
+</details>
+
 ## Validation
 
 ```bash
