@@ -71,7 +71,7 @@ while (($# > 0)); do
     esac
 done
 
-for command_name in aws curl python3 ssh-keygen; do
+for command_name in aws curl jq python3 ssh-keygen; do
     command -v "$command_name" >/dev/null 2>&1 || {
         p5_error "Commande requise absente : $command_name"
         exit 1
@@ -203,27 +203,31 @@ fi
 chmod 644 "$PUBLIC_KEY"
 
 manual_confirmation() {
-    local current_value="$1"
-    local question="$2"
+    local target_variable="$1"
+    local current_value="$2"
+    local question="$3"
+    local result=no
+
     if [[ "${current_value,,}" == yes || "${current_value,,}" == oui ]]; then
-        printf 'yes'
-        return
+        result=yes
+    elif p5_require_exact "$question" 'OUI'; then
+        result=yes
     fi
-    if p5_confirm "$question"; then
-        printf 'yes'
-    else
-        printf 'no'
-    fi
+    printf -v "$target_variable" '%s' "$result"
 }
 
-ROOT_MFA="$(manual_confirmation "${P5_ROOT_MFA_CONFIRMED:-no}" \
-    'MFA activé sur le compte root AWS et vérifié dans la console ?')"
-ROOT_KEYS="$(manual_confirmation "${P5_ROOT_ACCESS_KEYS_ABSENT_CONFIRMED:-no}" \
-    'Aucune clé d’accès root AWS et vérification effectuée ?')"
-IAM_POLICY="$(manual_confirmation "${P5_IAM_POLICY_ATTACHED_CONFIRMED:-no}" \
-    'Politique IAM P5 attachée à l’identité utilisée et vérifiée ?')"
-BILLING_CONTACTS="$(manual_confirmation "${P5_BILLING_CONTACTS_CONFIRMED:-no}" \
-    'Contacts de facturation AWS vérifiés dans la console ?')"
+ROOT_MFA=no
+ROOT_KEYS=no
+IAM_POLICY=no
+BILLING_CONTACTS=no
+manual_confirmation ROOT_MFA "${P5_ROOT_MFA_CONFIRMED:-no}" \
+    'MFA activé sur le compte root AWS et vérifié dans la console ?'
+manual_confirmation ROOT_KEYS "${P5_ROOT_ACCESS_KEYS_ABSENT_CONFIRMED:-no}" \
+    'Aucune clé d’accès root AWS et vérification effectuée ?'
+manual_confirmation IAM_POLICY "${P5_IAM_POLICY_ATTACHED_CONFIRMED:-no}" \
+    'Politique IAM P5 attachée à l’identité utilisée et vérifiée ?'
+manual_confirmation BILLING_CONTACTS "${P5_BILLING_CONTACTS_CONFIRMED:-no}" \
+    'Contacts de facturation AWS vérifiés dans la console ?'
 
 python3 - "$CONFIG_FILE" \
     "AWS_PROFILE=$PROFILE" \
