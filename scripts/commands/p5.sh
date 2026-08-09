@@ -10,6 +10,7 @@ INVENTORY_FILE="$PROJECT_ROOT/ansible/inventories/hosts_aws"
 COMMAND=""
 ASSUME_YES=false
 FULL_VALIDATION=false
+P5_PREPARED_THIS_RUN=false
 
 # shellcheck source=../lib/p5-runtime.sh
 source "$LIB_FILE"
@@ -37,7 +38,7 @@ Commandes:
 Options globales:
   --yes              confirmer automatiquement les mutations automatisables
                      (jamais les preuves manuelles ni la destruction finale)
-  --full-validation  inclure OpenSearch local dans validate.sh
+  --full-validation  inclure OpenSearch local dans la validation du dépôt
 
 Exemples:
   bash scripts/commands/p5.sh
@@ -102,6 +103,42 @@ load_lab_config() {
     export AWS_PROFILE AWS_REGION AWS_SDK_LOAD_CONFIG=1
 }
 
+toolchain_ready() {
+    local command_name
+    for command_name in git python3 terraform ansible-playbook aws curl jq ssh docker node npm shellcheck yamllint; do
+        command -v "$command_name" >/dev/null 2>&1 || return 1
+    done
+}
+
+ensure_toolchain() {
+    if toolchain_ready; then
+        p5_ok 'Socle DevOps détecté.'
+        return 0
+    fi
+
+    p5_warn 'Le socle DevOps complet n’est pas encore disponible sur cette VM.'
+    p5_action 'Le bootstrap peut installer les outils et versions attendus par le projet.'
+    if ! p5_confirm 'Lancer le bootstrap Ubuntu du P5 maintenant ?'; then
+        p5_error 'Le socle DevOps est requis avant de poursuivre.'
+        return 1
+    fi
+
+    p5_run_step 'bootstrap' 'Installer le socle DevOps de la VM' \
+        bash "$SCRIPT_DIR/bootstrap-ubuntu-server.sh"
+    p5_header 'RECONNEXION REQUISE'
+    p5_action 'Le bootstrap a modifié les groupes Docker et le shell Node/NVM.'
+    p5_action 'Déconnectez-vous de la VM, reconnectez-vous, puis relancez exactement la même commande P5.'
+    p5_latest_log_hint
+    return 90
+}
+
+terraform_state_has_resources() {
+    local exercise="$1"
+    local module_dir="$PROJECT_ROOT/terraform/exercice-$exercise"
+    [[ -f "$module_dir/terraform.tfstate" ]] || return 1
+    terraform -chdir="$module_dir" state list 2>/dev/null | grep -q .
+}
+
 run_validation() {
     if [[ "$FULL_VALIDATION" == true ]]; then
         p5_run_step 'validate-full' 'Validation locale complète avec OpenSearch' \
@@ -156,7 +193,7 @@ wait_for_ssh_ex1() {
     )
 
     printf 'Attente de la cible SSH %s\n' "$ip"
-    for attempt in $(seq 1 48); do
+    for ((attempt = 1; attempt <= 48; attempt++)); do
         if ssh "${ssh_options[@]}" "ubuntu@$ip" \
             'command -v python3 >/dev/null && cloud-init status --wait >/dev/null 2>&1' \
             >/dev/null 2>&1; then
@@ -177,7 +214,7 @@ wait_for_http_output() {
     local url attempt
     url="$(terraform -chdir="$module" output -raw "$output_name")"
     printf 'Attente HTTP : %s\n' "$url"
-    for attempt in $(seq 1 60); do
+    for ((attempt = 1; attempt <= 60; attempt++)); do
         if curl -fsS --max-time 5 "$url/" >/dev/null 2>&1; then
             printf '%s disponible après %s tentative(s).\n' "$label" "$attempt"
             return 0
@@ -191,6 +228,7 @@ wait_for_http_output() {
 
 run_prepare() {
     p5_header 'PHASE 0 — Préparer le lab'
+    ensure_toolchain
 
     local configure_args=()
     if [[ "$ASSUME_YES" == true ]]; then
@@ -200,9 +238,6 @@ run_prepare() {
         bash "$SCRIPT_DIR/configure-lab.sh" "${configure_args[@]}"
 
     load_lab_config
-    p5_run_step 'setup-vm' 'Contrôler la VM et le dépôt' \
-        bash "$SCRIPT_DIR/setup.sh" --check-only
-
     p5_run_step 'budget-preview' 'Prévisualiser le garde-fou de budget AWS' \
         bash "$SCRIPT_DIR/setup-aws-guardrails.sh"
     if p5_confirm "Créer ou mettre à jour le budget AWS '$P5_BUDGET_NAME' ?"; then
@@ -213,34 +248,62 @@ run_prepare() {
         return 1
     fi
 
-    p5_run_step 'aws-ready-initial' 'Contrôle AWS Ready initial' \
-        bash "$SCRIPT_DIR/check-aws-readiness.sh" --stage initial
-    p5_run_step 'precheck-initial' 'Précontrôle avant Terraform exercice 1' \
-        bash "$SCRIPT_DIR/pre-deployment-check.sh" --stage initial
-    p5_ok 'Phase 0 terminée : GO AWS et GO TERRAFORM requis obtenus.'
+    if terraform_state_has_resources 1; then
+        p5_warn 'Un état Terraform de l’exercice 1 existe déjà : mode reprise activé.'
+        run_validation
+        p5_run_step 'aws-ready-resume' 'Contrôler AWS en mode reprise' \
+            bash "$SCRIPT_DIR/check-aws-readiness.sh" --stage exercice-3
+    else
+        p5_run_step 'precheck-initial' 'Précontrôle complet avant le premier déploiement' \
+            bash "$SCRIPT_DIR/pre-deployment-check.sh" --stage initial
+        if [[ "$FULL_VALIDATION" == true ]]; then
+            run_validation
+        fi
+    fi
+
+    P5_PREPARED_THIS_RUN=true
+    p5_ok 'Phase 0 terminée : environnement prêt pour Terraform.'
 }
 
 run_status() {
     p5_header 'STATUT — contrôles sans mutation AWS'
-    p5_run_step 'setup-status' 'Contrôle local de la VM et du dépôt' \
-        bash "$SCRIPT_DIR/setup.sh" --check-only
+    ensure_toolchain
 
-    if [[ -r "$CONFIG_FILE" ]]; then
-        load_lab_config
-        p5_run_step 'tfvars-status' 'Vérifier la synchronisation des tfvars' \
-            bash "$SCRIPT_DIR/sync-terraform-tfvars.sh" --check
-        p5_run_step 'aws-ready-status' 'Contrôle AWS Ready initial' \
-            bash "$SCRIPT_DIR/check-aws-readiness.sh" --stage initial
+    if [[ ! -r "$CONFIG_FILE" ]]; then
+        p5_run_step 'setup-status' 'Contrôle local de la VM et du dépôt' \
+            bash "$SCRIPT_DIR/setup.sh" --check-only
+        p5_warn 'environment/aws-readiness.env absent : exécutez prepare pour la partie AWS.'
+        return 0
+    fi
+
+    load_lab_config
+    p5_run_step 'tfvars-status' 'Vérifier la synchronisation des tfvars' \
+        bash "$SCRIPT_DIR/sync-terraform-tfvars.sh" --check
+
+    if terraform_state_has_resources 1; then
+        p5_run_step 'aws-status-resume' 'Contrôle AWS en mode lab existant' \
+            bash "$SCRIPT_DIR/check-aws-readiness.sh" --stage exercice-3
+        run_validation
     else
-        p5_warn 'environment/aws-readiness.env absent : partie AWS non contrôlée.'
+        p5_run_step 'precheck-status' 'Précontrôle complet avant déploiement' \
+            bash "$SCRIPT_DIR/pre-deployment-check.sh" --stage initial
+        if [[ "$FULL_VALIDATION" == true ]]; then
+            run_validation
+        fi
     fi
 }
 
 run_ex1() {
     p5_header 'EXERCICE 1 — Terraform + Ansible + Angular + NGINX'
     load_lab_config
-    p5_run_step 'precheck-ex1' 'Précontrôle exercice 1' \
-        bash "$SCRIPT_DIR/pre-deployment-check.sh" --stage initial
+
+    if [[ "$P5_PREPARED_THIS_RUN" != true ]] && ! terraform_state_has_resources 1; then
+        p5_run_step 'precheck-ex1' 'Précontrôle exercice 1' \
+            bash "$SCRIPT_DIR/pre-deployment-check.sh" --stage initial
+    elif terraform_state_has_resources 1; then
+        p5_info 'État Terraform exercice 1 détecté : vérification/reprise du déploiement.'
+    fi
+
     p5_run_step 'angular-build' 'Construire l’artefact Angular reproductible' \
         bash "$SCRIPT_DIR/prepare-angular-artifact.sh"
     terraform_apply_exercise 1 'VPC + EC2 Angular'
@@ -265,8 +328,14 @@ run_ex1() {
 run_ex2() {
     p5_header 'EXERCICE 2 — OpenSearch + données + dashboard'
     load_lab_config
-    p5_run_step 'precheck-ex2' 'Précontrôle exercice 2' \
-        bash "$SCRIPT_DIR/pre-deployment-check.sh" --stage exercice-2
+
+    if terraform_state_has_resources 2; then
+        p5_info 'État Terraform exercice 2 détecté : vérification/reprise du déploiement.'
+    else
+        p5_run_step 'precheck-ex2' 'Précontrôle exercice 2' \
+            bash "$SCRIPT_DIR/pre-deployment-check.sh" --stage exercice-2
+    fi
+
     terraform_apply_exercise 2 'Amazon OpenSearch'
     p5_run_step 'opensearch-import-preview' 'Valider la conversion des données OpenSearch' \
         bash "$SCRIPT_DIR/import-opensearch-data.sh"
@@ -294,8 +363,14 @@ run_ex2() {
 run_ex3() {
     p5_header 'EXERCICE 3 — HAProxy + deux backends'
     load_lab_config
-    p5_run_step 'precheck-ex3' 'Précontrôle exercice 3' \
-        bash "$SCRIPT_DIR/pre-deployment-check.sh" --stage exercice-3
+
+    if terraform_state_has_resources 3; then
+        p5_info 'État Terraform exercice 3 détecté : vérification/reprise du déploiement.'
+    else
+        p5_run_step 'precheck-ex3' 'Précontrôle exercice 3' \
+            bash "$SCRIPT_DIR/pre-deployment-check.sh" --stage exercice-3
+    fi
+
     terraform_apply_exercise 3 'HAProxy + 2 serveurs nginxdemos/hello'
     p5_run_step 'wait-haproxy' 'Attendre la disponibilité HTTP de HAProxy' \
         wait_for_http_output "$PROJECT_ROOT/terraform/exercice-3" haproxy_url HAProxy
@@ -366,7 +441,7 @@ show_logs() {
     find "$PROJECT_ROOT/logs" -type f -name '*.log' \
         -printf '%TY-%Tm-%Td %TH:%TM:%TS  %p\n' 2>/dev/null \
         | sort -r \
-        | head -n 80
+        | sed -n '1,80p'
 }
 
 run_menu() {
