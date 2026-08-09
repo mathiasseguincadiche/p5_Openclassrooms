@@ -23,6 +23,7 @@ p5_session_start() {
 
     P5_LOG_DIR="${P5_LOG_DIR:-$P5_PROJECT_ROOT/logs/$P5_RUN_ID}"
     export P5_LOG_DIR
+    umask 077
     mkdir -p "$P5_LOG_DIR"
 
     if [[ "${P5_SESSION_ACTIVE:-0}" != 1 ]]; then
