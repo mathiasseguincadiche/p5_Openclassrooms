@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Génère ansible/inventories/hosts_aws depuis les outputs Terraform de l'exercice 1.
+# Converge ansible/inventories/hosts_aws depuis les outputs Terraform de l'exercice 1.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -19,9 +19,11 @@ Usage: bash scripts/commands/generate-ansible-inventory.sh [options]
 
 Options:
   --config CHEMIN     configuration aws-readiness.env
-  --output CHEMIN     inventaire Ansible à écrire
+  --output CHEMIN     inventaire Ansible à converger
   --ssh-user NOM      utilisateur SSH (défaut : ubuntu)
   -h, --help          afficher cette aide
+
+Le fichier n'est réécrit que si l'IP Terraform, l'utilisateur ou la clé ont changé.
 HELP
 }
 
@@ -76,7 +78,9 @@ PY
 
 mkdir -p "$(dirname -- "$INVENTORY_FILE")"
 umask 077
-cat > "$INVENTORY_FILE" <<EOF_INVENTORY
+TMP_FILE="$(mktemp)"
+trap 'rm -f "$TMP_FILE"' EXIT
+cat > "$TMP_FILE" <<EOF_INVENTORY
 # Généré automatiquement depuis Terraform. Ne pas committer.
 [webservers]
 web ansible_host=$WEB_IP ansible_user=$SSH_USER ansible_ssh_private_key_file=$PRIVATE_KEY
@@ -84,11 +88,21 @@ web ansible_host=$WEB_IP ansible_user=$SSH_USER ansible_ssh_private_key_file=$PR
 [all:vars]
 ansible_python_interpreter=/usr/bin/python3
 EOF_INVENTORY
-chmod 600 "$INVENTORY_FILE"
 
-p5_header 'Inventaire Ansible généré'
+p5_header 'Convergence inventaire Ansible'
+if [[ -f "$INVENTORY_FILE" ]] && cmp -s "$TMP_FILE" "$INVENTORY_FILE"; then
+    if [[ "$(stat -c '%a' "$INVENTORY_FILE")" != 600 ]]; then
+        chmod 600 "$INVENTORY_FILE"
+        p5_ok "Inventaire inchangé ; permissions corrigées : $INVENTORY_FILE"
+    else
+        p5_ok "Inventaire déjà conforme : $INVENTORY_FILE"
+    fi
+else
+    install -m 0600 "$TMP_FILE" "$INVENTORY_FILE"
+    p5_ok "Inventaire convergé : $INVENTORY_FILE"
+fi
+
 p5_ok "Hôte Terraform : $WEB_IP"
-p5_ok "Inventaire : $INVENTORY_FILE"
 p5_ok "Clé SSH : $PRIVATE_KEY"
 printf '\nCommande de vérification :\n'
 printf '  ansible all -i %q -m ping\n' "$INVENTORY_FILE"
