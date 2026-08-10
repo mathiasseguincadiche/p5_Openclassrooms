@@ -34,6 +34,8 @@ Modes :
   existing  encapsule un profil temporaire existant via credential_process
 
 Le script ne demande, ne lit et ne stocke jamais votre mot de passe AWS.
+Lorsqu'un nom de profil ne peut pas être déduit, les profils disponibles sont
+affichés et le format exact attendu est expliqué.
 HELP
 }
 
@@ -77,12 +79,13 @@ done
 
 case "$MODE" in
     auto|console|sso|existing) ;;
-    *) p5_error "Mode AWS inconnu : $MODE"; exit 2 ;;
+    *) p5_error "Mode AWS inconnu : $MODE"; p5_action 'Valeurs autorisées : auto, console, sso, existing.'; exit 2 ;;
 esac
 
 for command_name in aws jq python3; do
     command -v "$command_name" >/dev/null 2>&1 || {
         p5_error "Commande requise absente : $command_name"
+        p5_action 'Lancez : bash scripts/commands/p5.sh prepare'
         exit 1
     }
 done
@@ -212,12 +215,16 @@ console_login() {
 
     identity_json="$(aws_identity "$SOURCE_PROFILE" || true)"
     [[ -n "$identity_json" ]] || {
-        p5_error 'AWS login a terminé mais STS ne retourne aucune identité.'
+        p5_authoritative_unknown 'Identité AWS après aws login' \
+            'la commande de connexion a terminé mais STS ne retourne aucune identité' \
+            "Testez : aws sts get-caller-identity --profile '$SOURCE_PROFILE'"
         return 1
     }
     reject_root "$identity_json" || return 1
     credentials_are_temporary "$SOURCE_PROFILE" || {
-        p5_error 'La session créée ne fournit pas de credentials temporaires exploitables.'
+        p5_authoritative_unknown 'Credentials temporaires de la session AWS' \
+            'la session créée ne fournit pas SessionToken + Expiration' \
+            'Vérifiez la version AWS CLI et les permissions SignInLocalDevelopmentAccess.'
         return 1
     }
 
@@ -230,34 +237,51 @@ sso_login() {
     sso_start_url="$(profile_get "$TARGET_PROFILE" sso_start_url)"
     if [[ -z "$sso_session" && -z "$sso_start_url" ]]; then
         p5_action "Configuration IAM Identity Center du profil '$TARGET_PROFILE'."
+        p5_info 'AWS CLI va vous demander les informations de votre portail IAM Identity Center.'
         aws configure sso --profile "$TARGET_PROFILE"
     fi
     aws configure set region "$REGION" --profile "$TARGET_PROFILE"
     aws sso login --profile "$TARGET_PROFILE"
 }
 
+source_profile_exists() {
+    profile_exists "$1"
+}
+
 existing_profile() {
-    local profiles identity_json
+    local profiles identity_json first_profile
     profiles="$(aws configure list-profiles 2>/dev/null || true)"
     [[ -n "$profiles" ]] || {
-        p5_error 'Aucun profil AWS existant à réutiliser.'
+        p5_unknown 'Profil AWS temporaire existant' \
+            'AWS CLI ne retourne aucun profil configuré sur cette VM' \
+            'Choisissez plutôt le mode console ou SSO, ou configurez d’abord un profil temporaire.'
+        p5_action 'Exemple : bash scripts/commands/aws-auth.sh --mode console'
         return 1
     }
     printf 'Profils AWS disponibles :\n%s\n' "$profiles"
+    first_profile="$(head -n 1 <<<"$profiles")"
     if [[ "$SOURCE_PROFILE" == 'p5-signin' ]] || ! profile_exists "$SOURCE_PROFILE"; then
-        p5_prompt SOURCE_PROFILE 'Profil temporaire existant à utiliser' ''
+        p5_prompt_value SOURCE_PROFILE \
+            'Nom du profil AWS temporaire source' \
+            'Le mode existing doit réutiliser un profil déjà présent dans `aws configure list-profiles`.' \
+            'nom exact d’un profil affiché ci-dessus, sans crochets' "$first_profile" '' source_profile_exists \
+            "Saisissez-le ici, ou relancez avec : --source-profile $first_profile"
     fi
 
     identity_json="$(aws_identity "$SOURCE_PROFILE" || true)"
     if [[ -z "$identity_json" ]]; then
         renew_known_profile "$SOURCE_PROFILE" || {
-            p5_error "Impossible de renouveler automatiquement '$SOURCE_PROFILE'."
+            p5_authoritative_unknown "Session AWS du profil '$SOURCE_PROFILE'" \
+                'la session est invalide et aucun mécanisme de renouvellement connu n’est configuré' \
+                'Utilisez --mode console, --mode sso, ou renouvelez explicitement ce profil.'
             return 1
         }
         identity_json="$(aws_identity "$SOURCE_PROFILE" || true)"
     fi
     [[ -n "$identity_json" ]] || {
-        p5_error "Le profil '$SOURCE_PROFILE' ne fournit pas d'identité AWS valide."
+        p5_authoritative_unknown "Identité AWS du profil '$SOURCE_PROFILE'" \
+            'STS ne retourne toujours aucune identité après le renouvellement' \
+            "Testez : aws sts get-caller-identity --profile '$SOURCE_PROFILE'"
         return 1
     }
     reject_root "$identity_json" || return 1
@@ -275,8 +299,9 @@ choose_mode() {
         return
     fi
     if [[ ! -t 0 ]]; then
-        p5_error 'Choix interactif requis pour initialiser l’authentification AWS.'
-        p5_action 'Relancez avec --mode console, --mode sso ou --mode existing.'
+        p5_unknown 'Méthode d’authentification AWS' \
+            'aucune méthode réutilisable n’a été détectée et le terminal n’est pas interactif' \
+            'Relancez avec --mode console, --mode sso ou --mode existing.'
         return 1
     fi
 
@@ -294,7 +319,7 @@ MENU
         1) MODE=console ;;
         2) MODE=sso ;;
         3) MODE=existing ;;
-        *) p5_error 'Choix AWS inconnu.'; return 1 ;;
+        *) p5_error 'Choix AWS inconnu.'; p5_action 'Tapez 1, 2 ou 3.'; return 1 ;;
     esac
 }
 
@@ -316,7 +341,6 @@ if [[ "$MODE" == auto ]]; then
         fi
     fi
 
-    # Un profil credential_process peut pointer vers un profil de connexion expiré.
     process_value="$(profile_get "$TARGET_PROFILE" credential_process)"
     if [[ "$process_value" =~ --profile[[:space:]]+([^[:space:]]+) ]]; then
         detected_source="${BASH_REMATCH[1]}"
@@ -338,7 +362,9 @@ case "$MODE" in
 esac
 
 validate_profile "$TARGET_PROFILE" || {
-    p5_error "Le profil final '$TARGET_PROFILE' n'est pas utilisable avec des credentials temporaires."
+    p5_authoritative_unknown "Profil final AWS '$TARGET_PROFILE'" \
+        'AWS CLI ne peut pas vérifier une identité non-root avec credentials temporaires exploitables' \
+        "Relancez : bash scripts/commands/aws-auth.sh --profile '$TARGET_PROFILE' --mode auto"
     exit 1
 }
 
