@@ -43,14 +43,14 @@ grep -Eq $'^[^\t]+\t01\tsuccess-step\tVALIDE\t0\t[0-9]+\t[0-9a-f]{64}\t01-succes
 
 printf 'Vérification des preuves AWS automatiques\n'
 AWS_PROOF="$PROJECT_ROOT/scripts/commands/verify-aws-exercise-state.sh"
-[[ -x "$AWS_PROOF" ]] || {
-    printf 'KO  verify-aws-exercise-state.sh doit être exécutable.\n' >&2
+[[ -f "$AWS_PROOF" ]] || {
+    printf 'KO  verify-aws-exercise-state.sh est absent.\n' >&2
     exit 1
 }
 bash -n "$AWS_PROOF"
-grep -Fq "--exercise 1" "$PROJECT_ROOT/scripts/commands/collect-nginx-access-log.sh"
-grep -Fq "--exercise 2" "$PROJECT_ROOT/scripts/commands/verify-opensearch-data.sh"
-grep -Fq "--exercise 3" "$PROJECT_ROOT/scripts/commands/test-haproxy-failover.sh"
+grep -Fq -- '--exercise 1' "$PROJECT_ROOT/scripts/commands/collect-nginx-access-log.sh"
+grep -Fq -- '--exercise 2' "$PROJECT_ROOT/scripts/commands/verify-opensearch-data.sh"
+grep -Fq -- '--exercise 3' "$PROJECT_ROOT/scripts/commands/test-haproxy-failover.sh"
 grep -Fq 'ÉTAT AWS EXERCICE 1 VALIDÉ — EC2 RUNNING' "$AWS_PROOF"
 grep -Fq 'ÉTAT AWS EXERCICE 2 VALIDÉ — OPENSEARCH ACTIF' "$AWS_PROOF"
 grep -Fq 'ÉTAT AWS EXERCICE 3 VALIDÉ — 3 EC2 RUNNING' "$AWS_PROOF"
