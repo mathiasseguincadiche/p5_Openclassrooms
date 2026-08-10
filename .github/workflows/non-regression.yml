@@ -26,3 +26,6 @@ jobs:
 
       - name: Vérifier le centre de commande P5
         run: bash scripts/tests/test-p5-orchestrator.sh
+
+      - name: Vérifier l'authentification AWS automatisée
+        run: bash scripts/tests/test-aws-auth.sh

@@ -39,6 +39,7 @@ bash scripts/commands/p5.sh all --yes
 
 `--yes` ne contourne jamais :
 
+- la connexion interactive AWS lorsqu'une session doit être créée ;
 - les confirmations de sécurité impossibles à vérifier automatiquement ;
 - le checkpoint manuel du dashboard OpenSearch ;
 - la confirmation `DETRUIRE` du nettoyage final.
@@ -47,6 +48,11 @@ bash scripts/commands/p5.sh all --yes
 
 ```text
 prepare
+  ├─ vérification du socle Ubuntu
+  ├─ bootstrap automatique si nécessaire
+  ├─ authentification AWS temporaire
+  ├─ détection compte / région / IPv4 / clé SSH
+  ├─ tfvars + budget + AWS Ready
   ↓
 ex1
   ├─ Terraform
@@ -56,7 +62,7 @@ ex1
   └─ vrai access.log
   ↓
 ex2
-  ├─ OpenSearch
+  ├─ Amazon OpenSearch Service
   ├─ échantillon reproductible
   ├─ vrai access.log
   ├─ mappings/agrégations
@@ -85,6 +91,9 @@ Après une interruption :
 bash scripts/commands/p5.sh all
 ```
 
+La session AWS est réutilisée si elle est encore valide. Si elle a expiré,
+`aws-auth.sh` tente de la renouveler avant de poursuivre.
+
 Ne jamais supprimer un état Terraform pour forcer une reprise.
 
 ## Logs opérateur
@@ -99,14 +108,11 @@ logs/<UTC>/
 └── ...
 ```
 
-Chaque étape affiche :
+Chaque étape affiche sa commande, son journal et son verdict. Les nouveaux logs
+utilisent `umask 077` et les `.log` sont ignorés par Git.
 
-```text
-P5  07 — Déployer Angular et NGINX avec Ansible
-       Commande : ...
-       Log      : .../07-ansible-deploy.log
-
-[ OK ] Déployer Angular et NGINX avec Ansible — 18 s
+```bash
+bash scripts/commands/p5.sh logs
 ```
 
 Les journaux sont séparés de `proofs/runtime/` :
@@ -114,21 +120,17 @@ Les journaux sont séparés de `proofs/runtime/` :
 - `logs/` explique ce qui a été exécuté ;
 - `proofs/runtime/` contient les preuves techniques du projet.
 
-Les nouveaux logs utilisent `umask 077` et les `.log` sont ignorés par Git.
-
-```bash
-bash scripts/commands/p5.sh logs
-```
-
 ## Automatisations centrales
 
 | Fichier | Rôle |
 | --- | --- |
 | `scripts/commands/p5.sh` | orchestration du projet |
 | `scripts/lib/p5-runtime.sh` | terminal, confirmations, logs |
-| `scripts/commands/configure-lab.sh` | profil AWS, compte, IP, SSH, tfvars |
+| `scripts/commands/aws-auth.sh` | connexion AWS temporaire et renouvellement |
+| `scripts/commands/configure-lab.sh` | compte, région, IP, SSH, tfvars |
 | `scripts/commands/generate-ansible-inventory.sh` | inventaire depuis Terraform |
 | `scripts/tests/test-p5-orchestrator.sh` | contrat de l'orchestrateur sans AWS |
+| `scripts/tests/test-aws-auth.sh` | contrat de connexion AWS sans contacter AWS |
 
 ## Préparation de la VM
 
@@ -139,15 +141,87 @@ bash scripts/commands/p5.sh logs
 | `validate.sh` | valide dépôt et intégrations locales |
 | `clean-local.sh` | nettoie les caches en conservant les états Terraform |
 
-Si des outils obligatoires manquent, `p5.sh` peut proposer le bootstrap. Une
-reconnexion est ensuite demandée lorsque le nouveau groupe Docker ou NVM doit
-être pris en compte.
+Si des outils obligatoires manquent, `p5.sh` propose le bootstrap. Celui-ci
+installe notamment Git, Python, Terraform, Docker/Compose, AWS CLI v2, Ansible,
+Node.js, npm, ShellCheck, yamllint, SSH et les outils Markdown.
+
+AWS CLI doit être au minimum en version `2.32.0`, car cette version minimale est
+requise par le parcours `aws login`. Le bootstrap installe/met à jour AWS CLI v2
+depuis l'archive officielle puis vérifie cette contrainte.
+
+Une reconnexion est demandée lorsque le nouveau groupe Docker ou NVM doit être
+pris en compte.
+
+## Authentification AWS
+
+Commande spécialisée :
+
+```bash
+bash scripts/commands/aws-auth.sh
+```
+
+Le mode par défaut est `auto` :
+
+1. réutiliser `p5-lab` si la session est encore valide ;
+2. renouveler une session console/SSO connue si elle a expiré ;
+3. sinon proposer une méthode d'authentification.
+
+### Compte console AWS — méthode recommandée sur la VM
+
+```bash
+bash scripts/commands/aws-auth.sh --mode console
+```
+
+Le script lance :
+
+```text
+aws login --remote --profile p5-signin
+```
+
+La VM affiche les instructions AWS. L'utilisateur ouvre l'URL dans son navigateur
+habituel et saisit ses identifiants **directement chez AWS**. Le script ne voit
+jamais le mot de passe.
+
+AWS CLI obtient des credentials temporaires. Le script crée ensuite le profil
+`p5-lab` avec :
+
+```text
+credential_process = aws configure export-credentials --profile p5-signin --format process
+```
+
+Ainsi AWS CLI, Terraform et les autres outils utilisent la même session temporaire
+sans clé longue durée dans le dépôt.
+
+Le projet refuse une identité `root`.
+
+Pour utiliser `aws login`, l'identité console doit disposer de la politique AWS
+gérée `SignInLocalDevelopmentAccess`. Elle doit aussi disposer des permissions
+métier nécessaires au P5, documentées par `aws/iam/p5-lab-policy.json`.
+
+### IAM Identity Center
+
+```bash
+bash scripts/commands/aws-auth.sh --mode sso
+```
+
+Si nécessaire, le script lance `aws configure sso`, puis `aws sso login`.
+
+### Profil temporaire existant
+
+```bash
+bash scripts/commands/aws-auth.sh --mode existing
+```
+
+Le profil source doit fournir des credentials temporaires avec une date
+d'expiration. Les clés d'accès longues durées sont rejetées par le parcours
+strict.
 
 ## Configuration AWS
 
 | Commande | Effet |
 | --- | --- |
-| `configure-lab.sh` | prépare la configuration locale |
+| `aws-auth.sh` | crée/renouvelle une session temporaire AWS |
+| `configure-lab.sh` | authentifie AWS puis prépare la configuration locale |
 | `sync-terraform-tfvars.sh` | prévisualise les tfvars |
 | `sync-terraform-tfvars.sh --apply` | écrit les trois tfvars |
 | `sync-terraform-tfvars.sh --check` | vérifie leur cohérence |
@@ -162,11 +236,12 @@ La source de vérité est `environment/aws-readiness.env`.
 
 Le script :
 
+- appelle `aws-auth.sh` ;
+- exige des credentials temporaires exportables pour Terraform ;
 - refuse l'identité root ;
 - détecte le compte AWS ;
 - détecte l'IPv4 publique et construit le `/32` ;
 - utilise ou prépare la clé SSH ;
-- peut déclencher `aws configure sso` / `aws sso login` ;
 - demande les validations de sécurité manuelles ;
 - synchronise les trois tfvars.
 
@@ -182,10 +257,8 @@ Le mode `--yes` ne fabrique aucune confirmation de sécurité.
 | `generate-nginx-traffic.sh` | trafic HTTP contrôlé |
 | `collect-nginx-access-log.sh` | récupération du vrai `access.log` |
 
-`p5.sh ex1` ajoute deux comportements importants :
-
-1. attente de SSH/cloud-init au lieu d'un délai arbitraire ;
-2. seconde exécution du playbook Ansible avec vérification stricte :
+`p5.sh ex1` attend SSH/cloud-init puis exécute Ansible deux fois. La seconde
+exécution exige :
 
 ```text
 changed=0
@@ -207,6 +280,10 @@ APPLICATION ANGULAR DÉPLOYÉE ET SERVIE PAR NGINX
 | `import-opensearch-data.sh --apply` | template + import Bulk |
 | `verify-opensearch-data.sh` | mappings, volume, agrégations |
 
+Le vrai exercice utilise **Amazon OpenSearch Service** créé par Terraform. Il
+n'est donc pas nécessaire d'installer Elasticsearch/OpenSearch directement sur
+la VM Ubuntu. Le conteneur OpenSearch local sert uniquement aux tests de qualité.
+
 `p5.sh ex2` utilise deux sources lorsque le log réel existe :
 
 ```text
@@ -216,9 +293,6 @@ proofs/runtime/exercice-2/nginx-access-real.log
 
 Le jeu versionné garantit les tranches de 12 h nécessaires au dashboard ; le log
 réel prouve la chaîne NGINX → OpenSearch.
-
-Le convertisseur génère des IDs déterministes, ce qui rend la réimportation d'une
-même ligne idempotente côté document.
 
 Verdicts :
 
@@ -279,24 +353,21 @@ NETTOYAGE AWS COMPLET
 | `test-opensearch-local.sh` | template, Bulk et agrégations |
 | `test-haproxy-containers.sh` | round-robin, panne et reprise |
 | `test-p5-orchestrator.sh` | contrat du centre de commande sans AWS |
-
-### Test de l'orchestrateur
+| `test-aws-auth.sh` | login temporaire, credential_process et refus root |
 
 ```bash
 bash scripts/tests/test-p5-orchestrator.sh
+bash scripts/tests/test-aws-auth.sh
 ```
 
-Le test crée un environnement temporaire avec commandes factices. Il vérifie le
-séquencement sans appeler AWS réellement et contrôle notamment que `--yes` ne peut
-pas valider le checkpoint OpenSearch en environnement non interactif.
-
-Ce test ne remplace pas le premier :
+Ces tests utilisent des commandes factices pour les parties AWS et ne créent
+aucune ressource cloud. Ils ne remplacent pas le premier vrai :
 
 ```bash
 bash scripts/commands/p5.sh all
 ```
 
-sur le vrai compte AWS.
+sur le compte AWS réel.
 
 ## Validation complète locale
 
@@ -320,6 +391,12 @@ P5_FULL_INTEGRATION=1 ./scripts/commands/validate.sh
 | `audit_non_regression.py` | contrat fonctionnel/documentaire |
 
 ## Règles de sécurité importantes
+
+### Credentials AWS
+
+Le dépôt ne demande ni mot de passe AWS ni clé secrète. Les sessions temporaires
+restent dans les mécanismes de cache/configuration de l'AWS CLI sous le compte
+utilisateur de la VM.
 
 ### Plans Terraform
 
@@ -352,6 +429,7 @@ attendu qu'une fois tous les exercices fermés.
 - [README principal](../README.md)
 - [Portail documentaire](../docs/README.md)
 - [Runbook](../docs/01-parcours-debutant.md)
+- [Préparation AWS](../docs/00b-preparation-compte-aws.md)
 - [Validation et preuves](../docs/validation-preuves-nettoyage.md)
 - [Troubleshooting](../docs/troubleshooting.md)
 - [Preuves runtime](../proofs/README.md)

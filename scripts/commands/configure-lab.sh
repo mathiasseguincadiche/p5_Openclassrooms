@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prépare environment/aws-readiness.env avec détection automatique du compte et de l'IP.
+# Prépare environment/aws-readiness.env avec authentification AWS et détection automatique.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -10,6 +10,8 @@ EXAMPLE_FILE="$PROJECT_ROOT/environment/aws-readiness.env.example"
 PROFILE_OVERRIDE=""
 REGION_OVERRIDE=""
 BUDGET_EMAIL_OVERRIDE=""
+AUTH_MODE_OVERRIDE=""
+SOURCE_PROFILE_OVERRIDE=""
 ASSUME_YES=false
 
 # shellcheck source=../lib/p5-runtime.sh
@@ -21,15 +23,19 @@ show_help() {
 Usage: bash scripts/commands/configure-lab.sh [options]
 
 Options:
-  --profile NOM       profil AWS à utiliser
-  --region REGION     région AWS à utiliser
-  --budget-email MAIL adresse de notification du budget
-  --yes               confirme les actions automatisables
-  -h, --help          afficher cette aide
+  --profile NOM        profil final AWS utilisé par le P5
+  --region REGION      région AWS à utiliser
+  --budget-email MAIL  adresse de notification du budget
+  --auth-mode MODE     auto, console, sso ou existing
+  --source-profile NOM profil source pour console/existing
+  --yes                confirme les actions automatisables
+  -h, --help           afficher cette aide
 
 Le script :
   - crée environment/aws-readiness.env s'il manque ;
+  - authentifie AWS avec des credentials temporaires ;
   - détecte l'identifiant du compte AWS ;
+  - refuse l'identité root ;
   - détecte l'IPv4 publique actuelle en /32 ;
   - prépare la clé SSH du lab si nécessaire ;
   - demande explicitement les vérifications de sécurité manuelles ;
@@ -52,6 +58,16 @@ while (($# > 0)); do
         --budget-email)
             [[ $# -ge 2 ]] || { p5_error 'Valeur manquante pour --budget-email.'; exit 2; }
             BUDGET_EMAIL_OVERRIDE="$2"
+            shift 2
+            ;;
+        --auth-mode)
+            [[ $# -ge 2 ]] || { p5_error 'Valeur manquante pour --auth-mode.'; exit 2; }
+            AUTH_MODE_OVERRIDE="$2"
+            shift 2
+            ;;
+        --source-profile)
+            [[ $# -ge 2 ]] || { p5_error 'Valeur manquante pour --source-profile.'; exit 2; }
+            SOURCE_PROFILE_OVERRIDE="$2"
             shift 2
             ;;
         --yes)
@@ -97,33 +113,26 @@ source "$CONFIG_FILE"
 
 PROFILE="${PROFILE_OVERRIDE:-${AWS_PROFILE:-p5-lab}}"
 REGION="${REGION_OVERRIDE:-${AWS_REGION:-us-east-1}}"
+AUTH_MODE="${AUTH_MODE_OVERRIDE:-${P5_AWS_AUTH_MODE:-auto}}"
+SOURCE_PROFILE="${SOURCE_PROFILE_OVERRIDE:-${P5_AWS_LOGIN_PROFILE:-p5-signin}}"
 
-if ! aws configure list-profiles | grep -Fxq "$PROFILE"; then
-    p5_warn "Le profil AWS '$PROFILE' n'existe pas encore."
-    EXISTING_PROFILES="$(aws configure list-profiles || true)"
-    if [[ -n "$EXISTING_PROFILES" ]]; then
-        printf 'Profils disponibles :\n%s\n' "$EXISTING_PROFILES"
-        p5_prompt PROFILE 'Profil AWS à utiliser ou à créer' "$PROFILE"
-    fi
+AUTH_ARGS=(
+    --profile "$PROFILE"
+    --region "$REGION"
+    --mode "$AUTH_MODE"
+    --source-profile "$SOURCE_PROFILE"
+)
+if [[ "$ASSUME_YES" == true ]]; then
+    AUTH_ARGS+=(--yes)
 fi
-
-if ! aws configure list-profiles | grep -Fxq "$PROFILE"; then
-    p5_action "Le profil '$PROFILE' doit être configuré."
-    if p5_confirm "Lancer maintenant 'aws configure sso --profile $PROFILE' ?"; then
-        aws configure sso --profile "$PROFILE"
-    else
-        p5_error "Configurez un profil AWS temporaire puis relancez le script."
-        exit 1
-    fi
-fi
+p5_run_step 'aws-auth' 'Authentifier AWS avec une session temporaire' \
+    bash "$SCRIPT_DIR/aws-auth.sh" "${AUTH_ARGS[@]}"
 
 PROFILE_REGION="$(aws configure get region --profile "$PROFILE" 2>/dev/null || true)"
-if [[ -z "$REGION_OVERRIDE" && -n "$PROFILE_REGION" ]]; then
+if [[ -n "$PROFILE_REGION" ]]; then
     REGION="$PROFILE_REGION"
-fi
-if [[ -z "$PROFILE_REGION" || "$PROFILE_REGION" != "$REGION" ]]; then
+else
     aws configure set region "$REGION" --profile "$PROFILE"
-    p5_ok "Région du profil réglée sur $REGION"
 fi
 
 aws_identity() {
@@ -133,28 +142,12 @@ aws_identity() {
 
 IDENTITY_JSON="$(aws_identity || true)"
 if [[ -z "$IDENTITY_JSON" ]]; then
-    SSO_SESSION="$(aws configure get sso_session --profile "$PROFILE" 2>/dev/null || true)"
-    SSO_START_URL="$(aws configure get sso_start_url --profile "$PROFILE" 2>/dev/null || true)"
-    if [[ -n "$SSO_SESSION" || -n "$SSO_START_URL" ]]; then
-        p5_action "La session SSO du profil '$PROFILE' n'est pas active."
-        if p5_confirm "Lancer 'aws sso login --profile $PROFILE' ?"; then
-            aws sso login --profile "$PROFILE"
-            IDENTITY_JSON="$(aws_identity || true)"
-        fi
-    fi
-fi
-
-if [[ -z "$IDENTITY_JSON" ]]; then
     p5_error "Impossible d'obtenir une identité AWS valide avec le profil '$PROFILE'."
     exit 1
 fi
 
 ACCOUNT_ID="$(jq -r '.Account // empty' <<<"$IDENTITY_JSON" 2>/dev/null || true)"
 CALLER_ARN="$(jq -r '.Arn // empty' <<<"$IDENTITY_JSON" 2>/dev/null || true)"
-if [[ ! "$ACCOUNT_ID" =~ ^[0-9]{12}$ ]]; then
-    ACCOUNT_ID="$(aws --profile "$PROFILE" --region "$REGION" --no-cli-pager \
-        sts get-caller-identity --query Account --output text)"
-fi
 [[ "$ACCOUNT_ID" =~ ^[0-9]{12}$ ]] || {
     p5_error 'Identifiant de compte AWS invalide.'
     exit 1
@@ -163,6 +156,13 @@ fi
     p5_error 'Le compte root AWS ne doit pas être utilisé.'
     exit 1
 }
+
+if ! aws configure export-credentials --profile "$PROFILE" --format process 2>/dev/null \
+    | jq -e '.AccessKeyId and .SecretAccessKey and .SessionToken and .Expiration' \
+    >/dev/null; then
+    p5_error 'Le profil AWS ne fournit pas de credentials temporaires exportables pour Terraform.'
+    exit 1
+fi
 
 CURRENT_IP="$(curl -fsS --max-time 10 https://checkip.amazonaws.com \
     | tr -d '[:space:]')"
@@ -232,6 +232,8 @@ manual_confirmation BILLING_CONTACTS "${P5_BILLING_CONTACTS_CONFIRMED:-no}" \
 python3 - "$CONFIG_FILE" \
     "AWS_PROFILE=$PROFILE" \
     "AWS_REGION=$REGION" \
+    "P5_AWS_AUTH_MODE=$AUTH_MODE" \
+    "P5_AWS_LOGIN_PROFILE=$SOURCE_PROFILE" \
     "P5_EXPECTED_ACCOUNT_ID=$ACCOUNT_ID" \
     "P5_PUBLIC_IP_CIDR=$PUBLIC_IP_CIDR" \
     "P5_BUDGET_EMAIL=$BUDGET_EMAIL" \
@@ -266,6 +268,7 @@ p5_ok "Compte AWS détecté : $ACCOUNT_ID"
 p5_ok "Identité AWS : ${CALLER_ARN:-non affichée}"
 p5_ok "IPv4 d'administration : $PUBLIC_IP_CIDR"
 p5_ok "Profil/région : $PROFILE / $REGION"
+p5_ok 'Credentials temporaires exportables : OK'
 
 p5_run_step 'sync-tfvars' 'Générer les trois terraform.tfvars' \
     bash "$SCRIPT_DIR/sync-terraform-tfvars.sh" --config "$CONFIG_FILE" --apply
@@ -279,9 +282,9 @@ if [[ "$ROOT_MFA" != yes || "$ROOT_KEYS" != yes || "$IAM_POLICY" != yes \
 fi
 
 if [[ "$ASSUME_YES" == true ]]; then
-    p5_info 'Mode --yes utilisé pour les actions automatisables ; les validations manuelles restent explicites.'
+    p5_info 'Mode --yes utilisé pour les actions automatisables ; la connexion et les validations manuelles restent explicites.'
 fi
 
 p5_header 'Configuration terminée'
-p5_ok 'La source de vérité locale et les tfvars sont synchronisés.'
+p5_ok 'AWS, la source de vérité locale et les tfvars sont synchronisés.'
 p5_latest_log_hint
