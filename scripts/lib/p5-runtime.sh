@@ -216,7 +216,7 @@ PY
 }
 
 p5_validate_http_url() {
-    [[ "$1" =~ ^https?://[A-Za-z0-9.-]+(:[0-9]+)?$ ]]
+    [[ "$1" =~ ^https?://[A-Za-z0-9.-]+(:[0-9]+)?(/[^[:space:]]*)?$ ]]
 }
 
 p5_validate_existing_file() {
