@@ -4,6 +4,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
+LIB_FILE="$PROJECT_ROOT/scripts/lib/p5-runtime.sh"
 CONFIG_FILE="$PROJECT_ROOT/environment/aws-readiness.env"
 PROOF_DIR="$PROJECT_ROOT/proofs/runtime/exercice-2"
 SSH_KEY=""
@@ -11,6 +12,10 @@ SSH_USER="ubuntu"
 LINES=500
 WEB_IP=""
 OUTPUT_FILE=""
+
+# shellcheck source=../lib/p5-runtime.sh
+source "$LIB_FILE"
+p5_session_start "collect-nginx-access-log"
 
 show_help() {
     cat <<'HELP'
@@ -25,39 +30,41 @@ Options:
   --proof-dir CHEMIN   dossier local des preuves techniques
   -h, --help           afficher cette aide
 
-Sans --host, le script lit la sortie Terraform web_public_ip de l'exercice 1.
+Sans --host, le script lit la sortie Terraform web_public_ip. Si cette sortie
+n'est pas disponible en usage manuel, le script explique le format et demande
+l'IPv4 à utiliser. La clé SSH est traitée de la même manière.
 HELP
 }
 
 while (($# > 0)); do
     case "$1" in
         --host)
-            [[ $# -ge 2 ]] || { printf 'Valeur manquante pour --host.\n' >&2; exit 2; }
+            [[ $# -ge 2 ]] || { p5_error 'Valeur manquante pour --host.'; exit 2; }
             WEB_IP="$2"
             shift 2
             ;;
         --lines)
-            [[ $# -ge 2 ]] || { printf 'Valeur manquante pour --lines.\n' >&2; exit 2; }
+            [[ $# -ge 2 ]] || { p5_error 'Valeur manquante pour --lines.'; exit 2; }
             LINES="$2"
             shift 2
             ;;
         --ssh-key)
-            [[ $# -ge 2 ]] || { printf 'Valeur manquante pour --ssh-key.\n' >&2; exit 2; }
+            [[ $# -ge 2 ]] || { p5_error 'Valeur manquante pour --ssh-key.'; exit 2; }
             SSH_KEY="$2"
             shift 2
             ;;
         --ssh-user)
-            [[ $# -ge 2 ]] || { printf 'Valeur manquante pour --ssh-user.\n' >&2; exit 2; }
+            [[ $# -ge 2 ]] || { p5_error 'Valeur manquante pour --ssh-user.'; exit 2; }
             SSH_USER="$2"
             shift 2
             ;;
         --output)
-            [[ $# -ge 2 ]] || { printf 'Valeur manquante pour --output.\n' >&2; exit 2; }
+            [[ $# -ge 2 ]] || { p5_error 'Valeur manquante pour --output.'; exit 2; }
             OUTPUT_FILE="$2"
             shift 2
             ;;
         --proof-dir)
-            [[ $# -ge 2 ]] || { printf 'Valeur manquante pour --proof-dir.\n' >&2; exit 2; }
+            [[ $# -ge 2 ]] || { p5_error 'Valeur manquante pour --proof-dir.'; exit 2; }
             PROOF_DIR="$2"
             shift 2
             ;;
@@ -66,7 +73,7 @@ while (($# > 0)); do
             exit 0
             ;;
         *)
-            printf 'Option inconnue : %s\n' "$1" >&2
+            p5_error "Option inconnue : $1"
             show_help >&2
             exit 2
             ;;
@@ -75,12 +82,14 @@ done
 
 for command_name in terraform ssh python3; do
     command -v "$command_name" >/dev/null 2>&1 || {
-        printf 'Commande requise absente : %s\n' "$command_name" >&2
+        p5_error "Commande requise absente : $command_name"
+        p5_action 'Lancez : bash scripts/commands/p5.sh prepare'
         exit 1
     }
 done
 if [[ ! "$LINES" =~ ^[1-9][0-9]*$ ]]; then
-    printf '%s\n' '--lines doit être un entier positif.' >&2
+    p5_error '--lines doit être un entier positif.'
+    p5_action 'Exemple : --lines 500'
     exit 2
 fi
 
@@ -94,14 +103,33 @@ if [[ -z "$SSH_KEY" && -r "$CONFIG_FILE" ]]; then
     fi
 fi
 SSH_KEY="${SSH_KEY:-$HOME/.ssh/p5-key}"
-[[ -f "$SSH_KEY" ]] || { printf 'Clé SSH absente : %s\n' "$SSH_KEY" >&2; exit 1; }
+SSH_KEY="${SSH_KEY/#\~/$HOME}"
+if [[ ! -f "$SSH_KEY" ]]; then
+    p5_unknown 'Clé SSH privée pour la collecte NGINX' "fichier absent : $SSH_KEY" \
+        'Indiquez la clé privée correspondant à la paire EC2 de l’exercice 1.'
+    p5_prompt_value SSH_KEY \
+        'Chemin de la clé SSH privée' \
+        'La collecte doit ouvrir une session SSH sur l’EC2 NGINX.' \
+        'chemin absolu vers un fichier existant' "$HOME/.ssh/p5-key" '' p5_validate_existing_file \
+        "Saisissez-la ici, ou relancez avec : --ssh-key $HOME/.ssh/p5-key"
+fi
 
 if [[ -z "$WEB_IP" ]]; then
     WEB_IP="$(terraform -chdir="$PROJECT_ROOT/terraform/exercice-1" \
         output -raw web_public_ip 2>/dev/null || true)"
+    if ! p5_validate_ipv4 "$WEB_IP"; then
+        p5_unknown 'Adresse publique de la cible NGINX' \
+            'la sortie Terraform web_public_ip n’est pas disponible' \
+            'Pour le parcours normal, relancez p5.sh ex1. Pour une cible que vous connaissez et voulez diagnostiquer, saisissez son IPv4.'
+        p5_prompt_value WEB_IP \
+            'IPv4 publique de la cible NGINX' \
+            'Elle désigne l’EC2 dont /var/log/nginx/access.log doit être collecté.' \
+            'IPv4 seule' '198.51.100.42' '' p5_validate_ipv4 \
+            'Saisissez-la ici, ou relancez avec : --host 198.51.100.42'
+    fi
 fi
-if [[ ! "$WEB_IP" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]]; then
-    printf 'Adresse publique NGINX invalide ou absente.\n' >&2
+if ! p5_validate_ipv4 "$WEB_IP"; then
+    p5_error "Adresse publique NGINX invalide : $WEB_IP"
     exit 1
 fi
 
@@ -130,6 +158,7 @@ SSH_OPTIONS=(
     printf 'Collecte des logs NGINX réels\n'
     printf '  Hôte       : %s\n' "$WEB_IP"
     printf '  Lignes max : %s\n' "$LINES"
+    printf '  Clé SSH    : %s\n' "$SSH_KEY"
 
     ssh "${SSH_OPTIONS[@]}" "$SSH_USER@$WEB_IP" \
         "sudo tail -n $LINES /var/log/nginx/access.log" \
