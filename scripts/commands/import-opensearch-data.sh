@@ -81,6 +81,18 @@ valid_endpoint() {
         || [[ "$endpoint" =~ ^http://(127[.]0[.]0[.]1|localhost)(:[0-9]+)?$ ]]
 }
 
+normalize_template() {
+    jq -S '
+      {index_patterns, priority, template, _meta}
+      | if .template.settings.number_of_shards != null then
+          .template.settings.number_of_shards |= tostring
+        else . end
+      | if .template.settings.number_of_replicas != null then
+          .template.settings.number_of_replicas |= tostring
+        else . end
+    '
+}
+
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 BULK_FILE="$TMP_DIR/nginx-access.bulk.ndjson"
@@ -98,7 +110,7 @@ DOCUMENT_COUNT=$((LINE_COUNT / 2))
 
 jq -s '{query:{ids:{values:[.[] | select(.index? != null) | .index._id]}}}' \
     "$BULK_FILE" > "$IDS_QUERY"
-jq -S '{index_patterns, priority, template, _meta}' "$TEMPLATE_FILE" > "$DESIRED_TEMPLATE"
+normalize_template "$TEMPLATE_FILE" > "$DESIRED_TEMPLATE"
 
 printf 'Préparation OpenSearch\n'
 printf '  Source      : %s\n' "$INPUT_FILE"
@@ -138,8 +150,8 @@ SUMMARY_LOG="$PROOF_DIR/${TIMESTAMP}-import.log"
         "$ENDPOINT/_index_template/p5-nginx-access")"
     TEMPLATE_CHANGED=false
     if [[ "$TEMPLATE_HTTP" == 200 ]] \
-        && jq -S '.index_templates[0].index_template | {index_patterns, priority, template, _meta}' \
-            "$REMOTE_TEMPLATE" > "$TMP_DIR/remote-template-normalized.json" \
+        && jq '.index_templates[0].index_template' "$REMOTE_TEMPLATE" \
+            | normalize_template > "$TMP_DIR/remote-template-normalized.json" \
         && cmp -s "$DESIRED_TEMPLATE" "$TMP_DIR/remote-template-normalized.json"; then
         cp "$REMOTE_TEMPLATE" "$TEMPLATE_RESPONSE"
         printf '  OK  template déjà conforme — PUT ignoré\n'
