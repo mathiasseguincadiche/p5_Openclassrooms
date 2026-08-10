@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prépare puis importe des logs NGINX dans Amazon OpenSearch.
+# Prépare puis converge des logs NGINX dans Amazon OpenSearch.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -19,10 +19,12 @@ Options:
   --input CHEMIN      fichier NGINX combined à importer
   --endpoint URL      URL HTTPS AWS ou URL HTTP locale sur localhost
   --proof-dir CHEMIN  dossier local des preuves techniques
-  --apply             créer le template et importer les documents
+  --apply             converger le template et les documents manquants
   -h, --help          afficher cette aide
 
 Sans --apply, le script valide et convertit les données sans contacter OpenSearch.
+Avec --apply, l'état distant est d'abord lu : un template identique n'est pas
+réécrit et un jeu de documents déjà présent n'est pas réimporté.
 HELP
 }
 
@@ -82,6 +84,9 @@ valid_endpoint() {
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 BULK_FILE="$TMP_DIR/nginx-access.bulk.ndjson"
+IDS_QUERY="$TMP_DIR/ids-query.json"
+DESIRED_TEMPLATE="$TMP_DIR/desired-template.json"
+REMOTE_TEMPLATE="$TMP_DIR/remote-template.json"
 
 python3 "$CONVERTER" "$INPUT_FILE" --output "$BULK_FILE"
 LINE_COUNT="$(wc -l < "$BULK_FILE")"
@@ -91,13 +96,17 @@ if ((LINE_COUNT == 0 || LINE_COUNT % 2 != 0)); then
 fi
 DOCUMENT_COUNT=$((LINE_COUNT / 2))
 
+jq -s '{query:{ids:{values:[.[] | select(.index? != null) | .index._id]}}}' \
+    "$BULK_FILE" > "$IDS_QUERY"
+jq -S '{index_patterns, priority, template, _meta}' "$TEMPLATE_FILE" > "$DESIRED_TEMPLATE"
+
 printf 'Préparation OpenSearch\n'
 printf '  Source      : %s\n' "$INPUT_FILE"
 printf '  Documents   : %s\n' "$DOCUMENT_COUNT"
 printf '  Template    : %s\n' "$TEMPLATE_FILE"
 
 if [[ "$APPLY" != true ]]; then
-    printf '\nAucune donnée envoyée. Relancez avec --apply après vérification.\n'
+    printf '\nAucune donnée envoyée. Relancez avec --apply pour converger OpenSearch.\n'
     exit 0
 fi
 
@@ -124,31 +133,67 @@ SUMMARY_LOG="$PROOF_DIR/${TIMESTAMP}-import.log"
     curl -fsS "$ENDPOINT/" >/dev/null
     printf '  OK  domaine accessible\n'
 
-    printf '\nCréation ou mise à jour du template p5-nginx-access\n'
-    curl -fsS -X PUT \
-        -H 'Content-Type: application/json' \
-        --data-binary "@$TEMPLATE_FILE" \
-        "$ENDPOINT/_index_template/p5-nginx-access" \
-        > "$TEMPLATE_RESPONSE"
-    jq -e '.acknowledged == true' "$TEMPLATE_RESPONSE" >/dev/null
-    printf '  OK  template reconnu\n'
-
-    printf '\nImport Bulk de %s documents\n' "$DOCUMENT_COUNT"
-    curl -fsS -X POST \
-        -H 'Content-Type: application/x-ndjson' \
-        --data-binary "@$BULK_FILE" \
-        "$ENDPOINT/_bulk?refresh=true" \
-        > "$BULK_RESPONSE"
-    if ! jq -e '.errors == false' "$BULK_RESPONSE" >/dev/null; then
-        jq '[.items[] | select(.index.error != null) | .index.error]' "$BULK_RESPONSE" >&2
-        exit 1
+    printf '\nÉtat du template p5-nginx-access\n'
+    TEMPLATE_HTTP="$(curl -sS -o "$REMOTE_TEMPLATE" -w '%{http_code}' \
+        "$ENDPOINT/_index_template/p5-nginx-access")"
+    TEMPLATE_CHANGED=false
+    if [[ "$TEMPLATE_HTTP" == 200 ]] \
+        && jq -S '.index_templates[0].index_template | {index_patterns, priority, template, _meta}' \
+            "$REMOTE_TEMPLATE" > "$TMP_DIR/remote-template-normalized.json" \
+        && cmp -s "$DESIRED_TEMPLATE" "$TMP_DIR/remote-template-normalized.json"; then
+        cp "$REMOTE_TEMPLATE" "$TEMPLATE_RESPONSE"
+        printf '  OK  template déjà conforme — PUT ignoré\n'
+    else
+        curl -fsS -X PUT \
+            -H 'Content-Type: application/json' \
+            --data-binary "@$TEMPLATE_FILE" \
+            "$ENDPOINT/_index_template/p5-nginx-access" \
+            > "$TEMPLATE_RESPONSE"
+        jq -e '.acknowledged == true' "$TEMPLATE_RESPONSE" >/dev/null
+        TEMPLATE_CHANGED=true
+        printf '  CHANGE  template créé ou mis à jour\n'
     fi
-    printf '  OK  aucun document en erreur\n'
 
-    curl -fsS "$ENDPOINT/nginx-access-*/_count" > "$COUNT_RESPONSE"
-    IMPORTED_COUNT="$(jq -r '.count' "$COUNT_RESPONSE")"
+    printf '\nÉtat des %s documents déterministes\n' "$DOCUMENT_COUNT"
+    curl -fsS -X POST \
+        -H 'Content-Type: application/json' \
+        --data-binary "@$IDS_QUERY" \
+        "$ENDPOINT/nginx-access-*/_count?ignore_unavailable=true&allow_no_indices=true" \
+        > "$COUNT_RESPONSE"
+    PRESENT_COUNT="$(jq -r '.count // 0' "$COUNT_RESPONSE")"
+
+    if [[ "$PRESENT_COUNT" =~ ^[0-9]+$ ]] && ((PRESENT_COUNT == DOCUMENT_COUNT)); then
+        jq -n \
+            --argjson expected "$DOCUMENT_COUNT" \
+            --argjson present "$PRESENT_COUNT" \
+            '{errors:false, skipped:true, reason:"all deterministic document ids already exist", expected:$expected, present:$present}' \
+            > "$BULK_RESPONSE"
+        printf '  OK  %s/%s documents déjà présents — Bulk ignoré\n' \
+            "$PRESENT_COUNT" "$DOCUMENT_COUNT"
+    else
+        printf '  CHANGE  %s/%s documents présents — convergence Bulk nécessaire\n' \
+            "${PRESENT_COUNT:-0}" "$DOCUMENT_COUNT"
+        curl -fsS -X POST \
+            -H 'Content-Type: application/x-ndjson' \
+            --data-binary "@$BULK_FILE" \
+            "$ENDPOINT/_bulk?refresh=true" \
+            > "$BULK_RESPONSE"
+        if ! jq -e '.errors == false' "$BULK_RESPONSE" >/dev/null; then
+            jq '[.items[] | select(.index.error != null) | .index.error]' "$BULK_RESPONSE" >&2
+            exit 1
+        fi
+        printf '  OK  aucun document Bulk en erreur\n'
+    fi
+
+    curl -fsS "$ENDPOINT/nginx-access-*/_count?ignore_unavailable=true&allow_no_indices=true" \
+        > "$COUNT_RESPONSE"
+    IMPORTED_COUNT="$(jq -r '.count // 0' "$COUNT_RESPONSE")"
     printf '  OK  documents présents dans nginx-access-* : %s\n' "$IMPORTED_COUNT"
 
-    printf '\nVerdict : IMPORT OPENSEARCH RÉUSSI\n'
+    if [[ "$TEMPLATE_CHANGED" == false ]] && ((PRESENT_COUNT == DOCUMENT_COUNT)); then
+        printf '\nVerdict : OPENSEARCH DÉJÀ CONFORME — AUCUNE MUTATION NÉCESSAIRE\n'
+    else
+        printf '\nVerdict : OPENSEARCH CONVERGÉ\n'
+    fi
     printf 'Preuves locales : %s\n' "$PROOF_DIR"
 } 2>&1 | tee "$SUMMARY_LOG"
