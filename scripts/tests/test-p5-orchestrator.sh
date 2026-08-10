@@ -54,10 +54,16 @@ if [[ "$args" == *" state list"* ]]; then
 fi
 if [[ "$args" == *"output -raw web_public_ip"* ]]; then
     printf '%s\n' '198.51.100.10'
+elif [[ "$args" == *"output -raw web_url"* ]]; then
+    printf '%s\n' 'http://198.51.100.10'
+elif [[ "$args" == *"output -raw opensearch_endpoint"* ]]; then
+    printf '%s\n' 'https://search.example.invalid'
 elif [[ "$args" == *"output -raw opensearch_dashboards_endpoint"* ]]; then
-    printf '%s\n' 'https://search.example.invalid/_dashboards'
+    printf '%s\n' 'https://search.example.invalid/_dashboards/'
 elif [[ "$args" == *"output -raw haproxy_url"* ]]; then
     printf '%s\n' 'http://198.51.100.20'
+elif [[ "$args" == *"output -raw hello_1_public_ip"* ]]; then
+    printf '%s\n' '198.51.100.21'
 elif [[ "$args" == *" output"* ]]; then
     printf '%s\n' 'stub-output'
 fi
@@ -96,7 +102,7 @@ grep -Fq "cleanup    détruire AWS dans l'ordre prévu puis auditer le nettoyage
 
 grep -Fq 'prepare-angular-artifact.sh' "$TRACE_FILE"
 grep -Fq 'generate-ansible-inventory.sh' "$TRACE_FILE"
-grep -Fq 'test-haproxy-failover.sh --apply' "$TRACE_FILE"
+grep -Fq 'test-haproxy-failover.sh --url http://198.51.100.20 --backend-host 198.51.100.21 --apply' "$TRACE_FILE"
 grep -Fq 'Idempotence Ansible confirmée' "$TMP_DIR/logs/p5.log"
 
 set +e
