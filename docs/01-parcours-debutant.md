@@ -5,6 +5,10 @@ est le centre de commande `p5.sh`. Les guides d'exercice conservent les commande
 Terraform, Ansible et OpenSearch détaillées pour comprendre ou diagnostiquer une
 étape isolée.
 
+Pour une exécution **pas à pas**, avec les résultats attendus, les points de
+contrôle, les règles de reprise et la procédure exacte d'envoi des logs en cas
+d'échec, utiliser aussi le [Runbook d'exécution guidée A → Z](RUNBOOK_EXECUTION_GUIDEE.md).
+
 Référence d'architecture :
 [architecture technique](architecture-et-flux.md).
 
