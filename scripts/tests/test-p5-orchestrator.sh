@@ -37,7 +37,7 @@ chmod 600 "$TMP_DIR/home/.ssh/p5-key"
 chmod 644 "$TMP_DIR/home/.ssh/p5-key.pub"
 
 cat > "$FAKE_BIN/bash" <<'EOF'
-#!/usr/bin/env bash
+#!/usr/bin/bash
 set -euo pipefail
 printf 'bash' >> "${P5_TEST_TRACE:?}"
 printf ' %q' "$@" >> "$P5_TEST_TRACE"
@@ -46,7 +46,7 @@ exit 0
 EOF
 
 cat > "$FAKE_BIN/terraform" <<'EOF'
-#!/usr/bin/env bash
+#!/usr/bin/bash
 set -euo pipefail
 args="$*"
 if [[ "$args" == *" state list"* ]]; then
@@ -65,7 +65,7 @@ exit 0
 EOF
 
 cat > "$FAKE_BIN/ansible-playbook" <<'EOF'
-#!/usr/bin/env bash
+#!/usr/bin/bash
 set -euo pipefail
 cat <<'OUT'
 PLAY RECAP *********************************************************************
@@ -75,7 +75,7 @@ EOF
 
 for command_name in ansible aws curl jq ssh docker node npm shellcheck yamllint; do
     cat > "$FAKE_BIN/$command_name" <<'EOF'
-#!/usr/bin/env bash
+#!/usr/bin/bash
 exit 0
 EOF
 done
