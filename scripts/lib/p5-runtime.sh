@@ -78,16 +78,19 @@ p5_slug() {
         | tr -cd 'a-z0-9._-'
 }
 
-p5_step_file() {
+p5_prepare_step_file() {
     local key="$1"
+    local number slug
+
     P5_STEP_NUMBER="${P5_STEP_NUMBER:-0}"
     P5_STEP_NUMBER=$((P5_STEP_NUMBER + 1))
     export P5_STEP_NUMBER
 
-    local number slug
     printf -v number '%02d' "$P5_STEP_NUMBER"
     slug="$(p5_slug "$key")"
-    printf '%s/%s-%s.log\n' "$P5_LOG_DIR" "$number" "$slug"
+    P5_CURRENT_STEP_NUMBER="$number"
+    P5_CURRENT_STEP_LOG="$P5_LOG_DIR/${number}-${slug}.log"
+    export P5_CURRENT_STEP_NUMBER P5_CURRENT_STEP_LOG
 }
 
 p5_run_step() {
@@ -96,9 +99,10 @@ p5_run_step() {
     shift 2
 
     local log_file start_time end_time rc
-    log_file="$(p5_step_file "$key")"
+    p5_prepare_step_file "$key"
+    log_file="$P5_CURRENT_STEP_LOG"
 
-    p5_header "$(basename "$log_file" | cut -d- -f1) — $label"
+    p5_header "$P5_CURRENT_STEP_NUMBER — $label"
     p5_command_preview "$@"
     printf '       Log      : %s\n\n' "$log_file"
 
@@ -128,9 +132,10 @@ p5_run_step_allow() {
     shift 3
 
     local log_file start_time end_time rc
-    log_file="$(p5_step_file "$key")"
+    p5_prepare_step_file "$key"
+    log_file="$P5_CURRENT_STEP_LOG"
 
-    p5_header "$(basename "$log_file" | cut -d- -f1) — $label"
+    p5_header "$P5_CURRENT_STEP_NUMBER — $label"
     p5_command_preview "$@"
     printf '       Log      : %s\n\n' "$log_file"
 
