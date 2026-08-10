@@ -30,7 +30,10 @@ grep -Fq $'01\tsuccess-step\tVALIDE\t0' "$P5_STEP_PROOF_MANIFEST"
 
 printf 'Test étape en échec\n'
 set +e
-p5_run_step 'failure-step' 'Étape de preuve en échec' bash -c 'printf "preuve-ko\\n"; exit 7'
+(
+    p5_run_step 'failure-step' 'Étape de preuve en échec' \
+        bash -c 'printf "preuve-ko\\n"; exit 7'
+)
 RC=$?
 set -e
 [[ "$RC" -eq 7 ]]
