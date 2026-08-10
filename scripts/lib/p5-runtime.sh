@@ -192,6 +192,10 @@ p5_validate_email() {
     [[ "$1" =~ ^[^[:space:]@]+@[^[:space:]@]+[.][^[:space:]@]+$ ]]
 }
 
+p5_validate_aws_region() {
+    [[ "$1" =~ ^[a-z]{2}(-gov)?-[a-z]+-[0-9]+$ ]]
+}
+
 p5_validate_ipv4() {
     local value="$1"
     python3 - "$value" <<'PY' >/dev/null 2>&1
