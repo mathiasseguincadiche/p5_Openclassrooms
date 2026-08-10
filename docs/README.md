@@ -45,8 +45,10 @@ Le centre de commande prend en charge :
 9. exercice 3 — HAProxy, round-robin, panne et reprise ;
 10. diagnostics et contrôle de structure des livrables.
 
-Le runbook complet est :
-[01 — parcours d'exécution de bout en bout](01-parcours-debutant.md).
+Deux niveaux de runbook sont disponibles :
+
+- [01 — parcours d'exécution de bout en bout](01-parcours-debutant.md) : runbook principal et synthétique du projet ;
+- [Runbook d'exécution guidée A → Z](RUNBOOK_EXECUTION_GUIDEE.md) : version opératoire détaillée, à suivre écran par écran pendant la réalisation réelle du lab.
 
 ## Commandes principales
 
@@ -143,11 +145,12 @@ NETTOYAGE AWS COMPLET
 
 Lire :
 
-1. [Convergence et réexécution intelligente](convergence-et-reexecution.md)
-2. [Parcours automatisé et reprise](01-parcours-debutant.md)
-3. [Préparation de la VM](00-preparation-environnement.md)
-4. [Préparation du compte AWS](00b-preparation-compte-aws.md)
-5. [Validation, preuves et nettoyage](validation-preuves-nettoyage.md)
+1. [Runbook d'exécution guidée A → Z](RUNBOOK_EXECUTION_GUIDEE.md)
+2. [Convergence et réexécution intelligente](convergence-et-reexecution.md)
+3. [Parcours automatisé et reprise](01-parcours-debutant.md)
+4. [Préparation de la VM](00-preparation-environnement.md)
+5. [Préparation du compte AWS](00b-preparation-compte-aws.md)
+6. [Validation, preuves et nettoyage](validation-preuves-nettoyage.md)
 
 Puis lancer :
 
@@ -185,6 +188,7 @@ bash scripts/commands/collect-diagnostics.sh
 
 Puis consulter :
 
+- [Runbook d'exécution guidée A → Z — procédure en cas d'échec](RUNBOOK_EXECUTION_GUIDEE.md)
 - [Troubleshooting](troubleshooting.md)
 - [Scripts et commandes](../scripts/README.md)
 - [Convention des preuves](../proofs/README.md)
@@ -209,6 +213,8 @@ bash scripts/commands/p5.sh finalize
 | Sujet | Source de vérité |
 | --- | --- |
 | Point d'entrée opérateur | `scripts/commands/p5.sh` |
+| Runbook principal | `docs/01-parcours-debutant.md` |
+| Guide opérateur détaillé | `docs/RUNBOOK_EXECUTION_GUIDEE.md` |
 | Modèle de convergence | `docs/convergence-et-reexecution.md` |
 | Runtime et logs opérateur | `scripts/lib/p5-runtime.sh` |
 | Ordre global | `docs/01-parcours-debutant.md` |
@@ -293,6 +299,8 @@ pour lancer le lab :
 
 - `p5.sh` est la voie normale d'exécution ;
 - `p5.sh inspect` est la voie normale d'observation sans mutation ;
+- `docs/01-parcours-debutant.md` reste le runbook principal synthétique ;
+- `docs/RUNBOOK_EXECUTION_GUIDEE.md` est le guide opérateur détaillé pour l'exécution réelle et le diagnostic ;
 - les guides détaillés restent la référence pédagogique et de dépannage ;
 - une seule source de vérité est conservée par sujet ;
 - aucune preuve fictive n'est présentée comme une exécution réelle ;
