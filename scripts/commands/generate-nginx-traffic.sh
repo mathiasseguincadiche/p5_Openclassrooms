@@ -4,9 +4,14 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
+LIB_FILE="$PROJECT_ROOT/scripts/lib/p5-runtime.sh"
 PROOF_DIR="$PROJECT_ROOT/proofs/runtime/exercice-1"
 URL=""
 REQUESTS=64
+
+# shellcheck source=../lib/p5-runtime.sh
+source "$LIB_FILE"
+p5_session_start "generate-nginx-traffic"
 
 show_help() {
     cat <<'HELP'
@@ -18,24 +23,25 @@ Options:
   --proof-dir CHEMIN   dossier local des preuves techniques
   -h, --help           afficher cette aide
 
-Le script ne modifie aucune ressource ; il produit uniquement des requêtes HTTP.
+Sans --url, le script lit la sortie Terraform web_url. Si elle n'est pas lisible
+en usage manuel, il explique le format attendu et demande l'URL de la cible.
 HELP
 }
 
 while (($# > 0)); do
     case "$1" in
         --url)
-            [[ $# -ge 2 ]] || { printf 'Valeur manquante pour --url.\n' >&2; exit 2; }
+            [[ $# -ge 2 ]] || { p5_error 'Valeur manquante pour --url.'; exit 2; }
             URL="$2"
             shift 2
             ;;
         --requests)
-            [[ $# -ge 2 ]] || { printf 'Valeur manquante pour --requests.\n' >&2; exit 2; }
+            [[ $# -ge 2 ]] || { p5_error 'Valeur manquante pour --requests.'; exit 2; }
             REQUESTS="$2"
             shift 2
             ;;
         --proof-dir)
-            [[ $# -ge 2 ]] || { printf 'Valeur manquante pour --proof-dir.\n' >&2; exit 2; }
+            [[ $# -ge 2 ]] || { p5_error 'Valeur manquante pour --proof-dir.'; exit 2; }
             PROOF_DIR="$2"
             shift 2
             ;;
@@ -44,7 +50,7 @@ while (($# > 0)); do
             exit 0
             ;;
         *)
-            printf 'Option inconnue : %s\n' "$1" >&2
+            p5_error "Option inconnue : $1"
             show_help >&2
             exit 2
             ;;
@@ -53,22 +59,35 @@ done
 
 for command_name in terraform curl; do
     command -v "$command_name" >/dev/null 2>&1 || {
-        printf 'Commande requise absente : %s\n' "$command_name" >&2
+        p5_error "Commande requise absente : $command_name"
+        p5_action 'Lancez : bash scripts/commands/p5.sh prepare'
         exit 1
     }
 done
 if [[ ! "$REQUESTS" =~ ^[0-9]+$ ]] || ((REQUESTS < 1)); then
-    printf '%s\n' '--requests doit être un entier positif.' >&2
+    p5_error '--requests doit être un entier positif.'
+    p5_action 'Exemple : --requests 96'
     exit 2
 fi
 
 if [[ -z "$URL" ]]; then
     URL="$(terraform -chdir="$PROJECT_ROOT/terraform/exercice-1" \
         output -raw web_url 2>/dev/null || true)"
+    if ! p5_validate_http_url "${URL%/}"; then
+        p5_unknown 'URL NGINX/Angular' \
+            'la sortie Terraform web_url n’est pas disponible' \
+            'Pour le parcours normal, relancez p5.sh ex1. Pour une cible connue, saisissez son URL HTTP.'
+        p5_prompt_value URL \
+            'URL HTTP NGINX/Angular' \
+            'Cette URL recevra les requêtes contrôlées destinées à produire le vrai access.log.' \
+            'URL HTTP complète sans chemin' 'http://198.51.100.42' '' p5_validate_http_url \
+            'Saisissez-la ici, ou relancez avec : --url http://198.51.100.42'
+    fi
 fi
 URL="${URL%/}"
-if [[ ! "$URL" =~ ^http://[A-Za-z0-9.-]+(:[0-9]+)?$ ]]; then
-    printf 'URL HTTP invalide ou absente : %s\n' "$URL" >&2
+if ! p5_validate_http_url "$URL"; then
+    p5_error "URL HTTP invalide : $URL"
+    p5_action 'Format attendu : http://hote ou http://hote:port'
     exit 1
 fi
 
