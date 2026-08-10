@@ -112,7 +112,7 @@ sudo apt-get install -y \
 sudo systemctl enable --now docker
 sudo usermod -aG docker "$USER"
 
-printf '5/9 — AWS CLI v2\n'
+printf '5/9 — AWS CLI v2 (aws login >= %s)\n' "$AWS_CLI_MIN_VERSION"
 case "$ARCH" in
     amd64) AWS_ARCH="x86_64" ;;
     arm64) AWS_ARCH="aarch64" ;;
@@ -129,6 +129,20 @@ if command -v aws >/dev/null 2>&1; then
 else
     sudo "$TMP_DIR/aws/install"
 fi
+AWS_CLI_VERSION="$(aws --version 2>&1 | sed -n 's/^aws-cli\/\([0-9][0-9.]*\).*/\1/p')"
+python3 - "$AWS_CLI_VERSION" "$AWS_CLI_MIN_VERSION" <<'PY'
+import sys
+
+def version(value: str) -> tuple[int, int, int]:
+    parts = [int(part) for part in value.split('.')[:3]]
+    parts += [0] * (3 - len(parts))
+    return tuple(parts)
+
+if not sys.argv[1] or version(sys.argv[1]) < version(sys.argv[2]):
+    raise SystemExit(
+        f"AWS CLI {sys.argv[2]} minimum requise, version détectée : {sys.argv[1] or 'inconnue'}"
+    )
+PY
 
 printf '6/9 — Ansible Core %s avec pipx\n' "$ANSIBLE_CORE_VERSION"
 pipx install --force "$ANSIBLE_CORE_SPEC"
@@ -177,4 +191,5 @@ fi
 
 printf '\nSocle installé. Déconnectez-vous puis reconnectez-vous pour Docker.\n'
 printf 'NVM chargera Node.js %s dans les nouveaux shells.\n' "$NODE_VERSION"
-printf 'Ensuite : ./scripts/commands/setup.sh --check-only\n'
+printf 'AWS CLI est compatible avec aws login --remote.\n'
+printf 'Ensuite : bash scripts/commands/p5.sh all\n'
