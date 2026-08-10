@@ -180,3 +180,7 @@ SSH_OPTIONS=(
         "$OUTPUT_FILE"
     printf '\nVerdict : LOGS NGINX RÉELS COLLECTÉS\n'
 } 2>&1 | tee "$SUMMARY_LOG"
+
+if [[ "${P5_ORCHESTRATED:-0}" == 1 ]]; then
+    bash "$SCRIPT_DIR/verify-aws-exercise-state.sh" --exercise 1
+fi
