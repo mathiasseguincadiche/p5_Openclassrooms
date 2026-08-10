@@ -17,7 +17,7 @@ cleanup() {
 trap cleanup EXIT
 
 [[ ! -e "$CONFIG_FILE" ]] || {
-    printf 'Le test refuse d\047écraser une configuration AWS locale existante.\n' >&2
+    printf "Le test refuse d'écraser une configuration AWS locale existante.\n" >&2
     exit 1
 }
 
@@ -88,7 +88,7 @@ export P5_TEST_TRACE="$TRACE_FILE"
 
 HELP_OUTPUT="$(/usr/bin/bash "$P5_SCRIPT" help)"
 grep -Fq 'all        exécuter prepare + ex1 + ex2 + ex3 + diagnostics' <<<"$HELP_OUTPUT"
-grep -Fq 'cleanup    détruire AWS dans l'ordre prévu puis auditer le nettoyage' <<<"$HELP_OUTPUT"
+grep -Fq "cleanup    détruire AWS dans l'ordre prévu puis auditer le nettoyage" <<<"$HELP_OUTPUT"
 
 /usr/bin/bash "$P5_SCRIPT" status --full-validation
 /usr/bin/bash "$P5_SCRIPT" ex1 --yes
@@ -110,4 +110,4 @@ fi
 grep -Fq 'Le mode --yes ne valide pas une preuve manuelle à votre place.' <<<"$EX2_OUTPUT"
 grep -Fq 'Saisie interactive requise : OK' <<<"$EX2_OUTPUT"
 
-printf 'OK  contrat de l\047orchestrateur P5 validé sans mutation AWS.\n'
+printf "OK  contrat de l'orchestrateur P5 validé sans mutation AWS.\n"
