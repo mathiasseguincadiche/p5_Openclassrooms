@@ -78,21 +78,31 @@ p5_slug() {
         | tr -cd 'a-z0-9._-'
 }
 
-p5_run_step() {
+p5_prepare_step_file() {
     local key="$1"
-    local label="$2"
-    shift 2
+    local number slug
 
     P5_STEP_NUMBER="${P5_STEP_NUMBER:-0}"
     P5_STEP_NUMBER=$((P5_STEP_NUMBER + 1))
     export P5_STEP_NUMBER
 
-    local number slug log_file start_time end_time rc
     printf -v number '%02d' "$P5_STEP_NUMBER"
     slug="$(p5_slug "$key")"
-    log_file="$P5_LOG_DIR/${number}-${slug}.log"
+    P5_CURRENT_STEP_NUMBER="$number"
+    P5_CURRENT_STEP_LOG="$P5_LOG_DIR/${number}-${slug}.log"
+    export P5_CURRENT_STEP_NUMBER P5_CURRENT_STEP_LOG
+}
 
-    p5_header "$number — $label"
+p5_run_step() {
+    local key="$1"
+    local label="$2"
+    shift 2
+
+    local log_file start_time end_time rc
+    p5_prepare_step_file "$key"
+    log_file="$P5_CURRENT_STEP_LOG"
+
+    p5_header "$P5_CURRENT_STEP_NUMBER — $label"
     p5_command_preview "$@"
     printf '       Log      : %s\n\n' "$log_file"
 
@@ -103,11 +113,53 @@ p5_run_step() {
     set -e
     end_time="$(date +%s)"
 
+    P5_LAST_STEP_RC="$rc"
+    P5_LAST_STEP_LOG="$log_file"
+    export P5_LAST_STEP_RC P5_LAST_STEP_LOG
+
     if ((rc == 0)); then
         p5_ok "$label — $((end_time - start_time)) s"
     else
         p5_error "$label — code retour $rc — voir $log_file"
     fi
+    return "$rc"
+}
+
+p5_run_step_allow() {
+    local accepted_codes="$1"
+    local key="$2"
+    local label="$3"
+    shift 3
+
+    local log_file start_time end_time rc
+    p5_prepare_step_file "$key"
+    log_file="$P5_CURRENT_STEP_LOG"
+
+    p5_header "$P5_CURRENT_STEP_NUMBER — $label"
+    p5_command_preview "$@"
+    printf '       Log      : %s\n\n' "$log_file"
+
+    start_time="$(date +%s)"
+    set +e
+    "$@" > >(tee "$log_file") 2>&1
+    rc=$?
+    set -e
+    end_time="$(date +%s)"
+
+    P5_LAST_STEP_RC="$rc"
+    P5_LAST_STEP_LOG="$log_file"
+    export P5_LAST_STEP_RC P5_LAST_STEP_LOG
+
+    if [[ " $accepted_codes " == *" $rc "* ]]; then
+        if ((rc == 0)); then
+            p5_ok "$label — $((end_time - start_time)) s"
+        else
+            p5_info "$label — état attendu code $rc — $((end_time - start_time)) s"
+        fi
+        return 0
+    fi
+
+    p5_error "$label — code retour $rc — voir $log_file"
     return "$rc"
 }
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Détruit explicitement les ressources Terraform du P5 dans l'ordre sûr.
+# Détruit explicitement les ressources Terraform encore suivies, dans l'ordre sûr.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -11,11 +11,33 @@ command -v terraform >/dev/null 2>&1 || {
     exit 1
 }
 
-cat <<'WARNING'
-ATTENTION : cette commande détruit les ressources AWS suivies par les états
-Terraform locaux des exercices 3, 2 puis 1.
+ACTIVE_EXERCISES=()
+printf 'Inspection des états Terraform avant destruction\n'
+for exercise in 3 2 1; do
+    module="terraform/exercice-${exercise}"
+    if [[ ! -f "$module/terraform.tfstate" ]]; then
+        printf '  EX%s  aucun état local.\n' "$exercise"
+        continue
+    fi
+    mapfile -t resources < <(terraform -chdir="$module" state list 2>/dev/null || true)
+    if ((${#resources[@]} == 0)); then
+        printf '  EX%s  état déjà vide — aucune destruction nécessaire.\n' "$exercise"
+        continue
+    fi
+    printf '  EX%s  %s ressource(s) encore suivie(s).\n' "$exercise" "${#resources[@]}"
+    ACTIVE_EXERCISES+=("$exercise")
+done
 
-L'ordre est volontaire : l'exercice 3 dépend du réseau créé par l'exercice 1.
+if ((${#ACTIVE_EXERCISES[@]} == 0)); then
+    printf '\nAucune ressource Terraform suivie à détruire.\n'
+    printf 'Verdict : DESTRUCTION DÉJÀ CONVERGÉE — lancez seulement l’audit AWS final.\n'
+    exit 0
+fi
+
+cat <<'WARNING'
+
+ATTENTION : cette commande va détruire uniquement les ressources encore suivies
+par Terraform. L'ordre 3 → 2 → 1 protège la dépendance réseau de l'exercice 3.
 WARNING
 printf 'Tapez exactement DETRUIRE pour continuer : '
 read -r confirmation
@@ -33,20 +55,31 @@ done
 for exercise in 3 2 1; do
     module="terraform/exercice-${exercise}"
     if [[ ! -f "$module/terraform.tfstate" ]]; then
-        printf '\nExercice %s : aucun état local, vérification manuelle requise.\n' "$exercise"
+        printf '\nExercice %s : aucun état local — ignoré.\n' "$exercise"
+        continue
+    fi
+    mapfile -t resources < <(terraform -chdir="$module" state list 2>/dev/null || true)
+    if ((${#resources[@]} == 0)); then
+        printf '\nExercice %s : état déjà vide — destroy ignoré.\n' "$exercise"
         continue
     fi
 
-    printf '\nExercice %s : ressources suivies\n' "$exercise"
-    terraform -chdir="$module" state list || true
-    printf 'Destruction de l’exercice %s...\n' "$exercise"
+    printf '\nExercice %s : ressources suivies avant destruction\n' "$exercise"
+    printf '  %s\n' "${resources[@]}"
     terraform -chdir="$module" destroy -auto-approve
+
+    mapfile -t remaining < <(terraform -chdir="$module" state list 2>/dev/null || true)
+    if ((${#remaining[@]} > 0)); then
+        printf 'KO  Exercice %s : %s ressource(s) encore suivie(s) après destroy.\n' \
+            "$exercise" "${#remaining[@]}" >&2
+        exit 1
+    fi
+    printf 'OK  Exercice %s : état Terraform vide après destruction.\n' "$exercise"
 done
 
 cat <<'INFO'
 
-Destruction Terraform terminée.
-Vérifiez néanmoins dans la console AWS qu'aucune instance EC2 ni aucun domaine
-OpenSearch du projet ne subsiste. Ne supprimez pas manuellement les états avant
-cette vérification.
+Destruction Terraform convergée.
+L'audit AWS global reste obligatoire pour détecter une ressource hors état ou
+orpheline. Ne supprimez jamais manuellement un état pour masquer une ressource.
 INFO

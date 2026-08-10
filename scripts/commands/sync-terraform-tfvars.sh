@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Génère ou vérifie les terraform.tfvars depuis environment/aws-readiness.env.
+# Réexécutable : --apply n'écrit que les fichiers réellement différents.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -14,7 +15,7 @@ Usage: sync-terraform-tfvars.sh [options]
 Options:
   --config CHEMIN   fichier aws-readiness.env à utiliser
   --check           vérifier que les trois terraform.tfvars sont synchronisés
-  --apply           écrire les trois terraform.tfvars avec des permissions 600
+  --apply           converger les trois terraform.tfvars (écriture uniquement si nécessaire)
   -h, --help        afficher cette aide
 
 Sans option de mode, le script affiche uniquement les fichiers qui seraient écrits.
@@ -152,7 +153,7 @@ case "$MODE" in
             printf '\n--- terraform/exercice-%s/terraform.tfvars ---\n' "$exercise"
             cat "$TMP_DIR/exercice-${exercise}.tfvars"
         done
-        printf '\nMode aperçu : relancez avec --apply pour écrire les fichiers.\n'
+        printf '\nMode aperçu : relancez avec --apply pour converger les fichiers.\n'
         ;;
     check)
         errors=0
@@ -165,6 +166,9 @@ case "$MODE" in
                 printf 'KO  %s n’est pas synchronisé avec %s.\n' \
                     "$target" "$CONFIG_FILE" >&2
                 errors=$((errors + 1))
+            elif [[ "$(stat -c '%a' "$target")" != 600 ]]; then
+                printf 'KO  %s doit être en mode 600.\n' "$target" >&2
+                errors=$((errors + 1))
             else
                 printf 'OK  exercice %s synchronisé.\n' "$exercise"
             fi
@@ -174,11 +178,26 @@ case "$MODE" in
         ;;
     apply)
         umask 077
+        changed=0
+        unchanged=0
         for exercise in 1 2 3; do
             target="$PROJECT_ROOT/terraform/exercice-${exercise}/terraform.tfvars"
+            if [[ -f "$target" ]] && cmp -s "$TMP_DIR/exercice-${exercise}.tfvars" "$target"; then
+                if [[ "$(stat -c '%a' "$target")" != 600 ]]; then
+                    chmod 600 "$target"
+                    printf 'Corrigé (permissions) : %s\n' "$target"
+                    changed=$((changed + 1))
+                else
+                    printf 'Déjà synchronisé      : %s\n' "$target"
+                    unchanged=$((unchanged + 1))
+                fi
+                continue
+            fi
             install -m 0600 "$TMP_DIR/exercice-${exercise}.tfvars" "$target"
-            printf 'Écrit : %s\n' "$target"
+            printf 'Convergé               : %s\n' "$target"
+            changed=$((changed + 1))
         done
-        printf 'Verdict : TERRAFORM.TFVARS GÉNÉRÉS DEPUIS AWS-READINESS.ENV.\n'
+        printf 'Résumé : modifications=%s | déjà conformes=%s\n' "$changed" "$unchanged"
+        printf 'Verdict : TERRAFORM.TFVARS CONVERGÉS DEPUIS AWS-READINESS.ENV.\n'
         ;;
 esac

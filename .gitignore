@@ -39,12 +39,13 @@ coverage/
 *~
 
 # =============================================
-# Logs, preuves runtime et fichiers temporaires
+# Logs, preuves runtime, état local et fichiers temporaires
 # =============================================
 *.log
 *.tmp
 *.temp
 proofs/runtime/
+.p5/
 
 # =============================================
 # Fichiers de configuration locaux
