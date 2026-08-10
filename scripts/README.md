@@ -1,19 +1,16 @@
 # Scripts du projet P5
 
-Les scripts du dépôt **préparent, vérifient, testent, collectent des preuves et
-nettoient** le lab. Les commandes spécialisées restent disponibles pour comprendre
-et rejouer chaque opération, tandis que `p5.sh` fournit désormais un point d'entrée
-unique pour l'exécution accélérée du projet.
+Les scripts du dépôt préparent, vérifient, déploient, testent, collectent des
+preuves et nettoient le lab. Le point d'entrée recommandé est `p5.sh`; les
+commandes spécialisées restent disponibles pour comprendre ou rejouer une étape.
 
-## Mode accéléré — centre de commande P5
-
-Le moyen recommandé pour réaliser le projet depuis le terminal est :
+## Centre de commande P5
 
 ```bash
 bash scripts/commands/p5.sh
 ```
 
-Cette commande ouvre un menu interactif :
+Menu :
 
 ```text
 1  Préparer le lab
@@ -28,47 +25,71 @@ Cette commande ouvre un menu interactif :
 q  Quitter
 ```
 
-Pour lancer directement le parcours technique complet :
+Parcours complet :
 
 ```bash
 bash scripts/commands/p5.sh all
 ```
 
-Pour confirmer automatiquement les mutations automatisables :
+Mode accéléré :
 
 ```bash
 bash scripts/commands/p5.sh all --yes
 ```
 
-`--yes` ne valide jamais à la place de l'opérateur :
+`--yes` ne contourne jamais :
 
-- les confirmations de sécurité impossibles à prouver depuis la CLI ;
+- les confirmations de sécurité impossibles à vérifier automatiquement ;
 - le checkpoint manuel du dashboard OpenSearch ;
-- la destruction finale protégée par `destroy-aws.sh`.
+- la confirmation `DETRUIRE` du nettoyage final.
 
-L'orchestrateur affiche toujours le plan Terraform avant son application. Il
-conserve donc les garde-fous pédagogiques et financiers du projet tout en évitant
-le copier-coller du runbook.
+## Séquence de `all`
 
-### Reprise après interruption
+```text
+prepare
+  ↓
+ex1
+  ├─ Terraform
+  ├─ Ansible
+  ├─ seconde exécution → changed=0
+  ├─ Angular/NGINX
+  └─ vrai access.log
+  ↓
+ex2
+  ├─ OpenSearch
+  ├─ échantillon reproductible
+  ├─ vrai access.log
+  ├─ mappings/agrégations
+  └─ dashboard manuel
+  ↓
+ex3
+  ├─ HAProxy
+  ├─ round-robin
+  ├─ panne réelle
+  └─ reprise
+  ↓
+diagnostics + structure des livrables
+```
 
-`p5.sh` détecte les états Terraform locaux existants. Si un exercice a déjà été
-créé, le script passe en mode reprise au lieu de considérer automatiquement les
-ressources AWS comme des conflits.
+`all` ne détruit pas AWS automatiquement.
 
-Il est donc possible de relancer la même commande après une coupure ou une
-interruption :
+## Reprise après interruption
+
+`p5.sh` détecte les états Terraform locaux. Si le lab existe déjà, il passe en
+mode reprise au lieu de traiter automatiquement les ressources gérées comme des
+collisions.
+
+Après une interruption :
 
 ```bash
 bash scripts/commands/p5.sh all
 ```
 
-Terraform réévalue l'état, Ansible reste idempotent et les contrôles fonctionnels
-sont rejoués.
+Ne jamais supprimer un état Terraform pour forcer une reprise.
 
-### Logs opérateur
+## Logs opérateur
 
-Chaque lancement de `p5.sh` crée une session privée :
+Chaque lancement crée une session :
 
 ```text
 logs/<UTC>/
@@ -78,137 +99,126 @@ logs/<UTC>/
 └── ...
 ```
 
-Le terminal indique pour chaque étape :
+Chaque étape affiche :
 
 ```text
 P5  07 — Déployer Angular et NGINX avec Ansible
-       Commande : ansible-playbook ...
-       Log      : .../logs/<UTC>/07-ansible-deploy.log
+       Commande : ...
+       Log      : .../07-ansible-deploy.log
 
 [ OK ] Déployer Angular et NGINX avec Ansible — 18 s
 ```
 
-Les journaux opérateur sont séparés de `proofs/runtime/` :
+Les journaux sont séparés de `proofs/runtime/` :
 
-- `logs/` explique ce que les scripts ont exécuté et permet de diagnostiquer un
-  échec ;
-- `proofs/runtime/` contient les preuves techniques destinées au projet et aux
-  livrables.
+- `logs/` explique ce qui a été exécuté ;
+- `proofs/runtime/` contient les preuves techniques du projet.
 
-Les fichiers `.log` sont ignorés par Git. Les sessions créées par le runtime
-utilisent un `umask 077` afin que les nouveaux journaux restent privés par défaut.
-
-Pour retrouver rapidement les journaux :
+Les nouveaux logs utilisent `umask 077` et les `.log` sont ignorés par Git.
 
 ```bash
 bash scripts/commands/p5.sh logs
 ```
 
-## Automatisations ajoutées
+## Automatisations centrales
 
-| Commande | Rôle |
+| Fichier | Rôle |
 | --- | --- |
-| `p5.sh` | orchestre le projet depuis un menu ou des sous-commandes |
-| `configure-lab.sh` | détecte compte AWS, IP publique, profil, région et prépare les tfvars |
-| `generate-ansible-inventory.sh` | génère l'inventaire réel depuis les outputs Terraform |
-| `scripts/lib/p5-runtime.sh` | fournit affichage terminal, confirmations et journalisation |
+| `scripts/commands/p5.sh` | orchestration du projet |
+| `scripts/lib/p5-runtime.sh` | terminal, confirmations, logs |
+| `scripts/commands/configure-lab.sh` | profil AWS, compte, IP, SSH, tfvars |
+| `scripts/commands/generate-ansible-inventory.sh` | inventaire depuis Terraform |
+| `scripts/tests/test-p5-orchestrator.sh` | contrat de l'orchestrateur sans AWS |
 
-Le bootstrap de la VM est également appelé depuis `p5.sh` lorsque les outils
-obligatoires manquent. Comme l'ajout au groupe Docker et NVM nécessitent un nouveau
-shell, le centre de commande indique clairement quand une reconnexion est requise.
-
-## Principe de sécurité
-
-Les scripts sont répartis en trois familles :
-
-| Type | Comportement | Exemple |
-| --- | --- | --- |
-| Non destructif | lecture, validation ou test local | `setup.sh`, `validate.sh` |
-| Aperçu puis `--apply` | mutation seulement après option explicite | import OpenSearch, budget, failover |
-| Destructif confirmé | action irréversible avec confirmation | `destroy-aws.sh` |
-
-Le centre de commande orchestre ces scripts mais ne supprime pas leurs protections.
-
-## Parcours minimal spécialisé
-
-Les commandes ci-dessous restent utiles pour rejouer une étape isolée sans
-l'orchestrateur :
-
-```bash
-# 1. Préparer la VM
-./scripts/commands/bootstrap-ubuntu-server.sh
-./scripts/commands/setup.sh --check-only
-
-# 2. Préparer AWS
-bash scripts/commands/sync-terraform-tfvars.sh --apply
-./scripts/commands/pre-deployment-check.sh --stage initial
-
-# 3. Construire Angular
-./scripts/commands/prepare-angular-artifact.sh
-
-# 4. Vérifier le dépôt
-./scripts/commands/validate.sh
-
-# 5. Après les exercices : livrables et nettoyage
-./scripts/commands/prepare-livrables.sh
-./scripts/commands/destroy-aws.sh
-./scripts/commands/check-aws-cleanup.sh
-```
-
-Le runbook complet est :
-[`docs/01-parcours-debutant.md`](../docs/01-parcours-debutant.md).
-
-## `scripts/commands/` — commandes opérateur
-
-### Préparation de la VM
+## Préparation de la VM
 
 | Commande | Effet |
 | --- | --- |
 | `bootstrap-ubuntu-server.sh` | installe le socle de la VM |
 | `setup.sh --check-only` | contrôle non destructif de l'étape 0A |
-| `validate.sh` | valide le dépôt et les intégrations locales disponibles |
-| `clean-local.sh` | nettoie les caches sans supprimer les états Terraform |
+| `validate.sh` | valide dépôt et intégrations locales |
+| `clean-local.sh` | nettoie les caches en conservant les états Terraform |
 
-### Configuration AWS
+Si des outils obligatoires manquent, `p5.sh` peut proposer le bootstrap. Une
+reconnexion est ensuite demandée lorsque le nouveau groupe Docker ou NVM doit
+être pris en compte.
+
+## Configuration AWS
 
 | Commande | Effet |
 | --- | --- |
-| `configure-lab.sh` | prépare la configuration locale avec détection automatique |
-| `sync-terraform-tfvars.sh` | aperçu des tfvars générés |
-| `sync-terraform-tfvars.sh --apply` | écrit les 3 tfvars en mode `600` |
-| `sync-terraform-tfvars.sh --check` | vérifie la synchronisation |
+| `configure-lab.sh` | prépare la configuration locale |
+| `sync-terraform-tfvars.sh` | prévisualise les tfvars |
+| `sync-terraform-tfvars.sh --apply` | écrit les trois tfvars |
+| `sync-terraform-tfvars.sh --check` | vérifie leur cohérence |
 | `setup-aws-guardrails.sh` | prévisualise le budget |
-| `setup-aws-guardrails.sh --apply` | crée le budget du lab |
-| `check-aws-readiness.sh --stage ...` | contrôle AWS strictement non destructif |
-| `pre-deployment-check.sh --stage ...` | combine VM, dépôt, variables et AWS Ready |
+| `setup-aws-guardrails.sh --apply` | crée le budget |
+| `check-aws-readiness.sh --stage ...` | contrôle AWS non destructif |
+| `pre-deployment-check.sh --stage ...` | combine dépôt, VM, tfvars et AWS |
 
-La source de vérité est `environment/aws-readiness.env`, pas les trois tfvars.
+La source de vérité est `environment/aws-readiness.env`.
 
-### Exercice 1
+### `configure-lab.sh`
+
+Le script :
+
+- refuse l'identité root ;
+- détecte le compte AWS ;
+- détecte l'IPv4 publique et construit le `/32` ;
+- utilise ou prépare la clé SSH ;
+- peut déclencher `aws configure sso` / `aws sso login` ;
+- demande les validations de sécurité manuelles ;
+- synchronise les trois tfvars.
+
+Le mode `--yes` ne fabrique aucune confirmation de sécurité.
+
+## Exercice 1
 
 | Commande | Effet |
 | --- | --- |
-| `prepare-angular-artifact.sh` | construit Angular et synchronise l'artefact Ansible |
-| `generate-ansible-inventory.sh` | transforme l'output Terraform en inventaire Ansible local |
-| `verify-angular-deployment.sh` | contrôle HTTP, bundle, SPA et en-têtes |
-| `generate-nginx-traffic.sh` | génère un trafic HTTP contrôlé |
-| `collect-nginx-access-log.sh` | récupère le vrai `access.log` par SSH |
+| `prepare-angular-artifact.sh` | build Angular + synchronisation Ansible |
+| `generate-ansible-inventory.sh` | inventaire réel depuis `web_public_ip` |
+| `verify-angular-deployment.sh` | HTTP, bundle, SPA, en-têtes |
+| `generate-nginx-traffic.sh` | trafic HTTP contrôlé |
+| `collect-nginx-access-log.sh` | récupération du vrai `access.log` |
 
-Verdicts utiles :
+`p5.sh ex1` ajoute deux comportements importants :
+
+1. attente de SSH/cloud-init au lieu d'un délai arbitraire ;
+2. seconde exécution du playbook Ansible avec vérification stricte :
+
+```text
+changed=0
+unreachable=0
+failed=0
+```
+
+Verdict final attendu :
 
 ```text
 APPLICATION ANGULAR DÉPLOYÉE ET SERVIE PAR NGINX
-TRAFIC NGINX GÉNÉRÉ
-LOGS NGINX RÉELS COLLECTÉS
 ```
 
-### Exercice 2
+## Exercice 2
 
 | Commande | Effet |
 | --- | --- |
-| `import-opensearch-data.sh` | valide et convertit localement les logs |
-| `import-opensearch-data.sh --apply` | crée le template et importe réellement |
-| `verify-opensearch-data.sh` | contrôle mappings, volume et agrégations |
+| `import-opensearch-data.sh` | valide et convertit les logs |
+| `import-opensearch-data.sh --apply` | template + import Bulk |
+| `verify-opensearch-data.sh` | mappings, volume, agrégations |
+
+`p5.sh ex2` utilise deux sources lorsque le log réel existe :
+
+```text
+terraform/exercice-2/samples/nginx-access.log.sample
+proofs/runtime/exercice-2/nginx-access-real.log
+```
+
+Le jeu versionné garantit les tranches de 12 h nécessaires au dashboard ; le log
+réel prouve la chaîne NGINX → OpenSearch.
+
+Le convertisseur génère des IDs déterministes, ce qui rend la réimportation d'une
+même ligne idempotente côté document.
 
 Verdicts :
 
@@ -217,17 +227,18 @@ IMPORT OPENSEARCH RÉUSSI
 DONNÉES OPENSEARCH PRÊTES POUR LE DASHBOARD
 ```
 
-Le dashboard reste un checkpoint humain : les données et agrégations sont
-validées automatiquement, puis les trois visualisations demandées sont créées et
-capturées dans OpenSearch Dashboards.
+La création des visualisations reste manuelle et `p5.sh` exige `OK` après la
+capture réelle des preuves.
 
-### Exercice 3
+## Exercice 3
 
 | Commande | Effet |
 | --- | --- |
-| `test-haproxy-roundrobin.sh` | exige au moins deux backends distincts |
-| `test-haproxy-failover.sh` | simule le scénario sans arrêter de backend |
-| `test-haproxy-failover.sh --apply` | arrête, teste, redémarre et réintègre un backend |
+| `test-haproxy-roundrobin.sh` | exige deux backends distincts |
+| `test-haproxy-failover.sh` | prévisualise le scénario |
+| `test-haproxy-failover.sh --apply` | arrêt, continuité, reprise |
+
+`p5.sh ex3` attend que HAProxy réponde réellement avant les tests.
 
 Verdicts :
 
@@ -236,173 +247,109 @@ ROUND-ROBIN OPÉRATIONNEL
 BASCULE ET RÉINTÉGRATION HAPROXY VALIDÉES
 ```
 
-### Preuves et finalisation
+## Preuves et finalisation
 
 | Commande | Effet |
 | --- | --- |
-| `collect-diagnostics.sh` | produit un diagnostic partageable nettoyé |
-| `prepare-livrables.sh --structure-only` | contrôle la structure des trois gabarits |
-| `prepare-livrables.sh` | contrôle strict avant remise |
-| `destroy-aws.sh` | détruit Terraform dans l'ordre 3 → 2 → 1 |
-| `check-aws-cleanup.sh` | audit global des ressources P5 restantes |
+| `collect-diagnostics.sh` | diagnostic partageable |
+| `prepare-livrables.sh --structure-only` | structure des livrables |
+| `prepare-livrables.sh` | contrôle strict |
+| `destroy-aws.sh` | destruction 3 → 2 → 1 |
+| `check-aws-cleanup.sh` | audit final AWS |
 
-Verdicts finaux :
+Via le centre de commande :
+
+```bash
+bash scripts/commands/p5.sh finalize
+bash scripts/commands/p5.sh cleanup
+```
+
+Verdicts :
 
 ```text
 LIVRABLES PRÊTS POUR RELECTURE FINALE
 NETTOYAGE AWS COMPLET
 ```
 
-## `scripts/tests/` — intégrations locales
-
-Ces tests utilisent Docker pour vérifier le comportement sans créer de ressource
-AWS.
+## Tests locaux
 
 | Test | Vérifie |
 | --- | --- |
-| `test-nginx-angular.sh` | véritable build Angular derrière la vraie config NGINX |
-| `test-haproxy-containers.sh` | round-robin, panne et reprise avec conteneurs |
-| `test-opensearch-local.sh` | template, import Bulk et agrégations OpenSearch |
+| `test-nginx-angular.sh` | build Angular derrière la vraie config NGINX |
+| `test-opensearch-local.sh` | template, Bulk et agrégations |
+| `test-haproxy-containers.sh` | round-robin, panne et reprise |
+| `test-p5-orchestrator.sh` | contrat du centre de commande sans AWS |
 
-Les conteneurs temporaires sont supprimés par `trap`, y compris en cas d'échec.
-
-OpenSearch local n'est inclus dans `validate.sh` que sur demande :
+### Test de l'orchestrateur
 
 ```bash
-P5_FULL_INTEGRATION=1 ./scripts/commands/validate.sh
+bash scripts/tests/test-p5-orchestrator.sh
 ```
 
-Avec le centre de commande :
+Le test crée un environnement temporaire avec commandes factices. Il vérifie le
+séquencement sans appeler AWS réellement et contrôle notamment que `--yes` ne peut
+pas valider le checkpoint OpenSearch en environnement non interactif.
+
+Ce test ne remplace pas le premier :
+
+```bash
+bash scripts/commands/p5.sh all
+```
+
+sur le vrai compte AWS.
+
+## Validation complète locale
 
 ```bash
 bash scripts/commands/p5.sh status --full-validation
 ```
 
-## `scripts/tools/` — outils spécialisés
+Équivalent spécialisé :
+
+```bash
+P5_FULL_INTEGRATION=1 ./scripts/commands/validate.sh
+```
+
+## Outils
 
 | Outil | Rôle |
 | --- | --- |
-| `convert-nginx-logs.py` | transforme NGINX combined en Bulk NDJSON |
-| `generer-haproxy-config.sh` | génère un `haproxy.cfg` minimal |
-| `audit_secrets.py` | cherche secrets et fichiers sensibles suivis par Git |
-| `audit_non_regression.py` | protège les capacités et la cohérence du projet |
+| `convert-nginx-logs.py` | NGINX combined → Bulk NDJSON |
+| `generer-haproxy-config.sh` | génération HAProxy |
+| `audit_secrets.py` | secrets et fichiers sensibles |
+| `audit_non_regression.py` | contrat fonctionnel/documentaire |
 
-## Diagnostic partageable
+## Règles de sécurité importantes
 
-Commande standard :
+### Plans Terraform
 
-```bash
-bash scripts/commands/collect-diagnostics.sh
-```
+Le plan reste visible avant tout `apply` piloté par `p5.sh`.
 
-Mode complet :
+### Preuves humaines
 
-```bash
-bash scripts/commands/collect-diagnostics.sh --complet
-```
+Le dashboard OpenSearch n'est jamais validé automatiquement.
 
-Avec les preuves runtime existantes :
+### Failover
 
-```bash
-bash scripts/commands/collect-diagnostics.sh --complet --avec-preuves
-```
+Aucune panne réelle sans `--apply`. Un `trap` tente de restaurer le backend si
+l'exécution est interrompue.
 
-Le collecteur crée :
+### Nettoyage local
 
-```text
-proofs/runtime/diagnostics/
-├── p5-diagnostic-<UTC>/
-│   ├── diagnostic-complet.log      # privé, local uniquement
-│   ├── diagnostic-partage.log      # nettoyé
-│   ├── resume.txt
-│   └── manifest-preuves.txt
-└── p5-diagnostic-<UTC>.tar.gz      # archive partageable après relecture
-```
+`clean-local.sh` ne supprime pas les états Terraform.
 
-Le journal complet non filtré **n'est jamais ajouté à l'archive**.
+### Destruction AWS
 
-Le nettoyage automatique masque notamment les signatures détectables de :
+`destroy-aws.sh` exige `DETRUIRE` et détruit 3 → 2 → 1.
 
-- clés AWS ;
-- secrets AWS CLI ;
-- jetons de session ;
-- en-têtes Authorization ;
-- blocs de clé privée.
+### Audit final
 
-Une relecture humaine reste obligatoire.
-
-## Règles importantes
-
-### `p5.sh`
-
-- conserve les plans Terraform visibles avant `apply` ;
-- journalise chaque étape et indique immédiatement le fichier à consulter ;
-- détecte les états Terraform pour faciliter une reprise ;
-- automatise la génération de l'inventaire Ansible ;
-- attend les services au lieu d'imposer des délais manuels arbitraires ;
-- ne détruit jamais automatiquement les ressources à la fin de `all`.
-
-### `configure-lab.sh`
-
-- détecte le compte AWS actif et refuse l'identité root ;
-- détecte l'IPv4 publique actuelle et la convertit en `/32` ;
-- peut préparer une clé SSH dédiée ;
-- n'invente jamais les confirmations de sécurité manuelles ;
-- génère ensuite les trois `terraform.tfvars` depuis la source unique.
-
-### `prepare-angular-artifact.sh`
-
-Le build Ansible n'est remplacé qu'après un build Angular réussi et la détection
-d'un unique artefact navigateur.
-
-### `sync-terraform-tfvars.sh`
-
-- refuse les valeurs de compte/IP d'exemple ;
-- écrit en mode `600` ;
-- génère les trois modules depuis une seule source.
-
-### `pre-deployment-check.sh`
-
-- ne crée aucune ressource AWS ;
-- refuse les tfvars désynchronisés ;
-- adapte ses contrôles à `initial`, `exercice-2` ou `exercice-3` ;
-- bloque le `GO TERRAFORM` en cas de `KO`.
-
-### `test-haproxy-failover.sh`
-
-- aucune panne sans `--apply` ;
-- `trap` de restauration après arrêt réel ;
-- vérifie avant, pendant et après la panne.
-
-### `clean-local.sh`
-
-Ne supprime pas les états Terraform afin d'éviter d'orpheliner des ressources
-AWS.
-
-### `destroy-aws.sh`
-
-- exige le mot exact `DETRUIRE` ;
-- détruit 3 → 2 → 1 ;
-- signale un état Terraform absent au lieu de prétendre que le module est propre.
-
-### `check-aws-cleanup.sh`
-
-C'est un audit **global** du P5. Il doit être utilisé pour le verdict final après
-fermeture de tous les exercices.
-
-## CI
-
-Les mêmes contrats sont vérifiés par GitHub Actions :
-
-- qualité du dépôt ;
-- non-régression ;
-- secrets et hygiène.
-
-Dependabot surveille chaque semaine les actions GitHub et les dépendances npm de
-l'application Angular.
+`check-aws-cleanup.sh` est global. Le verdict `NETTOYAGE AWS COMPLET` n'est
+attendu qu'une fois tous les exercices fermés.
 
 ## Documentation associée
 
+- [README principal](../README.md)
 - [Portail documentaire](../docs/README.md)
 - [Runbook](../docs/01-parcours-debutant.md)
 - [Validation et preuves](../docs/validation-preuves-nettoyage.md)

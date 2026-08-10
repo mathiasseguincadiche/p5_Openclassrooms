@@ -1,118 +1,121 @@
 # Troubleshooting — diagnostic du projet P5
 
-Ce guide regroupe les problèmes les plus probables du parcours réel. L’objectif
-est de diagnostiquer **sans supprimer un état Terraform, sans contourner un
-garde-fou et sans recréer des ressources au hasard**.
+Ce guide regroupe les problèmes les plus probables du parcours réel. L'objectif
+est de diagnostiquer sans supprimer un état Terraform, sans contourner un
+garde-fou et sans recréer des ressources au hasard.
 
 ## Réflexe de base
 
-Avant toute correction importante :
+Commencer par les journaux du centre de commande :
 
 ```bash
-bash scripts/commands/collect-diagnostics.sh
+bash scripts/commands/p5.sh logs
 ```
 
-Pour un diagnostic plus complet avec l’intégration OpenSearch locale :
-
-```bash
-bash scripts/commands/collect-diagnostics.sh --complet
-```
-
-Le script produit une archive nettoyée à transmettre et conserve le journal
-complet uniquement en local.
-
-## 1. `setup.sh` échoue juste après le bootstrap
-
-### Symptôme
+Chaque étape possède son propre fichier sous :
 
 ```text
-KO  moteur Docker inaccessible
+logs/<UTC>/
 ```
 
-ou Node.js n’est pas trouvé dans le nouveau shell.
+Si un message indique :
 
-### Cause probable
+```text
+[ KO ] ... voir .../XX-etape.log
+```
 
-Le bootstrap ajoute l’utilisateur au groupe `docker` et installe NVM. Ces deux
-changements nécessitent une nouvelle session utilisateur.
+analyser d'abord ce fichier précis.
 
-### Correction
+Pour un diagnostic partageable :
 
-Déconnectez-vous réellement de la VM puis reconnectez-vous :
+```bash
+bash scripts/commands/collect-diagnostics.sh --complet --avec-preuves
+```
+
+Ne jamais supprimer un `terraform.tfstate` comme méthode de dépannage.
+
+## 1. `p5.sh` demande une reconnexion après le bootstrap
+
+C'est normal sur une VM neuve. Le bootstrap peut ajouter l'utilisateur au groupe
+Docker et installer NVM.
+
+Déconnectez-vous, reconnectez-vous puis relancez exactement :
+
+```bash
+bash scripts/commands/p5.sh all
+```
+
+Le mode reprise réévalue l'environnement.
+
+## 2. Le socle DevOps reste incomplet
+
+Contrôlez :
+
+```bash
+bash scripts/commands/p5.sh status
+```
+
+Puis, si nécessaire :
 
 ```bash
 node --version
 docker info
-./scripts/commands/setup.sh --check-only
+terraform version
+ansible-playbook --version
+aws --version
 ```
 
 Ne lancez pas Docker avec `sudo` uniquement pour masquer un problème de groupe.
 
-## 2. Mauvais compte AWS ou session expirée
+## 3. Mauvais compte AWS ou session expirée
 
-### Symptômes
+Symptômes :
 
-- `impossible de lire l'identité AWS` ;
-- compte actif différent de `P5_EXPECTED_ACCOUNT_ID` ;
+- identité AWS illisible ;
+- compte différent de `P5_EXPECTED_ACCOUNT_ID` ;
 - `GO AWS` refusé.
 
-### Vérifications
+Relancez :
+
+```bash
+bash scripts/commands/p5.sh prepare
+```
+
+`configure-lab.sh` peut relancer une session SSO si le profil l'utilise.
+
+Diagnostic manuel :
 
 ```bash
 aws --profile p5-lab sts get-caller-identity
 aws configure get region --profile p5-lab
 ```
 
-Avec IAM Identity Center :
+Ne modifiez jamais l'identifiant attendu uniquement pour faire correspondre un
+mauvais compte actif.
+
+## 4. L'adresse `/32` n'est plus valide
+
+La connexion publique a changé.
+
+La voie recommandée est :
 
 ```bash
-aws sso login --profile p5-lab
-export AWS_PROFILE=p5-lab
+bash scripts/commands/p5.sh prepare
 ```
 
-Puis :
+Le script redétecte l'IPv4 publique et resynchronise les tfvars.
 
-```bash
-./scripts/commands/check-aws-readiness.sh --stage initial
-```
-
-Ne modifiez jamais `expected_aws_account_id` pour faire correspondre
-artificiellement un mauvais compte actif.
-
-## 3. L’adresse `/32` n’est plus valide
-
-### Symptôme
-
-```text
-adresse publique actuelle ... différente de P5_PUBLIC_IP_CIDR
-```
-
-### Cause
-
-L’adresse publique du poste ou du routeur a changé.
-
-### Correction
-
-Obtenez l’IPv4 publique actuelle puis mettez à jour **la source unique** :
+En manuel :
 
 ```bash
 $EDITOR environment/aws-readiness.env
 bash scripts/commands/sync-terraform-tfvars.sh --apply
 bash scripts/commands/sync-terraform-tfvars.sh --check
-./scripts/commands/pre-deployment-check.sh --stage initial
 ```
 
-N’éditez pas les trois `terraform.tfvars` séparément.
+Ne modifiez pas les trois `terraform.tfvars` séparément.
 
-## 4. `terraform.tfvars` désynchronisés
-
-### Symptôme
-
-```text
-KO  ... terraform.tfvars n’est pas synchronisé avec aws-readiness.env
-```
-
-### Correction
+## 5. `terraform.tfvars` désynchronisés
 
 ```bash
 bash scripts/commands/sync-terraform-tfvars.sh --apply
@@ -121,20 +124,15 @@ bash scripts/commands/sync-terraform-tfvars.sh --check
 
 La source de vérité reste `environment/aws-readiness.env`.
 
-## 5. Collision de VPC, clé EC2 ou domaine OpenSearch
+## 6. Collision de ressources P5
 
-### Symptômes
+Ne faites pas :
 
-Le contrôle AWS Ready indique qu’une ressource P5 existe déjà alors que l’étape
-attend un environnement vierge.
+- suppression du `terraform.tfstate` ;
+- suppression immédiate dans la console AWS ;
+- changement des tags pour contourner le contrôle.
 
-### À ne pas faire
-
-- ne supprimez pas le fichier `terraform.tfstate` ;
-- ne supprimez pas immédiatement la ressource dans la console ;
-- ne changez pas les tags juste pour contourner le contrôle.
-
-### Diagnostic
+Vérifiez les états :
 
 ```bash
 terraform -chdir=terraform/exercice-1 state list
@@ -142,70 +140,54 @@ terraform -chdir=terraform/exercice-2 state list
 terraform -chdir=terraform/exercice-3 state list
 ```
 
-Puis contrôlez AWS :
+Si les états correspondent à des ressources déjà gérées, relancez :
 
 ```bash
-./scripts/commands/check-aws-cleanup.sh
+bash scripts/commands/p5.sh all
 ```
 
-Si l’environnement est réellement encore géré par les états locaux, utilisez
-la procédure de destruction normale. Si l’état et AWS divergent, analysez la
-situation avant toute suppression manuelle.
+Le centre de commande active son mode reprise.
 
-## 6. Quota EC2 insuffisant
+## 7. Quota EC2 insuffisant
 
-### Symptôme
+Vérifiez le quota EC2 Standard de la région. Les exercices 1 et 3 peuvent
+coexister et nécessiter plusieurs instances.
 
-```text
-quota EC2 ... inférieur aux ... requis
+Ne réduisez pas arbitrairement `P5_REQUIRED_STANDARD_VCPUS` pour obtenir un faux
+`GO AWS`.
+
+## 8. Le budget AWS est absent
+
+Relancez :
+
+```bash
+bash scripts/commands/p5.sh prepare
 ```
 
-La configuration de référence prévoit jusqu’à quatre `t3.micro` lorsque les
-exercices 1 et 3 coexistent.
-
-### Actions
-
-- vérifier le quota EC2 Standard dans la région ;
-- demander une augmentation si nécessaire ;
-- vérifier que d’autres ressources du compte ne consomment pas le quota ;
-- ne pas réduire arbitrairement `P5_REQUIRED_STANDARD_VCPUS` uniquement pour
-  obtenir un faux `GO AWS`.
-
-## 7. Le budget AWS est absent
-
-### Diagnostic
-
-Prévisualisez l’action :
+Ou manuellement :
 
 ```bash
 ./scripts/commands/setup-aws-guardrails.sh
-```
-
-Puis créez le budget :
-
-```bash
 ./scripts/commands/setup-aws-guardrails.sh --apply
 ```
 
-Relancez le contrôle AWS Ready.
+## 9. Terraform ne trouve pas l'AMI Ubuntu
 
-## 8. Terraform ne trouve pas l’AMI Ubuntu
-
-Le comportement normal utilise `ami_id = null`, ce qui sélectionne l’AMI
-Canonical Ubuntu 24.04 LTS la plus récente correspondant aux filtres du module.
-
-Vérifiez d’abord :
+Commencez par :
 
 ```bash
 ./scripts/commands/check-aws-readiness.sh --stage initial
 ```
 
-Si une AMI personnalisée est réellement nécessaire, renseignez `P5_AMI_ID` dans
-`environment/aws-readiness.env`, puis resynchronisez les tfvars.
+La configuration normale utilise l'AMI Canonical Ubuntu 24.04 LTS sélectionnée
+par filtres. Une AMI personnalisée ne doit être configurée que si elle est
+réellement nécessaire.
 
-## 9. Ansible ne joint pas l’EC2
+## 10. Ansible ne joint pas l'EC2
 
-### Vérifications
+Consultez d'abord le log `wait-ssh-ex1` ou `ansible-ping` de la session `p5.sh`.
+
+Puis :
 
 ```bash
 terraform -chdir=terraform/exercice-1 output -raw web_public_ip
@@ -213,7 +195,7 @@ cat ansible/inventories/hosts_aws
 ls -l ~/.ssh/p5-key
 ```
 
-La clé privée doit être protégée :
+La clé privée doit être en mode restrictif :
 
 ```bash
 chmod 600 ~/.ssh/p5-key
@@ -231,23 +213,13 @@ Puis :
 ansible all -i ansible/inventories/hosts_aws -m ping
 ```
 
-Contrôlez aussi que :
+Vérifiez également le `/32` du groupe de sécurité.
 
-- l’inventaire utilise l’adresse publique actuelle ;
-- l’utilisateur est `ubuntu` pour l’AMI Canonical ;
-- le groupe de sécurité autorise votre IPv4 actuelle en `/32` sur le port 22.
+## 11. Le playbook Ansible échoue
 
-## 10. Le playbook Ansible échoue sur NGINX
+Consultez le log `ansible-deploy` produit par `p5.sh`.
 
-Commencez par le mode de vérification :
-
-```bash
-ansible-playbook \
-  -i ansible/inventories/hosts_aws \
-  ansible/playbooks/deploy.yml --check --diff
-```
-
-Sur l’EC2 :
+Sur l'EC2 :
 
 ```bash
 sudo nginx -t
@@ -255,166 +227,150 @@ sudo systemctl status nginx --no-pager
 sudo journalctl -u nginx --no-pager -n 100
 ```
 
-Le playbook attend l’artefact Angular sous `ansible/files/angular-app/` et la
-configuration sous `ansible/files/nginx-angular.conf`.
+Le mode `--check --diff` n'est pas un prérequis fiable avant le tout premier
+déploiement, car la validation `nginx -t` dépend de NGINX installé. Utilisez-le
+plutôt après installation pour une vérification complémentaire.
 
-## 11. L’artefact Angular n’est plus synchronisé
+## 12. L'idempotence Ansible échoue
 
-### Symptôme
+`p5.sh ex1` rejoue le playbook et exige :
 
-La CI ou `validate.sh` détecte une différence entre le build et
-`ansible/files/angular-app/`.
+```text
+changed=0
+unreachable=0
+failed=0
+```
 
-### Correction
+Si le log `ansible-idempotence` montre `changed>0`, identifiez la tâche qui
+modifie encore la cible à chaque exécution. Une tâche réellement stable ne doit
+pas produire de changement inutile au second passage.
+
+## 13. L'artefact Angular n'est plus synchronisé
 
 ```bash
 ./scripts/commands/prepare-angular-artifact.sh
 ./scripts/commands/validate.sh
 ```
 
-Le script exécute `npm ci`, construit Angular puis remplace l’artefact uniquement
-après un build valide.
+Le script ne remplace l'artefact Ansible qu'après un build Angular réussi.
 
-## 12. L’application répond mais le fallback SPA échoue
-
-### Diagnostic
+## 14. Angular répond mais le fallback SPA échoue
 
 ```bash
 ./scripts/commands/verify-angular-deployment.sh
 ```
 
-Test manuel :
+Tests manuels :
 
 ```bash
 curl -i http://ADRESSE_EC2/
 curl -i http://ADRESSE_EC2/parcours-p5
 ```
 
-La configuration NGINX doit contenir un fallback équivalent à :
+La configuration NGINX doit conserver un fallback du type :
 
 ```text
 try_files $uri $uri/ /index.html;
 ```
 
-Vérifiez aussi :
+## 15. Aucun log NGINX réel n'est disponible
+
+Relancez l'exercice 1 :
 
 ```bash
-sudo nginx -t
+bash scripts/commands/p5.sh ex1
 ```
 
-## 13. Aucun log NGINX n’est disponible
-
-Générez d’abord du trafic :
+Ou manuellement :
 
 ```bash
-./scripts/commands/generate-nginx-traffic.sh --requests 64
+./scripts/commands/generate-nginx-traffic.sh --requests 96
+./scripts/commands/collect-nginx-access-log.sh \
+  --output proofs/runtime/exercice-2/nginx-access-real.log
 ```
 
-Puis collectez :
+Le fichier attendu est :
 
-```bash
-./scripts/commands/collect-nginx-access-log.sh
+```text
+proofs/runtime/exercice-2/nginx-access-real.log
 ```
 
-Si SSH échoue, revenez au diagnostic Ansible/SSH. Si le fichier est vide,
-vérifiez `/var/log/nginx/access.log` sur l’EC2.
+## 16. OpenSearch n'est pas accessible
 
-## 14. OpenSearch n’est pas accessible
+Consultez le log Terraform ou d'import de `p5.sh ex2`.
 
-### Vérifications
+Puis :
 
 ```bash
 terraform -chdir=terraform/exercice-2 output
 ./scripts/commands/check-aws-readiness.sh --stage exercice-2
 ```
 
-Points fréquents :
+Causes fréquentes :
 
 - domaine encore en cours de création ;
-- IP publique du poste différente du `/32` autorisé ;
-- endpoint mal copié ;
-- accès tenté en HTTP au lieu de HTTPS ;
-- session ou permissions AWS insuffisantes pour le diagnostic.
+- IP publique différente du `/32` autorisé ;
+- endpoint incorrect ;
+- accès HTTP au lieu de HTTPS ;
+- session AWS expirée.
 
-Le script d’import n’accepte HTTP sans TLS que pour `localhost` ou `127.0.0.1`
-dans les tests locaux.
+## 17. Les données OpenSearch ne passent pas la vérification
 
-## 15. L’import OpenSearch ne contient pas les données attendues
+`p5.sh ex2` importe d'abord le jeu reproductible, puis le log réel lorsqu'il
+existe.
 
-Commencez sans mutation :
-
-```bash
-./scripts/commands/import-opensearch-data.sh
-```
-
-Puis import réel :
+En manuel :
 
 ```bash
 ./scripts/commands/import-opensearch-data.sh --apply
-```
-
-Validation :
-
-```bash
+./scripts/commands/import-opensearch-data.sh \
+  --input proofs/runtime/exercice-2/nginx-access-real.log \
+  --apply
 ./scripts/commands/verify-opensearch-data.sh
 ```
 
-Le jeu de référence doit permettre au minimum :
+La vérification exige notamment :
 
-- 64 documents ;
+- 64 documents minimum ;
 - 3 méthodes HTTP ;
 - 4 tranches de 12 h ;
 - 5 chemins distincts.
 
-## 16. Le dashboard OpenSearch ne montre pas les trois graphiques
+Le jeu versionné assure la distribution temporelle ; le log réel prouve le bout
+en bout.
 
-Vérifiez d’abord le verdict :
+## 18. Le dashboard OpenSearch ne montre pas les trois graphiques
+
+Vérifiez d'abord :
 
 ```text
 DONNÉES OPENSEARCH PRÊTES POUR LE DASHBOARD
 ```
 
-Puis contrôlez le data view `nginx-access-*` avec `@timestamp` comme champ
-temporel.
+Puis contrôlez le data view `nginx-access-*` avec `@timestamp`.
 
-Les trois vues doivent utiliser :
+Les trois vues sont :
 
 1. Terms sur `http_method` ;
 2. Date histogram `12h` + Sum sur `bytes_sent` ;
 3. Date histogram `12h` + Terms taille 5 sur `url_path`.
 
-La création de ces visualisations est manuelle et n’est pas automatisée par le
-dépôt.
+Cette partie reste volontairement manuelle. `--yes` ne valide pas le checkpoint.
 
-## 17. L’exercice 3 ne trouve pas le VPC
+## 19. L'exercice 3 ne trouve pas le VPC
 
-### Cause la plus probable
-
-L’exercice 1 n’est plus déployé ou ses tags attendus ne sont plus présents.
-
-### Contrôle
+L'exercice 1 doit encore exister.
 
 ```bash
 ./scripts/commands/check-aws-readiness.sh --stage exercice-3
 ```
 
-L’exercice 3 recherche le VPC avec les tags :
+Ne détruisez jamais l'exercice 1 avant l'exercice 3.
 
-```text
-Project=p5-openclassrooms
-Exercise=1
-Name=p5-vpc
-```
-
-Il recherche aussi les sous-réseaux publics de l’exercice 1 et la paire de clés
-créée précédemment.
-
-## 18. HAProxy ne montre qu’un backend
-
-### Vérifications
+## 20. HAProxy ne montre qu'un backend
 
 ```bash
-./scripts/commands/test-haproxy-roundrobin.sh --requests 10
+./scripts/commands/test-haproxy-roundrobin.sh --requests 12
 ```
 
 Sur chaque backend :
@@ -432,41 +388,60 @@ sudo haproxy -c -f /etc/haproxy/haproxy.cfg
 sudo systemctl status haproxy --no-pager
 ```
 
-Tenez compte des health checks : `inter 3s`, `fall 3`, `rise 2`. Un backend
-récemment démarré peut nécessiter quelques secondes avant sa réintégration.
+Les health checks utilisent `inter 3s`, `fall 3`, `rise 2`.
 
-## 19. Le test de panne échoue en SSH
+## 21. Le test de panne HAProxy échoue
 
-Le test réel nécessite :
-
-- la clé SSH privée ;
-- l’accès SSH `/32` aux backends ;
-- l’utilisateur `ubuntu` ;
-- les outputs Terraform de l’exercice 3.
-
-Testez d’abord le mode simulation :
+Prévisualisez d'abord :
 
 ```bash
 ./scripts/commands/test-haproxy-failover.sh
 ```
 
-Puis seulement :
+Puis :
 
 ```bash
 ./scripts/commands/test-haproxy-failover.sh --apply
 ```
 
-En cas d’interruption après l’arrêt du backend, le `trap` tente de redémarrer le
-conteneur. Vérifiez néanmoins manuellement son état.
+Vérifiez la clé SSH, l'utilisateur `ubuntu`, le `/32` et les outputs Terraform.
+Le `trap` tente de redémarrer le backend en cas d'interruption après son arrêt.
 
-## 20. `check-aws-cleanup.sh` dit “NETTOYAGE INCOMPLET” alors qu’OpenSearch est détruit
+## 22. `p5.sh all` a été interrompu
 
-C’est normal si les exercices 1 ou 3 existent encore.
+Ne nettoyez pas les états et ne recommencez pas manuellement au hasard.
 
-`check-aws-cleanup.sh` est un **audit global du projet**, pas un audit du seul
-exercice 2.
+Relancez :
 
-Le verdict final ne doit être attendu qu’après :
+```bash
+bash scripts/commands/p5.sh all
+```
+
+Terraform réévalue les états existants et les contrôles fonctionnels sont
+rejoués.
+
+## 23. `p5.sh finalize` échoue
+
+Consultez le log `livrables-strict`.
+
+Les causes habituelles sont :
+
+- capture réelle manquante ;
+- placeholder encore présent ;
+- section obligatoire absente ;
+- signature sensible détectée.
+
+Complétez uniquement les preuves réelles puis relancez :
+
+```bash
+bash scripts/commands/p5.sh finalize
+```
+
+## 24. `check-aws-cleanup.sh` indique un nettoyage incomplet
+
+C'est normal si un exercice existe encore. L'audit est global.
+
+Le verdict final n'est attendu qu'après :
 
 ```text
 Exercice 3 détruit
@@ -474,74 +449,53 @@ Exercice 2 détruit
 Exercice 1 détruit
 ```
 
-Puis :
+Commande recommandée :
+
+```bash
+bash scripts/commands/p5.sh cleanup
+```
+
+## 25. Un état Terraform manque pendant la destruction
+
+Ne concluez pas que les ressources ont disparu.
 
 ```bash
 ./scripts/commands/check-aws-cleanup.sh
 ```
 
-## 21. Un état Terraform manque pendant la destruction
+Inspectez ensuite AWS avec prudence. La récupération d'un état perdu est une
+opération distincte d'un simple nettoyage.
 
-`destroy-aws.sh` signale qu’une vérification manuelle est nécessaire lorsqu’un
-module n’a plus son `terraform.tfstate` local.
+## 26. La CI échoue
 
-Ne concluez pas que les ressources n’existent plus.
-
-Utilisez :
+Validation locale :
 
 ```bash
-./scripts/commands/check-aws-cleanup.sh
-```
-
-et inspectez le compte AWS. La récupération d’un état perdu est une opération à
-traiter avec prudence ; évitez de supprimer manuellement des ressources tant que
-les dépendances ne sont pas comprises.
-
-## 22. Les contrôles CI échouent après une modification documentaire
-
-Vérifiez localement :
-
-```bash
-./scripts/commands/validate.sh
+bash scripts/commands/p5.sh status --full-validation
+bash scripts/tests/test-p5-orchestrator.sh
 python3 scripts/tools/audit_non_regression.py
 python3 scripts/tools/audit_secrets.py
 ```
 
-Le dépôt protège notamment :
+La CI protège notamment :
 
-- exactement trois guides sous `docs/exercices/` ;
-- absence de Mermaid ;
-- présence des six SVG attendus ;
-- cohérence du véritable projet Angular ;
-- garde-fous Terraform ;
-- scripts critiques ;
-- liens Markdown ;
-- absence de fichiers sensibles suivis.
+- les trois guides d'exercice ;
+- les six SVG ;
+- le véritable projet Angular ;
+- Terraform et Ansible ;
+- les scripts critiques ;
+- le centre de commande P5 ;
+- la preuve d'idempotence ;
+- le flux réel OpenSearch ;
+- le checkpoint humain ;
+- les liens Markdown ;
+- l'absence de fichiers sensibles suivis.
 
-## 23. Que transmettre pour demander de l’aide ?
+## 27. La CI est verte mais le vrai AWS échoue
 
-Préférez l’archive générée :
+C'est possible. La CI teste le dépôt et les intégrations locales sans utiliser
+vos credentials AWS réels.
 
-```bash
-bash scripts/commands/collect-diagnostics.sh
-```
-
-Elle contient un journal nettoyé et un résumé. Relisez-la malgré tout avant
-tout partage.
-
-Ne transmettez jamais directement :
-
-- `environment/aws-readiness.env` ;
-- `terraform.tfvars` ;
-- `terraform.tfstate` ;
-- `~/.ssh/p5-key` ;
-- credentials AWS ;
-- tout `proofs/runtime/` non relu.
-
-## Documents associés
-
-- [Architecture](architecture-et-flux.md)
-- [Parcours complet](01-parcours-debutant.md)
-- [Validation, preuves et nettoyage](validation-preuves-nettoyage.md)
-- [Scripts](../scripts/README.md)
-- [Sécurité](../SECURITY.md)
+Le premier `p5.sh all` sur la VM reste le test d'intégration AWS final. En cas
+d'échec, envoyez le **log de l'étape indiquée** plutôt que de relancer plusieurs
+commandes au hasard.

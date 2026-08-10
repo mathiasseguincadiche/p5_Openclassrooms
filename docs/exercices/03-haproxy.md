@@ -1,15 +1,28 @@
 # Exercice 3 — HAProxy, disponibilité et reprise
 
-Cette fiche décrit l’exercice 3 dans le parcours AWS retenu. L’objectif est de
+Cette fiche décrit l'exercice 3 dans le parcours AWS retenu. L'objectif est de
 démontrer une répartition réelle entre deux backends, la continuité du service
 pendant une panne et la réintégration automatique du backend restauré.
 
-![Flux de l’exercice 3](../schemas/exercice-3.svg)
+![Flux de l'exercice 3](../schemas/exercice-3.svg)
+
+## Mode recommandé
+
+```bash
+bash scripts/commands/p5.sh ex3
+```
+
+Le centre de commande contrôle la dépendance avec l'exercice 1, déploie
+l'infrastructure, attend HAProxy, valide le round-robin puis exécute la panne et
+la reprise après confirmation explicite.
+
+Les commandes détaillées restent disponibles ci-dessous pour la compréhension ou
+le dépannage.
 
 ## Objectif
 
 Déployer HAProxy devant deux instances `nginxdemos/hello`, utiliser
-`roundrobin`, superviser la santé des backends et vérifier la bascule lors d’une
+`roundrobin`, superviser la santé des backends et vérifier la bascule lors d'une
 panne contrôlée.
 
 ## Résultat final attendu
@@ -30,15 +43,15 @@ BASCULE ET RÉINTÉGRATION HAPROXY VALIDÉES
 
 ## Dépendance critique
 
-L’exercice 3 réutilise :
+L'exercice 3 réutilise :
 
-- le VPC de l’exercice 1 ;
-- les deux sous-réseaux publics de l’exercice 1 ;
-- la paire de clés EC2 de l’exercice 1.
+- le VPC de l'exercice 1 ;
+- les deux sous-réseaux publics de l'exercice 1 ;
+- la paire de clés EC2 de l'exercice 1.
 
-L’exercice 1 doit donc être **encore déployé**.
+L'exercice 1 doit donc être encore déployé.
 
-Le module recherche ces ressources par tags au lieu de créer un nouveau réseau.
+`p5.sh` vérifie cette dépendance avant de poursuivre.
 
 ## Prérequis
 
@@ -50,14 +63,12 @@ Le module recherche ces ressources par tags au lieu de créer un nouveau réseau
 - adresse publique `/32` actuelle ;
 - quota EC2 suffisant.
 
-Contrôles :
+Contrôles manuels :
 
 ```bash
 ./scripts/commands/check-aws-readiness.sh --stage exercice-3
 ./scripts/commands/pre-deployment-check.sh --stage exercice-3
 ```
-
-Le contrôle doit confirmer le VPC et la clé de l’exercice 1.
 
 ## Ce que Terraform crée
 
@@ -70,10 +81,10 @@ Le module `terraform/exercice-3/` crée :
 
 ### HAProxy
 
-Le groupe de sécurité HAProxy autorise :
+Le groupe de sécurité autorise :
 
 - HTTP 80 publiquement ;
-- SSH 22 uniquement depuis le `/32` d’administration.
+- SSH 22 uniquement depuis le `/32` d'administration.
 
 ### Backends
 
@@ -83,17 +94,14 @@ Chaque backend :
 - installe Docker dans `user_data` ;
 - démarre `nginxdemos/hello:plain-text` ;
 - expose le conteneur sur le port 80 ;
-- n’autorise HTTP que depuis le groupe de sécurité HAProxy ;
-- autorise SSH uniquement depuis le `/32` du lab ;
+- n'autorise HTTP que depuis HAProxy ;
+- autorise SSH uniquement depuis le `/32` ;
 - impose IMDSv2 ;
 - utilise un volume racine `gp3` chiffré.
 
-Les noms des conteneurs sont identiques (`nginx-hello`) mais leurs hostnames
-sont déterministes : `p5-hello-1` et `p5-hello-2`.
+Les hostnames sont déterministes : `p5-hello-1` et `p5-hello-2`.
 
-## Configuration HAProxy utilisée
-
-Le cœur du backend est :
+## Configuration HAProxy
 
 ```text
 backend hello-servers
@@ -107,8 +115,8 @@ backend hello-servers
 Interprétation :
 
 - `inter 3s` : contrôle toutes les 3 secondes ;
-- `fall 3` : retrait après trois échecs successifs ;
-- `rise 2` : réintégration après deux succès successifs.
+- `fall 3` : retrait après trois échecs ;
+- `rise 2` : réintégration après deux succès.
 
 ## Fichiers concernés
 
@@ -120,13 +128,23 @@ terraform/exercice-3/
 └── terraform.tfvars.example
 
 scripts/
+├── commands/p5.sh
 ├── commands/test-haproxy-roundrobin.sh
 ├── commands/test-haproxy-failover.sh
 ├── tests/test-haproxy-containers.sh
 └── tools/generer-haproxy-config.sh
 ```
 
-## Étape 1 — Initialiser et valider Terraform
+## Procédure manuelle détaillée
+
+### 1. Contrôler l'étape
+
+```bash
+./scripts/commands/check-aws-readiness.sh --stage exercice-3
+./scripts/commands/pre-deployment-check.sh --stage exercice-3
+```
+
+### 2. Initialiser et valider Terraform
 
 ```bash
 terraform -chdir=terraform/exercice-3 init
@@ -134,7 +152,7 @@ terraform -chdir=terraform/exercice-3 fmt -check
 terraform -chdir=terraform/exercice-3 validate
 ```
 
-## Étape 2 — Produire et relire le plan
+### 3. Produire et relire le plan
 
 ```bash
 terraform -chdir=terraform/exercice-3 plan -out=tfplan
@@ -143,23 +161,23 @@ terraform -chdir=terraform/exercice-3 show tfplan
 
 Vérifier :
 
-- utilisation du bon VPC ;
+- bon VPC ;
 - deux backends ;
 - une instance HAProxy ;
 - règles réseau ;
-- types d’instance ;
+- types d'instance ;
 - clé EC2 ;
 - chiffrement ;
-- absence de ressource réseau dupliquée inutilement.
+- absence de VPC dupliqué inutilement.
 
-## Étape 3 — Appliquer
+### 4. Appliquer
 
 ```bash
 terraform -chdir=terraform/exercice-3 apply tfplan
 terraform -chdir=terraform/exercice-3 output
 ```
 
-Outputs :
+Outputs utiles :
 
 ```text
 hello_1_public_ip
@@ -173,47 +191,16 @@ haproxy_security_group_id
 haproxy_url
 ```
 
-Les services démarrés par `user_data` peuvent nécessiter un court délai après la
-fin de `terraform apply`.
+`p5.sh ex3` attend automatiquement que `haproxy_url` réponde en HTTP au lieu
+d'utiliser un délai fixe arbitraire.
 
-## Étape 4 — Valider une configuration HAProxy localement
-
-Le générateur permet de vérifier la syntaxe indépendamment d’AWS :
+### 5. Vérifier le round-robin
 
 ```bash
-./scripts/tools/generer-haproxy-config.sh \
-  10.0.1.10 10.0.2.10 /tmp/haproxy.cfg
+./scripts/commands/test-haproxy-roundrobin.sh --requests 12
 ```
 
-Puis :
-
-```bash
-docker run --rm \
-  --volume /tmp/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro \
-  haproxy:3.2-alpine \
-  haproxy -c -f /usr/local/etc/haproxy/haproxy.cfg
-```
-
-Sur l’instance réelle :
-
-```bash
-sudo haproxy -c -f /etc/haproxy/haproxy.cfg
-sudo systemctl status haproxy --no-pager
-```
-
-## Étape 5 — Vérifier le round-robin
-
-```bash
-./scripts/commands/test-haproxy-roundrobin.sh --requests 10
-```
-
-Le script :
-
-- lit `haproxy_url` ;
-- envoie plusieurs requêtes ;
-- extrait `Server name` ;
-- exige au moins deux backends distincts ;
-- écrit la preuve sous `proofs/runtime/exercice-3/`.
+Le script exige au moins deux noms de backend distincts.
 
 Verdict :
 
@@ -221,68 +208,47 @@ Verdict :
 ROUND-ROBIN OPÉRATIONNEL
 ```
 
-## Étape 6 — Prévisualiser le scénario de panne
+### 6. Prévisualiser la panne
 
 ```bash
 ./scripts/commands/test-haproxy-failover.sh
 ```
 
-Sans `--apply` :
+Sans `--apply`, aucune panne réelle n'est provoquée.
 
-- les deux backends sont observés ;
-- le scénario est préparé ;
-- aucune connexion SSH destructive n’arrête de conteneur.
-
-Utilisez ce mode avant chaque démonstration réelle.
-
-## Étape 7 — Exécuter la panne réelle
-
-Exemple :
+### 7. Exécuter la panne réelle
 
 ```bash
-./scripts/commands/test-haproxy-failover.sh \
-  --backend 1 \
-  --requests 6 \
-  --apply
+./scripts/commands/test-haproxy-failover.sh --apply
 ```
 
 Le script :
 
 1. confirme les deux backends ;
-2. récupère l’IP publique du backend choisi ;
+2. sélectionne le backend ;
 3. se connecte en SSH ;
 4. arrête `nginx-hello` ;
 5. attend la détection de panne ;
-6. exige un seul backend en réponse ;
-7. redémarre `nginx-hello` ;
+6. vérifie la continuité du service avec un seul backend ;
+7. redémarre le conteneur ;
 8. attend la réintégration ;
 9. exige de nouveau deux backends.
 
-Valeurs de référence :
-
-- attente après arrêt : 12 secondes ;
-- attente après redémarrage : 10 secondes.
-
-Ces délais sont configurables par options du script.
+`p5.sh ex3` prévisualise d'abord ce scénario puis demande une confirmation avant
+d'appeler le mode `--apply`.
 
 ## Restauration de sécurité
 
-Après un arrêt réel, un `trap` est actif sur `EXIT`, `INT` et `TERM`.
-
-Si le script est interrompu alors que le backend est marqué arrêté, il tente :
+Après un arrêt réel, `test-haproxy-failover.sh` conserve un `trap` sur `EXIT`,
+`INT` et `TERM`. Si l'exécution est interrompue alors que le backend est arrêté,
+le script tente de redémarrer :
 
 ```text
 sudo docker start nginx-hello
 ```
 
-Cette restauration réduit le risque d’une panne permanente mais ne dispense pas
-de vérifier manuellement l’état après une interruption.
-
-## Verdict final
-
-```text
-BASCULE ET RÉINTÉGRATION HAPROXY VALIDÉES
-```
+Cette restauration réduit le risque d'une panne permanente mais ne dispense pas
+de vérifier l'état après une interruption.
 
 ## Preuves à conserver
 
@@ -290,57 +256,54 @@ BASCULE ET RÉINTÉGRATION HAPROXY VALIDÉES
 
 - plan Terraform ;
 - trois EC2 actives ;
-- outputs utiles anonymisés.
+- outputs anonymisés.
 
 ### Configuration
 
-- copie lisible de `haproxy.cfg` ;
-- `haproxy -c` réussi ;
-- service HAProxy actif.
+- `haproxy.cfg` lisible ;
+- validation HAProxy ;
+- service actif.
 
 ### Round-robin
 
-- deux noms de serveur observés sur plusieurs requêtes.
+- deux serveurs distincts observés.
 
 ### Panne
 
-- deux backends avant la panne ;
-- un seul pendant la panne ;
-- service HTTP toujours disponible.
+- deux backends avant ;
+- un seul pendant ;
+- continuité HTTP.
 
 ### Reprise
 
-- conteneur redémarré ;
+- backend redémarré ;
 - retour des deux backends ;
-- verdict final du script.
+- verdict final.
 
 Gabarit :
-[`Livrable 3`](../livrables/SEGUIN-CADICHE_Mathias_3_haproxy_nginxdemos_02082026.md).
+[Livrable 3](../livrables/SEGUIN-CADICHE_Mathias_3_haproxy_nginxdemos_02082026.md).
 
-## Ce qu’il ne faut pas publier
+## Ce qu'il ne faut pas publier
 
 - clé privée SSH ;
 - tfvars ;
 - état Terraform ;
 - adresse complète non nécessaire ;
-- contenu brut non relu de `proofs/runtime/`.
+- contenu brut non relu de `proofs/runtime/` ou `logs/`.
 
 ## Nettoyage
 
-Une fois toutes les preuves de l’exercice 3 collectées :
+Après la collecte des preuves, utiliser de préférence le nettoyage global :
 
 ```bash
-terraform -chdir=terraform/exercice-3 destroy
+bash scripts/commands/p5.sh cleanup
 ```
 
-Vous pouvez ensuite détruire l’exercice 1 si ses preuves et ses logs ne sont plus
-nécessaires.
-
-Ordre global recommandé :
+Ordre :
 
 ```text
-Exercice 3 → Exercice 2 → Exercice 1 → check-aws-cleanup.sh
+Exercice 3 → Exercice 2 → Exercice 1 → audit AWS global
 ```
 
-La procédure complète se trouve dans
+Référence :
 [Validation, preuves et nettoyage](../validation-preuves-nettoyage.md).

@@ -23,3 +23,6 @@ jobs:
 
       - name: Vérifier le contrat de non-régression
         run: python3 scripts/tools/audit_non_regression.py
+
+      - name: Vérifier le centre de commande P5
+        run: bash scripts/tests/test-p5-orchestrator.sh
