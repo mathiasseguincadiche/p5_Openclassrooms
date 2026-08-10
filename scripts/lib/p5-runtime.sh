@@ -22,9 +22,17 @@ p5_session_start() {
     fi
 
     P5_LOG_DIR="${P5_LOG_DIR:-$P5_PROJECT_ROOT/logs/$P5_RUN_ID}"
-    export P5_LOG_DIR
+    P5_STEP_PROOF_DIR="${P5_STEP_PROOF_DIR:-$P5_PROJECT_ROOT/proofs/runtime/steps/$P5_RUN_ID}"
+    P5_STEP_PROOF_MANIFEST="$P5_STEP_PROOF_DIR/manifest.tsv"
+    export P5_LOG_DIR P5_STEP_PROOF_DIR P5_STEP_PROOF_MANIFEST
+
     umask 077
-    mkdir -p "$P5_LOG_DIR"
+    mkdir -p "$P5_LOG_DIR" "$P5_STEP_PROOF_DIR"
+    if [[ ! -f "$P5_STEP_PROOF_MANIFEST" ]]; then
+        printf 'utc\tstep\tkey\tstatus\trc\tduration_s\tsha256\tproof_log\tlabel\n' \
+            > "$P5_STEP_PROOF_MANIFEST"
+        chmod 600 "$P5_STEP_PROOF_MANIFEST"
+    fi
 
     if [[ "${P5_SESSION_ACTIVE:-0}" != 1 ]]; then
         P5_MASTER_LOG="$P5_LOG_DIR/${session_name}.log"
@@ -114,12 +122,45 @@ p5_prepare_step_file() {
     export P5_CURRENT_STEP_NUMBER P5_CURRENT_STEP_LOG
 }
 
+p5_record_step_proof() {
+    local key="$1"
+    local label="$2"
+    local status="$3"
+    local rc="$4"
+    local log_file="$5"
+    local start_time="$6"
+    local end_time="$7"
+    local proof_log sha clean_label utc
+
+    [[ -f "$log_file" ]] || return 0
+    mkdir -p "$P5_STEP_PROOF_DIR"
+    proof_log="$P5_STEP_PROOF_DIR/$(basename -- "$log_file")"
+    cp -- "$log_file" "$proof_log"
+    chmod 600 "$proof_log"
+
+    if command -v sha256sum >/dev/null 2>&1; then
+        sha="$(sha256sum "$proof_log" | awk '{print $1}')"
+    else
+        sha="indisponible"
+    fi
+    clean_label="${label//$'\t'/ }"
+    clean_label="${clean_label//$'\n'/ }"
+    utc="$(date -u --iso-8601=seconds)"
+
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+        "$utc" "$P5_CURRENT_STEP_NUMBER" "$key" "$status" "$rc" \
+        "$((end_time - start_time))" "$sha" "$(basename -- "$proof_log")" "$clean_label" \
+        >> "$P5_STEP_PROOF_MANIFEST"
+    chmod 600 "$P5_STEP_PROOF_MANIFEST"
+    printf '[PREUVE] %s — %s — %s\n' "$P5_CURRENT_STEP_NUMBER" "$status" "$proof_log"
+}
+
 p5_run_step() {
     local key="$1"
     local label="$2"
     shift 2
 
-    local log_file start_time end_time rc
+    local log_file start_time end_time rc status
     p5_prepare_step_file "$key"
     log_file="$P5_CURRENT_STEP_LOG"
 
@@ -139,8 +180,12 @@ p5_run_step() {
     export P5_LAST_STEP_RC P5_LAST_STEP_LOG
 
     if ((rc == 0)); then
+        status='VALIDE'
+        p5_record_step_proof "$key" "$label" "$status" "$rc" "$log_file" "$start_time" "$end_time"
         p5_ok "$label — $((end_time - start_time)) s"
     else
+        status='ECHEC'
+        p5_record_step_proof "$key" "$label" "$status" "$rc" "$log_file" "$start_time" "$end_time"
         p5_error "$label — code retour $rc — voir $log_file"
     fi
     return "$rc"
@@ -152,7 +197,7 @@ p5_run_step_allow() {
     local label="$3"
     shift 3
 
-    local log_file start_time end_time rc
+    local log_file start_time end_time rc status
     p5_prepare_step_file "$key"
     log_file="$P5_CURRENT_STEP_LOG"
 
@@ -172,6 +217,8 @@ p5_run_step_allow() {
     export P5_LAST_STEP_RC P5_LAST_STEP_LOG
 
     if [[ " $accepted_codes " == *" $rc "* ]]; then
+        status='VALIDE'
+        p5_record_step_proof "$key" "$label" "$status" "$rc" "$log_file" "$start_time" "$end_time"
         if ((rc == 0)); then
             p5_ok "$label — $((end_time - start_time)) s"
         else
@@ -180,6 +227,8 @@ p5_run_step_allow() {
         return 0
     fi
 
+    status='ECHEC'
+    p5_record_step_proof "$key" "$label" "$status" "$rc" "$log_file" "$start_time" "$end_time"
     p5_error "$label — code retour $rc — voir $log_file"
     return "$rc"
 }
@@ -351,6 +400,8 @@ p5_manual_checkpoint() {
 
 p5_latest_log_hint() {
     printf '\nLogs de cette exécution : %s\n' "$P5_LOG_DIR"
+    printf 'Preuves par étape        : %s\n' "$P5_STEP_PROOF_DIR"
+    printf 'Manifeste des preuves    : %s\n' "$P5_STEP_PROOF_MANIFEST"
     if [[ -n "${P5_MASTER_LOG:-}" ]]; then
         printf 'Journal principal       : %s\n' "$P5_MASTER_LOG"
     fi
