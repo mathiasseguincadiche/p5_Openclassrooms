@@ -46,6 +46,8 @@ Principe :
 
 Un `terraform plan` vide n'est jamais appliqué. Une VM déjà conforme n'est pas
 réinstallée. Les tests fonctionnels restent rejoués afin de vérifier l'état réel.
+Une valeur d'infrastructure nécessaire à `all` doit provenir de Terraform ; si
+elle n'est pas vérifiable, l'orchestrateur s'arrête et indique la source à réparer.
 
 Exemples:
   bash scripts/commands/p5.sh inspect
@@ -97,6 +99,7 @@ if [[ "$COMMAND" == help ]]; then
 fi
 
 p5_session_start 'p5'
+export P5_ORCHESTRATED=1
 cd "$PROJECT_ROOT"
 
 load_lab_config() {
@@ -233,12 +236,23 @@ terraform_apply_exercise() {
 
 wait_for_ssh_ex1() {
     load_lab_config
-    local ip public_key private_key attempt
-    ip="$(terraform -chdir="$PROJECT_ROOT/terraform/exercice-1" output -raw web_public_ip)"
+    local ip="$1"
+    local public_key private_key attempt
+    if ! p5_validate_ipv4 "$ip"; then
+        p5_authoritative_unknown 'Adresse publique EC2 Angular' \
+            'la valeur transmise par Terraform n’est pas une IPv4 valide' \
+            'Relancez l’exercice 1 et consultez le log tf-ex1-output.'
+        return 1
+    fi
     public_key="${P5_SSH_PUBLIC_KEY_PATH:-~/.ssh/p5-key.pub}"
     public_key="${public_key/#\~/$HOME}"
     private_key="${P5_SSH_KEY_PATH:-${public_key%.pub}}"
     private_key="${private_key/#\~/$HOME}"
+    if [[ ! -f "$private_key" ]]; then
+        p5_unknown 'Clé SSH privée du lab' "fichier absent : $private_key" \
+            'Relancez : bash scripts/commands/p5.sh prepare ; le configurateur proposera de créer ou renseigner la clé.'
+        return 1
+    fi
     local ssh_options=(-i "$private_key" -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new)
 
     printf 'Vérification de la cible SSH %s\n' "$ip"
@@ -253,12 +267,18 @@ wait_for_ssh_ex1() {
         sleep 5
     done
     p5_error 'La cible EC2 de l’exercice 1 ne répond pas correctement en SSH.'
+    p5_action "Vérifiez Security Group, route Internet, IP $ip et le log de l’étape wait-ssh-ex1."
     return 1
 }
 
-wait_for_http_output() {
-    local module="$1" output_name="$2" label="$3" url attempt
-    url="$(terraform -chdir="$module" output -raw "$output_name")"
+wait_for_http_url() {
+    local url="$1" label="$2" attempt
+    if ! p5_validate_http_url "$url"; then
+        p5_authoritative_unknown "URL HTTP $label" \
+            'la valeur transmise par Terraform n’est pas une URL HTTP/HTTPS valide' \
+            'Relancez l’exercice Terraform concerné et consultez son log tf-ex*-output.'
+        return 1
+    fi
     printf 'Vérification HTTP : %s\n' "$url"
     for ((attempt = 1; attempt <= 60; attempt++)); do
         if curl -fsS --max-time 5 "$url/" >/dev/null 2>&1; then
@@ -269,6 +289,7 @@ wait_for_http_output() {
         sleep 5
     done
     p5_error "$label n'est pas devenu accessible : $url"
+    p5_action 'Consultez le log de cette étape avant toute modification manuelle.'
     return 1
 }
 
@@ -359,6 +380,7 @@ run_status() {
 
     if [[ ! -r "$CONFIG_FILE" ]]; then
         p5_warn 'Configuration AWS locale absente ; aucune connexion n’est déclenchée par status.'
+        p5_action 'Pour la renseigner : bash scripts/commands/p5.sh prepare'
         return 0
     fi
 
@@ -394,20 +416,30 @@ run_ex1() {
     p5_run_step 'angular-build' 'Vérifier/converger l’artefact Angular' \
         bash "$SCRIPT_DIR/prepare-angular-artifact.sh"
     terraform_apply_exercise 1 'VPC + EC2 Angular'
+
+    local web_ip="" web_url=""
+    p5_terraform_output web_ip "$PROJECT_ROOT/terraform/exercice-1" web_public_ip \
+        'IPv4 publique EC2 Angular' p5_validate_ipv4 \
+        'Relancez l’exercice 1 et consultez le log tf-ex1-output.'
+    p5_terraform_output web_url "$PROJECT_ROOT/terraform/exercice-1" web_url \
+        'URL publique Angular/NGINX' p5_validate_http_url \
+        'Relancez l’exercice 1 et consultez le log tf-ex1-output.'
+
     p5_run_step 'inventory' 'Vérifier/converger l’inventaire Ansible depuis Terraform' \
         bash "$SCRIPT_DIR/generate-ansible-inventory.sh"
-    p5_run_step 'wait-ssh-ex1' 'Vérifier la disponibilité SSH de l’EC2' wait_for_ssh_ex1
+    p5_run_step 'wait-ssh-ex1' 'Vérifier la disponibilité SSH de l’EC2' wait_for_ssh_ex1 "$web_ip"
     p5_run_step 'ansible-ping' 'Vérifier la cible avec Ansible' \
         ansible all -i "$INVENTORY_FILE" -m ping
     p5_run_step 'ansible-deploy' 'Converger Angular et NGINX avec Ansible' \
         ansible-playbook -i "$INVENTORY_FILE" "$PROJECT_ROOT/ansible/playbooks/deploy.yml"
     p5_run_step 'ansible-idempotence' 'Prouver l’état convergé du playbook Ansible' verify_ansible_idempotence
     p5_run_step 'verify-angular' 'Vérifier Angular derrière NGINX' \
-        bash "$SCRIPT_DIR/verify-angular-deployment.sh"
+        bash "$SCRIPT_DIR/verify-angular-deployment.sh" --url "$web_url"
     p5_run_step 'nginx-traffic' 'Rejouer le trafic NGINX de preuve' \
-        bash "$SCRIPT_DIR/generate-nginx-traffic.sh" --requests 96
+        bash "$SCRIPT_DIR/generate-nginx-traffic.sh" --url "$web_url" --requests 96
     p5_run_step 'nginx-log-collect' 'Actualiser la collecte des vrais logs NGINX' \
         bash "$SCRIPT_DIR/collect-nginx-access-log.sh" \
+        --host "$web_ip" \
         --output "$PROJECT_ROOT/proofs/runtime/exercice-2/nginx-access-real.log"
     p5_ok 'Exercice 1 convergé et état fonctionnel revérifié.'
 }
@@ -425,6 +457,15 @@ run_ex2() {
     fi
 
     terraform_apply_exercise 2 'Amazon OpenSearch'
+
+    local opensearch_endpoint="" dashboards_url=""
+    p5_terraform_output opensearch_endpoint "$PROJECT_ROOT/terraform/exercice-2" opensearch_endpoint \
+        'Endpoint Amazon OpenSearch' p5_validate_http_url \
+        'Relancez l’exercice 2 et consultez le log tf-ex2-output.'
+    p5_terraform_output dashboards_url "$PROJECT_ROOT/terraform/exercice-2" opensearch_dashboards_endpoint \
+        'URL OpenSearch Dashboards' p5_validate_http_url \
+        'Relancez l’exercice 2 et consultez le log tf-ex2-output.'
+
     p5_run_step 'opensearch-sample-preview' 'Valider le jeu reproductible OpenSearch' \
         bash "$SCRIPT_DIR/import-opensearch-data.sh"
     if [[ -s "$real_log" ]]; then
@@ -432,6 +473,7 @@ run_ex2() {
             bash "$SCRIPT_DIR/import-opensearch-data.sh" --input "$real_log"
     else
         p5_warn "Log NGINX réel absent : $real_log"
+        p5_action 'Relancez l’exercice 1 pour produire et collecter les vrais logs NGINX.'
     fi
 
     if ! p5_confirm 'Converger uniquement le template/documents OpenSearch manquants ou différents ?'; then
@@ -439,16 +481,15 @@ run_ex2() {
         return 1
     fi
     p5_run_step 'opensearch-sample-import' 'Réconcilier le jeu reproductible avec OpenSearch' \
-        bash "$SCRIPT_DIR/import-opensearch-data.sh" --apply
+        bash "$SCRIPT_DIR/import-opensearch-data.sh" --endpoint "$opensearch_endpoint" --apply
     if [[ -s "$real_log" ]]; then
         p5_run_step 'opensearch-real-import' 'Réconcilier les vrais logs NGINX avec OpenSearch' \
-            bash "$SCRIPT_DIR/import-opensearch-data.sh" --input "$real_log" --apply
+            bash "$SCRIPT_DIR/import-opensearch-data.sh" --input "$real_log" \
+            --endpoint "$opensearch_endpoint" --apply
     fi
     p5_run_step 'opensearch-verify' 'Vérifier mappings et agrégations OpenSearch' \
-        bash "$SCRIPT_DIR/verify-opensearch-data.sh"
+        bash "$SCRIPT_DIR/verify-opensearch-data.sh" --endpoint "$opensearch_endpoint"
 
-    local dashboards_url
-    dashboards_url="$(terraform -chdir="$PROJECT_ROOT/terraform/exercice-2" output -raw opensearch_dashboards_endpoint)"
     p5_manual_checkpoint 'Dashboard OpenSearch' \
         "Ouvrir : $dashboards_url" \
         'Vérifier/créer le donut des méthodes HTTP.' \
@@ -469,18 +510,29 @@ run_ex3() {
     fi
 
     terraform_apply_exercise 3 'HAProxy + 2 serveurs nginxdemos/hello'
+
+    local haproxy_url="" backend_1_ip=""
+    p5_terraform_output haproxy_url "$PROJECT_ROOT/terraform/exercice-3" haproxy_url \
+        'URL publique HAProxy' p5_validate_http_url \
+        'Relancez l’exercice 3 et consultez le log tf-ex3-output.'
+    p5_terraform_output backend_1_ip "$PROJECT_ROOT/terraform/exercice-3" hello_1_public_ip \
+        'IPv4 publique du backend HAProxy 1' p5_validate_ipv4 \
+        'Relancez l’exercice 3 et consultez le log tf-ex3-output.'
+
     p5_run_step 'wait-haproxy' 'Vérifier la disponibilité HTTP de HAProxy' \
-        wait_for_http_output "$PROJECT_ROOT/terraform/exercice-3" haproxy_url HAProxy
+        wait_for_http_url "$haproxy_url" HAProxy
     p5_run_step 'haproxy-roundrobin' 'Revérifier le round-robin HAProxy' \
-        bash "$SCRIPT_DIR/test-haproxy-roundrobin.sh" --requests 12
+        bash "$SCRIPT_DIR/test-haproxy-roundrobin.sh" --url "$haproxy_url" --requests 12
     p5_run_step 'haproxy-failover-preview' 'Observer le scénario de panne HAProxy avant mutation temporaire' \
-        bash "$SCRIPT_DIR/test-haproxy-failover.sh"
+        bash "$SCRIPT_DIR/test-haproxy-failover.sh" \
+        --url "$haproxy_url" --backend-host "$backend_1_ip"
     if ! p5_confirm 'Rejouer le test réel d’arrêt puis de reprise d’un backend pour vérifier la résilience actuelle ?'; then
         p5_error 'Le test réel de failover est requis pour une validation actuelle de l’exercice 3.'
         return 1
     fi
     p5_run_step 'haproxy-failover' 'Tester la panne et la réintégration HAProxy' \
-        bash "$SCRIPT_DIR/test-haproxy-failover.sh" --apply
+        bash "$SCRIPT_DIR/test-haproxy-failover.sh" \
+        --url "$haproxy_url" --backend-host "$backend_1_ip" --apply
     p5_ok 'Exercice 3 convergé ; round-robin, panne et reprise revérifiés.'
 }
 
