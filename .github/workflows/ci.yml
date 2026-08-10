@@ -43,6 +43,7 @@ jobs:
           required=(
             docs/00-preparation-environnement.md
             docs/00b-preparation-compte-aws.md
+            docs/01-parcours-debutant.md
             docs/04-audit-non-regression.md
             docs/livrables/README.md
             environment/versions.env
@@ -61,8 +62,12 @@ jobs:
             terraform/exercice-2/opensearch/index-template.json
             terraform/exercice-2/samples/nginx-access.log.sample
             proofs/README.md
+            scripts/lib/p5-runtime.sh
             scripts/tools/convert-nginx-logs.py
             scripts/tools/generer-haproxy-config.sh
+            scripts/commands/p5.sh
+            scripts/commands/configure-lab.sh
+            scripts/commands/generate-ansible-inventory.sh
             scripts/commands/sync-terraform-tfvars.sh
             scripts/commands/prepare-angular-artifact.sh
             scripts/commands/verify-angular-deployment.sh
@@ -73,6 +78,7 @@ jobs:
             scripts/commands/test-haproxy-roundrobin.sh
             scripts/commands/test-haproxy-failover.sh
             scripts/commands/prepare-livrables.sh
+            scripts/tests/test-p5-orchestrator.sh
             scripts/tests/test-nginx-angular.sh
             scripts/tests/test-haproxy-containers.sh
             scripts/tests/test-opensearch-local.sh
@@ -85,6 +91,9 @@ jobs:
           grep -q 'NODE_VERSION=22.22.0' environment/versions.env
           grep -q 'ANSIBLE_CORE_VERSION=2.20.1' environment/versions.env
           grep -q 'TERRAFORM_VERSION=1.15.8' environment/versions.env
+          grep -q 'verify_ansible_idempotence' scripts/commands/p5.sh
+          grep -q 'opensearch-real-import' scripts/commands/p5.sh
+          grep -q 'p5_manual_checkpoint' scripts/commands/p5.sh
           if grep -q 'Interface web pour l.Exercice 1' \
             ansible/files/angular-app/index.html; then
             echo 'La page HTML témoin a été réintroduite.' >&2
@@ -170,6 +179,10 @@ jobs:
           find scripts -type f -name '*.sh' -print0 \
             | xargs -0 -r shellcheck --severity=error
 
+      - name: Tester le contrat de l'orchestrateur P5
+        shell: bash
+        run: bash scripts/tests/test-p5-orchestrator.sh
+
       - name: Valider JSON et livrables
         shell: bash
         run: |
@@ -204,7 +217,7 @@ jobs:
           npm test --prefix application/angular
       - name: Auditer les dépendances de production
         run: npm run security:dependencies --prefix application/angular
-      - name: Construire l’application
+      - name: Construire l'application
         run: npm run build --prefix application/angular
       - name: Vérifier la synchronisation avec Ansible
         shell: bash
