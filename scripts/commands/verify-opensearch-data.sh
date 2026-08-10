@@ -211,3 +211,7 @@ JSON
     printf '\nVerdict : DONNÉES OPENSEARCH PRÊTES POUR LE DASHBOARD\n'
     printf 'Preuves locales : %s\n' "$PROOF_DIR"
 } 2>&1 | tee "$SUMMARY_LOG"
+
+if [[ "${P5_ORCHESTRATED:-0}" == 1 ]]; then
+    bash "$SCRIPT_DIR/verify-aws-exercise-state.sh" --exercise 2
+fi

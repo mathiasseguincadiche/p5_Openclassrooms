@@ -35,3 +35,6 @@ jobs:
 
       - name: Vérifier le contrat des informations requises
         run: bash scripts/tests/test-operator-input-contract.sh
+
+      - name: Vérifier le contrat des preuves automatiques
+        run: bash scripts/tests/test-proof-contract.sh

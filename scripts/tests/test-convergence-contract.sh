@@ -66,15 +66,19 @@ printf '  OK  dérive de permissions corrigée sans réécrire les autres fichie
 
 printf '\nNumérotation du runtime avec codes contrôlés\n'
 export P5_PROJECT_ROOT="$PROJECT_ROOT"
+export P5_RUN_ID="convergence-contract-test"
 export P5_LOG_DIR="$TMP_DIR/runtime-logs"
+export P5_STEP_PROOF_DIR="$TMP_DIR/runtime-proofs"
 export P5_SESSION_ACTIVE=1
 # shellcheck source=../lib/p5-runtime.sh
 source scripts/lib/p5-runtime.sh
-mkdir -p "$P5_LOG_DIR"
+p5_session_start 'convergence-contract'
 p5_run_step 'first' 'première étape' true >/dev/null
 p5_run_step_allow '0 2' 'second' 'deuxième étape' true >/dev/null
 [[ -f "$P5_LOG_DIR/01-first.log" ]]
 [[ -f "$P5_LOG_DIR/02-second.log" ]]
-printf '  OK  journaux numérotés de manière stable.\n'
+[[ -f "$P5_STEP_PROOF_DIR/01-first.log" ]]
+[[ -f "$P5_STEP_PROOF_DIR/02-second.log" ]]
+printf '  OK  journaux et preuves numérotés de manière stable.\n'
 
 printf '\nVerdict : CONTRAT DE CONVERGENCE P5 RESPECTÉ.\n'

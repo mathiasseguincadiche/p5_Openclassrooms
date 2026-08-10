@@ -277,3 +277,7 @@ probe_phase() {
     printf '\nVerdict : BASCULE ET RÉINTÉGRATION HAPROXY VALIDÉES\n'
     printf 'Preuve locale : %s\n' "$SUMMARY_LOG"
 } 2>&1 | tee "$SUMMARY_LOG"
+
+if [[ "$APPLY" == true && "${P5_ORCHESTRATED:-0}" == 1 ]]; then
+    bash "$SCRIPT_DIR/verify-aws-exercise-state.sh" --exercise 3
+fi
