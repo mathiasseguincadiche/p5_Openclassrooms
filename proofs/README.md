@@ -3,6 +3,9 @@
 Ce dossier documente la gestion des **preuves techniques locales**. Les fichiers
 réels sont écrits sous `proofs/runtime/`, volontairement ignoré par Git.
 
+Le contrat détaillé « une étape validée = une preuve identifiable » est décrit
+dans [`docs/contrat-preuves-automatiques.md`](../docs/contrat-preuves-automatiques.md).
+
 ## Principe
 
 ```text
@@ -25,11 +28,15 @@ Une sortie runtime brute n’est pas automatiquement publiable.
 proofs/
 ├── README.md
 └── runtime/                     # créé localement, ignoré par Git
+    ├── steps/<UTC>/             # preuve de chaque étape + manifest.tsv
     ├── diagnostics/
     ├── exercice-1/
     ├── exercice-2/
     └── exercice-3/
 ```
+
+Chaque étape exécutée via l'orchestrateur conserve une copie privée de son log
+avec verdict, code retour, durée et SHA-256 dans `steps/<UTC>/manifest.tsv`.
 
 ## Diagnostic global
 
@@ -93,6 +100,7 @@ Commandes principales :
 
 Preuves typiques :
 
+- état AWS réel de l'EC2 Angular/NGINX : `running` ;
 - en-têtes HTTP ;
 - page Angular reçue ;
 - résultat du fallback SPA ;
@@ -103,13 +111,15 @@ Preuves typiques :
 Verdicts utiles :
 
 ```text
+ÉTAT AWS EXERCICE 1 VALIDÉ — EC2 RUNNING
 APPLICATION ANGULAR DÉPLOYÉE ET SERVIE PAR NGINX
 TRAFIC NGINX GÉNÉRÉ
 LOGS NGINX RÉELS COLLECTÉS
 ```
 
-Les preuves Ansible et Terraform exécutées manuellement doivent également être
-conservées dans le livrable 1 : plan, apply, ping, playbook et idempotence.
+Les preuves Terraform et Ansible sont également conservées automatiquement par
+l'orchestrateur : plan, apply ou absence de delta, outputs, ping, playbook et
+idempotence.
 
 ## Exercice 2
 
@@ -122,6 +132,7 @@ Commandes :
 
 Preuves techniques typiques :
 
+- état Amazon OpenSearch créé, actif et stable ;
 - réponse du template ;
 - réponse Bulk ;
 - comptage des documents ;
@@ -132,6 +143,7 @@ Preuves techniques typiques :
 Verdicts :
 
 ```text
+ÉTAT AWS EXERCICE 2 VALIDÉ — OPENSEARCH ACTIF
 IMPORT OPENSEARCH RÉUSSI
 DONNÉES OPENSEARCH PRÊTES POUR LE DASHBOARD
 ```
@@ -151,6 +163,7 @@ Commandes :
 
 Preuves :
 
+- état AWS réel de HAProxy et des deux backends : trois EC2 `running` ;
 - deux backends en round-robin ;
 - état avant la panne ;
 - un backend pendant la panne ;
@@ -160,6 +173,7 @@ Preuves :
 Verdicts :
 
 ```text
+ÉTAT AWS EXERCICE 3 VALIDÉ — 3 EC2 RUNNING
 ROUND-ROBIN OPÉRATIONNEL
 BASCULE ET RÉINTÉGRATION HAPROXY VALIDÉES
 ```
@@ -237,6 +251,7 @@ ressources des exercices 1 ou 3 tant qu’elles sont volontairement conservées.
 
 ## Documentation associée
 
+- [Contrat des preuves automatiques](../docs/contrat-preuves-automatiques.md)
 - [Validation, preuves et nettoyage](../docs/validation-preuves-nettoyage.md)
 - [Livrables](../docs/livrables/README.md)
 - [Traçabilité](../docs/02-correspondance-consignes-depot.md)
