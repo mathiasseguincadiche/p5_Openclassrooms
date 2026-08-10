@@ -1,265 +1,308 @@
 # Étape 0B — Préparer et valider le compte AWS
 
-Cette étape transforme un compte AWS disponible en environnement **autorisé,
+Cette étape transforme un compte AWS existant en environnement **autorisé,
 contrôlé et prêt pour Terraform**.
 
-Elle complète [l’étape 0A — préparation de la VM](00-preparation-environnement.md)
-et doit être terminée avant le premier déploiement.
+Le parcours normal est piloté par :
+
+```bash
+bash scripts/commands/p5.sh all
+```
+
+La connexion AWS, la détection du compte, l'IPv4, la clé SSH, les `tfvars`, le
+budget et les contrôles sont alors enchaînés automatiquement autant que possible.
 
 ## Résultat attendu
 
-Deux validations sont recherchées :
-
 ```text
-Verdict : GO AWS — compte, région, capacité et coûts contrôlés.
-Verdict : GO TERRAFORM — relisez le plan et les coûts avant apply.
+AWS PRÊT
+        ↓
+GO AWS
+        ↓
+GO TERRAFORM
 ```
 
-Un `STOP AWS`, un `KO` ou l’absence de `GO TERRAFORM` interdit de poursuivre
-vers `terraform apply`.
+Un `KO`, un `STOP AWS` ou l'absence de `GO TERRAFORM` bloque le déploiement.
 
 ![Préparation et porte de validation](schemas/etape-0.svg)
 
-## Principe de configuration
+## Ce que l'utilisateur fait réellement
 
-Le projet possède une **source locale unique** pour les paramètres liés au
-compte :
+Sur une VM déjà préparée :
 
-```text
-environment/aws-readiness.env
-        │
-        ▼
-sync-terraform-tfvars.sh
-        │
-        ├─ terraform/exercice-1/terraform.tfvars
-        ├─ terraform/exercice-2/terraform.tfvars
-        └─ terraform/exercice-3/terraform.tfvars
+```bash
+cd ~/p5_Openclassrooms
+git pull
+bash scripts/commands/p5.sh all
 ```
 
-Les trois `terraform.tfvars` ne doivent pas être maintenus manuellement comme
-trois configurations indépendantes.
+Si aucune session AWS n'est active, le script propose par défaut :
 
-## 1. Sécuriser le compte root
+```text
+Connexion AWS — navigateur externe
+```
+
+La VM lance `aws login --remote`, affiche les instructions AWS et vous demande
+d'ouvrir l'URL d'autorisation dans votre navigateur habituel.
+
+Vous saisissez vos identifiants **directement chez AWS**. Le projet ne demande
+jamais votre mot de passe, votre secret AWS ou une clé d'accès.
+
+Après l'autorisation, le script reprend automatiquement.
+
+## 1. Préparation unique du compte AWS
+
+Avant le premier lab, quelques actions administratives restent volontairement
+humaines.
+
+### Compte root
 
 Dans la console AWS :
 
-1. activer plusieurs moyens MFA pour le compte root lorsque cela est possible ;
-2. vérifier qu’aucune clé d’accès root n’existe ;
-3. vérifier l’adresse électronique et le numéro de récupération ;
+1. activer le MFA root ;
+2. vérifier qu'aucune clé d'accès root n'existe ;
+3. vérifier les moyens de récupération ;
 4. vérifier les contacts de facturation ;
-5. réserver le compte root aux seules opérations qui l’exigent.
+5. ne pas utiliser root pour le projet quotidien.
 
-Ces points ne peuvent pas être certifiés de façon fiable depuis une session CLI
-quotidienne. Ils sont donc confirmés explicitement dans le fichier local de
-readiness.
+### Identité quotidienne
 
-## 2. Préparer l’identité quotidienne
+Le projet attend une identité IAM, un rôle ou IAM Identity Center.
 
-Le parcours recommandé utilise des identifiants temporaires avec IAM Identity
-Center ou un rôle IAM.
+Pour la connexion console moderne avec `aws login`, l'identité doit avoir la
+politique AWS gérée :
 
-### IAM Identity Center
-
-```bash
-aws configure sso --profile p5-lab
-aws sso login --profile p5-lab
-export AWS_PROFILE=p5-lab
-aws sts get-caller-identity
+```text
+SignInLocalDevelopmentAccess
 ```
 
-### Rôle IAM existant
+Elle autorise le flux OAuth utilisé par AWS CLI pour remettre des credentials
+temporaires.
 
-Un rôle fourni par une organisation peut également être utilisé si le profil
-`p5-lab` l’assume correctement.
+L'identité doit également posséder les permissions nécessaires au projet. La
+politique de référence est :
 
-Les clés d’accès longues durées sont refusées par défaut lorsque
-`P5_REQUIRE_TEMPORARY_CREDENTIALS=yes`.
-
-La politique pédagogique de référence est :
 [`aws/iam/p5-lab-policy.json`](../aws/iam/p5-lab-policy.json).
 
-Son rattachement à une identité reste une opération d’administration explicite.
-Le dépôt ne crée aucune identité IAM et ne stocke aucun secret.
+Ces politiques sont distinctes :
 
-## 3. Créer la configuration locale
+```text
+SignInLocalDevelopmentAccess
+        ↓
+autorise la connexion CLI temporaire
 
-```bash
-cp environment/aws-readiness.env.example environment/aws-readiness.env
-$EDITOR environment/aws-readiness.env
+p5-lab-policy.json
+        ↓
+autorise EC2/VPC/OpenSearch/Budgets/quotas du P5
 ```
 
-Le fichier réel est ignoré par Git.
+Le dépôt ne crée pas automatiquement un utilisateur IAM à partir du compte root.
 
-### Variables principales
+## 2. Authentification automatisée
 
-| Variable | Rôle | Valeur de référence |
-| --- | --- | --- |
-| `AWS_PROFILE` | profil AWS CLI | `p5-lab` |
-| `AWS_REGION` | région commune | `us-east-1` |
-| `P5_EXPECTED_ACCOUNT_ID` | seul compte autorisé | à renseigner |
-| `P5_PUBLIC_IP_CIDR` | poste d’administration | IPv4 réelle `/32` |
-| `P5_EC2_INSTANCE_TYPE` | EC2 exercices 1 et 3 | `t3.micro` |
-| `P5_AMI_ID` | surcharge AMI optionnelle | vide = Ubuntu 24.04 auto |
-| `P5_KEY_NAME` | paire de clés EC2 | `p5-key` |
-| `P5_SSH_PUBLIC_KEY_PATH` | clé publique locale | `~/.ssh/p5-key.pub` |
-| `P5_OPENSEARCH_ENGINE` | moteur | `OpenSearch_2.19` |
-| `P5_OPENSEARCH_INSTANCE_TYPE` | nœud OpenSearch | `t3.small.search` |
-| `P5_OPENSEARCH_VOLUME_SIZE_GB` | EBS OpenSearch | `10` |
-| `P5_REQUIRED_STANDARD_VCPUS` | quota EC2 minimal visé | `8` |
-| `P5_BUDGET_LIMIT_USD` | seuil mensuel du lab | `20` |
-
-Les montants, quotas et tailles sont des références de lab, **pas une promesse
-de gratuité**.
-
-## 4. Synchroniser les variables Terraform
-
-Prévisualiser les trois fichiers générés :
+Le script spécialisé est :
 
 ```bash
-bash scripts/commands/sync-terraform-tfvars.sh
+bash scripts/commands/aws-auth.sh
 ```
 
-Écrire les fichiers locaux :
+Le mode `auto` est utilisé par défaut.
+
+### Cas A — session encore valide
+
+Le script vérifie :
 
 ```bash
-bash scripts/commands/sync-terraform-tfvars.sh --apply
+aws sts get-caller-identity --profile p5-lab
 ```
 
-Vérifier leur synchronisation :
+Si l'identité est correcte, non root et temporaire, aucune action n'est demandée.
+
+### Cas B — session console expirée
+
+Le script relance automatiquement :
 
 ```bash
-bash scripts/commands/sync-terraform-tfvars.sh --check
+aws login --remote --profile p5-signin
 ```
 
-Le script :
+Puis il reconstruit l'accès de `p5-lab`.
 
-- refuse le compte d’exemple `000000000000` ;
-- refuse l’IP de documentation `203.0.113.10/32` ;
-- génère les trois fichiers depuis la même source ;
-- écrit les fichiers en mode `600` ;
-- utilise `null` pour l’AMI si `P5_AMI_ID` est vide.
+### Cas C — IAM Identity Center
 
-Après tout changement de région, compte, adresse IP, clé ou taille de ressource,
-relancez `--apply` puis `--check`.
-
-## 5. Prévisualiser puis créer le budget
-
-Aperçu non destructif :
+Mode disponible :
 
 ```bash
-./scripts/commands/setup-aws-guardrails.sh
+bash scripts/commands/aws-auth.sh --mode sso
 ```
 
-Création explicite :
+Le script utilise `aws configure sso` si nécessaire puis `aws sso login`.
+
+### Cas D — profil temporaire existant
 
 ```bash
-./scripts/commands/setup-aws-guardrails.sh --apply
+bash scripts/commands/aws-auth.sh --mode existing
 ```
 
-Le budget mensuel utilise les paramètres du fichier local et prévoit trois
-alertes :
+Le profil source doit fournir des credentials temporaires avec une expiration.
+Les clés longues durées ne sont pas le chemin normal du projet.
 
-- 50 % des dépenses réelles ;
-- 80 % des dépenses réelles ;
-- 100 % des dépenses prévues.
+## 3. Pourquoi deux profils avec `aws login` ?
 
-Le script ne crée aucune instance EC2 ni aucun domaine OpenSearch.
+Le profil `p5-signin` porte la session créée par AWS CLI :
 
-## 6. Exécuter AWS Ready
+```text
+[profile p5-signin]
+login_session = ...
+region = us-east-1
+```
 
-### Avant l’exercice 1
+Le projet prépare ensuite :
+
+```text
+[profile p5-lab]
+credential_process = aws configure export-credentials --profile p5-signin --format process
+region = us-east-1
+```
+
+Ce mécanisme fournit à Terraform des credentials temporaires dans le format
+standard `credential_process`.
+
+Ainsi :
+
+```text
+connexion console AWS
+        ↓
+AWS CLI session temporaire
+        ↓
+p5-signin
+        ↓
+credential_process
+        ↓
+p5-lab
+        ↓
+AWS CLI + Terraform
+```
+
+## 4. Configuration locale automatique
+
+`configure-lab.sh` crée ou complète :
+
+```text
+environment/aws-readiness.env
+```
+
+Ce fichier est ignoré par Git et ne contient aucune clé AWS.
+
+Il mémorise notamment :
+
+| Variable | Rôle |
+| --- | --- |
+| `AWS_PROFILE` | profil final, normalement `p5-lab` |
+| `AWS_REGION` | région commune |
+| `P5_AWS_AUTH_MODE` | `auto`, `console`, `sso` ou `existing` |
+| `P5_AWS_LOGIN_PROFILE` | profil source de connexion |
+| `P5_EXPECTED_ACCOUNT_ID` | compte détecté |
+| `P5_PUBLIC_IP_CIDR` | IPv4 actuelle en `/32` |
+| `P5_SSH_PUBLIC_KEY_PATH` | clé publique du lab |
+| `P5_OPENSEARCH_ENGINE` | moteur OpenSearch |
+| `P5_BUDGET_LIMIT_USD` | budget mensuel du lab |
+
+Les trois `terraform.tfvars` sont générés depuis cette source unique.
+
+## 5. Détection automatique
+
+Après l'authentification, `configure-lab.sh` :
+
+1. lit l'identité STS ;
+2. refuse `root` ;
+3. vérifie que les credentials temporaires sont exportables ;
+4. récupère l'identifiant de compte AWS ;
+5. détecte l'IPv4 publique actuelle ;
+6. construit automatiquement le `/32` ;
+7. crée une clé SSH Ed25519 si elle manque ;
+8. demande l'adresse de notification du budget si nécessaire ;
+9. demande les confirmations humaines de sécurité ;
+10. génère et vérifie les trois `terraform.tfvars`.
+
+## 6. Budget
+
+Le centre de commande prévisualise puis propose de créer le budget AWS :
+
+```text
+p5-lab-monthly
+```
+
+Valeur de référence :
+
+```text
+20 USD / mois
+```
+
+avec alertes aux seuils documentés par le projet.
+
+Le budget ne crée aucune EC2 ni aucun domaine OpenSearch.
+
+## 7. AWS Ready
+
+Le contrôle non destructif vérifie notamment :
+
+- profil et région ;
+- identité active et non root ;
+- compte exact ;
+- credentials temporaires ;
+- IPv4 actuelle `/32` ;
+- disponibilité d'au moins deux AZ ;
+- type EC2 ;
+- AMI Ubuntu Canonical ;
+- quota EC2 Standard ;
+- disponibilité OpenSearch ;
+- limites OpenSearch ;
+- budget ;
+- cohérence des `terraform.tfvars` ;
+- collisions de ressources ;
+- dépendances entre exercices.
+
+Commandes spécialisées :
 
 ```bash
 ./scripts/commands/check-aws-readiness.sh --stage initial
-```
-
-### Avant l’exercice 2
-
-```bash
 ./scripts/commands/check-aws-readiness.sh --stage exercice-2
-```
-
-### Avant l’exercice 3
-
-```bash
 ./scripts/commands/check-aws-readiness.sh --stage exercice-3
 ```
 
-## 7. Ce que vérifie AWS Ready
+## 8. OpenSearch / « Elasticsearch »
 
-### Configuration et identité
+Le projet n'installe pas Elasticsearch dans la VM.
 
-- variables obligatoires ;
-- compte AWS réel à 12 chiffres ;
-- profil AWS CLI ;
-- région du profil ;
-- identité active ;
-- identité non root ;
-- source de session temporaire ou rôle lorsque le mode strict l’exige.
+Le vrai exercice crée avec Terraform un service managé :
 
-### Sécurité manuelle
+```text
+Amazon OpenSearch Service
+```
 
-- MFA root confirmé ;
-- absence de clés d’accès root confirmée ;
-- politique IAM du lab rattachée ;
-- contacts de facturation vérifiés.
+Le domaine de référence utilise :
 
-### Réseau du poste
+- `OpenSearch_2.19` ;
+- `t3.small.search` ;
+- 10 Gio `gp3` ;
+- HTTPS ;
+- TLS 1.2 minimum ;
+- chiffrement au repos ;
+- chiffrement inter-nœuds ;
+- accès limité à l'IPv4 `/32` du lab.
 
-- IPv4 publique actuelle ;
-- correspondance exacte avec le `/32` configuré.
+Docker sur la VM sert seulement à lancer un OpenSearch local éphémère dans les
+tests de validation. Aucun service OpenSearch permanent n'est nécessaire sur
+Ubuntu.
 
-### Région et capacité
+## 9. Précontrôle Terraform
 
-- au moins deux zones de disponibilité ;
-- type EC2 proposé dans la région ;
-- AMI Ubuntu Canonical disponible ;
-- quota EC2 Standard suffisant.
-
-### OpenSearch
-
-- combinaison version/type d’instance disponible ;
-- limites du type consultables.
-
-### Coûts
-
-- budget du lab présent.
-
-### Cohérence Terraform
-
-Pour chaque module :
-
-- région identique ;
-- compte attendu identique ;
-- adresse `/32` identique.
-
-### État préalable selon l’étape
-
-Le contrôle adapte les collisions et dépendances :
-
-- `initial` : aucun VPC, clé ou domaine P5 conflictuel ;
-- `exercice-2` : domaine OpenSearch absent avant création ;
-- `exercice-3` : VPC et clé de l’exercice 1 présents.
-
-## 8. Lancer le précontrôle unifié
-
-Après AWS Ready :
+Avant l'application des ressources :
 
 ```bash
 ./scripts/commands/pre-deployment-check.sh --stage initial
 ```
-
-Le script vérifie en plus :
-
-- Ubuntu et versions ;
-- outils ;
-- Docker ;
-- paire SSH ;
-- fichiers tfvars ;
-- synchronisation avec `aws-readiness.env` ;
-- application Angular et artefact Ansible ;
-- composants propres à l’étape ;
-- validation locale du dépôt.
 
 Le verdict attendu est :
 
@@ -267,84 +310,69 @@ Le verdict attendu est :
 Verdict : GO TERRAFORM — relisez le plan et les coûts avant apply.
 ```
 
-## 9. Garde-fous Terraform
+Même en mode automatisé, le plan Terraform reste affiché avant `apply`.
 
-Chaque provider Terraform utilise :
+## 10. Ce qui reste volontairement humain
 
-- `allowed_account_ids` pour interdire un autre compte ;
-- des tags communs pour identifier le projet ;
-- des validations refusant les valeurs d’exemple ;
-- une adresse d’administration strictement limitée à `/32`.
+L'automatisation ne doit pas simuler :
 
-Les EC2 des exercices 1 et 3 imposent également :
+- la saisie de vos identifiants AWS ;
+- la validation MFA ;
+- la confirmation de la sécurité root ;
+- la confirmation des contacts de facturation ;
+- la lecture du plan Terraform ;
+- les captures du dashboard OpenSearch ;
+- la destruction finale `DETRUIRE`.
 
-- IMDSv2 ;
-- volume racine chiffré ;
-- suppression du volume à la terminaison.
+Ces étapes sont des garde-fous, pas des manques d'automatisation.
 
-OpenSearch impose :
+## 11. Reconnexion ultérieure
 
-- HTTPS ;
-- TLS 1.2 minimum ;
-- chiffrement au repos ;
-- chiffrement entre nœuds ;
-- politique d’accès limitée à l’IP `/32`.
-
-## 10. Que faire si le contrôle bloque ?
-
-Ne contournez pas le garde-fou. Utilisez :
-
-- [Troubleshooting](troubleshooting.md) ;
-- le diagnostic partageable :
+Lors d'une session suivante :
 
 ```bash
-bash scripts/commands/collect-diagnostics.sh
+bash scripts/commands/p5.sh all
 ```
 
-Causes fréquentes :
+Si AWS est encore authentifié, le projet continue directement. Si la session a
+expiré, `aws-auth.sh` la renouvelle et le parcours reprend.
 
-- session SSO expirée ;
-- changement d’IP publique ;
-- tfvars désynchronisés ;
-- budget absent ;
-- quota insuffisant ;
-- ressource P5 déjà présente ;
-- exercice 1 détruit avant l’exercice 3.
+## 12. Nettoyage
 
-## 11. Nettoyage final
-
-Après les trois exercices et les preuves :
+Après les trois exercices :
 
 ```bash
-./scripts/commands/destroy-aws.sh
-./scripts/commands/check-aws-cleanup.sh
+bash scripts/commands/p5.sh cleanup
 ```
 
-Le second script est un **audit global** du P5. Il recherche notamment EC2, EBS,
-interfaces réseau, groupes de sécurité, sous-réseaux, routage, Internet Gateway,
-VPC, paire de clés et OpenSearch.
+Ordre :
 
-Le verdict final attendu est :
+```text
+Exercice 3 → Exercice 2 → Exercice 1
+```
+
+Verdict final :
 
 ```text
 NETTOYAGE AWS COMPLET
 ```
 
-Le budget reste volontairement actif pour détecter un oubli.
+Le budget reste actif pour détecter une éventuelle ressource oubliée.
 
 ## Limites honnêtes
 
-Le dépôt ne peut pas garantir à lui seul :
+Le dépôt ne peut pas garantir automatiquement :
 
-- l’état réel du MFA root ;
-- l’absence de clés root sans droits adaptés ;
-- la validité du moyen de paiement ;
-- l’approbation d’une augmentation de quota ;
-- la réception d’un courriel de budget ;
-- l’absence de ressources hors du périmètre inspecté par les scripts.
+- que le MFA root a réellement été configuré ;
+- que la politique `SignInLocalDevelopmentAccess` a été attachée avant la
+  première connexion ;
+- que la politique P5 a été administrativement rattachée au bon utilisateur ou
+  rôle ;
+- qu'AWS acceptera immédiatement une demande d'augmentation de quota ;
+- que le moyen de paiement ou les contacts de facturation sont corrects.
 
-Ces points restent sous la responsabilité du propriétaire du compte et doivent
-être vérifiés humainement.
+Une fois ces prérequis administratifs faits, l'exécution technique est prise en
+charge par le centre de commande.
 
 ## Étape suivante
 
