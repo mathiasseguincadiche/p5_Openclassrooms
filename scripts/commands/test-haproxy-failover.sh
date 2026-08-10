@@ -4,6 +4,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
+LIB_FILE="$PROJECT_ROOT/scripts/lib/p5-runtime.sh"
 CONFIG_FILE="$PROJECT_ROOT/environment/aws-readiness.env"
 PROOF_DIR="$PROJECT_ROOT/proofs/runtime/exercice-3"
 SSH_KEY=""
@@ -13,6 +14,12 @@ REQUESTS=6
 WAIT_DOWN=12
 WAIT_UP=10
 APPLY=false
+HAPROXY_URL=""
+BACKEND_IP=""
+
+# shellcheck source=../lib/p5-runtime.sh
+source "$LIB_FILE"
+p5_session_start "test-haproxy-failover"
 
 show_help() {
     cat <<'HELP'
@@ -20,6 +27,8 @@ Usage: test-haproxy-failover.sh [options]
 
 Options:
   --backend 1|2        backend dont le conteneur sera arrêté (défaut : 1)
+  --url URL            URL HTTP de HAProxy si Terraform ne doit pas être utilisé
+  --backend-host IP    IPv4 publique du backend ciblé si Terraform ne doit pas être utilisé
   --requests N         requêtes par phase (défaut : 6)
   --ssh-key CHEMIN     clé SSH privée ; sinon configuration locale du lab
   --ssh-user NOM       utilisateur SSH (défaut : ubuntu)
@@ -29,45 +38,56 @@ Options:
   --apply              exécuter réellement l'arrêt et le redémarrage
   -h, --help           afficher cette aide
 
-Sans --apply, aucune connexion SSH n'est effectuée. Le trap de sortie tente
-toujours de redémarrer le conteneur si une panne réelle a été déclenchée.
+Par défaut, HAProxy et le backend sont lus depuis Terraform. Si une valeur est
+indisponible en usage manuel, le script explique son rôle et le format attendu.
+Sans --apply, aucune connexion SSH n'est effectuée.
 HELP
 }
 
 while (($# > 0)); do
     case "$1" in
         --backend)
-            [[ $# -ge 2 ]] || { printf 'Valeur manquante pour --backend.\n' >&2; exit 2; }
+            [[ $# -ge 2 ]] || { p5_error 'Valeur manquante pour --backend.'; exit 2; }
             BACKEND="$2"
             shift 2
             ;;
+        --url)
+            [[ $# -ge 2 ]] || { p5_error 'Valeur manquante pour --url.'; exit 2; }
+            HAPROXY_URL="$2"
+            shift 2
+            ;;
+        --backend-host)
+            [[ $# -ge 2 ]] || { p5_error 'Valeur manquante pour --backend-host.'; exit 2; }
+            BACKEND_IP="$2"
+            shift 2
+            ;;
         --requests)
-            [[ $# -ge 2 ]] || { printf 'Valeur manquante pour --requests.\n' >&2; exit 2; }
+            [[ $# -ge 2 ]] || { p5_error 'Valeur manquante pour --requests.'; exit 2; }
             REQUESTS="$2"
             shift 2
             ;;
         --ssh-key)
-            [[ $# -ge 2 ]] || { printf 'Valeur manquante pour --ssh-key.\n' >&2; exit 2; }
+            [[ $# -ge 2 ]] || { p5_error 'Valeur manquante pour --ssh-key.'; exit 2; }
             SSH_KEY="$2"
             shift 2
             ;;
         --ssh-user)
-            [[ $# -ge 2 ]] || { printf 'Valeur manquante pour --ssh-user.\n' >&2; exit 2; }
+            [[ $# -ge 2 ]] || { p5_error 'Valeur manquante pour --ssh-user.'; exit 2; }
             SSH_USER="$2"
             shift 2
             ;;
         --wait-down)
-            [[ $# -ge 2 ]] || { printf 'Valeur manquante pour --wait-down.\n' >&2; exit 2; }
+            [[ $# -ge 2 ]] || { p5_error 'Valeur manquante pour --wait-down.'; exit 2; }
             WAIT_DOWN="$2"
             shift 2
             ;;
         --wait-up)
-            [[ $# -ge 2 ]] || { printf 'Valeur manquante pour --wait-up.\n' >&2; exit 2; }
+            [[ $# -ge 2 ]] || { p5_error 'Valeur manquante pour --wait-up.'; exit 2; }
             WAIT_UP="$2"
             shift 2
             ;;
         --proof-dir)
-            [[ $# -ge 2 ]] || { printf 'Valeur manquante pour --proof-dir.\n' >&2; exit 2; }
+            [[ $# -ge 2 ]] || { p5_error 'Valeur manquante pour --proof-dir.'; exit 2; }
             PROOF_DIR="$2"
             shift 2
             ;;
@@ -80,7 +100,7 @@ while (($# > 0)); do
             exit 0
             ;;
         *)
-            printf 'Option inconnue : %s\n' "$1" >&2
+            p5_error "Option inconnue : $1"
             show_help >&2
             exit 2
             ;;
@@ -88,19 +108,20 @@ while (($# > 0)); do
 done
 
 [[ "$BACKEND" == 1 || "$BACKEND" == 2 ]] || {
-    printf '%s\n' '--backend doit valoir 1 ou 2.' >&2
+    p5_error '--backend doit valoir 1 ou 2.'
     exit 2
 }
 for value in "$REQUESTS" "$WAIT_DOWN" "$WAIT_UP"; do
     [[ "$value" =~ ^[1-9][0-9]*$ ]] || {
-        printf 'Les nombres de requêtes et délais doivent être positifs.\n' >&2
+        p5_error 'Les nombres de requêtes et délais doivent être positifs.'
         exit 2
     }
 done
 
 for command_name in terraform curl awk; do
     command -v "$command_name" >/dev/null 2>&1 || {
-        printf 'Commande requise absente : %s\n' "$command_name" >&2
+        p5_error "Commande requise absente : $command_name"
+        p5_action 'Lancez : bash scripts/commands/p5.sh prepare'
         exit 1
     }
 done
@@ -115,28 +136,62 @@ if [[ -z "$SSH_KEY" && -r "$CONFIG_FILE" ]]; then
     fi
 fi
 SSH_KEY="${SSH_KEY:-$HOME/.ssh/p5-key}"
+SSH_KEY="${SSH_KEY/#\~/$HOME}"
 
 if [[ "$APPLY" == true ]]; then
     command -v ssh >/dev/null 2>&1 || {
-        printf 'Commande requise absente : ssh\n' >&2
+        p5_error 'Commande requise absente : ssh'
+        p5_action 'Lancez : bash scripts/commands/p5.sh prepare'
         exit 1
     }
-    [[ -f "$SSH_KEY" ]] || {
-        printf 'Clé SSH absente : %s\n' "$SSH_KEY" >&2
-        exit 1
-    }
+    if [[ ! -f "$SSH_KEY" ]]; then
+        p5_unknown 'Clé SSH privée pour le backend HAProxy' "fichier absent : $SSH_KEY" \
+            'Indiquez la clé privée correspondant aux EC2 de l’exercice 3.'
+        p5_prompt_value SSH_KEY \
+            'Chemin de la clé SSH privée' \
+            'Le test réel doit arrêter puis redémarrer le conteneur sur un backend.' \
+            'chemin absolu vers un fichier existant' "$HOME/.ssh/p5-key" '' p5_validate_existing_file \
+            "Saisissez-la ici, ou relancez avec : --ssh-key $HOME/.ssh/p5-key"
+    fi
 fi
 
-HAPROXY_URL="$(terraform -chdir="$PROJECT_ROOT/terraform/exercice-3" \
-    output -raw haproxy_url 2>/dev/null || true)"
-BACKEND_IP="$(terraform -chdir="$PROJECT_ROOT/terraform/exercice-3" \
-    output -raw "hello_${BACKEND}_public_ip" 2>/dev/null || true)"
-if [[ ! "$HAPROXY_URL" =~ ^http://[A-Za-z0-9.-]+(:[0-9]+)?$ ]]; then
-    printf 'Sortie Terraform haproxy_url invalide.\n' >&2
+if [[ -z "$HAPROXY_URL" ]]; then
+    HAPROXY_URL="$(terraform -chdir="$PROJECT_ROOT/terraform/exercice-3" \
+        output -raw haproxy_url 2>/dev/null || true)"
+    if ! p5_validate_http_url "${HAPROXY_URL%/}"; then
+        p5_unknown 'URL HAProxy' \
+            'la sortie Terraform haproxy_url n’est pas disponible' \
+            'Pour le parcours normal, relancez p5.sh ex3. Pour un diagnostic manuel, saisissez l’URL du load balancer.'
+        p5_prompt_value HAPROXY_URL \
+            'URL HTTP de HAProxy' \
+            'Le test envoie des requêtes avant, pendant et après la panne.' \
+            'URL HTTP complète sans chemin' 'http://198.51.100.60' '' p5_validate_http_url \
+            'Saisissez-la ici, ou relancez avec : --url http://198.51.100.60'
+    fi
+fi
+HAPROXY_URL="${HAPROXY_URL%/}"
+
+if [[ -z "$BACKEND_IP" ]]; then
+    BACKEND_IP="$(terraform -chdir="$PROJECT_ROOT/terraform/exercice-3" \
+        output -raw "hello_${BACKEND}_public_ip" 2>/dev/null || true)"
+    if ! p5_validate_ipv4 "$BACKEND_IP"; then
+        p5_unknown "IPv4 publique du backend $BACKEND" \
+            "la sortie Terraform hello_${BACKEND}_public_ip n’est pas disponible" \
+            'Pour le parcours normal, relancez p5.sh ex3. Pour un diagnostic manuel, saisissez l’IPv4 du backend réellement ciblé.'
+        p5_prompt_value BACKEND_IP \
+            "IPv4 publique du backend $BACKEND" \
+            'Cette adresse est utilisée uniquement pour la connexion SSH qui arrête/redémarre nginx-hello.' \
+            'IPv4 seule' '198.51.100.61' '' p5_validate_ipv4 \
+            'Saisissez-la ici, ou relancez avec : --backend-host 198.51.100.61'
+    fi
+fi
+
+if ! p5_validate_http_url "$HAPROXY_URL"; then
+    p5_error "URL HAProxy invalide : $HAPROXY_URL"
     exit 1
 fi
-if [[ ! "$BACKEND_IP" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]]; then
-    printf 'Adresse publique du backend invalide.\n' >&2
+if ! p5_validate_ipv4 "$BACKEND_IP"; then
+    p5_error "Adresse publique du backend invalide : $BACKEND_IP"
     exit 1
 fi
 
