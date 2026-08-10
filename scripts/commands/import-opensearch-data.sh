@@ -4,12 +4,17 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
+LIB_FILE="$PROJECT_ROOT/scripts/lib/p5-runtime.sh"
 INPUT_FILE="$PROJECT_ROOT/terraform/exercice-2/samples/nginx-access.log.sample"
 TEMPLATE_FILE="$PROJECT_ROOT/terraform/exercice-2/opensearch/index-template.json"
 CONVERTER="$PROJECT_ROOT/scripts/tools/convert-nginx-logs.py"
 PROOF_DIR="$PROJECT_ROOT/proofs/runtime/exercice-2"
 ENDPOINT=""
 APPLY=false
+
+# shellcheck source=../lib/p5-runtime.sh
+source "$LIB_FILE"
+p5_session_start "import-opensearch-data"
 
 show_help() {
     cat <<'HELP'
@@ -23,25 +28,25 @@ Options:
   -h, --help          afficher cette aide
 
 Sans --apply, le script valide et convertit les données sans contacter OpenSearch.
-Avec --apply, l'état distant est d'abord lu : un template identique n'est pas
-réécrit et un jeu de documents déjà présent n'est pas réimporté.
+Avec --apply, l'endpoint est lu depuis Terraform. S'il est indisponible en usage
+manuel, le script explique le format autorisé et vous permet de le renseigner.
 HELP
 }
 
 while (($# > 0)); do
     case "$1" in
         --input)
-            [[ $# -ge 2 ]] || { printf 'Valeur manquante pour --input.\n' >&2; exit 2; }
+            [[ $# -ge 2 ]] || { p5_error 'Valeur manquante pour --input.'; exit 2; }
             INPUT_FILE="$2"
             shift 2
             ;;
         --endpoint)
-            [[ $# -ge 2 ]] || { printf 'Valeur manquante pour --endpoint.\n' >&2; exit 2; }
+            [[ $# -ge 2 ]] || { p5_error 'Valeur manquante pour --endpoint.'; exit 2; }
             ENDPOINT="$2"
             shift 2
             ;;
         --proof-dir)
-            [[ $# -ge 2 ]] || { printf 'Valeur manquante pour --proof-dir.\n' >&2; exit 2; }
+            [[ $# -ge 2 ]] || { p5_error 'Valeur manquante pour --proof-dir.'; exit 2; }
             PROOF_DIR="$2"
             shift 2
             ;;
@@ -54,7 +59,7 @@ while (($# > 0)); do
             exit 0
             ;;
         *)
-            printf 'Option inconnue : %s\n' "$1" >&2
+            p5_error "Option inconnue : $1"
             show_help >&2
             exit 2
             ;;
@@ -63,15 +68,20 @@ done
 
 for command_name in python3 curl jq; do
     command -v "$command_name" >/dev/null 2>&1 || {
-        printf 'Commande requise absente : %s\n' "$command_name" >&2
+        p5_error "Commande requise absente : $command_name"
+        p5_action 'Lancez : bash scripts/commands/p5.sh prepare'
         exit 1
     }
 done
 
-[[ -f "$INPUT_FILE" ]] || { printf 'Fichier de logs absent : %s\n' "$INPUT_FILE" >&2; exit 1; }
-[[ -f "$TEMPLATE_FILE" ]] || { printf 'Template absent : %s\n' "$TEMPLATE_FILE" >&2; exit 1; }
+[[ -f "$INPUT_FILE" ]] || {
+    p5_error "Fichier de logs absent : $INPUT_FILE"
+    p5_action 'Pour les vrais logs, relancez : bash scripts/commands/p5.sh ex1'
+    exit 1
+}
+[[ -f "$TEMPLATE_FILE" ]] || { p5_error "Template absent : $TEMPLATE_FILE"; exit 1; }
 [[ -x "$CONVERTER" || -f "$CONVERTER" ]] || {
-    printf 'Convertisseur absent : %s\n' "$CONVERTER" >&2
+    p5_error "Convertisseur absent : $CONVERTER"
     exit 1
 }
 
@@ -103,7 +113,7 @@ REMOTE_TEMPLATE="$TMP_DIR/remote-template.json"
 python3 "$CONVERTER" "$INPUT_FILE" --output "$BULK_FILE"
 LINE_COUNT="$(wc -l < "$BULK_FILE")"
 if ((LINE_COUNT == 0 || LINE_COUNT % 2 != 0)); then
-    printf 'NDJSON Bulk invalide : %s lignes.\n' "$LINE_COUNT" >&2
+    p5_error "NDJSON Bulk invalide : $LINE_COUNT lignes."
     exit 1
 fi
 DOCUMENT_COUNT=$((LINE_COUNT / 2))
@@ -125,11 +135,22 @@ fi
 if [[ -z "$ENDPOINT" ]]; then
     ENDPOINT="$(terraform -chdir="$PROJECT_ROOT/terraform/exercice-2" \
         output -raw opensearch_endpoint 2>/dev/null || true)"
+    if ! valid_endpoint "${ENDPOINT%/}"; then
+        p5_unknown 'Endpoint OpenSearch' \
+            'la sortie Terraform opensearch_endpoint est absente ou illisible' \
+            'Pour le parcours normal, relancez p5.sh ex2. Pour un diagnostic manuel, vous pouvez saisir un endpoint connu.'
+        p5_prompt_value ENDPOINT \
+            'Endpoint OpenSearch' \
+            'Le script doit joindre le domaine dans lequel créer/vérifier le template et les documents.' \
+            'https://domaine-opensearch AWS ; HTTP uniquement pour localhost' \
+            'https://search-p5-example.us-east-1.es.amazonaws.com' '' valid_endpoint \
+            'Saisissez-le ici, ou relancez avec : --endpoint https://votre-endpoint'
+    fi
 fi
 ENDPOINT="${ENDPOINT%/}"
 if ! valid_endpoint "$ENDPOINT"; then
-    printf 'Endpoint OpenSearch invalide ou absent : %s\n' "$ENDPOINT" >&2
-    printf 'HTTP sans TLS est accepté uniquement sur localhost pour les tests.\n' >&2
+    p5_error "Endpoint OpenSearch invalide : $ENDPOINT"
+    p5_action 'HTTPS est obligatoire pour AWS ; HTTP est accepté uniquement sur localhost pour les tests.'
     exit 1
 fi
 
