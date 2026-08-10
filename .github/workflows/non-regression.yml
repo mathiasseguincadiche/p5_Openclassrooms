@@ -29,3 +29,6 @@ jobs:
 
       - name: Vérifier l'authentification AWS automatisée
         run: bash scripts/tests/test-aws-auth.sh
+
+      - name: Vérifier la convergence et la réexécution
+        run: bash scripts/tests/test-convergence-contract.sh
