@@ -363,6 +363,18 @@ Le dépôt protège notamment contre :
 
 Politique complète : [SECURITY.md](SECURITY.md).
 
+## Schémas du parcours
+
+Les six schémas pédagogiques restent référencés depuis le point d'entrée du
+projet :
+
+- [Vue d'ensemble](docs/schemas/vue-ensemble.svg)
+- [Préparation VM et AWS](docs/schemas/etape-0.svg)
+- [Exercice 1](docs/schemas/exercice-1.svg)
+- [Exercice 2](docs/schemas/exercice-2.svg)
+- [Exercice 3](docs/schemas/exercice-3.svg)
+- [Finalisation](docs/schemas/finalisation/finalisation.svg)
+
 ## Documentation
 
 | Besoin | Document |
