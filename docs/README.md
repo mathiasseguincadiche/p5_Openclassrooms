@@ -7,6 +7,11 @@ manuellement.
 Le périmètre retenu est **100 % AWS**. La VM Ubuntu Server sert de poste de
 contrôle ; les infrastructures évaluées sont créées dans AWS.
 
+Le centre de commande applique un modèle de **convergence** : il observe l'état
+réel avant de modifier quoi que ce soit, compare cet état à la cible puis ne
+corrige que le delta. Voir
+[Convergence et réexécution intelligente](convergence-et-reexecution.md).
+
 ## Exécution recommandée
 
 Le point d'entrée principal du projet est :
@@ -15,7 +20,13 @@ Le point d'entrée principal du projet est :
 bash scripts/commands/p5.sh
 ```
 
-Pour exécuter le parcours technique complet :
+Pour observer l'état actuel sans aucune mutation :
+
+```bash
+bash scripts/commands/p5.sh inspect
+```
+
+Pour exécuter ou réexécuter le parcours technique complet :
 
 ```bash
 bash scripts/commands/p5.sh all
@@ -23,15 +34,16 @@ bash scripts/commands/p5.sh all
 
 Le centre de commande prend en charge :
 
-1. préparation de la VM et du compte AWS ;
-2. configuration locale, tfvars et budget ;
-3. exercice 1 — Terraform, Ansible, Angular et NGINX ;
-4. preuve d'idempotence Ansible ;
-5. génération et collecte des logs NGINX réels ;
-6. exercice 2 — OpenSearch, import reproductible et import des logs réels ;
-7. checkpoint humain du dashboard ;
-8. exercice 3 — HAProxy, round-robin, panne et reprise ;
-9. diagnostics et contrôle de structure des livrables.
+1. inspection de l'état existant ;
+2. convergence de la VM et du compte AWS ;
+3. configuration locale, tfvars et budget ;
+4. exercice 1 — Terraform, Ansible, Angular et NGINX ;
+5. preuve d'idempotence Ansible ;
+6. génération et collecte des logs NGINX réels ;
+7. exercice 2 — OpenSearch, import reproductible et import des logs réels ;
+8. checkpoint humain du dashboard ;
+9. exercice 3 — HAProxy, round-robin, panne et reprise ;
+10. diagnostics et contrôle de structure des livrables.
 
 Le runbook complet est :
 [01 — parcours d'exécution de bout en bout](01-parcours-debutant.md).
@@ -41,7 +53,8 @@ Le runbook complet est :
 | Besoin | Commande |
 | --- | --- |
 | Menu | `bash scripts/commands/p5.sh` |
-| Préparer | `bash scripts/commands/p5.sh prepare` |
+| Inspecter sans modifier | `bash scripts/commands/p5.sh inspect` |
+| Préparer / converger | `bash scripts/commands/p5.sh prepare` |
 | Vérifier l'état | `bash scripts/commands/p5.sh status` |
 | Exercice 1 | `bash scripts/commands/p5.sh ex1` |
 | Exercice 2 | `bash scripts/commands/p5.sh ex2` |
@@ -55,9 +68,40 @@ Le runbook complet est :
 Le mode `--yes` ne contourne ni les validations de sécurité impossibles à prouver
 par la CLI, ni le checkpoint du dashboard, ni la confirmation `DETRUIRE`.
 
+## Principe de réexécution
+
+Une seconde exécution de `p5.sh all` ne signifie pas « tout refaire ». Pour les
+éléments persistants, la règle est :
+
+```text
+inspecter → comparer → corriger seulement le delta → vérifier → journaliser
+```
+
+Exemples :
+
+- VM conforme : aucun paquet réinstallé ;
+- session AWS valide : aucune reconnexion ;
+- budget conforme : aucune mutation Budget ;
+- tfvars identiques : aucune réécriture ;
+- plan Terraform vide : aucun `apply` ;
+- artefact Angular inchangé : pas de `npm ci` ni de build ;
+- inventaire identique : aucune réécriture ;
+- template/documents OpenSearch déjà conformes : PUT/Bulk ignorés ;
+- état Terraform vide au nettoyage : `destroy` ignoré.
+
+Les **tests fonctionnels**, eux, peuvent être rejoués afin de vérifier que l'état
+actuel est réellement fonctionnel. Cela évite de retourner un faux `OK` fondé sur
+une ancienne exécution.
+
+Détails :
+[Convergence et réexécution intelligente](convergence-et-reexecution.md).
+
 ## Parcours global
 
 ```text
+Inspection de l'état réel
+        │
+        ▼
 Étape 0A / 0B
 VM + AWS + budget + tfvars
         │
@@ -99,14 +143,16 @@ NETTOYAGE AWS COMPLET
 
 Lire :
 
-1. [Parcours automatisé et reprise](01-parcours-debutant.md)
-2. [Préparation de la VM](00-preparation-environnement.md)
-3. [Préparation du compte AWS](00b-preparation-compte-aws.md)
-4. [Validation, preuves et nettoyage](validation-preuves-nettoyage.md)
+1. [Convergence et réexécution intelligente](convergence-et-reexecution.md)
+2. [Parcours automatisé et reprise](01-parcours-debutant.md)
+3. [Préparation de la VM](00-preparation-environnement.md)
+4. [Préparation du compte AWS](00b-preparation-compte-aws.md)
+5. [Validation, preuves et nettoyage](validation-preuves-nettoyage.md)
 
 Puis lancer :
 
 ```bash
+bash scripts/commands/p5.sh inspect
 bash scripts/commands/p5.sh all
 ```
 
@@ -132,6 +178,7 @@ sous-jacents et diagnostiquer une étape isolée.
 Commencer par :
 
 ```bash
+bash scripts/commands/p5.sh inspect
 bash scripts/commands/p5.sh logs
 bash scripts/commands/collect-diagnostics.sh
 ```
@@ -162,6 +209,7 @@ bash scripts/commands/p5.sh finalize
 | Sujet | Source de vérité |
 | --- | --- |
 | Point d'entrée opérateur | `scripts/commands/p5.sh` |
+| Modèle de convergence | `docs/convergence-et-reexecution.md` |
 | Runtime et logs opérateur | `scripts/lib/p5-runtime.sh` |
 | Ordre global | `docs/01-parcours-debutant.md` |
 | Périmètre | `docs/00-cadre-officiel.md` |
@@ -174,6 +222,7 @@ bash scripts/commands/p5.sh finalize
 | Commandes spécialisées | `scripts/commands/` |
 | Preuves techniques | `proofs/runtime/` local |
 | Journaux d'exécution | `logs/` local |
+| État local d'optimisation | `.p5/` local, ignoré |
 | Livrables | `docs/livrables/` |
 | Sécurité | `SECURITY.md` |
 | Décisions | `docs/suivi/decisions-techniques.md` |
@@ -194,7 +243,8 @@ sync-terraform-tfvars.sh
 ```
 
 Le centre de commande appelle cette synchronisation automatiquement pendant
-`prepare`. Pour un diagnostic manuel :
+`prepare`. Il compare le contenu attendu au contenu existant avant toute écriture.
+Pour un diagnostic manuel :
 
 ```bash
 bash scripts/commands/sync-terraform-tfvars.sh --check
@@ -212,6 +262,12 @@ Avec OpenSearch local :
 
 ```bash
 bash scripts/commands/p5.sh status --full-validation
+```
+
+Le contrat de réexécution est vérifié par :
+
+```bash
+bash scripts/tests/test-convergence-contract.sh
 ```
 
 La CI contrôle également la syntaxe, les intégrations locales, l'orchestrateur,
@@ -236,6 +292,7 @@ pour lancer le lab :
 ## Règles documentaires
 
 - `p5.sh` est la voie normale d'exécution ;
+- `p5.sh inspect` est la voie normale d'observation sans mutation ;
 - les guides détaillés restent la référence pédagogique et de dépannage ;
 - une seule source de vérité est conservée par sujet ;
 - aucune preuve fictive n'est présentée comme une exécution réelle ;
