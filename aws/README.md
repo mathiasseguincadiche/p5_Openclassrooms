@@ -25,40 +25,118 @@ Avant le premier `terraform apply`, le dépôt cherche à réduire quatre risque
 3. exposer inutilement SSH ou OpenSearch ;
 4. oublier une ressource payante après la démonstration.
 
-## Identité recommandée
+## Connexion AWS recommandée
 
-- compte root réservé aux opérations qui l'exigent ;
-- MFA root vérifié manuellement ;
+Le chemin normal depuis la VM est désormais :
+
+```bash
+bash scripts/commands/p5.sh all
+```
+
+Pendant `prepare`, le projet appelle automatiquement :
+
+```text
+configure-lab.sh
+        ↓
+aws-auth.sh
+        ↓
+AWS CLI
+```
+
+Si aucune session n'est disponible, `aws-auth.sh` propose par défaut une
+connexion avec les identifiants de console AWS :
+
+```bash
+aws login --remote --profile p5-signin
+```
+
+La VM affiche une URL et les instructions d'autorisation. L'utilisateur ouvre
+AWS dans son navigateur habituel et saisit ses identifiants directement chez
+AWS. Le dépôt ne voit jamais le mot de passe et ne stocke aucune clé d'accès.
+
+AWS CLI crée une session temporaire. Le projet prépare ensuite `p5-lab` avec un
+`credential_process` qui exporte ces credentials :
+
+```text
+[profile p5-lab]
+credential_process = aws configure export-credentials --profile p5-signin --format process
+region = us-east-1
+```
+
+Ce pont est volontaire : AWS CLI et Terraform utilisent ainsi la même session
+temporaire, y compris avec des outils qui ne savent pas lire directement une
+session `aws login`.
+
+## Prérequis de l'identité
+
+Le projet refuse le compte root pour l'exécution quotidienne.
+
+Pour le mode `aws login`, l'utilisateur ou rôle utilisé dans la console doit
+avoir :
+
+- la politique AWS gérée `SignInLocalDevelopmentAccess` ;
+- les permissions nécessaires au P5, documentées par
+  [`iam/p5-lab-policy.json`](iam/p5-lab-policy.json).
+
+Le rattachement des politiques à l'identité reste une opération administrative
+AWS. Le dépôt ne crée pas automatiquement un utilisateur IAM et n'utilise pas le
+compte root pour fabriquer une identité plus privilégiée.
+
+Autres modes disponibles :
+
+```bash
+bash scripts/commands/aws-auth.sh --mode sso
+bash scripts/commands/aws-auth.sh --mode existing
+```
+
+Le premier utilise IAM Identity Center. Le second accepte un profil existant
+uniquement s'il fournit des credentials temporaires avec expiration.
+
+## Sécurité du compte root
+
+Le compte root reste réservé aux opérations qui l'exigent. Avant le lab :
+
+- MFA root activé et vérifié ;
 - aucune clé d'accès root ;
-- profil quotidien `p5-lab` ;
-- IAM Identity Center ou rôle avec session temporaire de préférence ;
-- aucun credential enregistré dans le dépôt.
+- contacts de récupération/facturation vérifiés ;
+- identité quotidienne non root prête.
+
+Ces points restent des validations humaines explicites dans le parcours.
+
+## Politique du lab
 
 La politique [`iam/p5-lab-policy.json`](iam/p5-lab-policy.json) constitue un socle
 pédagogique limité aux services nécessaires au P5 : EC2/VPC, OpenSearch,
 Service Quotas, AWS Budgets et lectures d'identité.
 
-Son rattachement à un rôle ou un permission set reste une action administrative
-explicite. Le dépôt ne crée pas d'utilisateur IAM et ne stocke aucun secret.
+Elle est distincte de `SignInLocalDevelopmentAccess` :
 
-## Configuration du compte
+- `SignInLocalDevelopmentAccess` permet à `aws login` d'obtenir une session
+  temporaire ;
+- `p5-lab-policy.json` permet ensuite au projet de lire/créer/supprimer les
+  ressources nécessaires au lab.
 
-Créer d'abord la source de configuration locale :
+## Configuration locale
 
-```bash
-cp environment/aws-readiness.env.example environment/aws-readiness.env
-$EDITOR environment/aws-readiness.env
+`configure-lab.sh` crée automatiquement, si nécessaire :
+
+```text
+environment/aws-readiness.env
 ```
 
-Puis synchroniser Terraform :
+Ce fichier reste local et ignoré par Git. Il contient des paramètres, jamais des
+clés AWS :
 
-```bash
-bash scripts/commands/sync-terraform-tfvars.sh --apply
-bash scripts/commands/sync-terraform-tfvars.sh --check
-```
+- profil et région ;
+- compte AWS détecté ;
+- méthode d'authentification ;
+- IPv4 publique `/32` ;
+- clé SSH publique ;
+- paramètres EC2/OpenSearch ;
+- budget ;
+- confirmations de sécurité.
 
-Le compte AWS, la région et l'adresse `/32` doivent être cohérents dans les trois
-modules Terraform.
+Les trois `terraform.tfvars` sont ensuite générés depuis cette source unique.
 
 ## Budget
 
@@ -77,9 +155,6 @@ Création volontaire :
 ```bash
 ./scripts/commands/setup-aws-guardrails.sh --apply
 ```
-
-Le nom, la limite et l'adresse de notification proviennent de
-`environment/aws-readiness.env`.
 
 Le budget reste volontairement actif après la destruction du lab : il sert de
 filet de sécurité contre une ressource oubliée.
@@ -109,7 +184,7 @@ Le contrôle est non destructif. Il vérifie notamment :
 - profil et région ;
 - compte actif ;
 - identité non root ;
-- source de credentials temporaires lorsque le mode strict l'exige ;
+- source de credentials temporaires ;
 - confirmations de sécurité manuelles ;
 - IPv4 publique actuelle en `/32` ;
 - zones de disponibilité ;
@@ -120,8 +195,19 @@ Le contrôle est non destructif. Il vérifie notamment :
 - cohérence des `terraform.tfvars` ;
 - collisions ou dépendances propres à l'étape.
 
-Un `KO` interdit de continuer. Les avertissements doivent être compris avant la
-création de ressources.
+Un `KO` interdit de continuer.
+
+## OpenSearch
+
+Le vrai exercice utilise **Amazon OpenSearch Service**, créé par Terraform.
+Aucun Elasticsearch/OpenSearch système n'a besoin d'être installé dans Ubuntu.
+
+La VM contient Docker afin de pouvoir lancer, lors des validations locales, un
+OpenSearch éphémère servant uniquement à tester le template, l'import Bulk et
+les agrégations. Ce conteneur n'est pas l'infrastructure remise pour l'exercice.
+
+Le domaine AWS est configuré avec les garde-fous du projet, notamment HTTPS/TLS,
+chiffrement et limitation d'accès à l'IPv4 `/32` du lab.
 
 ## Garde-fous Terraform complémentaires
 
@@ -140,20 +226,15 @@ Purpose   = training-lab
 Exercise  = 1 | 2 | 3
 ```
 
-Les modules refusent également les valeurs d'exemple du compte et de l'adresse
-IP d'administration.
-
 Les instances EC2 imposent IMDSv2 et des volumes racine chiffrés. OpenSearch
 impose HTTPS, TLS 1.2 minimum, chiffrement au repos et entre les nœuds.
 
 ## Nettoyage
 
-La fermeture complète du lab est volontairement séparée des contrôles de
-préparation :
+La fermeture complète du lab reste séparée de la préparation :
 
 ```bash
-./scripts/commands/destroy-aws.sh
-./scripts/commands/check-aws-cleanup.sh
+bash scripts/commands/p5.sh cleanup
 ```
 
 L'ordre de destruction est :
@@ -162,15 +243,11 @@ L'ordre de destruction est :
 Exercice 3 → Exercice 2 → Exercice 1
 ```
 
-L'audit final recherche les ressources P5 restantes dans le compte et la région
-ciblés. Le verdict recherché est :
+L'audit final recherche les ressources P5 restantes. Le verdict recherché est :
 
 ```text
 NETTOYAGE AWS COMPLET
 ```
-
-Ne pas utiliser cet audit comme validation d'un nettoyage partiel tant que des
-ressources P5 doivent encore rester actives pour un exercice suivant.
 
 ## Données interdites
 
@@ -183,6 +260,9 @@ Ne jamais versionner :
 - `terraform.tfvars` ;
 - états Terraform ;
 - sorties runtime contenant des identifiants ou endpoints non relus.
+
+Les caches temporaires AWS restent gérés sous le répertoire utilisateur de la VM
+par l'AWS CLI, jamais dans le dépôt.
 
 Contrôle local :
 
