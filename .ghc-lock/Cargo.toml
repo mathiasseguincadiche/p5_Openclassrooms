@@ -1,3 +1,4 @@
+# Temporary isolated manifest used only to generate the GHC RC lockfile.
 [package]
 name = "ghc-system-service"
 version = "0.1.0"
