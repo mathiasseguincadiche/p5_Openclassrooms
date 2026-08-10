@@ -1,51 +1,146 @@
 # Documentation du projet P5
 
-Cette documentation est organisée pour qu’une personne découvrant le dépôt
-puisse répondre rapidement à cinq questions :
+Cette documentation décrit à la fois le **parcours automatisé recommandé** et les
+procédures détaillées permettant de comprendre ou rejouer chaque étape
+manuellement.
 
-1. **Quel est le but du projet ?**
-2. **Comment l’architecture est-elle construite ?**
-3. **Dans quel ordre faut-il exécuter les étapes ?**
-4. **Quelles preuves faut-il produire ?**
-5. **Comment diagnostiquer et nettoyer correctement le lab ?**
+Le périmètre retenu est **100 % AWS**. La VM Ubuntu Server sert de poste de
+contrôle ; les infrastructures évaluées sont créées dans AWS.
 
-Le parcours retenu pour cette implémentation est **100 % AWS**. La VM Ubuntu
-Server sert de poste de contrôle DevOps ; les infrastructures évaluées sont
-créées dans AWS.
+## Exécution recommandée
+
+Le point d'entrée principal du projet est :
+
+```bash
+bash scripts/commands/p5.sh
+```
+
+Pour exécuter le parcours technique complet :
+
+```bash
+bash scripts/commands/p5.sh all
+```
+
+Le centre de commande prend en charge :
+
+1. préparation de la VM et du compte AWS ;
+2. configuration locale, tfvars et budget ;
+3. exercice 1 — Terraform, Ansible, Angular et NGINX ;
+4. preuve d'idempotence Ansible ;
+5. génération et collecte des logs NGINX réels ;
+6. exercice 2 — OpenSearch, import reproductible et import des logs réels ;
+7. checkpoint humain du dashboard ;
+8. exercice 3 — HAProxy, round-robin, panne et reprise ;
+9. diagnostics et contrôle de structure des livrables.
+
+Le runbook complet est :
+[01 — parcours d'exécution de bout en bout](01-parcours-debutant.md).
+
+## Commandes principales
+
+| Besoin | Commande |
+| --- | --- |
+| Menu | `bash scripts/commands/p5.sh` |
+| Préparer | `bash scripts/commands/p5.sh prepare` |
+| Vérifier l'état | `bash scripts/commands/p5.sh status` |
+| Exercice 1 | `bash scripts/commands/p5.sh ex1` |
+| Exercice 2 | `bash scripts/commands/p5.sh ex2` |
+| Exercice 3 | `bash scripts/commands/p5.sh ex3` |
+| Tout exécuter | `bash scripts/commands/p5.sh all` |
+| Validation locale complète | `bash scripts/commands/p5.sh status --full-validation` |
+| Finaliser | `bash scripts/commands/p5.sh finalize` |
+| Voir les logs | `bash scripts/commands/p5.sh logs` |
+| Nettoyer AWS | `bash scripts/commands/p5.sh cleanup` |
+
+Le mode `--yes` ne contourne ni les validations de sécurité impossibles à prouver
+par la CLI, ni le checkpoint du dashboard, ni la confirmation `DETRUIRE`.
+
+## Parcours global
+
+```text
+Étape 0A / 0B
+VM + AWS + budget + tfvars
+        │
+        ▼
+GO AWS + GO TERRAFORM
+        │
+        ▼
+Exercice 1
+Terraform → EC2 → Ansible → NGINX → Angular
+        │                    │
+        │                    ├─ seconde exécution → changed=0
+        │                    └─ logs NGINX réels
+        │
+        ├──────────────────────────► Exercice 2
+        │                            OpenSearch
+        │                            ├─ jeu reproductible
+        │                            ├─ logs NGINX réels
+        │                            └─ dashboard manuel
+        │
+        └──────────────────────────► Exercice 3
+                                     HAProxy → 2 backends
+                                     round-robin → panne → reprise
+        │
+        ▼
+Diagnostics + preuves + livrables
+        │
+        ▼
+Destruction 3 → 2 → 1
+        │
+        ▼
+NETTOYAGE AWS COMPLET
+```
+
+![Vue d'ensemble](schemas/vue-ensemble.svg)
 
 ## Par où commencer ?
 
-### Je découvre le dépôt
+### Je veux exécuter le projet
 
-Lire dans cet ordre :
+Lire :
+
+1. [Parcours automatisé et reprise](01-parcours-debutant.md)
+2. [Préparation de la VM](00-preparation-environnement.md)
+3. [Préparation du compte AWS](00b-preparation-compte-aws.md)
+4. [Validation, preuves et nettoyage](validation-preuves-nettoyage.md)
+
+Puis lancer :
+
+```bash
+bash scripts/commands/p5.sh all
+```
+
+### Je veux comprendre l'architecture
+
+Lire :
 
 1. [Cadre officiel et périmètre](00-cadre-officiel.md)
 2. [Architecture technique et flux](architecture-et-flux.md)
-3. [Parcours d’exécution de bout en bout](01-parcours-debutant.md)
-4. [Correspondance consignes → code → preuves](02-correspondance-consignes-depot.md)
+3. [Correspondance consignes → code → preuves](02-correspondance-consignes-depot.md)
 
-### Je veux exécuter le projet
+### Je veux comprendre un exercice en détail
 
-1. [Étape 0A — préparer la VM](00-preparation-environnement.md)
-2. [Étape 0B — préparer AWS](00b-preparation-compte-aws.md)
-3. [Exercice 1 — Terraform, Ansible et Angular](exercices/01-terraform-ansible.md)
-4. [Exercice 2 — Amazon OpenSearch](exercices/02-elk-opensearch.md)
-5. [Exercice 3 — HAProxy](exercices/03-haproxy.md)
-6. [Validation, preuves et nettoyage](validation-preuves-nettoyage.md)
+- [Exercice 1 — Terraform, Ansible, NGINX et Angular](exercices/01-terraform-ansible.md)
+- [Exercice 2 — Logs NGINX et OpenSearch](exercices/02-elk-opensearch.md)
+- [Exercice 3 — HAProxy](exercices/03-haproxy.md)
+
+Ces guides conservent les commandes détaillées pour comprendre les mécanismes
+sous-jacents et diagnostiquer une étape isolée.
 
 ### Je suis bloqué
 
-Utiliser :
+Commencer par :
+
+```bash
+bash scripts/commands/p5.sh logs
+bash scripts/commands/collect-diagnostics.sh
+```
+
+Puis consulter :
 
 - [Troubleshooting](troubleshooting.md)
 - [Scripts et commandes](../scripts/README.md)
-- [Diagnostic partageable](../proofs/README.md)
-
-Commande de premier diagnostic :
-
-```bash
-bash scripts/commands/collect-diagnostics.sh
-```
+- [Convention des preuves](../proofs/README.md)
 
 ### Je prépare la remise
 
@@ -56,69 +151,36 @@ Lire :
 - [Validation, publication et nettoyage](validation-preuves-nettoyage.md)
 - [Politique de sécurité](../SECURITY.md)
 
-## Parcours global
+Commande :
 
-```text
-Étape 0A
-Préparer la VM
-    │
-    ▼
-Étape 0B
-Sécuriser et valider AWS
-    │
-    ▼
-GO AWS + GO TERRAFORM
-    │
-    ▼
-Exercice 1
-Terraform → EC2 → Ansible → NGINX → Angular
-    │                         │
-    │                         └─ logs NGINX réels
-    │
-    ├──────────────────────────────► Exercice 3
-    │                                HAProxy → 2 backends
-    │
-    └──────────────────────────────► Exercice 2
-                                     OpenSearch → Dashboard
-    │
-    ▼
-Preuves et livrables
-    │
-    ▼
-Destruction 3 → 2 → 1
-    │
-    ▼
-NETTOYAGE AWS COMPLET
+```bash
+bash scripts/commands/p5.sh finalize
 ```
-
-![Vue d’ensemble](schemas/vue-ensemble.svg)
 
 ## Sources de vérité
 
-Pour éviter les contradictions, chaque sujet possède une référence principale.
-
 | Sujet | Source de vérité |
 | --- | --- |
-| Périmètre OpenClassrooms et choix AWS | `docs/00-cadre-officiel.md` |
-| Architecture et dépendances | `docs/architecture-et-flux.md` |
-| Ordre d’exécution | `docs/01-parcours-debutant.md` |
+| Point d'entrée opérateur | `scripts/commands/p5.sh` |
+| Runtime et logs opérateur | `scripts/lib/p5-runtime.sh` |
+| Ordre global | `docs/01-parcours-debutant.md` |
+| Périmètre | `docs/00-cadre-officiel.md` |
+| Architecture | `docs/architecture-et-flux.md` |
 | Configuration locale AWS | `environment/aws-readiness.env` local |
-| Versions du lab | `environment/versions.env` |
-| Infrastructure AWS | `terraform/exercice-*/` |
+| Versions | `environment/versions.env` |
+| Infrastructure | `terraform/exercice-*/` |
 | Déploiement Angular/NGINX | `ansible/playbooks/deploy.yml` |
 | Application | `application/angular/` |
-| Commandes d’aide et validations | `scripts/` |
-| Preuves techniques locales | `proofs/runtime/` local |
+| Commandes spécialisées | `scripts/commands/` |
+| Preuves techniques | `proofs/runtime/` local |
+| Journaux d'exécution | `logs/` local |
 | Livrables | `docs/livrables/` |
 | Sécurité | `SECURITY.md` |
-| Décisions de conception | `docs/suivi/decisions-techniques.md` |
+| Décisions | `docs/suivi/decisions-techniques.md` |
 
-## Important : configuration Terraform
+## Configuration Terraform
 
-La configuration dépendant du compte n’est pas maintenue manuellement dans trois
-fichiers différents.
-
-Le flux attendu est :
+La configuration dépendant du compte est centralisée dans :
 
 ```text
 environment/aws-readiness.env
@@ -131,73 +193,54 @@ sync-terraform-tfvars.sh
         └─ exercice-3/terraform.tfvars
 ```
 
-Après toute modification du compte, de la région, de l’IP ou des tailles :
+Le centre de commande appelle cette synchronisation automatiquement pendant
+`prepare`. Pour un diagnostic manuel :
 
 ```bash
-bash scripts/commands/sync-terraform-tfvars.sh --apply
 bash scripts/commands/sync-terraform-tfvars.sh --check
 ```
 
-## Documentation d’exécution
+## Validation
 
-### Étape 0 — fondations
+La validation locale standard peut être lancée via :
 
-- [VM Ubuntu Server](00-preparation-environnement.md)
-- [Compte AWS, sécurité, quotas et budget](00b-preparation-compte-aws.md)
-- [Environnement de lab](../environment/README.md)
-- [Garde-fous AWS](../aws/README.md)
+```bash
+bash scripts/commands/p5.sh status
+```
 
-### Exercice 1 — déploiement applicatif
+Avec OpenSearch local :
 
-- [Guide d’exercice](exercices/01-terraform-ansible.md)
-- [Application](../application/README.md)
-- [Projet Angular](../application/angular/README.md)
-- [Ansible](../ansible/README.md)
-- [Terraform](../terraform/README.md)
+```bash
+bash scripts/commands/p5.sh status --full-validation
+```
 
-### Exercice 2 — observabilité
+La CI contrôle également la syntaxe, les intégrations locales, l'orchestrateur,
+Terraform, Ansible, Markdown, liens, secrets et non-régression.
 
-- [Guide d’exercice](exercices/02-elk-opensearch.md)
-- [Référence OpenSearch](../terraform/exercice-2/opensearch/README.md)
-- [Terraform](../terraform/README.md)
-
-### Exercice 3 — disponibilité
-
-- [Guide d’exercice](exercices/03-haproxy.md)
-- [Architecture et dépendances](architecture-et-flux.md)
-- [Scripts HAProxy](../scripts/README.md)
-
-## Validation et exploitation
-
-- [Validation, preuves, publication et nettoyage](validation-preuves-nettoyage.md)
-- [Preuves runtime](../proofs/README.md)
-- [Livrables](livrables/README.md)
-- [Troubleshooting](troubleshooting.md)
-- [Scripts](../scripts/README.md)
-- [Sécurité](../SECURITY.md)
+Important : une CI verte prouve la cohérence du dépôt, **pas un déploiement réel
+sur le compte AWS de l'opérateur**. Le test d'intégration final est l'exécution
+réelle de `p5.sh all` sur la VM.
 
 ## Documentation de maintenance
 
-Ces documents expliquent l’historique et protègent le dépôt contre les
-régressions. Ils ne font pas partie du parcours obligatoire pour exécuter le lab.
+Ces documents protègent le dépôt contre les régressions mais ne sont pas requis
+pour lancer le lab :
 
 - [Audit structurel](03-audit-structurel.md)
 - [Audit de non-régression](04-audit-non-regression.md)
 - [Décisions techniques](suivi/decisions-techniques.md)
-- [Modèle de journal de session](suivi/journal-de-session.md)
-- [Schémas pédagogiques](schemas/README.md)
-- [Ressources pédagogiques](ressources/README.md)
+- [Journal de session](suivi/journal-de-session.md)
+- [Schémas](schemas/README.md)
+- [Ressources](ressources/README.md)
 
 ## Règles documentaires
 
-La documentation suit les principes suivants :
-
-- une seule source de vérité par sujet ;
-- les guides d’exercice décrivent l’exécution réelle ;
-- les README de composants servent de référence technique locale ;
-- les documents de suivi expliquent les décisions, pas les commandes à exécuter ;
-- aucune preuve fictive n’est présentée comme une exécution réelle ;
-- aucun secret ni fichier local sensible ne doit être publié ;
+- `p5.sh` est la voie normale d'exécution ;
+- les guides détaillés restent la référence pédagogique et de dépannage ;
+- une seule source de vérité est conservée par sujet ;
+- aucune preuve fictive n'est présentée comme une exécution réelle ;
+- les fichiers locaux sensibles ne sont jamais versionnés ;
+- les journaux opérateur et les preuves pédagogiques restent séparés ;
 - les schémas expliquent les flux sans remplacer les procédures ;
 - exactement trois guides existent sous `docs/exercices/`.
 
@@ -208,6 +251,3 @@ La documentation suit les principes suivants :
 python3 scripts/tools/audit_non_regression.py
 python3 scripts/tools/audit_secrets.py
 ```
-
-La CI contrôle également le Markdown, les liens, les schémas, les fichiers
-sensibles et les capacités indispensables du dépôt.
