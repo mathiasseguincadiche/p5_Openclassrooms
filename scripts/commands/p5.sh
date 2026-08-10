@@ -226,6 +226,36 @@ wait_for_http_output() {
     return 1
 }
 
+verify_ansible_idempotence() {
+    local recap_file rc
+    recap_file="$(mktemp)"
+
+    set +e
+    ansible-playbook -i "$INVENTORY_FILE" \
+        "$PROJECT_ROOT/ansible/playbooks/deploy.yml" 2>&1 | tee "$recap_file"
+    rc=${PIPESTATUS[0]}
+    set -e
+
+    if ((rc != 0)); then
+        rm -f "$recap_file"
+        return "$rc"
+    fi
+
+    if ! grep -Eq 'changed=0.*unreachable=0.*failed=0' "$recap_file"; then
+        p5_error 'Le récapitulatif Ansible ne prouve pas une seconde exécution sans changement.'
+        rm -f "$recap_file"
+        return 1
+    fi
+    if grep -Eq 'changed=[1-9][0-9]*|unreachable=[1-9][0-9]*|failed=[1-9][0-9]*' "$recap_file"; then
+        p5_error 'La seconde exécution Ansible contient encore un changement ou une erreur.'
+        rm -f "$recap_file"
+        return 1
+    fi
+
+    rm -f "$recap_file"
+    p5_ok 'Idempotence Ansible confirmée : changed=0, unreachable=0, failed=0.'
+}
+
 run_prepare() {
     p5_header 'PHASE 0 — Préparer le lab'
     ensure_toolchain
@@ -315,6 +345,8 @@ run_ex1() {
         ansible all -i "$INVENTORY_FILE" -m ping
     p5_run_step 'ansible-deploy' 'Déployer Angular et NGINX avec Ansible' \
         ansible-playbook -i "$INVENTORY_FILE" "$PROJECT_ROOT/ansible/playbooks/deploy.yml"
+    p5_run_step 'ansible-idempotence' 'Prouver l’idempotence du playbook Ansible' \
+        verify_ansible_idempotence
     p5_run_step 'verify-angular' 'Vérifier Angular derrière NGINX' \
         bash "$SCRIPT_DIR/verify-angular-deployment.sh"
     p5_run_step 'nginx-traffic' 'Générer le trafic NGINX de démonstration' \
@@ -322,12 +354,13 @@ run_ex1() {
     p5_run_step 'nginx-log-collect' 'Collecter les vrais logs NGINX' \
         bash "$SCRIPT_DIR/collect-nginx-access-log.sh" \
         --output "$PROJECT_ROOT/proofs/runtime/exercice-2/nginx-access-real.log"
-    p5_ok 'Exercice 1 opérationnel et preuves runtime collectées.'
+    p5_ok 'Exercice 1 opérationnel, idempotence prouvée et logs NGINX réels collectés.'
 }
 
 run_ex2() {
     p5_header 'EXERCICE 2 — OpenSearch + données + dashboard'
     load_lab_config
+    local real_log="$PROJECT_ROOT/proofs/runtime/exercice-2/nginx-access-real.log"
 
     if terraform_state_has_resources 2; then
         p5_info 'État Terraform exercice 2 détecté : vérification/reprise du déploiement.'
@@ -337,14 +370,29 @@ run_ex2() {
     fi
 
     terraform_apply_exercise 2 'Amazon OpenSearch'
-    p5_run_step 'opensearch-import-preview' 'Valider la conversion des données OpenSearch' \
+    p5_info 'Le jeu versionné garantit les buckets de 12 h ; le log réel prouve la chaîne NGINX → OpenSearch.'
+    p5_run_step 'opensearch-sample-preview' 'Valider le jeu reproductible OpenSearch' \
         bash "$SCRIPT_DIR/import-opensearch-data.sh"
-    if ! p5_confirm 'Importer le jeu de données reproductible dans OpenSearch ?'; then
+
+    if [[ -s "$real_log" ]]; then
+        p5_run_step 'opensearch-real-preview' 'Valider les vrais logs NGINX avant import' \
+            bash "$SCRIPT_DIR/import-opensearch-data.sh" --input "$real_log"
+    else
+        p5_warn "Log NGINX réel absent : $real_log"
+        p5_warn 'L’exercice reste reproductible avec l’échantillon, mais la preuve NGINX → OpenSearch sera incomplète.'
+    fi
+
+    if ! p5_confirm 'Importer le jeu reproductible et les logs NGINX réels disponibles dans OpenSearch ?'; then
         p5_error 'L’import OpenSearch est nécessaire pour valider l’exercice 2.'
         return 1
     fi
-    p5_run_step 'opensearch-import' 'Importer les données dans OpenSearch' \
+
+    p5_run_step 'opensearch-sample-import' 'Importer le jeu reproductible dans OpenSearch' \
         bash "$SCRIPT_DIR/import-opensearch-data.sh" --apply
+    if [[ -s "$real_log" ]]; then
+        p5_run_step 'opensearch-real-import' 'Importer les vrais logs NGINX dans OpenSearch' \
+            bash "$SCRIPT_DIR/import-opensearch-data.sh" --input "$real_log" --apply
+    fi
     p5_run_step 'opensearch-verify' 'Vérifier mappings et agrégations OpenSearch' \
         bash "$SCRIPT_DIR/verify-opensearch-data.sh"
 
