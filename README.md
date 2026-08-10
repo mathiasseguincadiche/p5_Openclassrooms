@@ -40,6 +40,10 @@ Pour exécuter le parcours complet :
 bash scripts/commands/p5.sh all
 ```
 
+Pour suivre l'exécution **pas à pas**, avec les résultats attendus, les checkpoints,
+la reprise et la procédure de diagnostic par logs :
+[Runbook d'exécution guidée A → Z](docs/RUNBOOK_EXECUTION_GUIDEE.md).
+
 Sur une VM neuve, `p5.sh` vérifie d'abord ce qui est déjà présent. Le bootstrap ne corrige que les outils, paquets ou versions manquants ou incorrects. Si l'ajout au groupe Docker impose une nouvelle session, le script demande une reconnexion puis il suffit de relancer la même commande.
 
 Pour ouvrir le menu :
@@ -413,6 +417,7 @@ Les six schémas pédagogiques restent intégrés au README :
 | Besoin | Document |
 | --- | --- |
 | Portail documentaire | [docs/README.md](docs/README.md) |
+| Runbook guidé pas à pas | [Guide d'exécution A → Z](docs/RUNBOOK_EXECUTION_GUIDEE.md) |
 | Convergence et réexécution | [docs/convergence-et-reexecution.md](docs/convergence-et-reexecution.md) |
 | Exécuter de A à Z | [Runbook](docs/01-parcours-debutant.md) |
 | Préparer la VM | [Préparation environnement](docs/00-preparation-environnement.md) |
