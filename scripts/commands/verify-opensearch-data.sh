@@ -4,9 +4,14 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
+LIB_FILE="$PROJECT_ROOT/scripts/lib/p5-runtime.sh"
 PROOF_DIR="$PROJECT_ROOT/proofs/runtime/exercice-2"
 ENDPOINT=""
 MIN_DOCUMENTS=64
+
+# shellcheck source=../lib/p5-runtime.sh
+source "$LIB_FILE"
+p5_session_start "verify-opensearch-data"
 
 show_help() {
     cat <<'HELP'
@@ -18,24 +23,26 @@ Options:
   --proof-dir CHEMIN   dossier local des preuves techniques
   -h, --help           afficher cette aide
 
-Le script est strictement non destructif.
+Le script est non destructif. Sans --endpoint, il lit Terraform et demande une
+cible explicite seulement si vous lancez ce contrôle manuellement et que la sortie
+Terraform n'est pas disponible.
 HELP
 }
 
 while (($# > 0)); do
     case "$1" in
         --endpoint)
-            [[ $# -ge 2 ]] || { printf 'Valeur manquante pour --endpoint.\n' >&2; exit 2; }
+            [[ $# -ge 2 ]] || { p5_error 'Valeur manquante pour --endpoint.'; exit 2; }
             ENDPOINT="$2"
             shift 2
             ;;
         --min-documents)
-            [[ $# -ge 2 ]] || { printf 'Valeur manquante pour --min-documents.\n' >&2; exit 2; }
+            [[ $# -ge 2 ]] || { p5_error 'Valeur manquante pour --min-documents.'; exit 2; }
             MIN_DOCUMENTS="$2"
             shift 2
             ;;
         --proof-dir)
-            [[ $# -ge 2 ]] || { printf 'Valeur manquante pour --proof-dir.\n' >&2; exit 2; }
+            [[ $# -ge 2 ]] || { p5_error 'Valeur manquante pour --proof-dir.'; exit 2; }
             PROOF_DIR="$2"
             shift 2
             ;;
@@ -44,7 +51,7 @@ while (($# > 0)); do
             exit 0
             ;;
         *)
-            printf 'Option inconnue : %s\n' "$1" >&2
+            p5_error "Option inconnue : $1"
             show_help >&2
             exit 2
             ;;
@@ -53,12 +60,14 @@ done
 
 for command_name in terraform curl jq; do
     command -v "$command_name" >/dev/null 2>&1 || {
-        printf 'Commande requise absente : %s\n' "$command_name" >&2
+        p5_error "Commande requise absente : $command_name"
+        p5_action 'Lancez : bash scripts/commands/p5.sh prepare'
         exit 1
     }
 done
 [[ "$MIN_DOCUMENTS" =~ ^[1-9][0-9]*$ ]] || {
-    printf '%s\n' '--min-documents doit être un entier positif.' >&2
+    p5_error '--min-documents doit être un entier positif.'
+    p5_action 'Exemple : --min-documents 64'
     exit 2
 }
 
@@ -71,11 +80,22 @@ valid_endpoint() {
 if [[ -z "$ENDPOINT" ]]; then
     ENDPOINT="$(terraform -chdir="$PROJECT_ROOT/terraform/exercice-2" \
         output -raw opensearch_endpoint 2>/dev/null || true)"
+    if ! valid_endpoint "${ENDPOINT%/}"; then
+        p5_unknown 'Endpoint OpenSearch à vérifier' \
+            'la sortie Terraform opensearch_endpoint est absente ou illisible' \
+            'Pour le parcours normal, relancez p5.sh ex2. Pour un diagnostic manuel, saisissez l’endpoint connu.'
+        p5_prompt_value ENDPOINT \
+            'Endpoint OpenSearch' \
+            'Le contrôle doit joindre le domaine qui contient les index nginx-access-*.' \
+            'https://domaine-opensearch AWS ; HTTP uniquement pour localhost' \
+            'https://search-p5-example.us-east-1.es.amazonaws.com' '' valid_endpoint \
+            'Saisissez-le ici, ou relancez avec : --endpoint https://votre-endpoint'
+    fi
 fi
 ENDPOINT="${ENDPOINT%/}"
 if ! valid_endpoint "$ENDPOINT"; then
-    printf 'Endpoint OpenSearch invalide ou absent : %s\n' "$ENDPOINT" >&2
-    printf 'HTTP sans TLS est accepté uniquement sur localhost pour les tests.\n' >&2
+    p5_error "Endpoint OpenSearch invalide : $ENDPOINT"
+    p5_action 'HTTPS est obligatoire pour AWS ; HTTP est accepté uniquement sur localhost.'
     exit 1
 fi
 
@@ -132,6 +152,7 @@ JSON
 
 {
     printf 'Vérification OpenSearch\n'
+    printf '  Endpoint : %s\n' "$ENDPOINT"
 
     curl -fsS "$ENDPOINT/nginx-access-*/_mapping" > "$MAPPING_RESPONSE"
     jq -e '

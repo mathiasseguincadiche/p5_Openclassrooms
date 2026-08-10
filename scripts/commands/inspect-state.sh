@@ -7,6 +7,13 @@ PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
 CONFIG_FILE="$PROJECT_ROOT/environment/aws-readiness.env"
 INVENTORY_FILE="$PROJECT_ROOT/ansible/inventories/hosts_aws"
 
+unknown() {
+    local label="$1" reason="$2" action="$3"
+    printf '  INCONNU  %s\n' "$label"
+    printf '           raison : %s\n' "$reason"
+    printf '           action : %s\n' "$action"
+}
+
 cd "$PROJECT_ROOT"
 printf 'P5 — ÉTAT ACTUEL OBSERVÉ (aucune mutation)\n'
 printf '%s\n' '============================================================'
@@ -34,7 +41,7 @@ if [[ -r "$CONFIG_FILE" ]]; then
     if ((TFVARS_RC == 0)); then
         printf '  OK  terraform.tfvars déjà synchronisés.\n'
     else
-        printf '  --  terraform.tfvars absents ou différents ; ils seront convergés.\n'
+        printf '  --  terraform.tfvars absents ou différents ; ils seront convergés par prepare.\n'
     fi
 
     PUBLIC_KEY_RAW="${P5_SSH_PUBLIC_KEY_PATH:-~/.ssh/p5-key.pub}"
@@ -44,10 +51,14 @@ if [[ -r "$CONFIG_FILE" ]]; then
     if [[ -f "$PRIVATE_KEY" && -f "$PUBLIC_KEY" ]]; then
         printf '  OK  paire de clés SSH locale présente.\n'
     else
-        printf '  --  paire SSH incomplète ; prepare créera uniquement ce qui manque.\n'
+        unknown 'paire SSH locale' \
+            "clé privée/publique incomplète autour de $PRIVATE_KEY" \
+            'bash scripts/commands/p5.sh prepare expliquera s’il faut créer une clé ou fournir le chemin d’une clé existante.'
     fi
 else
-    printf '  --  environment/aws-readiness.env absent ; prepare le créera.\n'
+    unknown 'configuration locale AWS' \
+        "fichier absent : $CONFIG_FILE" \
+        'bash scripts/commands/p5.sh prepare créera le fichier et demandera uniquement les informations non détectables.'
 fi
 
 printf '\nAWS\n'
@@ -65,10 +76,14 @@ if command -v aws >/dev/null 2>&1 && [[ -r "$CONFIG_FILE" ]]; then
         printf '  OK  session active — compte %s\n' "$ACCOUNT"
         printf '      identité : %s\n' "$ARN"
     else
-        printf '  --  aucune session AWS active ; prepare tentera d’abord une réutilisation/renouvellement.\n'
+        unknown 'identité AWS active' \
+            "STS n’est pas lisible avec le profil $PROFILE" \
+            'bash scripts/commands/p5.sh prepare tentera de réutiliser/renouveler la session et expliquera le mode de connexion si nécessaire.'
     fi
 else
-    printf '  --  AWS non inspectable tant que CLI/configuration ne sont pas disponibles.\n'
+    unknown 'état AWS' \
+        'AWS CLI ou configuration locale indisponible' \
+        'bash scripts/commands/p5.sh prepare convergera d’abord les prérequis puis l’authentification.'
 fi
 
 printf '\nTerraform — état local connu\n'
@@ -86,19 +101,23 @@ if command -v terraform >/dev/null 2>&1; then
         if ((STATE_RC == 0)) && [[ "$RESOURCE_COUNT" =~ ^[0-9]+$ ]]; then
             printf '  EX%s  état présent — %s ressource(s) suivie(s).\n' "$exercise" "$RESOURCE_COUNT"
         else
-            printf '  EX%s  état présent mais non lisible.\n' "$exercise"
+            unknown "état Terraform exercice $exercise" \
+                'terraform state list ne peut pas lire l’état local présent' \
+                "ne supprimez pas le state ; envoyez le log et relancez terraform -chdir=terraform/exercice-$exercise state list."
         fi
     done
     printf '  INFO Le prochain `terraform plan` rafraîchira les objets AWS réels et calculera le delta.\n'
 else
-    printf '  --  Terraform absent : état distant non inspectable depuis cette VM.\n'
+    unknown 'état Terraform' \
+        'Terraform est absent de cette VM' \
+        'bash scripts/commands/p5.sh prepare installera/corrigera Terraform si nécessaire.'
 fi
 
 printf '\nAnsible / artefact\n'
 if [[ -f "$INVENTORY_FILE" ]]; then
     printf '  OK  inventaire Ansible réel présent ; il sera comparé aux outputs Terraform avant écriture.\n'
 else
-    printf '  --  inventaire réel absent ; il sera généré après l’exercice 1.\n'
+    printf '  --  inventaire réel absent ; il sera généré après l’exercice 1 depuis Terraform.\n'
 fi
 if [[ -f "$PROJECT_ROOT/ansible/files/angular-app/index.html" ]] \
     && find "$PROJECT_ROOT/ansible/files/angular-app" -maxdepth 1 -type f -name 'main-*.js' | grep -q .; then
@@ -119,4 +138,4 @@ if [[ -d "$PROJECT_ROOT/logs" ]]; then
     printf '  INFO %s journal/journaux opérateur déjà présent(s).\n' "$LOG_FILES"
 fi
 
-printf '\nVerdict : ÉTAT OBSERVÉ — aucune installation, création ou destruction effectuée.\n'
+printf '\nVerdict : ÉTAT OBSERVÉ — aucune mutation, aucune valeur inventée.\n'

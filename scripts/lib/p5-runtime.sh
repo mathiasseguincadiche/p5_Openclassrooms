@@ -65,6 +65,27 @@ p5_action() {
     printf '[ACTION REQUISE] %s\n' "$1"
 }
 
+p5_unknown() {
+    local label="$1"
+    local reason="$2"
+    local action="${3:-}"
+    printf '[INCONNU] %s\n' "$label" >&2
+    printf '          Raison : %s\n' "$reason" >&2
+    if [[ -n "$action" ]]; then
+        p5_action "$action"
+    fi
+}
+
+p5_authoritative_unknown() {
+    local label="$1"
+    local reason="$2"
+    local action="$3"
+    p5_header "INFORMATION NON VÉRIFIABLE — $label"
+    p5_unknown "$label" "$reason" "$action"
+    p5_warn 'Cette valeur provient de l’état réel (AWS/Terraform) et ne doit pas être inventée ou remplacée silencieusement.'
+    return 1
+}
+
 p5_command_preview() {
     printf '       Commande :'
     printf ' %q' "$@"
@@ -163,6 +184,107 @@ p5_run_step_allow() {
     return "$rc"
 }
 
+p5_validate_nonempty() {
+    [[ -n "$1" ]]
+}
+
+p5_validate_email() {
+    [[ "$1" =~ ^[^[:space:]@]+@[^[:space:]@]+[.][^[:space:]@]+$ ]]
+}
+
+p5_validate_aws_region() {
+    [[ "$1" =~ ^[a-z]{2}(-gov)?-[a-z]+-[0-9]+$ ]]
+}
+
+p5_validate_ipv4() {
+    local value="$1"
+    python3 - "$value" <<'PY' >/dev/null 2>&1
+import ipaddress
+import sys
+ipaddress.IPv4Address(sys.argv[1])
+PY
+}
+
+p5_validate_ipv4_cidr32() {
+    local value="$1"
+    python3 - "$value" <<'PY' >/dev/null 2>&1
+import ipaddress
+import sys
+network = ipaddress.ip_network(sys.argv[1], strict=False)
+raise SystemExit(0 if network.version == 4 and network.prefixlen == 32 else 1)
+PY
+}
+
+p5_validate_http_url() {
+    [[ "$1" =~ ^https?://[A-Za-z0-9.-]+(:[0-9]+)?(/[^[:space:]]*)?$ ]]
+}
+
+p5_validate_existing_file() {
+    [[ -f "$1" ]]
+}
+
+p5_prompt_value() {
+    local variable_name="$1"
+    local label="$2"
+    local why="$3"
+    local expected_format="$4"
+    local example="$5"
+    local default_value="${6:-}"
+    local validator="${7:-p5_validate_nonempty}"
+    local how_to_supply="${8:-}"
+    local value
+
+    p5_header "INFORMATION REQUISE — $label"
+    p5_info "$why"
+    printf '       Format attendu : %s\n' "$expected_format"
+    printf '       Exemple        : %s\n' "$example"
+    if [[ -n "$how_to_supply" ]]; then
+        printf '       Transmission   : %s\n' "$how_to_supply"
+    fi
+
+    if [[ ! -t 0 ]]; then
+        p5_unknown "$label" 'la détection automatique n’a pas fourni de valeur et le terminal n’est pas interactif' \
+            "Relancez dans un terminal interactif. ${how_to_supply:-}"
+        return 1
+    fi
+
+    while true; do
+        if [[ -n "$default_value" ]]; then
+            printf '%s [%s] : ' "$label" "$default_value"
+        else
+            printf '%s : ' "$label"
+        fi
+        read -r value
+        value="${value:-$default_value}"
+        if "$validator" "$value"; then
+            printf -v "$variable_name" '%s' "$value"
+            p5_ok "$label renseigné et format validé."
+            return 0
+        fi
+        p5_warn "Valeur refusée : '$value'. Format attendu : $expected_format."
+    done
+}
+
+p5_terraform_output() {
+    local variable_name="$1"
+    local module_dir="$2"
+    local output_name="$3"
+    local label="$4"
+    local validator="${5:-p5_validate_nonempty}"
+    local recovery="${6:-Relancez la convergence Terraform du module concerné.}"
+    local value
+
+    value="$(terraform -chdir="$module_dir" output -raw "$output_name" 2>/dev/null || true)"
+    if [[ -z "$value" ]] || ! "$validator" "$value"; then
+        p5_authoritative_unknown "$label" \
+            "la sortie Terraform '$output_name' est absente, illisible ou invalide dans $module_dir" \
+            "$recovery"
+        return 1
+    fi
+    printf -v "$variable_name" '%s' "$value"
+    p5_info "$label obtenu depuis Terraform : $value"
+}
+
 p5_confirm() {
     local message="$1"
     if [[ "${P5_ASSUME_YES:-0}" == 1 ]]; then
@@ -204,21 +326,10 @@ p5_prompt() {
     local variable_name="$1"
     local message="$2"
     local default_value="${3:-}"
-    local value
-
-    if [[ ! -t 0 ]]; then
-        p5_error "Saisie interactive requise pour $variable_name."
-        return 1
-    fi
-
-    if [[ -n "$default_value" ]]; then
-        printf '%s [%s] : ' "$message" "$default_value"
-    else
-        printf '%s : ' "$message"
-    fi
-    read -r value
-    value="${value:-$default_value}"
-    printf -v "$variable_name" '%s' "$value"
+    p5_prompt_value "$variable_name" "$message" \
+        'Cette information n’a pas pu être déterminée automatiquement.' \
+        'texte non vide' 'valeur-attendue' "$default_value" p5_validate_nonempty \
+        'Saisissez la valeur demandée directement dans ce terminal.'
 }
 
 p5_manual_checkpoint() {

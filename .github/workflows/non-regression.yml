@@ -32,3 +32,6 @@ jobs:
 
       - name: Vérifier la convergence et la réexécution
         run: bash scripts/tests/test-convergence-contract.sh
+
+      - name: Vérifier le contrat des informations requises
+        run: bash scripts/tests/test-operator-input-contract.sh
