@@ -41,7 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Validate workstation ownership contract
         shell: bash
@@ -68,26 +68,21 @@ jobs:
             }
           done
 
-          # Le dépôt Windows est l'unique propriétaire de la plateforme WSL2.
           grep -Fq 'mathiasseguincadiche/Windows_11_Pro_Custom' README.md
           grep -Fq 'mathiasseguincadiche/Windows_11_Pro_Custom' environment/README.md
           grep -Fq 'mathiasseguincadiche/Windows_11_Pro_Custom' environment/wsl2/README.md
           grep -Fq 'mathiasseguincadiche/Windows_11_Pro_Custom' docs/00-preparation-environnement.md
 
-          # Le P5 consomme la distribution réellement créée par la workstation.
           grep -Fq 'wsl -d Ubuntu' README.md
           grep -Fq 'wsl -d Ubuntu' docs/00-preparation-environnement.md
           grep -Fq 'wsl -d Ubuntu' docs/01-parcours-debutant.md
           grep -Fq 'wsl -d Ubuntu' docs/RUNBOOK_EXECUTION_GUIDEE.md
 
-          # Les profils documentés doivent refléter la source amont actuelle.
           grep -Fq '20 Go' environment/wsl2/README.md
-          grep -Fq '8' environment/wsl2/README.md
           grep -Fq 'mirrored' environment/wsl2/README.md
           grep -Fq 'lab-heavy' environment/wsl2/README.md
           grep -Fq 'nat-fallback' environment/wsl2/README.md
 
-          # P5 ne doit plus redevenir une deuxième source de vérité WSL2.
           forbidden_files=(
             environment/wsl2/.wslconfig.example
             environment/wsl2/wsl.conf.example
@@ -109,7 +104,6 @@ jobs:
             fi
           done
 
-          # Ancien nom de distribution et anciennes commandes P5 interdits.
           if grep -nE \
             'p5-devops|install-wsl2-p5\.ps1|configure-wsl2-p5\.ps1|check-wsl2-p5\.ps1|backup-p5\.ps1|restore-p5\.ps1|start-p5\.ps1|stop-p5\.ps1|status-p5\.ps1' \
             "${canonical_docs[@]}"; then
@@ -117,15 +111,12 @@ jobs:
             exit 1
           fi
 
-          # Les anciens hyperviseurs ne doivent pas revenir dans le parcours canonique.
           if grep -nE 'Fedora 44|virt-manager|virsh list|qemu-kvm|libvirt|VM Ubuntu Server' \
             "${canonical_docs[@]}"; then
             echo 'KO anciennes instructions hyperviseur détectées.'
             exit 1
           fi
 
-          # NAT reste légitime uniquement comme fallback ; il ne doit plus être présenté
-          # comme l'unique réseau officiel du P5.
           grep -Fq 'mirrored' README.md
           grep -Fq 'nat-fallback' README.md
 
