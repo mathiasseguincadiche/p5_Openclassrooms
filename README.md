@@ -6,116 +6,102 @@
 
 Projet réalisé dans le cadre du parcours **Expert DevOps OpenClassrooms**.
 
-Ce dépôt fournit un lab DevOps reproductible et **convergent** permettant de :
+Le dépôt automatise un lab AWS reproductible autour de Terraform, Ansible,
+Angular/NGINX, Amazon OpenSearch et HAProxy.
 
-- provisionner une infrastructure AWS avec Terraform ;
-- déployer une application Angular avec Ansible et NGINX ;
-- exploiter des logs dans Amazon OpenSearch ;
-- démontrer la haute disponibilité avec HAProxy et deux backends ;
-- relancer le projet sans recréer ce qui est déjà conforme ;
-- conserver des preuves techniques et des journaux d'exécution exploitables.
+> **Périmètre évalué : 100 % AWS.** La workstation Windows/WSL2 est un poste de
+> contrôle local ; les ressources évaluées sont créées dans AWS.
 
-> **Périmètre évalué : 100 % AWS.** Le poste de contrôle local est désormais
-> **Windows 11 Pro + WSL2 + Ubuntu 26.04 LTS**. Les infrastructures évaluées sont
-> créées dans AWS.
+## Workstation utilisée
 
-> **Principe général :** inspecter → comparer → corriger uniquement le delta →
-> vérifier → journaliser.
+Le P5 ne construit plus sa propre plateforme WSL2. Il consomme la workstation
+maintenue par :
 
-## Poste de contrôle local
+- `mathiasseguincadiche/Windows_11_Pro_Custom`
+- <https://github.com/mathiasseguincadiche/Windows_11_Pro_Custom>
 
-La plateforme locale retenue est :
+La séparation de responsabilités est volontaire :
 
 ```text
-Windows 11 Pro
-└── WSL2
-    ├── 6 processeurs logiques maximum
-    ├── 16 Go de RAM maximum
-    ├── 8 Go de swap
-    ├── réseau NAT
-    ├── DNS tunneling
-    └── p5-devops
-        └── Ubuntu 26.04 LTS + systemd
-            ├── Terraform
-            ├── Ansible
-            ├── AWS CLI
+Windows_11_Pro_Custom
+└── Windows 11 Pro
+    └── WSL2
+        └── Ubuntu — D:\WSL\Ubuntu-DevOps
+            ├── systemd
             ├── Docker Engine
-            ├── Node.js / Angular
-            └── p5.sh
+            ├── Terraform
+            ├── Ansible Core
+            ├── AWS CLI
+            ├── kubectl / Helm
+            ├── Minikube / kind
+            └── outils DevOps
+
+p5_Openclassrooms
+└── utilise cette plateforme existante
+    ├── vérifie le contrat P5
+    ├── corrige uniquement les écarts spécifiques au projet
+    ├── prépare AWS
+    ├── exécute Terraform / Ansible / Angular
+    ├── exploite OpenSearch
+    └── teste HAProxy
 ```
 
-Le fichier `%UserProfile%\.wslconfig` configure la VM WSL2 globale. Si plusieurs
-distributions WSL2 sont actives en même temps, elles partagent cette enveloppe de
-CPU et de mémoire.
+P5 ne possède donc plus de copie de `.wslconfig`, de `/etc/wsl.conf`, de script
+d'installation WSL2 ni de procédure VHDX concurrente.
 
-Le réseau WSL2 est volontairement en **NAT**. L'adresse privée WSL, la passerelle
-et la route par défaut sont détectées dynamiquement ; aucune adresse WSL n'est
-codée en dur dans le projet.
+## Profils WSL2 acceptés
 
-Cette adresse privée WSL ne doit pas être confondue avec `P5_PUBLIC_IP_CIDR`, qui
-représente l'IPv4 publique `/32` autorisée dans les Security Groups et la policy
-OpenSearch AWS.
+La source de vérité reste `Windows_11_Pro_Custom` :
 
-Référence complète :
-[Préparer Windows 11 + WSL2](docs/00-preparation-environnement.md).
+| Profil | CPU | RAM | Swap | Réseau |
+| --- | ---: | ---: | ---: | --- |
+| `standard` | 8 threads | 20 Go | 8 Go | `mirrored` |
+| `lab-heavy` | 12 threads | 28 Go | 12 Go | `mirrored` |
+| `nat-fallback` | 8 threads | 20 Go | 8 Go | `nat` |
 
-## Installation WSL2
+`standard` est recommandé pour le P5. `lab-heavy` peut être utilisé pour les
+validations locales plus lourdes et `nat-fallback` reste un mode de secours.
 
-Depuis un clone du dépôt accessible sous Windows, ouvrir **PowerShell en tant
-qu'administrateur** :
+La distribution utilisée est nommée :
+
+```text
+Ubuntu
+```
+
+## Préparation avant P5
+
+Dans le dépôt `Windows_11_Pro_Custom`, qualifier d'abord la workstation :
 
 ```powershell
-Set-ExecutionPolicy -Scope Process Bypass
-.\scripts\windows\install-wsl2-p5.ps1
+.\install.ps1 -Mode Apply
 ```
 
-Premier lancement :
+Après le premier lancement Ubuntu et la création de l'utilisateur :
 
 ```powershell
-wsl -d p5-devops
+.\install.ps1 -Mode Apply -InstallDevOps
+wsl --shutdown
+.\install.ps1 -Mode Verify -ValidateWsl -ValidateDevOps
 ```
 
-Après création de l'utilisateur Ubuntu, revenir dans PowerShell :
+Verdicts amont attendus :
+
+```text
+VERDICT: V3 DEVOPS READY
+VERDICT: V6 WSL2 PLATFORM READY
+```
+
+Le backup Windows/WSL2 appartient également à ce dépôt amont via sa V7.
+
+## Installer le projet dans Ubuntu
+
+Depuis Windows :
 
 ```powershell
-.\scripts\windows\configure-wsl2-p5.ps1
-.\scripts\windows\check-wsl2-p5.ps1
+wsl -d Ubuntu
 ```
 
-Le contrôle attendu vérifie notamment :
-
-- WSL2 ;
-- 6 processeurs disponibles ;
-- environ 16 Go de RAM ;
-- `systemd` ;
-- hostname `p5-devops` ;
-- IPv4 WSL ;
-- passerelle et route par défaut ;
-- DNS ;
-- accès HTTPS.
-
-## Exploitation WSL2
-
-Les commandes Windows dédiées au lab sont :
-
-| Besoin | Commande PowerShell |
-| --- | --- |
-| Démarrer | `.\scripts\windows\start-p5.ps1` |
-| Arrêter | `.\scripts\windows\stop-p5.ps1` |
-| État synthétique | `.\scripts\windows\status-p5.ps1` |
-| Diagnostic complet | `.\scripts\windows\check-wsl2-p5.ps1 -RequireTools` |
-| Sauvegarder | `.\scripts\windows\backup-p5.ps1` |
-| Restaurer | `.\scripts\windows\restore-p5.ps1 -BackupPath <fichier.vhdx>` |
-
-Une sauvegarde WSL2 est exportée au format **VHDX** avec un fichier SHA-256. La
-restauration est non destructive : elle refuse d'écraser automatiquement une
-distribution existante.
-
-Les fichiers `.vhd`, `.vhdx` et leurs sommes de contrôle sont ignorés par Git.
-
-## Installer le socle DevOps dans Ubuntu
-
-Le dépôt doit être cloné dans le système de fichiers Linux, par exemple :
+Puis dans Ubuntu :
 
 ```bash
 mkdir -p ~/labs
@@ -124,46 +110,40 @@ git clone https://github.com/mathiasseguincadiche/p5_Openclassrooms.git
 cd p5_Openclassrooms
 ```
 
-Puis :
+Le checkout de travail doit rester sur le filesystem Linux, pas sous `/mnt/c` ou
+`/mnt/d`.
+
+## Contrôler le delta P5
+
+La workstation contient déjà la stack DevOps générale. Commencer par un contrôle
+sans mutation :
+
+```bash
+bash scripts/commands/bootstrap-ubuntu-server.sh --check-only
+```
+
+Si tout est compatible avec le contrat P5, rien n'est réinstallé.
+
+Si un écart propre au projet existe, par exemple une version Node.js attendue :
 
 ```bash
 bash scripts/commands/bootstrap-ubuntu-server.sh
 ```
 
-Le bootstrap converge le socle Linux sans créer de ressource AWS. Il installe ou
-corrige uniquement les composants absents ou non conformes.
+Le bootstrap reste convergent : il inspecte avant de modifier et ne corrige que
+les composants nécessaires au P5.
 
-Après une modification du groupe Docker ou de NVM, arrêter puis redémarrer la
-distribution depuis PowerShell :
-
-```powershell
-.\scripts\windows\stop-p5.ps1
-.\scripts\windows\start-p5.ps1
-```
-
-Puis rouvrir Ubuntu :
-
-```powershell
-wsl -d p5-devops
-```
-
-## Démarrage du projet
-
-Depuis Ubuntu WSL2 et la racine du dépôt :
+## Démarrage recommandé
 
 ```bash
 bash scripts/commands/p5.sh inspect
-```
-
-Cette commande observe l'état réel **sans mutation**.
-
-Pour le parcours complet :
-
-```bash
 bash scripts/commands/p5.sh all
 ```
 
-Pour ouvrir le menu interactif :
+`inspect` observe l'état actuel sans mutation. `all` exécute le parcours
+technique complet sans détruire automatiquement les ressources AWS.
+
+Pour le menu interactif :
 
 ```bash
 bash scripts/commands/p5.sh
@@ -175,48 +155,29 @@ Pour automatiser uniquement les confirmations automatisables :
 bash scripts/commands/p5.sh all --yes
 ```
 
-`--yes` ne contourne jamais :
-
-- les vérifications de sécurité AWS nécessitant une validation humaine ;
-- la preuve visuelle du dashboard OpenSearch ;
-- la destruction finale protégée par `DETRUIRE`.
+`--yes` ne contourne jamais les validations humaines de sécurité, le checkpoint
+OpenSearch Dashboards ni la confirmation `DETRUIRE`.
 
 ## Centre de commande
 
 | Commande | Rôle |
 | --- | --- |
-| `p5.sh` | menu interactif |
-| `p5.sh inspect` | observe sans mutation |
-| `p5.sh prepare` | converge le socle Linux, AWS, budget et tfvars |
-| `p5.sh status` | contrôle la préparation sans créer de ressource AWS |
+| `p5.sh inspect` | observation sans mutation |
+| `p5.sh prepare` | convergence P5 + AWS + budget + tfvars |
+| `p5.sh status` | contrôles de préparation |
 | `p5.sh ex1` | Terraform + Ansible + Angular/NGINX |
-| `p5.sh ex2` | OpenSearch, imports et agrégations |
+| `p5.sh ex2` | Amazon OpenSearch et données |
 | `p5.sh ex3` | HAProxy, round-robin, panne et reprise |
-| `p5.sh all` | exécute le parcours technique complet |
-| `p5.sh finalize` | contrôle strict des preuves et livrables |
-| `p5.sh logs` | retrouve les journaux de session |
+| `p5.sh all` | parcours technique complet |
+| `p5.sh finalize` | validation stricte des preuves/livrables |
+| `p5.sh logs` | journaux d'exécution |
 | `p5.sh cleanup` | destruction 3 → 2 → 1 puis audit AWS |
-
-## Portes de validation
-
-Avant toute création d'infrastructure, le parcours doit atteindre :
-
-```text
-GO AWS
-GO TERRAFORM
-```
-
-Après la destruction finale, le verdict attendu est :
-
-```text
-NETTOYAGE AWS COMPLET
-```
 
 ## Architecture AWS
 
 ```text
 Windows 11 Pro
-└── WSL2 / p5-devops / Ubuntu 26.04
+└── WSL2 / Ubuntu
     └── Terraform + Ansible + AWS CLI + Docker + Node.js
               │
               ▼
@@ -225,7 +186,7 @@ AWS — us-east-1
 ├── Exercice 1
 │   ├── VPC 10.0.0.0/16
 │   ├── 2 sous-réseaux publics
-│   ├── Internet Gateway + table de routage
+│   ├── Internet Gateway + routes
 │   ├── EC2 Ubuntu
 │   └── Ansible → NGINX → Angular
 │                │
@@ -234,78 +195,61 @@ AWS — us-east-1
 │                                            └── Dashboards
 │
 └── Exercice 3
-    ├── réutilise le VPC et les sous-réseaux de l'exercice 1
+    ├── réutilise le réseau de l'exercice 1
     ├── EC2 HAProxy
     └── 2 EC2 → Docker → nginxdemos/hello
 ```
 
-Le changement de KVM vers WSL2 concerne uniquement le **poste de contrôle
-local**. Le VPC AWS `10.0.0.0/16`, les sous-réseaux, routes, Security Groups et
-ressources Terraform restent indépendants du NAT WSL2.
+Le réseau WSL2, qu'il soit `mirrored` ou `nat-fallback`, n'altère pas le VPC AWS.
+`P5_PUBLIC_IP_CIDR` représente l'IPv4 publique d'administration vue depuis AWS,
+pas une adresse privée WSL.
 
-Référence :
-[Architecture et flux](docs/architecture-et-flux.md).
+## Portes de validation
 
-## Schémas du parcours
-
-Les six schémas pédagogiques restent intégrés au parcours :
-
-- [Vue d'ensemble](docs/schemas/vue-ensemble.svg)
-- [Préparation Windows 11, WSL2 et AWS](docs/schemas/etape-0.svg)
-- [Exercice 1](docs/schemas/exercice-1.svg)
-- [Exercice 2](docs/schemas/exercice-2.svg)
-- [Exercice 3](docs/schemas/exercice-3.svg)
-- [Finalisation](docs/schemas/finalisation/finalisation.svg)
-
-## Convergence et réexécution
-
-Une seconde exécution de `p5.sh all` ne signifie pas « tout refaire ».
+Avant Terraform :
 
 ```text
-État réel
+GO AWS
+GO TERRAFORM
+```
+
+Après le nettoyage final :
+
+```text
+NETTOYAGE AWS COMPLET
+```
+
+## Convergence
+
+Le principe du dépôt reste :
+
+```text
+inspecter
    ↓
-Inspection
+comparer état réel ↔ état attendu
    ↓
-Comparaison état réel ↔ état attendu
-   ↓
-Conforme ? ── oui ──► aucune mutation
+aucun delta ? ── oui ──► aucune mutation
    │
    non
    ↓
-Correction du delta uniquement
+corriger uniquement le delta
    ↓
-Nouvelle vérification
+vérifier
    ↓
-Verdict + log
+journaliser
 ```
 
-Exemples :
+Cela s'applique également à la workstation : si Docker, Terraform, Ansible ou
+AWS CLI fournis par le dépôt Windows satisfont déjà le contrat P5, ils sont
+réutilisés.
 
-- distribution WSL2 déjà configurée : aucune réinstallation ;
-- socle Ubuntu conforme : aucun paquet réinstallé ;
-- session AWS valide : réutilisée ;
-- `terraform.tfvars` identiques : aucune réécriture ;
-- plan Terraform vide : aucun `apply` ;
-- artefact Angular inchangé : aucun rebuild inutile ;
-- budget conforme : aucune mutation ;
-- documents OpenSearch déjà présents : pas de réimport inutile.
-
-Les tests fonctionnels peuvent néanmoins être rejoués pour vérifier l'état réel
-au moment de la démonstration.
-
-Référence :
-[Convergence et réexécution](docs/convergence-et-reexecution.md).
-
-## Exercices
-
-### Exercice 1 — Terraform, Ansible, NGINX et Angular
+## Exercice 1 — Terraform, Ansible, NGINX et Angular
 
 ```bash
 bash scripts/commands/p5.sh ex1
 ```
 
-Le parcours crée l'infrastructure AWS, génère l'inventaire Ansible, déploie
-Angular derrière NGINX et exige une seconde exécution Ansible avec :
+Le second passage Ansible doit prouver :
 
 ```text
 changed=0
@@ -313,40 +257,36 @@ unreachable=0
 failed=0
 ```
 
-Guide :
-[Terraform + Ansible](docs/exercices/01-terraform-ansible.md).
+Guide : [Terraform + Ansible](docs/exercices/01-terraform-ansible.md).
 
-### Exercice 2 — Amazon OpenSearch
+## Exercice 2 — Amazon OpenSearch
 
 ```bash
 bash scripts/commands/p5.sh ex2
 ```
 
-Le véritable exercice utilise **Amazon OpenSearch Service**. Aucun OpenSearch
-permanent n'est requis dans WSL2 pour le lab AWS. Les conteneurs OpenSearch de la
-CI et des validations locales restent éphémères.
+Le véritable exercice utilise Amazon OpenSearch Service. Les conteneurs locaux
+servent uniquement aux validations reproductibles.
 
-Guide :
-[OpenSearch](docs/exercices/02-elk-opensearch.md).
+Guide : [OpenSearch](docs/exercices/02-elk-opensearch.md).
 
-### Exercice 3 — HAProxy
+## Exercice 3 — HAProxy
 
 ```bash
 bash scripts/commands/p5.sh ex3
 ```
 
-Terraform converge HAProxy et les deux backends. Les tests round-robin, panne et
-reprise sont rejoués pour prouver le fonctionnement actuel.
+Le test vérifie le round-robin, une panne réelle contrôlée et la réintégration du
+backend.
 
-Guide :
-[HAProxy](docs/exercices/03-haproxy.md).
+Guide : [HAProxy](docs/exercices/03-haproxy.md).
 
-## Reprise après interruption
+## Reprise
 
-Si seul le terminal Linux a été fermé :
+Après fermeture d'un terminal ou redémarrage Windows :
 
 ```powershell
-wsl -d p5-devops
+wsl -d Ubuntu
 ```
 
 Puis :
@@ -356,125 +296,40 @@ cd ~/labs/p5_Openclassrooms
 bash scripts/commands/p5.sh all
 ```
 
-Si la distribution a été arrêtée :
+Ne supprimez jamais un `terraform.tfstate` pour forcer une reprise tant que les
+ressources AWS associées existent.
+
+## Sauvegarde de la workstation
+
+P5 ne fournit plus de backup VHDX. Depuis `Windows_11_Pro_Custom` :
 
 ```powershell
-.\scripts\windows\start-p5.ps1
-wsl -d p5-devops
+.\install.ps1 -BackupAction Create -BackupTargetDrive E:
+.\install.ps1 -BackupAction Verify -BackupTargetDrive E:
+.\install.ps1 -BackupAction RestorePlan -BackupTargetDrive E:
 ```
 
-Le projet reprend à partir de l'état réellement présent. Ne supprimez jamais un
-`terraform.tfstate` pour « débloquer » une reprise tant que les ressources AWS
-associées existent.
+La V7 protège Windows et exporte Ubuntu en VHDX avec SHA-256.
 
-## Logs et preuves
+## Schémas du parcours
 
-Chaque session `p5.sh` crée des journaux sous :
-
-```text
-logs/<UTC>/
-├── p5.log
-├── 01-....log
-├── 02-....log
-└── ...
-```
-
-Les preuves pédagogiques restent séparées :
-
-```text
-proofs/runtime/
-├── diagnostics/
-├── exercice-1/
-├── exercice-2/
-└── exercice-3/
-```
-
-```bash
-bash scripts/commands/p5.sh logs
-```
-
-## Finalisation et nettoyage
-
-Après les captures et preuves réelles :
-
-```bash
-bash scripts/commands/p5.sh finalize
-```
-
-Verdict attendu :
-
-```text
-LIVRABLES PRÊTS POUR RELECTURE FINALE
-```
-
-Puis, uniquement quand le lab AWS n'est plus nécessaire :
-
-```bash
-bash scripts/commands/p5.sh cleanup
-```
-
-Ordre obligatoire :
-
-```text
-Exercice 3 → Exercice 2 → Exercice 1
-```
-
-Verdict final :
-
-```text
-NETTOYAGE AWS COMPLET
-```
-
-## Validation CI
-
-La CI vérifie notamment :
-
-- Bash et ShellCheck ;
-- contrat de l'orchestrateur ;
-- convergence/réexécution ;
-- contrat Windows 11 / WSL2 ;
-- parsing des scripts PowerShell ;
-- Terraform ;
-- Ansible ;
-- Angular, TypeScript et NGINX réel ;
-- OpenSearch local, Bulk et agrégations ;
-- HAProxy, round-robin, panne et reprise ;
-- YAML ;
-- Markdown et liens ;
-- secrets et non-régression.
-
-Une CI verte prouve la cohérence du dépôt et ses intégrations locales. Le test
-d'intégration final reste l'exécution réelle de `p5.sh all` depuis `p5-devops`
-avec une session AWS valide.
+- [Vue d'ensemble](docs/schemas/vue-ensemble.svg)
+- [Préparation workstation et AWS](docs/schemas/etape-0.svg)
+- [Exercice 1](docs/schemas/exercice-1.svg)
+- [Exercice 2](docs/schemas/exercice-2.svg)
+- [Exercice 3](docs/schemas/exercice-3.svg)
+- [Finalisation](docs/schemas/finalisation/finalisation.svg)
 
 ## Documentation
 
 | Besoin | Document |
 | --- | --- |
-| Portail documentaire | [docs/README.md](docs/README.md) |
-| Installation Windows 11 / WSL2 | [docs/00-preparation-environnement.md](docs/00-preparation-environnement.md) |
-| Guide WSL2 dédié | [environment/wsl2/README.md](environment/wsl2/README.md) |
+| Portail | [docs/README.md](docs/README.md) |
+| Préparation | [docs/00-preparation-environnement.md](docs/00-preparation-environnement.md) |
+| Contrat WSL2 | [environment/wsl2/README.md](environment/wsl2/README.md) |
 | Runbook A → Z | [docs/RUNBOOK_EXECUTION_GUIDEE.md](docs/RUNBOOK_EXECUTION_GUIDEE.md) |
-| Parcours de bout en bout | [docs/01-parcours-debutant.md](docs/01-parcours-debutant.md) |
+| Parcours | [docs/01-parcours-debutant.md](docs/01-parcours-debutant.md) |
 | Architecture | [docs/architecture-et-flux.md](docs/architecture-et-flux.md) |
 | Convergence | [docs/convergence-et-reexecution.md](docs/convergence-et-reexecution.md) |
 | Troubleshooting | [docs/troubleshooting.md](docs/troubleshooting.md) |
-| Validation et nettoyage | [docs/validation-preuves-nettoyage.md](docs/validation-preuves-nettoyage.md) |
 | Sécurité | [SECURITY.md](SECURITY.md) |
-
-## Règles de sécurité
-
-Le dépôt protège notamment contre :
-
-- mauvais compte AWS via `allowed_account_ids` ;
-- utilisation quotidienne du compte root ;
-- credentials AWS longue durée dans le parcours normal ;
-- SSH/OpenSearch ouverts au monde au lieu d'un `/32` ;
-- EC2 sans IMDSv2 ;
-- volumes racine non chiffrés ;
-- tfvars désynchronisés ;
-- secrets ou fichiers locaux suivis par Git ;
-- destruction implicite ;
-- images VHD/VHDX accidentellement versionnées.
-
-Politique complète : [SECURITY.md](SECURITY.md).

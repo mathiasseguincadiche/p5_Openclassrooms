@@ -1,13 +1,11 @@
-name: WSL2 contract
+name: Workstation integration contract
 
 on:
   push:
     paths:
       - '.github/workflows/wsl2-contract.yml'
-      - '.gitignore'
       - 'README.md'
-      - 'environment/wsl2/**'
-      - 'environment/README.md'
+      - 'environment/**'
       - 'docs/README.md'
       - 'docs/00-preparation-environnement.md'
       - 'docs/01-parcours-debutant.md'
@@ -21,10 +19,8 @@ on:
   pull_request:
     paths:
       - '.github/workflows/wsl2-contract.yml'
-      - '.gitignore'
       - 'README.md'
-      - 'environment/wsl2/**'
-      - 'environment/README.md'
+      - 'environment/**'
       - 'docs/README.md'
       - 'docs/00-preparation-environnement.md'
       - 'docs/01-parcours-debutant.md'
@@ -41,21 +37,55 @@ permissions:
 
 jobs:
   contract:
-    name: Windows 11 / WSL2 contract
+    name: Windows 11 / upstream WSL2 contract
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
-      - name: Validate WSL2 static contract
+      - name: Validate workstation ownership contract
         shell: bash
         run: |
           set -euo pipefail
 
-          required_files=(
+          canonical_docs=(
+            README.md
+            environment/README.md
+            environment/wsl2/README.md
+            docs/README.md
+            docs/00-preparation-environnement.md
+            docs/01-parcours-debutant.md
+            docs/RUNBOOK_EXECUTION_GUIDEE.md
+            docs/architecture-et-flux.md
+            docs/convergence-et-reexecution.md
+            docs/troubleshooting.md
+          )
+
+          for path in "${canonical_docs[@]}"; do
+            test -s "$path" || {
+              echo "KO document canonique absent ou vide: $path"
+              exit 1
+            }
+          done
+
+          grep -Fq 'mathiasseguincadiche/Windows_11_Pro_Custom' README.md
+          grep -Fq 'mathiasseguincadiche/Windows_11_Pro_Custom' environment/README.md
+          grep -Fq 'mathiasseguincadiche/Windows_11_Pro_Custom' environment/wsl2/README.md
+          grep -Fq 'mathiasseguincadiche/Windows_11_Pro_Custom' docs/00-preparation-environnement.md
+
+          grep -Fq 'wsl -d Ubuntu' README.md
+          grep -Fq 'wsl -d Ubuntu' docs/00-preparation-environnement.md
+          grep -Fq 'wsl -d Ubuntu' docs/01-parcours-debutant.md
+          grep -Fq 'wsl -d Ubuntu' docs/RUNBOOK_EXECUTION_GUIDEE.md
+
+          grep -Fq '20 Go' environment/wsl2/README.md
+          grep -Fq 'mirrored' environment/wsl2/README.md
+          grep -Fq 'lab-heavy' environment/wsl2/README.md
+          grep -Fq 'nat-fallback' environment/wsl2/README.md
+
+          forbidden_files=(
             environment/wsl2/.wslconfig.example
             environment/wsl2/wsl.conf.example
-            environment/wsl2/README.md
             scripts/windows/lib-wsl2-p5.ps1
             scripts/windows/install-wsl2-p5.ps1
             scripts/windows/configure-wsl2-p5.ps1
@@ -67,80 +97,27 @@ jobs:
             scripts/windows/restore-p5.ps1
           )
 
-          for path in "${required_files[@]}"; do
-            test -s "$path" || { echo "KO fichier absent ou vide: $path"; exit 1; }
-          done
-
-          config=environment/wsl2/.wslconfig.example
-          grep -Fxq 'memory=16GB' "$config"
-          grep -Fxq 'processors=6' "$config"
-          grep -Fxq 'swap=8GB' "$config"
-          grep -Fxq 'networkingMode=nat' "$config"
-          grep -Fxq 'localhostForwarding=true' "$config"
-          grep -Fxq 'dnsTunneling=true' "$config"
-          grep -Fxq 'firewall=true' "$config"
-          grep -Fxq 'autoProxy=true' "$config"
-
-          grep -Fq 'systemd=true' environment/wsl2/wsl.conf.example
-          grep -Fq 'hostname=p5-devops' environment/wsl2/wsl.conf.example
-
-          canonical_docs=(
-            README.md
-            environment/README.md
-            docs/README.md
-            docs/00-preparation-environnement.md
-            docs/01-parcours-debutant.md
-            docs/RUNBOOK_EXECUTION_GUIDEE.md
-            docs/architecture-et-flux.md
-            docs/convergence-et-reexecution.md
-            docs/troubleshooting.md
-          )
-
-          for path in "${canonical_docs[@]}"; do
-            grep -Fq 'WSL2' "$path" || {
-              echo "KO documentation WSL2 absente: $path"
+          for path in "${forbidden_files[@]}"; do
+            if test -e "$path"; then
+              echo "KO responsabilité WSL2 dupliquée dans P5: $path"
               exit 1
-            }
+            fi
           done
 
-          grep -Fq 'Windows 11 Pro' README.md
-          grep -Fq '6 processeurs' docs/00-preparation-environnement.md
-          grep -Fq '16 Go' docs/00-preparation-environnement.md
-          grep -Fq 'Windows 11 Pro' docs/architecture-et-flux.md
-          grep -Fq 'Windows 11' docs/schemas/etape-0.svg
-          grep -Fq 'WSL2' docs/schemas/vue-ensemble.svg
-
-          if grep -nE 'Fedora 44|virt-manager|virsh list|qemu-kvm|libvirt|VM Ubuntu Server' \
+          if grep -nE \
+            'p5-devops|install-wsl2-p5\.ps1|configure-wsl2-p5\.ps1|check-wsl2-p5\.ps1|backup-p5\.ps1|restore-p5\.ps1|start-p5\.ps1|stop-p5\.ps1|status-p5\.ps1' \
             "${canonical_docs[@]}"; then
-            echo 'KO anciennes instructions hyperviseur detectees dans le parcours canonique.'
+            echo 'KO anciennes instructions WSL2 P5 détectées.'
             exit 1
           fi
 
-          grep -Fxq '*.vhdx' .gitignore
-          grep -Fxq '*.vhdx.sha256' .gitignore
+          if grep -nE 'Fedora 44|virt-manager|virsh list|qemu-kvm|libvirt|VM Ubuntu Server' \
+            "${canonical_docs[@]}"; then
+            echo 'KO anciennes instructions hyperviseur détectées.'
+            exit 1
+          fi
 
-          echo 'Contrat WSL2 statique: OK'
+          grep -Fq 'mirrored' README.md
+          grep -Fq 'nat-fallback' README.md
 
-      - name: Parse PowerShell scripts
-        shell: pwsh
-        run: |
-          $failed = $false
-          Get-ChildItem scripts/windows/*.ps1 | ForEach-Object {
-            $tokens = $null
-            $errors = $null
-            [System.Management.Automation.Language.Parser]::ParseFile(
-              $_.FullName,
-              [ref]$tokens,
-              [ref]$errors
-            ) | Out-Null
-
-            if ($errors.Count -gt 0) {
-              Write-Host "KO syntaxe PowerShell: $($_.Name)"
-              $errors | ForEach-Object { Write-Host "  $($_.Message)" }
-              $failed = $true
-            } else {
-              Write-Host "OK $($_.Name)"
-            }
-          }
-
-          if ($failed) { exit 1 }
+          echo 'Contrat workstation amont / P5: OK'

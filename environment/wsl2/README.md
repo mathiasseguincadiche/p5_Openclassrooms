@@ -1,130 +1,154 @@
-# Poste de contrôle P5 — Windows 11 Pro + WSL2
+# Contrat WSL2 du P5
 
-Ce dossier définit le poste de contrôle local retenu pour le projet P5.
-L'infrastructure évaluée reste créée dans AWS ; WSL2 fournit uniquement
-l'environnement Linux local depuis lequel Terraform, Ansible, AWS CLI, Docker,
-Node.js et les scripts du dépôt sont exécutés.
+Le P5 **n'installe plus WSL2** et ne maintient plus sa propre configuration de
+workstation.
 
-## Architecture locale
+La plateforme Windows/WSL2 est fournie par :
+
+- `mathiasseguincadiche/Windows_11_Pro_Custom`
+- <https://github.com/mathiasseguincadiche/Windows_11_Pro_Custom>
+
+Ce dossier décrit uniquement le **contrat d'intégration** attendu par P5.
+
+## Source de vérité
+
+La propriété des éléments est la suivante :
 
 ```text
-Windows 11 Pro
-└── WSL2
-    └── p5-devops — Ubuntu 26.04 LTS
-        ├── Terraform
-        ├── Ansible Core
-        ├── AWS CLI v2
-        ├── Docker Engine + Compose
-        ├── Node.js
-        └── dépôt p5_Openclassrooms
+Windows_11_Pro_Custom
+├── Windows 11 Pro
+├── installation/mise à jour WSL2
+├── distribution Ubuntu
+├── D:\WSL\Ubuntu-DevOps
+├── %UserProfile%\.wslconfig
+├── /etc/wsl.conf
+├── profils standard / lab-heavy / nat-fallback
+├── Docker / Terraform / Ansible / AWS CLI / Kubernetes
+├── qualification WSL2
+└── sauvegarde/restauration V7
+
+p5_Openclassrooms
+├── contraintes spécifiques P5
+├── configuration AWS du lab
+├── Terraform des exercices
+├── Ansible / Angular / OpenSearch / HAProxy
+├── preuves et diagnostics
+└── nettoyage AWS
 ```
 
-## Ressources WSL2
+Il ne doit exister **qu'une seule source de vérité** pour `.wslconfig` et le VHDX
+WSL : le dépôt Windows.
 
-Le profil de référence est `environment/wsl2/.wslconfig.example` :
+## Distribution utilisée
 
-- 6 processeurs logiques ;
-- 16 Go de mémoire ;
-- 8 Go de swap ;
-- réseau WSL2 en mode NAT ;
-- transfert `localhost` activé ;
-- DNS tunneling activé ;
-- pare-feu WSL/Hyper-V activé ;
-- proxy Windows transmis automatiquement à WSL.
+La distribution fournie par le dépôt Windows est :
 
-Ces limites s'appliquent à la VM WSL2 globale. Si plusieurs distributions WSL2
-fonctionnent simultanément, elles partagent cette enveloppe CPU/RAM.
+```text
+Ubuntu
+```
 
-## Réseau
+Son stockage cible est :
 
-Le projet n'impose pas une IPv4 WSL codée en dur. En mode NAT, l'adresse de la
-VM WSL2 peut changer après un arrêt complet de WSL ou un redémarrage Windows.
-Les scripts détectent donc dynamiquement :
+```text
+D:\WSL\Ubuntu-DevOps
+```
 
-- l'adresse IPv4 WSL ;
-- la passerelle par défaut ;
-- la route par défaut ;
-- la résolution DNS ;
-- l'accès Internet.
-
-Le plan AWS reste indépendant et inchangé : le VPC du projet conserve son
-adressage `10.0.0.0/16` et ses routes Terraform.
-
-## Installation
-
-Depuis PowerShell administrateur :
+Les commandes P5 documentées utilisent donc :
 
 ```powershell
-Set-ExecutionPolicy -Scope Process Bypass
-.\scripts\windows\install-wsl2-p5.ps1
+wsl -d Ubuntu
 ```
 
-Au premier démarrage d'Ubuntu, créer l'utilisateur Linux demandé par Ubuntu.
-Puis, depuis le dépôt sous Windows :
+## Profils acceptés
+
+Le dépôt Windows définit actuellement :
+
+| Profil | Threads | RAM | Swap | Réseau | Usage P5 |
+| --- | ---: | ---: | ---: | --- | --- |
+| `standard` | 8 | 20 Go | 8 Go | `mirrored` | recommandé |
+| `lab-heavy` | 12 | 28 Go | 12 Go | `mirrored` | validations lourdes |
+| `nat-fallback` | 8 | 20 Go | 8 Go | `nat` | secours réseau |
+
+P5 ne recopie pas ces fichiers et ne tente pas de les modifier.
+
+## Qualification amont obligatoire
+
+Avant de commencer P5, la workstation doit être qualifiée depuis le dépôt
+`Windows_11_Pro_Custom` :
 
 ```powershell
-.\scripts\windows\configure-wsl2-p5.ps1
+.\install.ps1 -Mode Verify -ValidateWsl -ValidateDevOps
 ```
 
-Après le redémarrage WSL déclenché par le script :
+Verdicts attendus :
+
+```text
+VERDICT: V3 DEVOPS READY
+VERDICT: V6 WSL2 PLATFORM READY
+```
+
+Cette qualification vérifie notamment les ressources du profil actif, WSL2,
+`systemd`, le filesystem Linux et la stack DevOps générale.
+
+## Contrôle P5
+
+Une fois dans Ubuntu :
 
 ```powershell
-.\scripts\windows\check-wsl2-p5.ps1
+wsl -d Ubuntu
 ```
 
-Dans Ubuntu :
+puis :
 
 ```bash
 cd ~/labs/p5_Openclassrooms
-./scripts/commands/bootstrap-ubuntu-server.sh
-./scripts/commands/setup.sh --check-only
+bash scripts/commands/bootstrap-ubuntu-server.sh --check-only
+bash scripts/commands/p5.sh inspect
 ```
 
-## Exploitation quotidienne
+Le premier contrôle compare la workstation déjà construite au contrat du P5.
+Il ne modifie rien avec `--check-only`.
 
-```powershell
-.\scripts\windows\start-p5.ps1
-.\scripts\windows\status-p5.ps1
-.\scripts\windows\stop-p5.ps1
+Si un composant strictement nécessaire au P5 est absent ou incompatible :
+
+```bash
+bash scripts/commands/bootstrap-ubuntu-server.sh
 ```
 
-`stop-p5.ps1` arrête uniquement la distribution P5. Pour arrêter toute la VM
-WSL2 et toutes les distributions :
+Le bootstrap reste convergent : un outil déjà conforme n'est pas réinstallé.
 
-```powershell
-wsl --shutdown
-```
+## Réseau
+
+Le profil quotidien amont utilise `mirrored`. Le profil `nat-fallback` reste
+supporté.
+
+Le P5 ne dépend pas d'une adresse privée WSL codée en dur. La valeur
+`P5_PUBLIC_IP_CIDR` représente toujours **l'IPv4 publique d'administration vue
+par AWS**, et non une adresse d'interface WSL.
 
 ## Sauvegarde
 
-Une sauvegarde complète peut être produite en VHDX :
+La sauvegarde et la restauration WSL2 appartiennent au dépôt Windows.
+
+La V7 de `Windows_11_Pro_Custom` est la source de vérité pour :
+
+- image Windows `C:` + `D:` ;
+- volumes critiques ;
+- export de la distribution Ubuntu en VHDX ;
+- SHA-256 ;
+- plan de restauration non destructif.
+
+Exemples depuis le dépôt Windows :
 
 ```powershell
-.\scripts\windows\backup-p5.ps1 -Destination D:\WSL-Backups
+.\install.ps1 -BackupAction Create -BackupTargetDrive E:
+.\install.ps1 -BackupAction Verify -BackupTargetDrive E:
+.\install.ps1 -BackupAction RestorePlan -BackupTargetDrive E:
 ```
 
-Le script arrête proprement `p5-devops`, exporte la distribution, vérifie que le
-VHDX existe et relance la distribution sauf si `-NoRestart` est fourni.
+## Règle de maintenance
 
-## Restauration sûre
-
-La restauration fournie par le dépôt importe le VHDX sous un nouveau nom afin
-de ne jamais supprimer automatiquement une distribution existante :
-
-```powershell
-.\scripts\windows\restore-p5.ps1 `
-  -BackupPath D:\WSL-Backups\p5-devops-YYYYMMDD-HHMMSS.vhdx `
-  -NewDistroName p5-devops-restored `
-  -InstallLocation D:\WSL\p5-devops-restored
-```
-
-Après validation de la copie restaurée, le remplacement d'une ancienne
-distribution reste une opération humaine explicite.
-
-## Plusieurs distributions
-
-WSL2 peut exécuter plusieurs distributions simultanément. Elles ne doivent pas
-être considérées comme des VM KVM indépendantes : elles partagent la VM WSL2,
-son noyau, son enveloppe CPU/RAM et son réseau WSL. Pour un lab nécessitant des
-VM avec adresses indépendantes, cartes réseau séparées ou snapshots de type
-hyperviseur, utiliser Hyper-V ou un autre hyperviseur dédié.
+Si le dimensionnement WSL2, le mode réseau, le chemin du VHDX ou la politique de
+backup changent, la modification doit être faite **dans
+`Windows_11_Pro_Custom`**, puis P5 adapte seulement son contrat documentaire si
+nécessaire.

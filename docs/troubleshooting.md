@@ -1,220 +1,122 @@
 # Troubleshooting — diagnostic du projet P5
 
-Ce guide couvre les problèmes du poste **Windows 11 Pro + WSL2**, du socle Ubuntu
-et du parcours AWS. L'objectif est de diagnostiquer sans supprimer un état
-Terraform, sans contourner un garde-fou et sans recréer des ressources au hasard.
+Ce guide sépare clairement les incidents de **workstation** des incidents du
+**projet P5**.
 
-## Réflexe de base
+## Règle de base
 
-Pour un problème local WSL2, commencer dans PowerShell par :
+```text
+Windows / WSL2 / profil / VHDX / Docker système
+        ↓
+Windows_11_Pro_Custom
 
-```powershell
-.\scripts\windows\status-p5.ps1
-.\scripts\windows\check-wsl2-p5.ps1
+AWS / Terraform / Ansible / Angular / OpenSearch / HAProxy
+        ↓
+p5_Openclassrooms
 ```
 
-Pour un problème du parcours Linux/AWS :
+Ne jamais supprimer un `terraform.tfstate` comme méthode de dépannage.
 
-```bash
-bash scripts/commands/p5.sh logs
+## 1. WSL2 ou la distribution Ubuntu ne fonctionne pas
+
+Le propriétaire de la plateforme est :
+
+```text
+mathiasseguincadiche/Windows_11_Pro_Custom
 ```
 
-Pour un diagnostic complet :
-
-```bash
-bash scripts/commands/collect-diagnostics.sh --complet --avec-preuves
-```
-
-**Ne jamais supprimer un `terraform.tfstate` comme méthode de dépannage.**
-
-## 1. `wsl.exe` est introuvable
-
-Vérifier que PowerShell est lancé sur Windows 11 puis :
+Commencer dans PowerShell :
 
 ```powershell
 wsl --status
-```
-
-Si WSL n'est pas installé, relancer le script d'installation dans un PowerShell
-administrateur :
-
-```powershell
-.\scripts\windows\install-wsl2-p5.ps1
-```
-
-Le script refuse une exécution non administrateur.
-
-## 2. La distribution `p5-devops` est absente
-
-```powershell
 wsl --list --verbose
 ```
 
-Puis :
-
-```powershell
-.\scripts\windows\install-wsl2-p5.ps1
-```
-
-Le script n'écrase pas une distribution existante.
-
-## 3. La distribution est arrêtée
-
-État :
-
-```powershell
-.\scripts\windows\status-p5.ps1
-```
-
-Démarrage :
-
-```powershell
-.\scripts\windows\start-p5.ps1
-wsl -d p5-devops
-```
-
-Un état `Stopped` n'indique aucune perte de données.
-
-## 4. Après `wsl --shutdown` ou un redémarrage Windows
-
-Relancer :
-
-```powershell
-.\scripts\windows\start-p5.ps1
-.\scripts\windows\status-p5.ps1
-wsl -d p5-devops
-```
-
-L'IPv4 WSL2 peut changer. C'est normal en NAT et aucune modification du dépôt
-n'est nécessaire.
-
-## 5. WSL2 ne voit pas 6 CPU ou 16 Go
-
-Contrôler :
-
-```powershell
-Get-Content $env:USERPROFILE\.wslconfig
-```
-
-La cible doit contenir :
-
-```ini
-[wsl2]
-memory=16GB
-processors=6
-swap=8GB
-networkingMode=nat
-```
-
-Réappliquer le modèle :
-
-```powershell
-.\scripts\windows\install-wsl2-p5.ps1
-```
-
-Puis arrêter totalement WSL :
-
-```powershell
-wsl --shutdown
-```
-
-et redémarrer `p5-devops`.
-
-## 6. `systemd` n'est pas PID 1
-
-Contrôler :
-
-```powershell
-wsl -d p5-devops -- ps -p 1 -o comm=
-```
-
-Réappliquer la configuration :
-
-```powershell
-.\scripts\windows\configure-wsl2-p5.ps1
-```
-
-Puis :
-
-```powershell
-wsl --terminate p5-devops
-.\scripts\windows\start-p5.ps1
-```
-
-## 7. Pas d'IPv4 WSL2
-
-```powershell
-wsl -d p5-devops hostname -I
-```
-
-Dans Ubuntu :
-
-```bash
-ip -4 addr show
-ip route show default
-```
-
-Si aucune route par défaut n'existe, arrêter complètement WSL puis relancer :
-
-```powershell
-wsl --shutdown
-.\scripts\windows\start-p5.ps1
-```
-
-Ne pas ajouter une IP statique manuellement dans Ubuntu pour contourner le NAT
-WSL2.
-
-## 8. DNS WSL2 en échec
-
-Dans Ubuntu :
-
-```bash
-getent ahostsv4 github.com
-cat /etc/resolv.conf
-```
-
-Côté Windows, vérifier le modèle :
-
-```powershell
-Get-Content $env:USERPROFILE\.wslconfig
-```
-
-Le profil attendu contient :
+La distribution attendue est :
 
 ```text
-dnsTunneling=true
+Ubuntu
 ```
 
-Puis :
+Puis, depuis le dépôt Windows :
+
+```powershell
+.\install.ps1 -Mode Verify -ValidateWsl -ValidateDevOps
+```
+
+P5 ne doit pas tenter de recréer WSL2 ou modifier `.wslconfig` pour contourner
+cet échec.
+
+## 2. Le profil WSL2 n'est pas le bon
+
+Les profils `standard`, `lab-heavy` et `nat-fallback` sont gérés uniquement dans
+`Windows_11_Pro_Custom`.
+
+Cibles actuelles :
+
+```text
+standard     → 8 threads / 20 Go / 8 Go / mirrored
+lab-heavy    → 12 threads / 28 Go / 12 Go / mirrored
+nat-fallback → 8 threads / 20 Go / 8 Go / NAT
+```
+
+Après un changement de profil dans le dépôt amont :
 
 ```powershell
 wsl --shutdown
-.\scripts\windows\start-p5.ps1
 ```
 
-## 9. Internet fonctionne sous Windows mais pas dans WSL2
+Puis relancer `Ubuntu` et la validation amont.
 
-Tester dans Ubuntu :
+## 3. Le mode mirrored pose problème avec un VPN ou le réseau
 
-```bash
-ip route show default
-getent ahostsv4 github.com
-curl -I https://github.com
-```
+Le profil `nat-fallback` existe précisément comme solution de secours dans le
+dépôt Windows. Effectuer le changement depuis ce dépôt, pas depuis P5.
 
-Puis exécuter :
+P5 reste indépendant d'une adresse privée WSL fixe.
+
+## 4. Docker est inaccessible sans sudo
+
+Valider d'abord la workstation :
 
 ```powershell
-.\scripts\windows\check-wsl2-p5.ps1
+.\install.ps1 -Mode Verify -ValidateWsl -ValidateDevOps
 ```
 
-Un VPN, proxy ou firewall Windows peut modifier le comportement du réseau. Le
-projet conserve `autoProxy=true` et `dnsTunneling=true` dans le profil WSL2.
+Si l'utilisateur vient d'être ajouté au groupe Docker :
 
-## 10. Le dépôt est exécuté depuis `/mnt/c`
+```powershell
+wsl --shutdown
+wsl -d Ubuntu
+```
 
-Le projet doit être utilisé depuis le système de fichiers Linux pour éviter les
-problèmes de performances et de permissions :
+Puis dans Ubuntu :
+
+```bash
+docker info
+```
+
+## 5. Le contrat P5 n'est pas conforme
+
+Dans Ubuntu :
+
+```bash
+cd ~/labs/p5_Openclassrooms
+bash scripts/commands/bootstrap-ubuntu-server.sh --check-only
+```
+
+Si un composant strictement nécessaire au P5 est absent ou incompatible :
+
+```bash
+bash scripts/commands/bootstrap-ubuntu-server.sh
+```
+
+Ce script corrige uniquement le delta projet. Il ne doit jamais écrire la
+configuration WSL2 globale.
+
+## 6. Le dépôt P5 est sous `/mnt/c` ou `/mnt/d`
+
+Recloner ou déplacer le checkout de travail dans le filesystem Linux :
 
 ```bash
 mkdir -p ~/labs
@@ -222,122 +124,28 @@ cd ~/labs
 git clone https://github.com/mathiasseguincadiche/p5_Openclassrooms.git
 ```
 
-Chemin recommandé :
-
-```text
-~/labs/p5_Openclassrooms
-```
-
-## 11. Le bootstrap demande une reconnexion
-
-Le bootstrap peut ajouter l'utilisateur au groupe Docker ou installer NVM.
-
-Quitter Ubuntu :
-
-```bash
-exit
-```
-
-Puis :
-
-```powershell
-.\scripts\windows\stop-p5.ps1
-.\scripts\windows\start-p5.ps1
-wsl -d p5-devops
-```
-
-Ensuite :
+Utiliser ensuite :
 
 ```bash
 cd ~/labs/p5_Openclassrooms
-bash scripts/commands/p5.sh all
 ```
 
-## 12. Docker est inaccessible
-
-Dans Ubuntu :
+## 7. Diagnostic général P5
 
 ```bash
-docker info
-systemctl status docker --no-pager
-id
+bash scripts/commands/p5.sh inspect
+bash scripts/commands/p5.sh logs
 ```
 
-Si l'utilisateur vient d'être ajouté au groupe Docker, redémarrer la distribution
-comme indiqué dans la section précédente.
-
-Ne pas utiliser `sudo docker` comme solution permanente.
-
-## 13. Le socle DevOps reste incomplet
+Diagnostic partageable :
 
 ```bash
-bash scripts/commands/p5.sh status
+bash scripts/commands/collect-diagnostics.sh --complet --avec-preuves
 ```
 
-Puis :
+Analyser d'abord le premier `[ KO ]` et le journal précis de l'étape.
 
-```bash
-node --version
-docker info
-terraform version
-ansible-playbook --version
-aws --version
-```
-
-Côté Windows :
-
-```powershell
-.\scripts\windows\check-wsl2-p5.ps1 -RequireTools
-```
-
-## 14. Une sauvegarde WSL2 échoue
-
-Vérifier l'état de la distribution :
-
-```powershell
-.\scripts\windows\status-p5.ps1
-```
-
-Puis relancer :
-
-```powershell
-.\scripts\windows\backup-p5.ps1
-```
-
-Le script arrête `p5-devops` avant l'export VHDX et calcule un SHA-256.
-
-Vérifier que le disque de destination dispose de suffisamment d'espace libre.
-
-## 15. Une restauration WSL2 est refusée
-
-La restauration refuse volontairement d'écraser une distribution existante.
-Lister les distributions :
-
-```powershell
-wsl --list --verbose
-```
-
-Utiliser un nouveau nom de restauration si nécessaire :
-
-```powershell
-.\scripts\windows\restore-p5.ps1 `
-  -BackupPath <fichier.vhdx> `
-  -DistroName p5-devops-restored
-```
-
-Après restauration :
-
-```powershell
-.\scripts\windows\status-p5.ps1 -DistroName p5-devops-restored
-```
-
-## 16. Mauvais compte AWS ou session expirée
-
-Symptômes :
-
-- identité AWS illisible ;
-- compte différent de `P5_EXPECTED_ACCOUNT_ID` ;
-- `GO AWS` refusé.
+## 8. Mauvais compte AWS ou session expirée
 
 Relancer :
 
@@ -345,27 +153,25 @@ Relancer :
 bash scripts/commands/p5.sh prepare
 ```
 
-Diagnostic :
+Diagnostic manuel :
 
 ```bash
 aws --profile p5-lab sts get-caller-identity
 aws configure get region --profile p5-lab
 ```
 
-Ne jamais modifier l'identifiant de compte attendu uniquement pour faire passer
-un mauvais compte actif.
+Ne jamais modifier l'identifiant de compte attendu pour faire correspondre un
+mauvais compte actif.
 
-## 17. L'adresse publique `/32` n'est plus valide
+## 9. L'adresse `/32` AWS n'est plus valide
 
-L'IPv4 publique Windows/Internet a changé. Elle est indépendante de l'IPv4 WSL2.
-
-Relancer :
+La connexion publique a changé.
 
 ```bash
 bash scripts/commands/p5.sh prepare
 ```
 
-En manuel :
+Ou :
 
 ```bash
 $EDITOR environment/aws-readiness.env
@@ -373,9 +179,9 @@ bash scripts/commands/sync-terraform-tfvars.sh --apply
 bash scripts/commands/sync-terraform-tfvars.sh --check
 ```
 
-Ne pas remplacer `P5_PUBLIC_IP_CIDR` par l'adresse privée WSL2.
+`P5_PUBLIC_IP_CIDR` est l'IPv4 publique vue depuis AWS, pas une IP WSL2.
 
-## 18. `terraform.tfvars` désynchronisés
+## 10. `terraform.tfvars` désynchronisés
 
 ```bash
 bash scripts/commands/sync-terraform-tfvars.sh --apply
@@ -384,15 +190,15 @@ bash scripts/commands/sync-terraform-tfvars.sh --check
 
 La source de vérité reste `environment/aws-readiness.env`.
 
-## 19. Collision de ressources P5
+## 11. Collision de ressources P5
 
 Ne pas :
 
-- supprimer `terraform.tfstate` ;
+- supprimer le `terraform.tfstate` ;
 - supprimer immédiatement les ressources dans la console AWS ;
 - changer les tags pour contourner le contrôle.
 
-Vérifier :
+Inspecter :
 
 ```bash
 terraform -chdir=terraform/exercice-1 state list
@@ -406,36 +212,27 @@ Puis relancer :
 bash scripts/commands/p5.sh all
 ```
 
-## 20. Quota EC2 insuffisant
+## 12. Quota EC2 insuffisant
 
-Vérifier le quota EC2 Standard dans la région du projet. Ne pas réduire
-arbitrairement `P5_REQUIRED_STANDARD_VCPUS` pour obtenir un faux `GO AWS`.
+Vérifier le quota EC2 Standard de la région. Les exercices 1 et 3 peuvent
+coexister et nécessiter plusieurs instances.
 
-## 21. Le budget AWS est absent
+Ne pas réduire artificiellement les garde-fous pour obtenir un faux `GO AWS`.
 
-```bash
-bash scripts/commands/p5.sh prepare
-```
-
-Ou :
-
-```bash
-./scripts/commands/setup-aws-guardrails.sh
-./scripts/commands/setup-aws-guardrails.sh --apply
-```
-
-## 22. Terraform ne trouve pas l'AMI Ubuntu
+## 13. Terraform ne trouve pas l'AMI Ubuntu
 
 ```bash
 ./scripts/commands/check-aws-readiness.sh --stage initial
 ```
 
-L'AMI EC2 Ubuntu utilisée dans AWS est indépendante d'Ubuntu 26.04 exécuté dans
-WSL2.
+La configuration normale sélectionne une AMI Canonical Ubuntu selon les filtres
+du module Terraform.
 
-## 23. Ansible ne joint pas l'EC2
+## 14. Ansible ne joint pas l'EC2
 
-Consulter d'abord les logs `wait-ssh-ex1` ou `ansible-ping`.
+Consulter d'abord les logs `wait-ssh-ex1` et `ansible-ping`.
+
+Puis :
 
 ```bash
 terraform -chdir=terraform/exercice-1 output -raw web_public_ip
@@ -443,7 +240,7 @@ cat ansible/inventories/hosts_aws
 ls -l ~/.ssh/p5-key
 ```
 
-Permissions :
+La clé privée doit être en mode `600` :
 
 ```bash
 chmod 600 ~/.ssh/p5-key
@@ -455,11 +252,9 @@ Test direct :
 ssh -i ~/.ssh/p5-key ubuntu@ADRESSE_EC2
 ```
 
-Vérifier aussi le `/32` du Security Group.
+## 15. Le playbook Ansible échoue
 
-## 24. Le playbook Ansible échoue
-
-Consulter `ansible-deploy`.
+Consulter le log `ansible-deploy`.
 
 Sur l'EC2 :
 
@@ -469,9 +264,9 @@ sudo systemctl status nginx --no-pager
 sudo journalctl -u nginx --no-pager -n 100
 ```
 
-## 25. L'idempotence Ansible échoue
+## 16. L'idempotence Ansible échoue
 
-Le second passage doit produire :
+Le second passage doit donner :
 
 ```text
 changed=0
@@ -479,31 +274,23 @@ unreachable=0
 failed=0
 ```
 
-Si `changed>0`, identifier la tâche qui modifie encore la cible à chaque passage.
+Si `changed>0`, identifier la tâche qui modifie encore la cible à chaque
+exécution.
 
-## 26. L'artefact Angular est désynchronisé
+## 17. Angular ou l'artefact n'est plus synchronisé
 
 ```bash
 ./scripts/commands/prepare-angular-artifact.sh
 ./scripts/commands/validate.sh
 ```
 
-## 27. Angular répond mais le fallback SPA échoue
+Vérification du déploiement :
 
 ```bash
 ./scripts/commands/verify-angular-deployment.sh
 ```
 
-Tests :
-
-```bash
-curl -i http://ADRESSE_EC2/
-curl -i http://ADRESSE_EC2/parcours-p5
-```
-
-La configuration NGINX doit conserver le fallback SPA vers `/index.html`.
-
-## 28. Aucun vrai log NGINX n'est disponible
+## 18. Aucun log NGINX réel n'est disponible
 
 ```bash
 bash scripts/commands/p5.sh ex1
@@ -517,44 +304,31 @@ Ou :
   --output proofs/runtime/exercice-2/nginx-access-real.log
 ```
 
-## 29. OpenSearch n'est pas accessible
+## 19. OpenSearch n'est pas accessible
 
 ```bash
 terraform -chdir=terraform/exercice-2 output
 ./scripts/commands/check-aws-readiness.sh --stage exercice-2
 ```
 
-Causes fréquentes :
+Vérifier domaine, endpoint HTTPS, IP publique `/32` et session AWS.
 
-- domaine encore en création ;
-- IPv4 publique `/32` périmée ;
-- endpoint incorrect ;
-- HTTPS/TLS ;
-- session AWS expirée.
-
-L'IPv4 privée WSL2 n'est pas celle qui doit être autorisée dans OpenSearch.
-
-## 30. Les données OpenSearch échouent à la vérification
+## 20. Les données OpenSearch échouent
 
 ```bash
 ./scripts/commands/import-opensearch-data.sh --apply
 ./scripts/commands/verify-opensearch-data.sh
 ```
 
-Le jeu versionné assure la reproductibilité ; le log réel prouve le bout en bout.
+La vérification porte sur le volume de documents, les méthodes HTTP, les tranches
+temporelles et les chemins distincts.
 
-## 31. Le dashboard OpenSearch ne montre pas les trois graphiques
+## 21. Le dashboard n'est pas complet
 
-Contrôler d'abord que les données sont prêtes puis vérifier le data view
-`nginx-access-*` avec `@timestamp`.
+Le checkpoint reste manuel. Vérifier le data view `nginx-access-*` avec
+`@timestamp`, puis les trois visualisations demandées.
 
-Les trois vues attendues sont :
-
-1. Terms sur `http_method` ;
-2. Date histogram `12h` + Sum sur `bytes_sent` ;
-3. Date histogram `12h` + Terms taille 5 sur `url_path`.
-
-## 32. L'exercice 3 ne trouve pas le VPC
+## 22. L'exercice 3 ne trouve pas le VPC
 
 L'exercice 1 doit encore exister :
 
@@ -562,47 +336,34 @@ L'exercice 1 doit encore exister :
 ./scripts/commands/check-aws-readiness.sh --stage exercice-3
 ```
 
-Ne jamais détruire l'exercice 1 avant l'exercice 3.
-
-## 33. HAProxy ne montre qu'un backend
+## 23. HAProxy ne montre qu'un backend
 
 ```bash
 ./scripts/commands/test-haproxy-roundrobin.sh --requests 12
 ```
 
-Sur les backends :
+Vérifier ensuite Docker sur les backends et HAProxy sur le frontal.
 
-```bash
-sudo docker ps
-sudo docker logs nginx-hello
-curl http://localhost/
-```
+## 24. Le test de panne HAProxy échoue
 
-Sur HAProxy :
-
-```bash
-sudo haproxy -c -f /etc/haproxy/haproxy.cfg
-sudo systemctl status haproxy --no-pager
-```
-
-## 34. Le test de panne HAProxy échoue
+Prévisualiser :
 
 ```bash
 ./scripts/commands/test-haproxy-failover.sh
+```
+
+Puis exécuter explicitement :
+
+```bash
 ./scripts/commands/test-haproxy-failover.sh --apply
 ```
 
-Vérifier clé SSH, utilisateur `ubuntu`, `/32` et outputs Terraform.
+## 25. `p5.sh all` a été interrompu
 
-## 35. `p5.sh all` a été interrompu
-
-Ne pas nettoyer les états ni recommencer manuellement au hasard.
-
-Si WSL2 est arrêté :
+Depuis Windows :
 
 ```powershell
-.\scripts\windows\start-p5.ps1
-wsl -d p5-devops
+wsl -d Ubuntu
 ```
 
 Puis :
@@ -614,32 +375,30 @@ bash scripts/commands/p5.sh all
 
 Terraform réévalue les états existants.
 
-## 36. `p5.sh finalize` échoue
+## 26. `p5.sh finalize` échoue
 
-Consulter le log `livrables-strict`. Corriger uniquement les preuves réelles
-manquantes puis relancer :
+Consulter le log `livrables-strict`, compléter uniquement les preuves réelles,
+puis relancer :
 
 ```bash
 bash scripts/commands/p5.sh finalize
 ```
 
-## 37. Nettoyage AWS incomplet
+## 27. Nettoyage AWS incomplet
 
 ```bash
 bash scripts/commands/p5.sh cleanup
 ```
 
-Le verdict final n'est attendu qu'après destruction des exercices 3, 2 puis 1 :
+Le verdict final n'est attendu qu'après destruction 3 → 2 → 1 :
 
 ```text
 NETTOYAGE AWS COMPLET
 ```
 
-Le nettoyage AWS ne supprime pas WSL2 ni les sauvegardes VHDX.
+## 28. La CI échoue
 
-## 38. La CI échoue
-
-Validation Linux :
+Validation locale :
 
 ```bash
 bash scripts/commands/p5.sh status --full-validation
@@ -648,20 +407,17 @@ python3 scripts/tools/audit_non_regression.py
 python3 scripts/tools/audit_secrets.py
 ```
 
-Validation WSL2 :
+Une CI verte valide le dépôt et les intégrations locales, pas un déploiement réel
+sur le compte AWS.
+
+## 29. Backup ou restauration WSL2
+
+Ne pas utiliser P5 pour cela. Depuis `Windows_11_Pro_Custom` :
 
 ```powershell
-.\scripts\windows\check-wsl2-p5.ps1 -RequireTools
+.\install.ps1 -BackupAction Create -BackupTargetDrive E:
+.\install.ps1 -BackupAction Verify -BackupTargetDrive E:
+.\install.ps1 -BackupAction RestorePlan -BackupTargetDrive E:
 ```
 
-La CI protège également le contrat Windows 11 / WSL2 et parse les scripts
-PowerShell.
-
-## 39. La CI est verte mais AWS réel échoue
-
-C'est possible. La CI teste le dépôt et les intégrations locales sans utiliser les
-credentials AWS réels.
-
-Le premier `p5.sh all` depuis `p5-devops` reste le test d'intégration AWS final.
-Conserver le log exact de la première étape en échec au lieu de lancer plusieurs
-corrections au hasard.
+La V7 amont est la seule procédure de sauvegarde/restauration de la workstation.
