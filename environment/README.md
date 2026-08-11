@@ -72,8 +72,6 @@ Elle est stockée sous :
 D:\WSL\Ubuntu-DevOps
 ```
 
-Le P5 n'utilise plus le nom historique `p5-devops`.
-
 ## 3. Préparer la workstation avant P5
 
 Dans le dépôt `Windows_11_Pro_Custom`, depuis PowerShell administrateur :
@@ -228,7 +226,7 @@ GO TERRAFORM
 ## 10. Sauvegarde et restauration
 
 La sauvegarde de la workstation et de WSL2 appartient au dépôt Windows. Le P5 ne
-fournit plus de scripts VHDX concurrents.
+fournit pas de système VHDX concurrent.
 
 Dans `Windows_11_Pro_Custom` :
 
