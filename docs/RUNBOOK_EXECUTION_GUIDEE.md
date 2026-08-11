@@ -1,14 +1,39 @@
 # RUNBOOK P5 OpenClassrooms — Exécution guidée A → Z
 
-> **But :** réaliser le P5 AWS rapidement avec `p5.sh`, comprendre ce qui se passe,
-> conserver les preuves, diagnostiquer proprement les erreurs et terminer par le
-> contrôle des livrables puis le nettoyage AWS.
+> **But :** réaliser le P5 AWS depuis **Windows 11 Pro + WSL2 + Ubuntu 26.04**,
+> comprendre chaque étape, conserver les preuves, diagnostiquer proprement les
+> erreurs et terminer par le contrôle des livrables puis le nettoyage AWS.
 
----
+## 1. Architecture à retenir
 
-## 1. Philosophie du dépôt
+```text
+Windows 11 Pro
+└── WSL2
+    ├── 6 processeurs logiques
+    ├── 16 Go RAM
+    ├── 8 Go swap
+    ├── NAT + DNS tunneling
+    └── p5-devops
+        └── Ubuntu 26.04 + systemd
+            ├── AWS CLI
+            ├── Terraform
+            ├── Ansible
+            ├── Docker
+            ├── Node.js / Angular
+            └── p5.sh
+                  │
+                  ▼
+                AWS
+                ├── Exercice 1 : VPC + EC2 → Ansible → NGINX → Angular
+                ├── Exercice 2 : Amazon OpenSearch ← logs NGINX
+                └── Exercice 3 : HAProxy → Backend 1 + Backend 2
+```
 
-Le projet suit ce cycle :
+Le réseau WSL2 local et le réseau AWS sont distincts. Le VPC AWS reste
+`10.0.0.0/16`. L'adresse privée WSL2 n'est pas utilisée comme CIDR
+d'administration AWS.
+
+## 2. Philosophie du dépôt
 
 ```text
 INSPECTER
@@ -24,105 +49,160 @@ VÉRIFIER
 JOURNALISER
 ```
 
-Les éléments persistants ne sont donc pas recréés inutilement. En revanche, les
-tests fonctionnels peuvent être rejoués pour prouver que le système fonctionne
-encore au moment de la démonstration.
+Les éléments persistants ne sont pas recréés inutilement. Les tests fonctionnels
+peuvent en revanche être rejoués pour prouver que le système fonctionne encore
+au moment de la démonstration.
 
----
+# PHASE A — PRÉPARER WINDOWS 11 ET WSL2
 
-## 2. Architecture à retenir
+## 3. Installer le socle WSL2
+
+Depuis PowerShell **en tant qu'administrateur** :
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+.\scripts\windows\install-wsl2-p5.ps1
+```
+
+Le script :
+
+- exige Windows 11 ;
+- met WSL à jour ;
+- définit WSL2 comme version par défaut ;
+- applique le profil 6 CPU / 16 Go / 8 Go swap ;
+- configure NAT, DNS tunneling et firewall ;
+- installe Ubuntu 26.04 sous le nom `p5-devops` si nécessaire ;
+- refuse d'écraser une distribution déjà existante.
+
+## 4. Premier lancement Ubuntu
+
+```powershell
+wsl -d p5-devops
+```
+
+Terminer la création de l'utilisateur Linux proposée par Ubuntu puis quitter :
+
+```bash
+exit
+```
+
+Configurer ensuite la distribution :
+
+```powershell
+.\scripts\windows\configure-wsl2-p5.ps1
+```
+
+Le résultat attendu comprend :
 
 ```text
-VM Ubuntu Server — poste DevOps
-│
-├─ AWS CLI
-├─ Terraform
-├─ Ansible
-├─ Docker
-├─ Node.js / Angular
-└─ p5.sh
-    │
-    ▼
-AWS
-├─ Exercice 1 : VPC + subnets + EC2 → Ansible → NGINX → Angular
-├─ Exercice 2 : Amazon OpenSearch ← logs NGINX
-└─ Exercice 3 : HAProxy → Backend 1 + Backend 2
+hostname : p5-devops
+PID 1    : systemd
 ```
 
-**Dépendance importante :** l’exercice 3 réutilise le réseau de l’exercice 1.
-Ne détruis jamais l’exercice 1 avant d’avoir terminé l’exercice 3.
+## 5. Contrôler WSL2
 
----
+```powershell
+.\scripts\windows\check-wsl2-p5.ps1
+```
 
-## 3. Commandes principales
+Le contrôle vérifie notamment :
+
+- noyau WSL2 ;
+- au moins 6 processeurs disponibles ;
+- environ 16 Go de RAM ;
+- `systemd` ;
+- hostname ;
+- IPv4 WSL ;
+- passerelle ;
+- route par défaut ;
+- DNS ;
+- HTTPS vers Internet.
+
+L'adresse WSL peut changer après un arrêt global ou un redémarrage Windows. C'est
+normal : elle est détectée dynamiquement.
+
+# PHASE B — INSTALLER LE SOCLE DEVOPS
+
+## 6. Cloner le dépôt dans Linux
+
+Depuis Ubuntu WSL2 :
 
 ```bash
-# Observer sans modifier
-bash scripts/commands/p5.sh inspect
-
-# Préparer le lab
-bash scripts/commands/p5.sh prepare
-
-# Contrôler sans créer de ressources AWS
-bash scripts/commands/p5.sh status
-
-# Exécuter un exercice
-bash scripts/commands/p5.sh ex1
-bash scripts/commands/p5.sh ex2
-bash scripts/commands/p5.sh ex3
-
-# Faire tout le projet
-bash scripts/commands/p5.sh all
-
-# Vérifier les livrables
-bash scripts/commands/p5.sh finalize
-
-# Voir les logs
-bash scripts/commands/p5.sh logs
-
-# Nettoyer AWS à la fin
-bash scripts/commands/p5.sh cleanup
-```
-
-Pour la **première exécution réelle**, utilise `all` **sans `--yes`** afin de voir
-les plans Terraform et les validations humaines.
-
----
-
-# PHASE A — DÉMARRAGE
-
-## 4. Mettre le dépôt à jour
-
-```bash
-cd ~/p5_Openclassrooms
-git pull
-git status
-```
-
-État idéal :
-
-```text
-On branch main
-nothing to commit, working tree clean
-```
-
-Si tu pars d’un clone neuf :
-
-```bash
-cd ~
+mkdir -p ~/labs
+cd ~/labs
 git clone https://github.com/mathiasseguincadiche/p5_Openclassrooms.git
 cd p5_Openclassrooms
 ```
 
----
+Éviter d'exécuter le projet depuis `/mnt/c`. Le dépôt de travail doit rester dans
+le VHDX Linux.
 
-## 5. Inspecter avant de toucher quoi que ce soit
+## 7. Installer les outils
+
+```bash
+bash scripts/commands/bootstrap-ubuntu-server.sh
+```
+
+Le bootstrap converge notamment :
+
+- paquets Linux ;
+- Terraform ;
+- Ansible Core ;
+- AWS CLI ;
+- Docker Engine + Compose ;
+- NVM + Node.js ;
+- outils de validation.
+
+S'il affiche une reconnexion requise pour Docker ou NVM, quitter Ubuntu :
+
+```bash
+exit
+```
+
+Puis depuis PowerShell :
+
+```powershell
+.\scripts\windows\stop-p5.ps1
+.\scripts\windows\start-p5.ps1
+wsl -d p5-devops
+```
+
+Ne réinstallez pas manuellement tout le socle.
+
+## 8. Contrôle complet du poste
+
+Dans Ubuntu :
+
+```bash
+cd ~/labs/p5_Openclassrooms
+bash scripts/commands/setup.sh --check-only
+```
+
+Puis côté Windows :
+
+```powershell
+.\scripts\windows\check-wsl2-p5.ps1 -RequireTools
+```
+
+# PHASE C — INSPECTER LE LAB
+
+## 9. Mettre le dépôt à jour
+
+Dans Ubuntu :
+
+```bash
+cd ~/labs/p5_Openclassrooms
+git pull
+git status
+```
+
+## 10. Observer sans modifier
 
 ```bash
 bash scripts/commands/p5.sh inspect
 ```
 
-### Ce que `inspect` regarde
+`inspect` regarde notamment :
 
 - Ubuntu et le socle DevOps ;
 - Terraform ;
@@ -131,46 +211,53 @@ bash scripts/commands/p5.sh inspect
 - Ansible ;
 - Node/NVM ;
 - configuration AWS locale ;
-- session AWS déjà active ;
+- session AWS ;
 - clés SSH ;
-- `terraform.tfvars` ;
+- tfvars ;
 - états Terraform ;
 - inventaire Ansible ;
 - artefact Angular ;
 - preuves et logs existants.
 
-### Ce que `inspect` ne doit pas faire
+Il ne doit déclencher aucune installation, authentification interactive,
+création AWS ou destruction.
 
-- aucune installation ;
-- aucune authentification interactive ;
-- aucun `terraform apply` ;
-- aucune création AWS ;
-- aucune destruction.
+# PHASE D — LANCER LE PARCOURS
 
-### Si `inspect` échoue
+## 11. Commandes principales
 
 ```bash
-bash scripts/commands/p5.sh logs
-```
+# Observer
+bash scripts/commands/p5.sh inspect
 
-Envoie-moi :
+# Préparer
+bash scripts/commands/p5.sh prepare
 
-1. la commande lancée ;
-2. le premier message `[ KO ]` ou l’erreur ;
-3. le nom de l’étape ;
-4. le fichier `.log` complet correspondant.
+# Contrôler
+bash scripts/commands/p5.sh status
 
----
+# Exercices
+bash scripts/commands/p5.sh ex1
+bash scripts/commands/p5.sh ex2
+bash scripts/commands/p5.sh ex3
 
-# PHASE B — LANCEMENT COMPLET
-
-## 6. Démarrer le projet
-
-```bash
+# Parcours complet
 bash scripts/commands/p5.sh all
+
+# Finalisation
+bash scripts/commands/p5.sh finalize
+
+# Logs
+bash scripts/commands/p5.sh logs
+
+# Nettoyage final
+bash scripts/commands/p5.sh cleanup
 ```
 
-Le parcours est :
+Pour la première exécution réelle, utiliser `all` sans `--yes` afin de voir les
+plans Terraform et les validations humaines.
+
+## 12. Parcours de `all`
 
 ```text
 prepare
@@ -184,72 +271,25 @@ ex3
 diagnostics
 ```
 
-Le mode `all` **ne détruit pas AWS**.
+`all` ne détruit pas AWS.
 
----
+# PHASE E — AWS READY
 
-# PHASE C — PRÉPARATION VM + AWS
+## 13. Authentification AWS
 
-## 7. Convergence de la VM
+Le projet privilégie les credentials temporaires et refuse l'utilisation
+quotidienne du compte root.
 
-Le script inspecte les outils avant installation.
-
-### Si tout est conforme
-
-```text
-VM déjà convergée : aucune installation nécessaire.
-```
-
-### Si un outil manque
-
-Le script propose de corriger uniquement l’écart.
-
-### Si Docker demande une reconnexion
-
-Tu peux voir :
-
-```text
-RECONNEXION REQUISE
-```
-
-Dans ce cas :
-
-```bash
-exit
-```
-
-Reconnecte-toi puis :
-
-```bash
-cd ~/p5_Openclassrooms
-bash scripts/commands/p5.sh all
-```
-
-Ne relance pas manuellement une installation complète.
-
----
-
-## 8. Authentification AWS
-
-Le projet utilise des credentials temporaires et refuse l’usage quotidien de
-l’identité AWS root.
-
-### Session valide
-
-Aucune action : elle est réutilisée.
-
-### Session absente ou expirée
-
-Le flux peut utiliser :
+Une session valide est réutilisée. Si nécessaire, le flux peut utiliser :
 
 ```bash
 aws login --remote
 ```
 
-La VM affiche l’autorisation à ouvrir dans ton navigateur. Tu saisis tes
-identifiants **chez AWS**, pas dans les scripts du projet.
+L'URL d'autorisation est ouverte dans le navigateur Windows. Les identifiants
+restent saisis chez AWS et ne sont jamais transmis au dépôt.
 
-### Ne jamais partager
+Ne jamais partager :
 
 - mot de passe AWS ;
 - Access Key ;
@@ -258,183 +298,60 @@ identifiants **chez AWS**, pas dans les scripts du projet.
 - code MFA ;
 - cookies.
 
----
+## 14. Configuration du lab
 
-## 9. Configuration du lab
-
-Le projet prépare :
+La source locale est :
 
 ```text
 environment/aws-readiness.env
 ```
 
-Ce fichier sert de source locale pour :
+Elle contient notamment :
 
-- profil AWS ;
-- région ;
-- compte ;
+- profil et région AWS ;
+- compte attendu ;
 - IPv4 publique `/32` ;
 - clé SSH ;
-- OpenSearch ;
+- paramètres OpenSearch ;
 - budget.
 
-Les trois `terraform.tfvars` sont ensuite synchronisés automatiquement.
+Les trois `terraform.tfvars` sont générés depuis cette source unique.
 
-Si tout est déjà correct, ils ne sont pas réécrits inutilement.
+## 15. Porte AWS Ready
 
----
-
-## 10. Budget AWS
-
-Le script vérifie notamment :
-
-- montant ;
-- alerte réelle 50 % ;
-- alerte réelle 80 % ;
-- alerte prévisionnelle 100 % ;
-- destinataire.
-
-S’il est déjà conforme :
+Résultats attendus :
 
 ```text
-Budget AWS déjà conforme
-```
-
-Sinon le delta est affiché avant correction.
-
----
-
-## 11. Porte AWS Ready
-
-Avant Terraform, l’objectif est :
-
-```text
-AWS PRÊT
 GO AWS
 GO TERRAFORM
 ```
 
-Si tu obtiens :
+Si un `STOP AWS` ou `[ KO ]` apparaît, ne contournez pas le contrôle.
 
-```text
-STOP AWS
+# PHASE F — EXERCICE 1
+
+## 16. Lancer l'exercice
+
+```bash
+bash scripts/commands/p5.sh ex1
 ```
 
-ou un `[ KO ]`, **ne contourne pas le contrôle**.
+Le centre de commande :
 
-Envoie le log de cette étape. Les causes possibles sont souvent IAM, quota,
-session, IP publique, région ou disponibilité d’un service AWS.
+1. prépare l'artefact Angular ;
+2. lance Terraform ;
+3. affiche le plan ;
+4. applique uniquement si le plan contient un delta ;
+5. génère l'inventaire Ansible ;
+6. attend SSH et cloud-init ;
+7. exécute le playbook ;
+8. le rejoue ;
+9. exige l'idempotence ;
+10. vérifie Angular/NGINX ;
+11. génère du trafic ;
+12. collecte le vrai `access.log`.
 
----
-
-# PHASE D — EXERCICE 1
-
-## 12. Angular
-
-Le script compare dépendances, sources et artefact.
-
-Premier passage : un build peut être nécessaire.
-
-Passage suivant sans changement :
-
-```text
-Artefact Angular déjà conforme
-```
-
-Le but est d’éviter `npm ci` et un rebuild inutiles.
-
----
-
-## 13. Terraform Exercice 1
-
-Le script exécute :
-
-```text
-terraform init
-terraform plan -detailed-exitcode
-```
-
-Interprétation :
-
-```text
-0 → aucun delta → aucun apply
-1 → erreur → arrêt
-2 → delta réel → affichage → confirmation → apply
-```
-
-### Premier déploiement
-
-Le plan doit correspondre au périmètre de l’exercice : VPC, sous-réseaux, EC2,
-security groups, etc.
-
-**Lis toujours le plan avant de confirmer.**
-
-### Après l’apply
-
-Un second plan est exécuté.
-
-Résultat attendu :
-
-```text
-No changes.
-```
-
-Cela prouve que l’état AWS réel correspond maintenant à l’état Terraform attendu.
-
----
-
-## 14. Inventaire Ansible
-
-L’IP de l’EC2 vient de Terraform.
-
-Le projet génère automatiquement :
-
-```text
-ansible/inventories/hosts_aws
-```
-
-Aucune IP ne doit normalement être recopiée à la main.
-
----
-
-## 15. Attente SSH / cloud-init
-
-Une EC2 neuve n’est pas immédiatement prête.
-
-Tu peux voir :
-
-```text
-tentative 01/48
-tentative 02/48
-...
-SSH prêt
-```
-
-Laisse le script attendre. Il vérifie notamment SSH, Python et `cloud-init`.
-
----
-
-## 16. Ansible
-
-Le script commence par un ping Ansible puis exécute le playbook.
-
-Le playbook configure notamment :
-
-```text
-EC2
- ↓
-NGINX
- ↓
-Angular
-```
-
----
-
-## 17. Idempotence Ansible
-
-Le playbook est exécuté une deuxième fois.
-
-Résultat obligatoire :
+Résultat obligatoire du second passage Ansible :
 
 ```text
 changed=0
@@ -442,199 +359,45 @@ unreachable=0
 failed=0
 ```
 
-**Pourquoi ?** Le premier passage configure. Le second prouve que la machine est
-déjà conforme et qu’Ansible n’a plus besoin de la modifier.
+# PHASE G — EXERCICE 2
 
-Si `changed` reste supérieur à zéro, envoie le log de l’étape
-`ansible-idempotence`.
+## 17. Lancer OpenSearch
 
----
-
-## 18. Vérification Angular / NGINX
-
-Le script vérifie ensuite l’application réelle par HTTP.
-
-Le succès du playbook seul n’est pas considéré comme une preuve suffisante.
-
----
-
-## 19. Génération de vrais logs
-
-Le script génère **96 requêtes HTTP**, puis collecte :
-
-```text
-/var/log/nginx/access.log
+```bash
+bash scripts/commands/p5.sh ex2
 ```
 
-dans :
+Le parcours utilise :
 
-```text
-proofs/runtime/exercice-2/nginx-access-real.log
-```
+- le jeu versionné reproductible ;
+- le vrai log NGINX collecté pendant l'exercice 1.
 
-Chaîne à comprendre :
-
-```text
-requêtes → NGINX → access.log → collecte → OpenSearch
-```
-
-### Exercice 1 terminé lorsque
-
-- [ ] Terraform Ex1 est convergé ;
-- [ ] post-plan vide ;
-- [ ] Ansible ping OK ;
-- [ ] déploiement OK ;
-- [ ] second Ansible `changed=0` ;
-- [ ] Angular accessible ;
-- [ ] vrai access.log collecté.
-
----
-
-# PHASE E — EXERCICE 2
-
-## 20. Terraform OpenSearch
-
-Même logique :
-
-```text
-init → plan → apply uniquement si delta → post-plan
-```
-
-Un plan vide ne doit jamais être appliqué.
-
----
-
-## 21. Deux sources de données
-
-### Jeu reproductible
-
-```text
-terraform/exercice-2/samples/nginx-access.log.sample
-```
-
-Il garantit une distribution temporelle suffisante pour les visualisations.
-
-### Vrai log NGINX
-
-```text
-proofs/runtime/exercice-2/nginx-access-real.log
-```
-
-Il prouve la chaîne réelle :
-
-```text
-NGINX réel → collecte → conversion → Amazon OpenSearch
-```
-
----
-
-## 22. Convergence OpenSearch
-
-Le script compare :
-
-- template distant ;
-- template attendu ;
-- IDs des documents déjà présents.
-
-Si tout est déjà conforme :
-
-```text
-OPENSEARCH DÉJÀ CONFORME — AUCUNE MUTATION NÉCESSAIRE
-```
-
-Les agrégations sont néanmoins revérifiées.
-
----
-
-## 23. Checkpoint manuel OpenSearch Dashboards
-
-Le script affiche l’URL.
-
-Tu dois vérifier/créer :
+La création du dashboard reste manuelle. Vérifier :
 
 1. donut des méthodes HTTP ;
 2. somme de `bytes_sent` par tranches de 12 h ;
 3. top 5 des `url_path` par tranches de 12 h.
 
-Puis :
+Le checkpoint humain ne peut pas être contourné par `--yes`.
 
-- fais les captures ;
-- vérifie qu’elles sont lisibles ;
-- conserve-les pour les livrables ;
-- confirme le checkpoint demandé par le script.
+# PHASE H — EXERCICE 3
 
-Même `--yes` ne doit pas contourner cette preuve humaine.
+## 18. Lancer HAProxy
 
-### Si OpenSearch échoue
-
-Récupère les logs liés à :
-
-```text
-tf-ex2-plan
-tf-ex2-apply
-opensearch-sample-import
-opensearch-real-import
-opensearch-verify
+```bash
+bash scripts/commands/p5.sh ex3
 ```
 
-Ne détruis pas le domaine pour « essayer ».
+L'exercice 1 doit toujours exister.
 
----
-
-# PHASE F — EXERCICE 3
-
-## 24. Architecture HAProxy
-
-```text
-             CLIENT
-               |
-               v
-            HAProxy
-           /       \
-          v         v
-     Backend 1   Backend 2
-```
-
-L’exercice 1 doit encore exister.
-
----
-
-## 25. Terraform Exercice 3
-
-Même contrat :
-
-```text
-plan vide → aucun apply
-delta réel → confirmation → apply
-erreur → arrêt
-```
-
-Le script attend ensuite que HAProxy réponde réellement en HTTP.
-
----
-
-## 26. Round-robin
-
-Le projet effectue **12 requêtes** et doit observer les deux backends.
-
-Objectif :
-
-```text
-les deux serveurs participent au trafic
-```
-
----
-
-## 27. Panne et reprise
-
-Le script prévisualise le scénario puis demande confirmation.
-
-Scénario :
+Le scénario attendu est :
 
 ```text
 Backend 1 OK + Backend 2 OK
           ↓
-arrêt d’un backend
+round-robin
+          ↓
+arrêt contrôlé d'un backend
           ↓
 service toujours disponible
           ↓
@@ -643,45 +406,110 @@ redémarrage
 réintégration du backend
 ```
 
-Cette étape prouve la résilience actuelle du service.
+Ne jamais détruire l'exercice 1 avant l'exercice 3.
 
-### Exercice 3 terminé lorsque
+# PHASE I — ARRÊT ET REPRISE WSL2
 
-- [ ] HAProxy accessible ;
-- [ ] deux backends observés ;
-- [ ] round-robin validé ;
-- [ ] panne réelle contrôlée validée ;
-- [ ] service resté disponible ;
-- [ ] backend réintégré.
+## 19. Fermer seulement le terminal
 
----
+Aucune donnée n'est perdue. Pour reprendre :
 
-# PHASE G — FIN DE `all`
-
-## 28. Résultat attendu
-
-Après les trois exercices :
-
-```text
-DÉPLOIEMENT CONVERGÉ ET VÉRIFIÉ
+```powershell
+wsl -d p5-devops
 ```
 
-Les ressources AWS restent actives.
+Puis :
 
-**Ne lance pas encore `cleanup`.**
+```bash
+cd ~/labs/p5_Openclassrooms
+bash scripts/commands/p5.sh all
+```
 
-Utilise ce moment pour :
+## 20. Arrêter la distribution
 
-- captures ;
-- contrôles ;
-- démonstration ;
-- préparation de soutenance.
+```powershell
+.\scripts\windows\stop-p5.ps1
+```
 
----
+La distribution passe à l'état arrêté mais son VHDX et toutes les données sont
+conservés.
 
-# PHASE H — LOGS ET DIAGNOSTIC
+Pour reprendre :
 
-## 29. Retrouver les logs
+```powershell
+.\scripts\windows\start-p5.ps1
+wsl -d p5-devops
+```
+
+Puis dans Ubuntu :
+
+```bash
+cd ~/labs/p5_Openclassrooms
+bash scripts/commands/p5.sh all
+```
+
+## 21. Après `wsl --shutdown` ou redémarrage Windows
+
+Relancer simplement :
+
+```powershell
+.\scripts\windows\start-p5.ps1
+.\scripts\windows\status-p5.ps1
+wsl -d p5-devops
+```
+
+L'adresse IP WSL peut être différente. Ce changement ne nécessite aucune édition
+manuelle du dépôt.
+
+## 22. Règle absolue Terraform
+
+Après une interruption :
+
+```bash
+bash scripts/commands/p5.sh all
+```
+
+Ne jamais supprimer un `terraform.tfstate` pour « recommencer ». Terraform doit
+réévaluer les ressources déjà existantes.
+
+# PHASE J — SAUVEGARDE ET RESTAURATION WSL2
+
+## 23. Créer une sauvegarde
+
+Avant une étape importante :
+
+```powershell
+.\scripts\windows\backup-p5.ps1
+```
+
+Le script :
+
+1. arrête proprement `p5-devops` ;
+2. exporte la distribution en VHDX ;
+3. calcule le SHA-256 ;
+4. conserve l'original intact.
+
+Les fichiers VHDX sont ignorés par Git.
+
+## 24. Restaurer une sauvegarde
+
+```powershell
+.\scripts\windows\restore-p5.ps1 -BackupPath <fichier.vhdx>
+```
+
+La restauration utilise un nouveau nom et refuse d'écraser une distribution
+existante.
+
+Après restauration, contrôler :
+
+```powershell
+.\scripts\windows\status-p5.ps1
+.\scripts\windows\check-wsl2-p5.ps1
+```
+
+# PHASE K — LOGS ET DIAGNOSTIC
+
+## 25. Retrouver les logs P5
 
 ```bash
 bash scripts/commands/p5.sh logs
@@ -697,131 +525,36 @@ logs/<UTC>/
 └── ...
 ```
 
-Il existe donc un log global et un log complet par étape.
-
----
-
-## 30. Procédure exacte si une étape casse
-
-### 1 — Ne change rien au hasard
-
-Conserve l’environnement tel quel.
-
-### 2 — Repère la première vraie erreur
-
-Cherche :
-
-```text
-[ KO ]
-ERROR
-FAILED
-STOP
-```
-
-### 3 — Liste les logs
+Pour un diagnostic Linux partageable :
 
 ```bash
-bash scripts/commands/p5.sh logs
+bash scripts/commands/collect-diagnostics.sh --complet --avec-preuves
 ```
 
-### 4 — Envoie-moi
+Pour un diagnostic WSL2 :
 
-```text
-Commande lancée :
-bash scripts/commands/p5.sh all
-
-Étape :
-<nom de l’étape>
-
-Erreur terminal :
-<message>
-
-Pièce jointe :
-<log complet de cette étape>
+```powershell
+.\scripts\windows\status-p5.ps1
+.\scripts\windows\check-wsl2-p5.ps1 -RequireTools
 ```
 
-### 5 — On corrige la cause
+En cas d'échec, conserver :
 
-Selon le cas :
+1. la commande lancée ;
+2. le premier message `[ KO ]` ou l'erreur ;
+3. le nom de l'étape ;
+4. le log complet correspondant ;
+5. si le problème est local, la sortie de `check-wsl2-p5.ps1`.
 
-```text
-bug dépôt/script
-IAM / permissions
-quota AWS
-réseau
-configuration
-service temporairement indisponible
-```
+# PHASE L — FINALISATION
 
-### 6 — Relance la même commande
+## 26. Finaliser les livrables
 
-```bash
-bash scripts/commands/p5.sh all
-```
-
-L’orchestrateur doit recalculer l’état et reprendre par convergence.
-
----
-
-## 31. Règle absolue Terraform
-
-**Ne supprime jamais un `terraform.tfstate` pour débloquer le projet si les
-ressources AWS existent encore.**
-
-Ne fais pas :
-
-```bash
-rm terraform/exercice-*/terraform.tfstate
-```
-
-Cela pourrait orpheliner les ressources et provoquer des doublons.
-
----
-
-# PHASE I — REPRISE APRÈS INTERRUPTION
-
-## 32. Après perte SSH, reboot ou fermeture du terminal
-
-```bash
-cd ~/p5_Openclassrooms
-bash scripts/commands/p5.sh all
-```
-
-Le comportement attendu lors d’une reprise est proche de :
-
-```text
-VM déjà convergée
-session AWS réutilisée
-budget déjà conforme
-tfvars déjà synchronisés
-Terraform Ex1 : aucun apply
-artefact Angular déjà conforme
-Ansible : changed=0
-Terraform Ex2 : aucun apply
-OpenSearch déjà conforme
-Terraform Ex3 : aucun apply
-```
-
-Les tests fonctionnels sont ensuite rejoués.
-
----
-
-# PHASE J — FINALISATION
-
-## 33. Quand lancer `finalize`
-
-Une fois les exercices validés et les captures sauvegardées :
+Après les captures et preuves réelles :
 
 ```bash
 bash scripts/commands/p5.sh finalize
 ```
-
-Le script contrôle :
-
-- diagnostics ;
-- preuves ;
-- structure ;
-- livrables.
 
 Résultat attendu :
 
@@ -829,41 +562,9 @@ Résultat attendu :
 LIVRABLES PRÊTS POUR RELECTURE FINALE
 ```
 
-### Si `finalize` échoue
+# PHASE M — NETTOYAGE AWS
 
-Ne détruis rien.
-
-Corrige uniquement l’élément signalé puis :
-
-```bash
-bash scripts/commands/p5.sh finalize
-```
-
----
-
-# PHASE K — CHECKLIST AVANT DE DÉTRUIRE AWS
-
-- [ ] Angular démontrable ;
-- [ ] idempotence Ansible `changed=0` ;
-- [ ] vrai log NGINX conservé ;
-- [ ] OpenSearch contient les données ;
-- [ ] donut HTTP capturé ;
-- [ ] `bytes_sent` / 12 h capturé ;
-- [ ] top 5 `url_path` / 12 h capturé ;
-- [ ] round-robin HAProxy validé ;
-- [ ] panne backend validée ;
-- [ ] reprise backend validée ;
-- [ ] diagnostics conservés ;
-- [ ] `p5.sh finalize` réussi ;
-- [ ] toutes les captures sauvegardées.
-
----
-
-# PHASE L — NETTOYAGE AWS
-
-## 34. Destruction
-
-Uniquement lorsque tu n’as plus besoin du lab :
+## 27. Détruire uniquement à la fin
 
 ```bash
 bash scripts/commands/p5.sh cleanup
@@ -881,139 +582,35 @@ La destruction réelle nécessite la saisie :
 DETRUIRE
 ```
 
-Les états Terraform déjà vides sont ignorés.
-
----
-
-## 35. Audit final
-
-Après la destruction, l’audit doit aboutir à :
+Résultat final :
 
 ```text
 NETTOYAGE AWS COMPLET
 ```
 
-Ne considère pas le projet fermé avant ce verdict.
+Le nettoyage AWS ne supprime pas la distribution WSL2.
 
----
+# PHASE N — CHECKLIST FINALE
 
-# 36. Parcours express à garder sous les yeux
+- [ ] Windows 11 Pro + WSL2 validés ;
+- [ ] `p5-devops` sous Ubuntu 26.04 validé ;
+- [ ] 6 CPU / 16 Go visibles ;
+- [ ] systemd, NAT, route et DNS validés ;
+- [ ] socle DevOps complet ;
+- [ ] `p5.sh all` exécuté sur AWS réel ;
+- [ ] idempotence Ansible `changed=0` ;
+- [ ] logs NGINX réels collectés ;
+- [ ] OpenSearch et visualisations validés ;
+- [ ] HAProxy round-robin, panne et reprise validés ;
+- [ ] `p5.sh finalize` réussi ;
+- [ ] sauvegarde WSL2 créée si souhaitée ;
+- [ ] AWS nettoyé avec `NETTOYAGE AWS COMPLET`.
 
-```bash
-cd ~/p5_Openclassrooms
-git pull
+## Références
 
-# 1. Observer
-bash scripts/commands/p5.sh inspect
-
-# 2. Faire le projet
-bash scripts/commands/p5.sh all
-
-# 3. Faire/conserver les captures manuelles demandées
-
-# 4. Vérifier les livrables
-bash scripts/commands/p5.sh finalize
-
-# 5. Seulement à la fin
-bash scripts/commands/p5.sh cleanup
-```
-
-En cas d’erreur :
-
-```bash
-bash scripts/commands/p5.sh logs
-```
-
-Puis envoie-moi **le log complet de l’étape en échec**.
-
----
-
-# 37. Ce qu’il ne faut jamais faire
-
-```text
-❌ supprimer un terraform.tfstate
-❌ contourner STOP AWS
-❌ utiliser root pour le lab quotidien
-❌ mettre des credentials AWS dans Git
-❌ envoyer des secrets dans le chat
-❌ modifier plusieurs composants à la fois pour “tester”
-❌ détruire Ex1 avant Ex3
-❌ nettoyer AWS avant les captures et finalize
-```
-
----
-
-# 38. Ce que tu dois savoir expliquer en soutenance
-
-## Terraform
-
-```text
-état souhaité ↔ état AWS réel
-```
-
-Plan vide = aucune mutation nécessaire.
-
-## Ansible
-
-Le deuxième passage doit revenir :
-
-```text
-changed=0
-```
-
-C’est la preuve d’idempotence.
-
-## OpenSearch
-
-Le projet vérifie template, documents, mappings, agrégations et preuve visuelle.
-
-## HAProxy
-
-Le projet prouve :
-
-```text
-répartition de charge + continuité de service en cas de panne
-```
-
-## Orchestrateur
-
-`p5.sh` :
-
-```text
-observe → compare → corrige le delta → vérifie → journalise
-```
-
----
-
-# 39. Formulation courte pour présenter l’automatisation
-
-> Le projet est piloté par un orchestrateur Bash convergent. Il inspecte l’état
-> réel avant les mutations. Terraform calcule les différences d’infrastructure,
-> Ansible converge la configuration des serveurs et prouve son idempotence,
-> OpenSearch exploite un jeu reproductible et de vrais logs NGINX, et HAProxy
-> est validé par des tests de round-robin, de panne et de reprise. Chaque étape
-> produit un log afin de rendre l’exécution reproductible et diagnosticable.
-
----
-
-# 40. Sources de vérité du dépôt
-
-```text
-README.md
-docs/01-parcours-debutant.md
-docs/convergence-et-reexecution.md
-docs/00-preparation-environnement.md
-docs/00b-preparation-compte-aws.md
-docs/exercices/01-terraform-ansible.md
-docs/exercices/02-elk-opensearch.md
-docs/exercices/03-haproxy.md
-scripts/README.md
-scripts/commands/p5.sh
-```
-
----
-
-## Règle finale
-
-**En cas de problème : ne détruis rien, ne supprime aucun state, garde le log,
-envoie-moi le log exact, on corrige la cause, puis tu relances la même commande.**
+- [Préparation Windows 11 + WSL2](00-preparation-environnement.md)
+- [Guide WSL2](../environment/wsl2/README.md)
+- [Parcours de bout en bout](01-parcours-debutant.md)
+- [Architecture](architecture-et-flux.md)
+- [Convergence et reprise](convergence-et-reexecution.md)
+- [Troubleshooting](troubleshooting.md)
