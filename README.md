@@ -12,41 +12,158 @@ Ce dépôt fournit un lab DevOps reproductible et **convergent** permettant de :
 - déployer une application Angular avec Ansible et NGINX ;
 - exploiter des logs dans Amazon OpenSearch ;
 - démontrer la haute disponibilité avec HAProxy et deux backends ;
-- relancer le projet sans réinstaller, recréer ou réécrire inutilement ce qui est déjà conforme.
+- relancer le projet sans recréer ce qui est déjà conforme ;
+- conserver des preuves techniques et des journaux d'exécution exploitables.
 
-> **Périmètre : 100 % AWS.** La VM Ubuntu Server est le poste de contrôle DevOps.
-> Les infrastructures évaluées sont créées dans AWS.
+> **Périmètre évalué : 100 % AWS.** Le poste de contrôle local est désormais
+> **Windows 11 Pro + WSL2 + Ubuntu 26.04 LTS**. Les infrastructures évaluées sont
+> créées dans AWS.
 
-> **Principe général :** inspecter → comparer → corriger uniquement le delta → vérifier → journaliser.
+> **Principe général :** inspecter → comparer → corriger uniquement le delta →
+> vérifier → journaliser.
 
-## Démarrage recommandé
+## Poste de contrôle local
 
-Après avoir cloné le dépôt :
+La plateforme locale retenue est :
+
+```text
+Windows 11 Pro
+└── WSL2
+    ├── 6 processeurs logiques maximum
+    ├── 16 Go de RAM maximum
+    ├── 8 Go de swap
+    ├── réseau NAT
+    ├── DNS tunneling
+    └── p5-devops
+        └── Ubuntu 26.04 LTS + systemd
+            ├── Terraform
+            ├── Ansible
+            ├── AWS CLI
+            ├── Docker Engine
+            ├── Node.js / Angular
+            └── p5.sh
+```
+
+Le fichier `%UserProfile%\.wslconfig` configure la VM WSL2 globale. Si plusieurs
+distributions WSL2 sont actives en même temps, elles partagent cette enveloppe de
+CPU et de mémoire.
+
+Le réseau WSL2 est volontairement en **NAT**. L'adresse privée WSL, la passerelle
+et la route par défaut sont détectées dynamiquement ; aucune adresse WSL n'est
+codée en dur dans le projet.
+
+Cette adresse privée WSL ne doit pas être confondue avec `P5_PUBLIC_IP_CIDR`, qui
+représente l'IPv4 publique `/32` autorisée dans les Security Groups et la policy
+OpenSearch AWS.
+
+Référence complète :
+[Préparer Windows 11 + WSL2](docs/00-preparation-environnement.md).
+
+## Installation WSL2
+
+Depuis un clone du dépôt accessible sous Windows, ouvrir **PowerShell en tant
+qu'administrateur** :
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+.\scripts\windows\install-wsl2-p5.ps1
+```
+
+Premier lancement :
+
+```powershell
+wsl -d p5-devops
+```
+
+Après création de l'utilisateur Ubuntu, revenir dans PowerShell :
+
+```powershell
+.\scripts\windows\configure-wsl2-p5.ps1
+.\scripts\windows\check-wsl2-p5.ps1
+```
+
+Le contrôle attendu vérifie notamment :
+
+- WSL2 ;
+- 6 processeurs disponibles ;
+- environ 16 Go de RAM ;
+- `systemd` ;
+- hostname `p5-devops` ;
+- IPv4 WSL ;
+- passerelle et route par défaut ;
+- DNS ;
+- accès HTTPS.
+
+## Exploitation WSL2
+
+Les commandes Windows dédiées au lab sont :
+
+| Besoin | Commande PowerShell |
+| --- | --- |
+| Démarrer | `.\scripts\windows\start-p5.ps1` |
+| Arrêter | `.\scripts\windows\stop-p5.ps1` |
+| État synthétique | `.\scripts\windows\status-p5.ps1` |
+| Diagnostic complet | `.\scripts\windows\check-wsl2-p5.ps1 -RequireTools` |
+| Sauvegarder | `.\scripts\windows\backup-p5.ps1` |
+| Restaurer | `.\scripts\windows\restore-p5.ps1 -BackupPath <fichier.vhdx>` |
+
+Une sauvegarde WSL2 est exportée au format **VHDX** avec un fichier SHA-256. La
+restauration est non destructive : elle refuse d'écraser automatiquement une
+distribution existante.
+
+Les fichiers `.vhd`, `.vhdx` et leurs sommes de contrôle sont ignorés par Git.
+
+## Installer le socle DevOps dans Ubuntu
+
+Le dépôt doit être cloné dans le système de fichiers Linux, par exemple :
 
 ```bash
+mkdir -p ~/labs
+cd ~/labs
 git clone https://github.com/mathiasseguincadiche/p5_Openclassrooms.git
 cd p5_Openclassrooms
 ```
 
-Pour observer l'état réel **sans aucune mutation** :
+Puis :
+
+```bash
+bash scripts/commands/bootstrap-ubuntu-server.sh
+```
+
+Le bootstrap converge le socle Linux sans créer de ressource AWS. Il installe ou
+corrige uniquement les composants absents ou non conformes.
+
+Après une modification du groupe Docker ou de NVM, arrêter puis redémarrer la
+distribution depuis PowerShell :
+
+```powershell
+.\scripts\windows\stop-p5.ps1
+.\scripts\windows\start-p5.ps1
+```
+
+Puis rouvrir Ubuntu :
+
+```powershell
+wsl -d p5-devops
+```
+
+## Démarrage du projet
+
+Depuis Ubuntu WSL2 et la racine du dépôt :
 
 ```bash
 bash scripts/commands/p5.sh inspect
 ```
 
-Pour exécuter le parcours complet :
+Cette commande observe l'état réel **sans mutation**.
+
+Pour le parcours complet :
 
 ```bash
 bash scripts/commands/p5.sh all
 ```
 
-Pour suivre l'exécution **pas à pas**, avec les résultats attendus, les checkpoints,
-la reprise et la procédure de diagnostic par logs :
-[Runbook d'exécution guidée A → Z](docs/RUNBOOK_EXECUTION_GUIDEE.md).
-
-Sur une VM neuve, `p5.sh` vérifie d'abord ce qui est déjà présent. Le bootstrap ne corrige que les outils, paquets ou versions manquants ou incorrects. Si l'ajout au groupe Docker impose une nouvelle session, le script demande une reconnexion puis il suffit de relancer la même commande.
-
-Pour ouvrir le menu :
+Pour ouvrir le menu interactif :
 
 ```bash
 bash scripts/commands/p5.sh
@@ -58,15 +175,91 @@ Pour automatiser uniquement les confirmations automatisables :
 bash scripts/commands/p5.sh all --yes
 ```
 
-`--yes` ne valide jamais à la place de l'opérateur :
+`--yes` ne contourne jamais :
 
-- les vérifications de sécurité du compte AWS ;
+- les vérifications de sécurité AWS nécessitant une validation humaine ;
 - la preuve visuelle du dashboard OpenSearch ;
 - la destruction finale protégée par `DETRUIRE`.
 
+## Centre de commande
+
+| Commande | Rôle |
+| --- | --- |
+| `p5.sh` | menu interactif |
+| `p5.sh inspect` | observe sans mutation |
+| `p5.sh prepare` | converge le socle Linux, AWS, budget et tfvars |
+| `p5.sh status` | contrôle la préparation sans créer de ressource AWS |
+| `p5.sh ex1` | Terraform + Ansible + Angular/NGINX |
+| `p5.sh ex2` | OpenSearch, imports et agrégations |
+| `p5.sh ex3` | HAProxy, round-robin, panne et reprise |
+| `p5.sh all` | exécute le parcours technique complet |
+| `p5.sh finalize` | contrôle strict des preuves et livrables |
+| `p5.sh logs` | retrouve les journaux de session |
+| `p5.sh cleanup` | destruction 3 → 2 → 1 puis audit AWS |
+
+## Portes de validation
+
+Avant toute création d'infrastructure, le parcours doit atteindre :
+
+```text
+GO AWS
+GO TERRAFORM
+```
+
+Après la destruction finale, le verdict attendu est :
+
+```text
+NETTOYAGE AWS COMPLET
+```
+
+## Architecture AWS
+
+```text
+Windows 11 Pro
+└── WSL2 / p5-devops / Ubuntu 26.04
+    └── Terraform + Ansible + AWS CLI + Docker + Node.js
+              │
+              ▼
+AWS — us-east-1
+│
+├── Exercice 1
+│   ├── VPC 10.0.0.0/16
+│   ├── 2 sous-réseaux publics
+│   ├── Internet Gateway + table de routage
+│   ├── EC2 Ubuntu
+│   └── Ansible → NGINX → Angular
+│                │
+│                └── access.log réel ─────► Exercice 2
+│                                            Amazon OpenSearch
+│                                            └── Dashboards
+│
+└── Exercice 3
+    ├── réutilise le VPC et les sous-réseaux de l'exercice 1
+    ├── EC2 HAProxy
+    └── 2 EC2 → Docker → nginxdemos/hello
+```
+
+Le changement de KVM vers WSL2 concerne uniquement le **poste de contrôle
+local**. Le VPC AWS `10.0.0.0/16`, les sous-réseaux, routes, Security Groups et
+ressources Terraform restent indépendants du NAT WSL2.
+
+Référence :
+[Architecture et flux](docs/architecture-et-flux.md).
+
+## Schémas du parcours
+
+Les six schémas pédagogiques restent intégrés au parcours :
+
+- [Vue d'ensemble](docs/schemas/vue-ensemble.svg)
+- [Préparation Windows 11, WSL2 et AWS](docs/schemas/etape-0.svg)
+- [Exercice 1](docs/schemas/exercice-1.svg)
+- [Exercice 2](docs/schemas/exercice-2.svg)
+- [Exercice 3](docs/schemas/exercice-3.svg)
+- [Finalisation](docs/schemas/finalisation/finalisation.svg)
+
 ## Convergence et réexécution
 
-Le projet est conçu pour être relancé plusieurs fois sans repartir aveuglément de zéro.
+Une seconde exécution de `p5.sh all` ne signifie pas « tout refaire ».
 
 ```text
 État réel
@@ -86,222 +279,97 @@ Nouvelle vérification
 Verdict + log
 ```
 
-Concrètement :
-
-- une VM déjà conforme n'est pas réinstallée ;
-- une session AWS encore valide est réutilisée ;
-- les `terraform.tfvars` identiques ne sont pas réécrits ;
-- l'inventaire Ansible identique n'est pas réécrit ;
-- l'artefact Angular peut être réutilisé si les sources et dépendances n'ont pas changé ;
-- un budget AWS déjà conforme n'est pas recréé ;
-- les documents OpenSearch déjà présents ne sont pas réimportés inutilement ;
-- un état Terraform déjà vide n'est pas détruit une seconde fois.
-
-Les **tests fonctionnels**, eux, peuvent être rejoués volontairement : HTTP, Ansible, agrégations OpenSearch, round-robin, failover et diagnostics servent à vérifier l'état réel actuel et non à supposer qu'un ancien `OK` est encore vrai.
-
-Référence complète : [Convergence et réexécution](docs/convergence-et-reexecution.md).
-
-## Terraform : aucune mutation sur plan vide
-
-Pour chaque exercice, l'orchestrateur initialise Terraform puis lance un plan différentiel avec rafraîchissement de l'état AWS.
-
-```text
-terraform init
-      ↓
-terraform plan -detailed-exitcode
-      ↓
-0 = aucun delta  ──► aucun apply
-2 = delta réel   ──► affichage du plan → confirmation → apply
-1 = erreur       ──► arrêt
-```
-
-Après un `apply`, un nouveau plan est exécuté pour vérifier que l'infrastructure a réellement convergé.
-
-Cela signifie qu'une relance de `p5.sh all` ne doit pas recréer un VPC, une EC2, OpenSearch ou HAProxy lorsque Terraform constate que l'état réel correspond déjà à la configuration.
-
-## Authentification AWS automatisée
-
-Le projet utilise le profil final `p5-lab` et privilégie des credentials temporaires.
-
-Le parcours d'authentification peut :
-
-- réutiliser une session existante ;
-- renouveler une session connue ;
-- utiliser `aws login --remote` depuis une VM sans navigateur ;
-- utiliser IAM Identity Center / SSO ;
-- encapsuler un profil temporaire existant via `credential_process` pour Terraform.
-
-Le projet refuse volontairement l'utilisation quotidienne du compte AWS root et ne stocke aucun mot de passe AWS dans le dépôt.
-
-## Ce que fait `p5.sh all`
-
-```text
-Inspection / convergence VM
-        ↓
-Authentification AWS
-        ↓
-configuration locale + tfvars + budget
-        ↓
-GO AWS + GO TERRAFORM
-        ↓
-Exercice 1
-Terraform → EC2 → Ansible → NGINX → Angular
-                     ↓
-             seconde exécution Ansible
-                     ↓
-             idempotence changed=0
-                     ↓
-             logs NGINX réels
-        ↓
-Exercice 2
-Terraform → Amazon OpenSearch
-        ↓
-échantillon reproductible + logs NGINX réels
-        ↓
-mappings + agrégations
-        ↓
-dashboard manuel et captures
-        ↓
-Exercice 3
-Terraform → HAProxy → 2 backends
-        ↓
-round-robin → panne réelle → reprise
-        ↓
-diagnostics + structure des livrables
-```
-
-Le mode `all` **ne détruit pas** automatiquement AWS. Les ressources restent disponibles pour la démonstration, les captures et la soutenance.
-
-## Centre de commande
-
-| Commande | Rôle |
-| --- | --- |
-| `p5.sh` | menu interactif |
-| `p5.sh inspect` | observe l'état réel sans mutation |
-| `p5.sh prepare` | inspecte puis converge VM, AWS, budget, tfvars et garde-fous |
-| `p5.sh status` | contrôles de préparation sans création de ressource AWS |
-| `p5.sh ex1` | converge Terraform + Ansible + Angular/NGINX puis vérifie |
-| `p5.sh ex2` | converge OpenSearch et les données puis vérifie les agrégations |
-| `p5.sh ex3` | converge HAProxy + backends puis teste round-robin et failover |
-| `p5.sh all` | exécute le parcours technique complet |
-| `p5.sh finalize` | diagnostics et contrôle strict des livrables |
-| `p5.sh logs` | retrouve les journaux de session |
-| `p5.sh cleanup` | destruction 3 → 2 → 1 puis audit AWS |
-
 Exemples :
 
-```bash
-bash scripts/commands/p5.sh inspect
-bash scripts/commands/p5.sh status --full-validation
-bash scripts/commands/p5.sh all
-```
+- distribution WSL2 déjà configurée : aucune réinstallation ;
+- socle Ubuntu conforme : aucun paquet réinstallé ;
+- session AWS valide : réutilisée ;
+- `terraform.tfvars` identiques : aucune réécriture ;
+- plan Terraform vide : aucun `apply` ;
+- artefact Angular inchangé : aucun rebuild inutile ;
+- budget conforme : aucune mutation ;
+- documents OpenSearch déjà présents : pas de réimport inutile.
 
-## Architecture
+Les tests fonctionnels peuvent néanmoins être rejoués pour vérifier l'état réel
+au moment de la démonstration.
 
-```text
-VM Ubuntu Server — poste DevOps
-│
-├─ Terraform
-├─ Ansible
-├─ Angular / Node.js
-├─ AWS CLI
-├─ Docker
-└─ p5.sh + scripts spécialisés
-          │
-          ▼
-AWS — us-east-1 par défaut
-│
-├─ Exercice 1
-│  ├─ VPC + 2 sous-réseaux publics
-│  ├─ EC2 Ubuntu
-│  └─ Ansible → NGINX → Angular
-│               │
-│               └─ access.log réel ─────► Exercice 2
-│                                          Amazon OpenSearch
-│                                          └─ Dashboards
-│
-└─ Exercice 3
-   ├─ réutilise le réseau de l'exercice 1
-   ├─ EC2 HAProxy
-   └─ 2 EC2 → Docker → nginxdemos/hello
-```
+Référence :
+[Convergence et réexécution](docs/convergence-et-reexecution.md).
 
-La dépendance critique reste :
+## Exercices
 
-```text
-Exercice 1 ── VPC + sous-réseaux + clé EC2 ──► Exercice 3
-```
-
-L'exercice 1 ne doit donc pas être détruit avant la fin de l'exercice 3.
-
-Référence : [Architecture et flux](docs/architecture-et-flux.md).
-
-## Exercice 1 — Terraform, Ansible, NGINX et Angular
-
-L'orchestrateur :
-
-1. vérifie si l'artefact Angular doit réellement être reconstruit ;
-2. initialise Terraform et calcule le delta réel ;
-3. n'applique rien si le plan est vide ;
-4. applique uniquement le delta après confirmation ;
-5. génère l'inventaire Ansible uniquement s'il diffère ;
-6. attend SSH et cloud-init ;
-7. teste Ansible ;
-8. converge Angular/NGINX ;
-9. rejoue le playbook et exige `changed=0`, `unreachable=0`, `failed=0` ;
-10. vérifie HTTP, bundle, SPA et en-têtes ;
-11. génère le trafic puis récupère le vrai `access.log` NGINX.
+### Exercice 1 — Terraform, Ansible, NGINX et Angular
 
 ```bash
 bash scripts/commands/p5.sh ex1
 ```
 
-Guide : [Terraform + Ansible](docs/exercices/01-terraform-ansible.md).
+Le parcours crée l'infrastructure AWS, génère l'inventaire Ansible, déploie
+Angular derrière NGINX et exige une seconde exécution Ansible avec :
 
-## Exercice 2 — NGINX et Amazon OpenSearch
+```text
+changed=0
+unreachable=0
+failed=0
+```
 
-Le véritable exercice utilise **Amazon OpenSearch Service** créé par Terraform. Aucun Elasticsearch/OpenSearch permanent n'est requis sur la VM Ubuntu pour le lab AWS.
+Guide :
+[Terraform + Ansible](docs/exercices/01-terraform-ansible.md).
 
-Le parcours utilise deux sources :
-
-- un échantillon versionné pour garantir la distribution temporelle des visualisations ;
-- le vrai log NGINX collecté dans l'exercice 1 pour prouver la chaîne `NGINX → Bulk → OpenSearch`.
-
-Le script compare le template OpenSearch attendu et les identifiants déterministes des documents avant mutation afin d'éviter les réimportations inutiles.
+### Exercice 2 — Amazon OpenSearch
 
 ```bash
 bash scripts/commands/p5.sh ex2
 ```
 
-La création des visualisations et les captures restent manuelles, car elles font partie de la preuve pédagogique.
+Le véritable exercice utilise **Amazon OpenSearch Service**. Aucun OpenSearch
+permanent n'est requis dans WSL2 pour le lab AWS. Les conteneurs OpenSearch de la
+CI et des validations locales restent éphémères.
 
-Guide : [OpenSearch](docs/exercices/02-elk-opensearch.md).
+Guide :
+[OpenSearch](docs/exercices/02-elk-opensearch.md).
 
-## Exercice 3 — HAProxy, panne et reprise
-
-Terraform converge HAProxy et les deux backends. Une infrastructure déjà conforme n'est pas recréée. Les tests round-robin et panne/reprise sont ensuite rejoués pour vérifier le fonctionnement actuel.
+### Exercice 3 — HAProxy
 
 ```bash
 bash scripts/commands/p5.sh ex3
 ```
 
-Guide : [HAProxy](docs/exercices/03-haproxy.md).
+Terraform converge HAProxy et les deux backends. Les tests round-robin, panne et
+reprise sont rejoués pour prouver le fonctionnement actuel.
+
+Guide :
+[HAProxy](docs/exercices/03-haproxy.md).
 
 ## Reprise après interruption
 
-Après une interruption ou une fermeture de terminal :
+Si seul le terminal Linux a été fermé :
+
+```powershell
+wsl -d p5-devops
+```
+
+Puis :
 
 ```bash
+cd ~/labs/p5_Openclassrooms
 bash scripts/commands/p5.sh all
 ```
 
-Le projet reprend à partir de l'état réellement présent : Terraform rafraîchit AWS, Ansible reste idempotent et les contrôles fonctionnels sont rejoués.
+Si la distribution a été arrêtée :
 
-Il ne faut jamais supprimer manuellement les états Terraform tant que les ressources AWS associées existent.
+```powershell
+.\scripts\windows\start-p5.ps1
+wsl -d p5-devops
+```
+
+Le projet reprend à partir de l'état réellement présent. Ne supprimez jamais un
+`terraform.tfstate` pour « débloquer » une reprise tant que les ressources AWS
+associées existent.
 
 ## Logs et preuves
 
-Chaque exécution crée un journal principal et un journal complet par étape :
+Chaque session `p5.sh` crée des journaux sous :
 
 ```text
 logs/<UTC>/
@@ -311,7 +379,7 @@ logs/<UTC>/
 └── ...
 ```
 
-Les preuves pédagogiques sont séparées :
+Les preuves pédagogiques restent séparées :
 
 ```text
 proofs/runtime/
@@ -321,144 +389,92 @@ proofs/runtime/
 └── exercice-3/
 ```
 
-Les logs et preuves runtime sont ignorés par Git par défaut.
-
 ```bash
 bash scripts/commands/p5.sh logs
 ```
 
-## Finalisation
+## Finalisation et nettoyage
 
-Après les captures et l'insertion des preuves réelles :
+Après les captures et preuves réelles :
 
 ```bash
 bash scripts/commands/p5.sh finalize
 ```
 
-Le contrôle strict doit aboutir à :
+Verdict attendu :
 
 ```text
 LIVRABLES PRÊTS POUR RELECTURE FINALE
 ```
 
-## Nettoyage AWS
-
-Lorsque la démonstration est terminée :
+Puis, uniquement quand le lab AWS n'est plus nécessaire :
 
 ```bash
 bash scripts/commands/p5.sh cleanup
 ```
 
-L'ordre reste obligatoirement :
+Ordre obligatoire :
 
 ```text
 Exercice 3 → Exercice 2 → Exercice 1
 ```
 
-Un état Terraform déjà vide est ignoré. La destruction réelle exige toujours la saisie exacte `DETRUIRE`.
-
-Le projet n'est considéré fermé qu'après :
+Verdict final :
 
 ```text
 NETTOYAGE AWS COMPLET
 ```
 
-## Validation et niveau de preuve
+## Validation CI
 
-La CI GitHub vérifie notamment :
+La CI vérifie notamment :
 
 - Bash et ShellCheck ;
 - contrat de l'orchestrateur ;
-- contrat de convergence/réexécution ;
-- authentification AWS simulée sans mutation réelle ;
-- Angular et TypeScript ;
-- vrai NGINX avec le build Angular ;
-- OpenSearch local, Bulk et agrégations ;
-- HAProxy local, round-robin, panne et reprise ;
-- Terraform `fmt`, `init -backend=false` et `validate` ;
+- convergence/réexécution ;
+- contrat Windows 11 / WSL2 ;
+- parsing des scripts PowerShell ;
+- Terraform ;
 - Ansible ;
+- Angular, TypeScript et NGINX réel ;
+- OpenSearch local, Bulk et agrégations ;
+- HAProxy, round-robin, panne et reprise ;
 - YAML ;
 - Markdown et liens ;
 - secrets et non-régression.
 
-Une CI verte prouve la cohérence du dépôt et les intégrations locales, **pas un déploiement réel sur le compte AWS de l'opérateur**. Le test d'intégration final reste l'exécution de `p5.sh all` sur la VM avec une session AWS réelle.
-
-## Sécurité
-
-Le dépôt protège notamment contre :
-
-- mauvais compte AWS via `allowed_account_ids` ;
-- utilisation du compte root ;
-- credentials AWS longue durée dans le parcours normal ;
-- SSH/OpenSearch ouverts au monde au lieu d'un `/32` ;
-- EC2 sans IMDSv2 ;
-- volumes racine non chiffrés ;
-- OpenSearch sans HTTPS/TLS ;
-- tfvars désynchronisés ;
-- secrets ou fichiers locaux suivis par Git ;
-- destruction implicite ;
-- validation automatique d'une preuve humaine.
-
-Politique complète : [SECURITY.md](SECURITY.md).
-
-## Schémas du parcours
-
-Les six schémas pédagogiques restent intégrés au README :
-
-- [Vue d'ensemble](docs/schemas/vue-ensemble.svg)
-- [Préparation VM et AWS](docs/schemas/etape-0.svg)
-- [Exercice 1](docs/schemas/exercice-1.svg)
-- [Exercice 2](docs/schemas/exercice-2.svg)
-- [Exercice 3](docs/schemas/exercice-3.svg)
-- [Finalisation](docs/schemas/finalisation/finalisation.svg)
+Une CI verte prouve la cohérence du dépôt et ses intégrations locales. Le test
+d'intégration final reste l'exécution réelle de `p5.sh all` depuis `p5-devops`
+avec une session AWS valide.
 
 ## Documentation
 
 | Besoin | Document |
 | --- | --- |
 | Portail documentaire | [docs/README.md](docs/README.md) |
-| Runbook guidé pas à pas | [Guide d'exécution A → Z](docs/RUNBOOK_EXECUTION_GUIDEE.md) |
-| Convergence et réexécution | [docs/convergence-et-reexecution.md](docs/convergence-et-reexecution.md) |
-| Exécuter de A à Z | [Runbook](docs/01-parcours-debutant.md) |
-| Préparer la VM | [Préparation environnement](docs/00-preparation-environnement.md) |
-| Préparer AWS | [Préparation compte AWS](docs/00b-preparation-compte-aws.md) |
-| Architecture | [Architecture et flux](docs/architecture-et-flux.md) |
-| Exercice 1 | [Terraform + Ansible](docs/exercices/01-terraform-ansible.md) |
-| Exercice 2 | [OpenSearch](docs/exercices/02-elk-opensearch.md) |
-| Exercice 3 | [HAProxy](docs/exercices/03-haproxy.md) |
-| Validation/finalisation | [Preuves et nettoyage](docs/validation-preuves-nettoyage.md) |
-| Scripts et logs | [scripts/README.md](scripts/README.md) |
-| Dépannage | [Troubleshooting](docs/troubleshooting.md) |
-| Terraform | [terraform/README.md](terraform/README.md) |
+| Installation Windows 11 / WSL2 | [docs/00-preparation-environnement.md](docs/00-preparation-environnement.md) |
+| Guide WSL2 dédié | [environment/wsl2/README.md](environment/wsl2/README.md) |
+| Runbook A → Z | [docs/RUNBOOK_EXECUTION_GUIDEE.md](docs/RUNBOOK_EXECUTION_GUIDEE.md) |
+| Parcours de bout en bout | [docs/01-parcours-debutant.md](docs/01-parcours-debutant.md) |
+| Architecture | [docs/architecture-et-flux.md](docs/architecture-et-flux.md) |
+| Convergence | [docs/convergence-et-reexecution.md](docs/convergence-et-reexecution.md) |
+| Troubleshooting | [docs/troubleshooting.md](docs/troubleshooting.md) |
+| Validation et nettoyage | [docs/validation-preuves-nettoyage.md](docs/validation-preuves-nettoyage.md) |
+| Sécurité | [SECURITY.md](SECURITY.md) |
 
-## Structure du dépôt
+## Règles de sécurité
 
-```text
-p5_Openclassrooms/
-├── .github/                 # CI, sécurité, non-régression, Dependabot
-├── .p5/                     # état local de convergence, ignoré par Git
-├── application/angular/     # application Angular réelle
-├── ansible/                 # artefact, NGINX, inventaire exemple, playbook
-├── aws/                     # politique IAM et budget
-├── environment/             # versions et configuration AWS d'exemple
-├── docs/                    # documentation et livrables
-├── proofs/                  # convention ; runtime ignoré
-├── logs/                    # journaux opérateur locaux, ignorés
-├── scripts/
-│   ├── commands/            # p5.sh, inspect-state.sh et commandes spécialisées
-│   ├── lib/                 # runtime du centre de commande
-│   ├── tests/               # intégrations locales et contrats CI
-│   └── tools/               # conversion, génération et audits
-└── terraform/
-    ├── exercice-1/
-    ├── exercice-2/
-    └── exercice-3/
-```
+Le dépôt protège notamment contre :
 
-## État des livrables
+- mauvais compte AWS via `allowed_account_ids` ;
+- utilisation quotidienne du compte root ;
+- credentials AWS longue durée dans le parcours normal ;
+- SSH/OpenSearch ouverts au monde au lieu d'un `/32` ;
+- EC2 sans IMDSv2 ;
+- volumes racine non chiffrés ;
+- tfvars désynchronisés ;
+- secrets ou fichiers locaux suivis par Git ;
+- destruction implicite ;
+- images VHD/VHDX accidentellement versionnées.
 
-Le code, les configurations, l'automatisation et les contrôles sont versionnés. Les fichiers de `docs/livrables/` restent des gabarits tant que les preuves du véritable lab AWS n'y ont pas été insérées, relues et anonymisées.
-
-## Licence
-
-Ce dépôt est distribué sous licence [MIT](LICENSE).
+Politique complète : [SECURITY.md](SECURITY.md).

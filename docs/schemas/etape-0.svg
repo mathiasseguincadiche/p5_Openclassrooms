@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300" role="img" aria-labelledby="title desc" preserveAspectRatio="xMidYMid meet">
-<title id="title">Étape 0 — Préparer le lab et AWS</title>
-<desc id="desc">Les prérequis locaux et AWS sont vérifiés avant l’autorisation de lancer Terraform.</desc>
+<title id="title">Étape 0 — Préparer Windows 11, WSL2 et AWS</title>
+<desc id="desc">Le poste Windows 11 avec WSL2 et les prérequis AWS sont vérifiés avant l’autorisation de lancer Terraform.</desc>
 <defs>
   <marker id="arrow" markerWidth="10" markerHeight="10" refX="8.8" refY="5" orient="auto">
     <path d="M0 0L10 5L0 10Z" fill="#64748b"/>
@@ -27,20 +27,20 @@
 <text x="42" y="48" class="k" text-anchor="start">ÉTAPE 0 · FONDATIONS</text>
 <text x="42" y="78" class="h" text-anchor="start">Tout valider avant la première ressource AWS.</text>
 <rect x="42" y="115" width="184" height="106" rx="15" fill="#f1f5f9" stroke="#64748b" stroke-width="1.7"/><text x="60" y="143" class="k" text-anchor="start" fill="#64748b">SYSTÈME</text>
-<text x="60" y="174" class="b" text-anchor="start">Ubuntu Server 26.04</text>
-<text x="60" y="198" class="s" text-anchor="start">SSH · mises à jour · VM</text>
+<text x="60" y="174" class="b" text-anchor="start">Windows 11 · WSL2</text>
+<text x="60" y="198" class="s" text-anchor="start">Ubuntu 26.04 · systemd</text>
 <rect x="252" y="115" width="184" height="106" rx="15" fill="#eff6ff" stroke="#2563eb" stroke-width="1.7"/><text x="270" y="143" class="k" text-anchor="start" fill="#2563eb">OUTILLAGE</text>
 <text x="270" y="174" class="b" text-anchor="start">Terraform · Ansible</text>
 <text x="270" y="198" class="s" text-anchor="start">AWS CLI · Docker · Node.js</text>
-<rect x="462" y="115" width="184" height="106" rx="15" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.7"/><text x="480" y="143" class="k" text-anchor="start" fill="#7c3aed">ACCÈS</text>
-<text x="480" y="174" class="b" text-anchor="start">profil AWS · région</text>
-<text x="480" y="198" class="s" text-anchor="start">clé SSH · adresse /32</text>
-<rect x="672" y="115" width="184" height="106" rx="15" fill="#fff7ed" stroke="#d97706" stroke-width="1.7"/><text x="690" y="143" class="k" text-anchor="start" fill="#d97706">GARDE-FOUS</text>
-<text x="690" y="174" class="b" text-anchor="start">quotas · budget</text>
-<text x="690" y="198" class="s" text-anchor="start">variables · coûts · IAM</text>
+<rect x="462" y="115" width="184" height="106" rx="15" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.7"/><text x="480" y="143" class="k" text-anchor="start" fill="#7c3aed">RÉSEAU</text>
+<text x="480" y="174" class="b" text-anchor="start">NAT · DNS · route</text>
+<text x="480" y="198" class="s" text-anchor="start">IPv4 WSL dynamique</text>
+<rect x="672" y="115" width="184" height="106" rx="15" fill="#fff7ed" stroke="#d97706" stroke-width="1.7"/><text x="690" y="143" class="k" text-anchor="start" fill="#d97706">AWS READY</text>
+<text x="690" y="174" class="b" text-anchor="start">profil · /32 · budget</text>
+<text x="690" y="198" class="s" text-anchor="start">quotas · IAM · tfvars</text>
 <path d="M226 168H242" class="arrow"/><path d="M436 168H452" class="arrow"/><path d="M646 168H662" class="arrow"/><rect x="892" y="105" width="266" height="126" rx="18" fill="#fff" stroke="#94a3b8" stroke-width="1.8"/><text x="915" y="134" class="k" text-anchor="start">CONTRÔLES AUTOMATISÉS</text>
-<text x="915" y="164" class="m" text-anchor="start">setup.sh --check-only</text>
+<text x="915" y="164" class="m" text-anchor="start">check-wsl2-p5.ps1</text>
 <text x="915" y="188" class="m" text-anchor="start">pre-deployment-check.sh</text>
 <path d="M856 168H882" class="arrow"/><rect x="922" y="244" width="206" height="40" rx="20" fill="#059669" stroke="#059669" stroke-width="0"/><text x="1025" y="270" class="t" text-anchor="middle" fill="#fff">GO TERRAFORM</text>
-<path d="M1025 231V238" class="arrow"/><text x="42" y="265" class="s" text-anchor="start">Aucune infrastructure n’est créée ici ; le budget n’est appliqué qu’avec une action explicite.</text>
+<path d="M1025 231V238" class="arrow"/><text x="42" y="265" class="s" text-anchor="start">WSL2 est local ; aucune infrastructure AWS évaluée n’est créée avant les garde-fous.</text>
 </svg>
