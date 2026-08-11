@@ -6,22 +6,23 @@ les guides d’exécution.
 
 ## Vue d’ensemble
 
-Le projet utilise une VM Ubuntu Server comme **poste de contrôle DevOps**. La VM
-ne remplace pas les infrastructures évaluées : elle exécute Terraform, Ansible,
-AWS CLI, Node.js, Docker et les scripts de validation qui pilotent les ressources
-créées dans AWS.
+Le projet utilise **Windows 11 Pro + WSL2 + Ubuntu 26.04** comme poste de contrôle
+DevOps. La distribution WSL `p5-devops` ne remplace pas les infrastructures
+évaluées : elle exécute Terraform, Ansible, AWS CLI, Node.js, Docker et les
+scripts de validation qui pilotent les ressources créées dans AWS.
 
 ```text
-VM Ubuntu Server 26.04
-│
-├─ Angular : sources → build de production
-├─ Terraform : provisionnement AWS
-├─ Ansible : configuration de la cible de l’exercice 1
-├─ AWS CLI : contrôles, quotas, budget et audit
-├─ Docker : intégrations locales et backends de l’exercice 3
-└─ scripts : validations, preuves, diagnostics et nettoyage
-        │
-        ▼
+Windows 11 Pro
+└── WSL2 — 6 CPU / 16 Go RAM / NAT / DNS tunneling
+    └── p5-devops — Ubuntu 26.04
+        ├─ Angular : sources → build de production
+        ├─ Terraform : provisionnement AWS
+        ├─ Ansible : configuration de la cible de l’exercice 1
+        ├─ AWS CLI : contrôles, quotas, budget et audit
+        ├─ Docker : intégrations locales et backends de l’exercice 3
+        └─ scripts : validations, preuves, diagnostics et nettoyage
+                │
+                ▼
 AWS — us-east-1
 │
 ├─ Exercice 1
@@ -44,11 +45,19 @@ AWS — us-east-1
 
 ## 1. Poste de contrôle local
 
-Le socle de référence est défini dans `environment/versions.env` :
+Le socle de référence est réparti entre `environment/wsl2/` pour la couche
+Windows/WSL et `environment/versions.env` pour les versions Linux :
 
 | Composant | Référence du dépôt | Rôle |
 | --- | --- | --- |
-| Ubuntu Server | 26.04 | poste de contrôle CLI |
+| Hôte | Windows 11 Pro | poste physique |
+| Virtualisation locale | WSL2 | VM Linux utilitaire Microsoft |
+| Distribution | `p5-devops` / Ubuntu 26.04 | poste de contrôle CLI |
+| CPU WSL2 | 6 processeurs logiques | enveloppe globale WSL2 |
+| RAM WSL2 | 16 Go | enveloppe globale WSL2 |
+| Swap WSL2 | 8 Go | marge pour les intégrations locales |
+| Réseau WSL2 | NAT | sortie réseau du poste de contrôle |
+| DNS | DNS tunneling | résolution via Windows |
 | Node.js | 22.22.0 | build Angular |
 | Angular | 21.x | application de l’exercice 1 |
 | Terraform | 1.15.8 | provisionnement AWS |
@@ -56,13 +65,47 @@ Le socle de référence est défini dans `environment/versions.env` :
 | Docker | moteur local | tests d’intégration et backends HAProxy |
 | AWS CLI v2 | profil `p5-lab` | identité, contrôles et exploitation AWS |
 
-La VM possède deux responsabilités distinctes :
+La distribution `p5-devops` possède deux responsabilités distinctes :
 
 1. **préparer et valider** le code avant toute mutation AWS ;
 2. **piloter** les exercices et enregistrer les preuves techniques locales.
 
 Elle ne doit contenir dans Git aucun secret, état Terraform, inventaire réel ou
 preuve runtime.
+
+### Réseau local WSL2
+
+Le réseau local n'est pas confondu avec le réseau AWS :
+
+```text
+Windows 11
+   │
+   └─ WSL2 NAT
+       ├─ IPv4 WSL dynamique
+       ├─ passerelle dynamique
+       ├─ route par défaut dynamique
+       └─ DNS tunneling
+            │
+            ▼
+         Internet
+            │
+            ▼
+           AWS
+```
+
+L'adresse WSL est détectée au runtime avec `hostname -I`. Elle n'est jamais
+utilisée comme valeur Terraform permanente et n'est jamais supposée stable
+après `wsl --shutdown` ou un redémarrage Windows.
+
+Le champ `P5_PUBLIC_IP_CIDR` correspond toujours à l'IPv4 **publique**
+d'administration visible depuis AWS, pas à l'IPv4 privée WSL.
+
+### Plusieurs distributions WSL2
+
+Plusieurs distributions peuvent fonctionner simultanément, mais elles partagent
+la VM WSL2 globale, son noyau, son réseau et l'enveloppe 6 CPU / 16 Go. Le P5 ne
+s'appuie donc pas sur plusieurs distributions pour simuler plusieurs VM réseau :
+les machines évaluées restent les EC2 créées dans AWS.
 
 ## 2. Source unique de configuration AWS
 
@@ -225,7 +268,7 @@ Terraform crée :
 
 Les backends exécutent `nginxdemos/hello:plain-text` dans Docker. Leur port HTTP
 n’est autorisé que depuis le groupe de sécurité HAProxy. L’administration SSH
-reste limitée à l’adresse `/32` du poste de contrôle.
+reste limitée à l’adresse `/32` publique du poste de contrôle.
 
 ### Flux HTTP
 
@@ -288,7 +331,7 @@ Conséquence : **ne jamais détruire l’exercice 1 avant l’exercice 3**.
 
 ## 7. Ordre de destruction
 
-L’ordre de fermeture du lab est :
+L’ordre de fermeture du lab AWS est :
 
 ```text
 Exercice 3 → Exercice 2 → Exercice 1 → audit AWS global
@@ -297,6 +340,9 @@ Exercice 3 → Exercice 2 → Exercice 1 → audit AWS global
 Le script `destroy-aws.sh` applique cet ordre lorsqu’un état Terraform local est
 présent. L’audit `check-aws-cleanup.sh` vérifie ensuite l’absence de ressources P5
 sur l’ensemble du compte/région ciblé.
+
+L'arrêt ou la sauvegarde de `p5-devops` est indépendant de cette destruction :
+arrêter WSL2 ne détruit aucune ressource AWS.
 
 ## 8. Tags et garde-fous communs
 
@@ -313,6 +359,8 @@ et au nettoyage final.
 
 ## 9. Où aller ensuite
 
+- Poste WSL2 : [guide Windows 11 + WSL2](../environment/wsl2/README.md)
+- Préparation : [étape 0A](00-preparation-environnement.md)
 - Exécution complète : [parcours de bout en bout](01-parcours-debutant.md)
 - Exercice 1 : [Terraform + Ansible + Angular](exercices/01-terraform-ansible.md)
 - Exercice 2 : [OpenSearch](exercices/02-elk-opensearch.md)
