@@ -197,6 +197,21 @@ bash scripts/commands/p5.sh all --yes
 | `p5.sh logs` | retrouve les journaux de session |
 | `p5.sh cleanup` | destruction 3 → 2 → 1 puis audit AWS |
 
+## Portes de validation
+
+Avant toute création d'infrastructure, le parcours doit atteindre :
+
+```text
+GO AWS
+GO TERRAFORM
+```
+
+Après la destruction finale, le verdict attendu est :
+
+```text
+NETTOYAGE AWS COMPLET
+```
+
 ## Architecture AWS
 
 ```text
@@ -230,6 +245,17 @@ ressources Terraform restent indépendants du NAT WSL2.
 
 Référence :
 [Architecture et flux](docs/architecture-et-flux.md).
+
+## Schémas du parcours
+
+Les six schémas pédagogiques restent intégrés au parcours :
+
+- [Vue d'ensemble](docs/schemas/vue-ensemble.svg)
+- [Préparation Windows 11, WSL2 et AWS](docs/schemas/etape-0.svg)
+- [Exercice 1](docs/schemas/exercice-1.svg)
+- [Exercice 2](docs/schemas/exercice-2.svg)
+- [Exercice 3](docs/schemas/exercice-3.svg)
+- [Finalisation](docs/schemas/finalisation/finalisation.svg)
 
 ## Convergence et réexécution
 
