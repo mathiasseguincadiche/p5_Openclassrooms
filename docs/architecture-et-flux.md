@@ -1,369 +1,219 @@
 # Architecture technique et flux du projet P5
 
-Ce document explique **comment les composants du dépôt s’assemblent réellement**.
-Il complète le [cadre du projet](00-cadre-officiel.md) et sert de référence avant
-les guides d’exécution.
+Ce document décrit l'architecture réelle du P5 et la frontière entre la
+workstation locale et l'infrastructure AWS évaluée.
 
-## Vue d’ensemble
+## Vue d'ensemble
 
-Le projet utilise **Windows 11 Pro + WSL2 + Ubuntu 26.04** comme poste de contrôle
-DevOps. La distribution WSL `p5-devops` ne remplace pas les infrastructures
-évaluées : elle exécute Terraform, Ansible, AWS CLI, Node.js, Docker et les
-scripts de validation qui pilotent les ressources créées dans AWS.
+Le poste de contrôle est fourni par le dépôt
+`mathiasseguincadiche/Windows_11_Pro_Custom`.
 
 ```text
-Windows 11 Pro
-└── WSL2 — 6 CPU / 16 Go RAM / NAT / DNS tunneling
-    └── p5-devops — Ubuntu 26.04
-        ├─ Angular : sources → build de production
-        ├─ Terraform : provisionnement AWS
-        ├─ Ansible : configuration de la cible de l’exercice 1
-        ├─ AWS CLI : contrôles, quotas, budget et audit
-        ├─ Docker : intégrations locales et backends de l’exercice 3
-        └─ scripts : validations, preuves, diagnostics et nettoyage
-                │
-                ▼
+Windows_11_Pro_Custom
+└── Windows 11 Pro
+    └── WSL2
+        └── Ubuntu — D:\WSL\Ubuntu-DevOps
+            ├── systemd
+            ├── Docker Engine
+            ├── Terraform
+            ├── Ansible Core
+            ├── AWS CLI
+            ├── kubectl / Helm
+            └── outils DevOps
+                    │
+                    ▼
+p5_Openclassrooms
+├── Angular
+├── Terraform
+├── Ansible
+├── scripts de validation
+├── configuration AWS locale
+└── preuves / logs
+        │
+        ▼
 AWS — us-east-1
 │
-├─ Exercice 1
-│  ├─ VPC 10.0.0.0/16
-│  ├─ 2 sous-réseaux publics
-│  ├─ Internet Gateway + table de routage
-│  ├─ paire de clés EC2
-│  └─ 1 EC2 Ubuntu → Ansible → NGINX → Angular
+├── Exercice 1
+│   ├── VPC 10.0.0.0/16
+│   ├── 2 sous-réseaux publics
+│   ├── Internet Gateway + table de routage
+│   ├── paire de clés EC2
+│   └── EC2 Ubuntu → Ansible → NGINX → Angular
 │
-├─ Exercice 2
-│  └─ Amazon OpenSearch Service → index nginx-access-* → Dashboards
+├── Exercice 2
+│   └── Amazon OpenSearch Service
+│       └── nginx-access-* → Dashboards
 │
-└─ Exercice 3
-   ├─ réutilise le VPC, les sous-réseaux et la clé de l’exercice 1
-   ├─ 1 EC2 HAProxy
-   └─ 2 EC2 → Docker → nginxdemos/hello
+└── Exercice 3
+    ├── réutilise le réseau de l'exercice 1
+    ├── EC2 HAProxy
+    └── 2 EC2 backends → Docker → nginxdemos/hello
 ```
 
-![Vue d’ensemble du parcours](schemas/vue-ensemble.svg)
+## Responsabilités de la workstation
 
-## 1. Poste de contrôle local
+`Windows_11_Pro_Custom` possède :
 
-Le socle de référence est réparti entre `environment/wsl2/` pour la couche
-Windows/WSL et `environment/versions.env` pour les versions Linux :
+- installation et mise à jour WSL2 ;
+- distribution `Ubuntu` ;
+- stockage sous `D:\WSL\Ubuntu-DevOps` ;
+- `.wslconfig` ;
+- `/etc/wsl.conf` ;
+- profils `standard`, `lab-heavy`, `nat-fallback` ;
+- Docker, Terraform, Ansible, AWS CLI et outils DevOps généraux ;
+- backup/restauration Windows et WSL2.
 
-| Composant | Référence du dépôt | Rôle |
-| --- | --- | --- |
-| Hôte | Windows 11 Pro | poste physique |
-| Virtualisation locale | WSL2 | VM Linux utilitaire Microsoft |
-| Distribution | `p5-devops` / Ubuntu 26.04 | poste de contrôle CLI |
-| CPU WSL2 | 6 processeurs logiques | enveloppe globale WSL2 |
-| RAM WSL2 | 16 Go | enveloppe globale WSL2 |
-| Swap WSL2 | 8 Go | marge pour les intégrations locales |
-| Réseau WSL2 | NAT | sortie réseau du poste de contrôle |
-| DNS | DNS tunneling | résolution via Windows |
-| Node.js | 22.22.0 | build Angular |
-| Angular | 21.x | application de l’exercice 1 |
-| Terraform | 1.15.8 | provisionnement AWS |
-| Ansible Core | 2.20.1 | configuration de la cible EC2 |
-| Docker | moteur local | tests d’intégration et backends HAProxy |
-| AWS CLI v2 | profil `p5-lab` | identité, contrôles et exploitation AWS |
+Le P5 ne recopie aucune de ces configurations.
 
-La distribution `p5-devops` possède deux responsabilités distinctes :
+## Profils WSL2
 
-1. **préparer et valider** le code avant toute mutation AWS ;
-2. **piloter** les exercices et enregistrer les preuves techniques locales.
-
-Elle ne doit contenir dans Git aucun secret, état Terraform, inventaire réel ou
-preuve runtime.
-
-### Réseau local WSL2
-
-Le réseau local n'est pas confondu avec le réseau AWS :
+La source de vérité amont définit :
 
 ```text
-Windows 11
-   │
-   └─ WSL2 NAT
-       ├─ IPv4 WSL dynamique
-       ├─ passerelle dynamique
-       ├─ route par défaut dynamique
-       └─ DNS tunneling
-            │
-            ▼
-         Internet
-            │
-            ▼
-           AWS
+standard
+└── 8 threads / 20 Go / 8 Go swap / mirrored
+
+lab-heavy
+└── 12 threads / 28 Go / 12 Go swap / mirrored
+
+nat-fallback
+└── 8 threads / 20 Go / 8 Go swap / NAT
 ```
 
-L'adresse WSL est détectée au runtime avec `hostname -I`. Elle n'est jamais
-utilisée comme valeur Terraform permanente et n'est jamais supposée stable
-après `wsl --shutdown` ou un redémarrage Windows.
+Le choix du profil local n'a pas d'effet sur le plan d'adressage du VPC AWS.
 
-Le champ `P5_PUBLIC_IP_CIDR` correspond toujours à l'IPv4 **publique**
-d'administration visible depuis AWS, pas à l'IPv4 privée WSL.
+## Réseau local versus réseau AWS
 
-### Plusieurs distributions WSL2
-
-Plusieurs distributions peuvent fonctionner simultanément, mais elles partagent
-la VM WSL2 globale, son noyau, son réseau et l'enveloppe 6 CPU / 16 Go. Le P5 ne
-s'appuie donc pas sur plusieurs distributions pour simuler plusieurs VM réseau :
-les machines évaluées restent les EC2 créées dans AWS.
-
-## 2. Source unique de configuration AWS
-
-Le fichier local `environment/aws-readiness.env` est la source de vérité des
-paramètres dépendant du compte et de la session :
+Deux notions doivent rester séparées :
 
 ```text
-environment/aws-readiness.env
-          │
-          ├─ identité / région / compte attendu
-          ├─ IPv4 publique /32
-          ├─ taille des ressources
-          ├─ clé EC2
-          ├─ paramètres OpenSearch
-          └─ budget et confirmations de sécurité
-          │
-          ▼
-scripts/commands/sync-terraform-tfvars.sh
-          │
-          ├─ terraform/exercice-1/terraform.tfvars
-          ├─ terraform/exercice-2/terraform.tfvars
-          └─ terraform/exercice-3/terraform.tfvars
+réseau WSL2 local
+≠
+réseau AWS du lab
 ```
 
-Les trois `terraform.tfvars` **ne doivent pas être édités comme trois sources
-indépendantes**. Toute évolution de compte, région, IP ou taille doit être faite
-dans `aws-readiness.env`, puis synchronisée :
+Le mode `mirrored` est le profil quotidien de la workstation. `nat-fallback` est
+un secours local.
 
-```bash
-bash scripts/commands/sync-terraform-tfvars.sh --apply
-bash scripts/commands/sync-terraform-tfvars.sh --check
-```
-
-Les fichiers produits sont écrits en mode `600` et ignorés par Git.
-
-## 3. Exercice 1 — réseau partagé et cible Ansible
-
-Terraform crée :
-
-- un VPC `10.0.0.0/16` ;
-- deux sous-réseaux publics répartis sur deux zones de disponibilité ;
-- une Internet Gateway ;
-- une table de routage publique ;
-- un groupe de sécurité `p5-web-sg` ;
-- une paire de clés EC2 ;
-- une instance EC2 Ubuntu 24.04 LTS.
-
-Le groupe de sécurité autorise :
-
-- SSH `22/tcp` uniquement depuis `your_ip_cidr` en `/32` ;
-- HTTP `80/tcp` publiquement pour la démonstration de l’application.
-
-L’instance impose IMDSv2 et un volume racine `gp3` chiffré.
-
-### Flux applicatif
+Le VPC AWS reste :
 
 ```text
-application/angular/
-      │ npm ci + npm run build
-      ▼
-application/angular/dist/
-      │ copie contrôlée
-      ▼
-ansible/files/angular-app/
-      │ ansible-playbook
-      ▼
-EC2 /var/www/p5
-      │
-      ▼
-NGINX :80
-      │
-      ├─ fichiers statiques Angular
-      └─ fallback SPA → /index.html
+10.0.0.0/16
 ```
 
-Le playbook cible le groupe Ansible `webservers`, crée un utilisateur de service,
-copie l’artefact sous `/var/www/p5`, installe la configuration NGINX, valide
-`nginx -t`, active le service et ne recharge NGINX que lorsqu’un fichier change.
+avec deux sous-réseaux publics et une Internet Gateway.
 
-### Sorties Terraform utiles
+`P5_PUBLIC_IP_CIDR` représente l'IPv4 publique `/32` depuis laquelle l'opérateur
+administre les ressources AWS. Ce n'est jamais une adresse WSL2.
 
-| Output | Utilisation |
-| --- | --- |
-| `web_public_ip` | inventaire Ansible et collecte SSH des logs |
-| `web_private_ip` | diagnostic réseau |
-| `web_public_dns` | accès alternatif à la cible |
-| `web_url` | vérification HTTP et génération de trafic |
-| `vpc_id` | compréhension de la dépendance avec l’exercice 3 |
-| `public_subnet_ids` | compréhension du réseau partagé |
-
-## 4. Exercice 2 — pipeline de logs OpenSearch
-
-L’exercice 2 est indépendant du VPC de l’exercice 1. Terraform crée un domaine
-Amazon OpenSearch Service avec :
-
-- OpenSearch 2.19 par défaut ;
-- un nœud `t3.small.search` par défaut ;
-- un volume `gp3` de 10 Gio par défaut ;
-- chiffrement au repos ;
-- chiffrement entre nœuds ;
-- HTTPS obligatoire avec TLS 1.2 minimum ;
-- politique d’accès limitée à l’IPv4 d’administration en `/32`.
-
-### Flux des données
+## Flux exercice 1
 
 ```text
-NGINX access.log réel                échantillon versionné
-        │                                   │
-        └──────────────┬────────────────────┘
-                       ▼
-             convert-nginx-logs.py
-                       │
-                       ▼
-                 Bulk NDJSON
-                       │
-                       ▼
-           import-opensearch-data.sh
-                       │
-             nginx-access-*
-                       │
-                       ▼
-           verify-opensearch-data.sh
-                       │
-                       ▼
-          OpenSearch Dashboards
-            ├─ Donut méthodes HTTP
-            ├─ Octets par 12 h
-            └─ Top 5 URL par 12 h
+sources Angular
+      ↓
+build local dans Ubuntu WSL2
+      ↓
+Terraform
+      ↓
+AWS EC2
+      ↓
+Ansible
+      ↓
+NGINX
+      ↓
+Angular
+      ↓
+access.log réel
 ```
 
-L’import est volontairement séparé en deux modes :
+Le log NGINX réel peut ensuite alimenter l'exercice 2.
 
-- sans `--apply` : validation et génération locale du Bulk ;
-- avec `--apply` : création du template et import réel.
-
-Les visualisations restent manuelles car leur construction fait partie de la
-compréhension évaluée.
-
-### Sorties Terraform utiles
-
-| Output | Utilisation |
-| --- | --- |
-| `opensearch_domain_name` | identification du domaine |
-| `opensearch_endpoint` | scripts d’import et de vérification |
-| `opensearch_dashboards_endpoint` | construction manuelle du dashboard |
-| `opensearch_arn` | diagnostic et inventaire |
-
-## 5. Exercice 3 — HAProxy et dépendance réseau
-
-L’exercice 3 **ne crée pas un second VPC**. Il recherche par tags le VPC et les
-sous-réseaux publics créés par l’exercice 1, puis réutilise aussi la paire de
-clés `p5-key`.
-
-Terraform crée :
-
-- un groupe de sécurité HAProxy ;
-- un groupe de sécurité pour les backends ;
-- deux instances EC2 `p5-hello-1` et `p5-hello-2` ;
-- une instance EC2 `p5-haproxy`.
-
-Les backends exécutent `nginxdemos/hello:plain-text` dans Docker. Leur port HTTP
-n’est autorisé que depuis le groupe de sécurité HAProxy. L’administration SSH
-reste limitée à l’adresse `/32` publique du poste de contrôle.
-
-### Flux HTTP
+## Flux exercice 2
 
 ```text
-Client
-  │ HTTP :80
-  ▼
+échantillon reproductible
+          +
+access.log réel
+          ↓
+conversion NDJSON
+          ↓
+Amazon OpenSearch
+          ↓
+agrégations
+          ↓
+Dashboards
+```
+
+La création du dashboard et les captures restent des preuves humaines.
+
+## Flux exercice 3
+
+```text
+VPC + subnets Exercice 1
+          ↓
+Terraform Exercice 3
+          ↓
 HAProxy
-  │ balance roundrobin
-  │ health check GET /
-  │ inter 3s / fall 3 / rise 2
-  ├───────────────┐
-  ▼               ▼
-p5-hello-1     p5-hello-2
-Docker          Docker
-nginxdemos      nginxdemos
+      /         \
+Backend 1    Backend 2
+      ↓          ↓
+ Docker       Docker
 ```
 
-Le test de panne :
+Le test de panne arrête réellement un backend, vérifie la continuité de service
+puis confirme sa réintégration.
 
-1. observe deux backends ;
-2. arrête `nginx-hello` sur un backend par SSH ;
-3. attend le retrait par HAProxy ;
-4. vérifie la continuité avec un seul backend ;
-5. redémarre le conteneur ;
-6. attend la réintégration ;
-7. observe de nouveau deux backends.
+## Dépendance entre exercices
 
-Un `trap` tente de restaurer le backend si le script est interrompu après
-l’arrêt.
-
-### Sorties Terraform utiles
-
-| Output | Utilisation |
-| --- | --- |
-| `haproxy_url` | tests round-robin et failover |
-| `haproxy_public_ip` | accès et diagnostic |
-| `hello_1_public_ip`, `hello_2_public_ip` | administration SSH des backends |
-| `hello_1_private_ip`, `hello_2_private_ip` | configuration HAProxy |
-| `haproxy_security_group_id` | diagnostic réseau |
-
-## 6. Dépendances et ordre d’exécution
+L'exercice 3 réutilise l'infrastructure réseau de l'exercice 1 :
 
 ```text
-Étape 0A ──► Étape 0B ──► Exercice 1 ──┬──► Exercice 3
-                                        │
-                                        └──► logs réels pour Exercice 2
-
-Exercice 2 peut techniquement être déployé indépendamment,
-mais les logs réels sont produits naturellement par l’exercice 1.
+Exercice 1
+└── VPC + subnets + clé EC2
+        ↓
+Exercice 3
 ```
 
-La dépendance critique est :
+L'exercice 1 ne doit donc pas être détruit avant la fin de l'exercice 3.
+
+## Convergence
+
+La workstation amont et le P5 ont des responsabilités différentes mais suivent
+la même idée : ne pas refaire inutilement ce qui est déjà conforme.
+
+Dans P5 :
 
 ```text
-Exercice 1 réseau + clé EC2 ──► Exercice 3
+inspection
+   ↓
+delta ?
+├── non → aucune mutation
+└── oui → correction ciblée
+   ↓
+vérification
+   ↓
+preuve / log
 ```
 
-Conséquence : **ne jamais détruire l’exercice 1 avant l’exercice 3**.
+Un outil DevOps déjà présent et compatible sur Ubuntu WSL2 est réutilisé.
 
-## 7. Ordre de destruction
+## Sauvegarde
 
-L’ordre de fermeture du lab AWS est :
+La sauvegarde de la plateforme n'appartient pas au P5. La V7 de
+`Windows_11_Pro_Custom` couvre l'image Windows et l'export Ubuntu VHDX avec
+SHA-256.
 
-```text
-Exercice 3 → Exercice 2 → Exercice 1 → audit AWS global
-```
+Le P5 protège de son côté :
 
-Le script `destroy-aws.sh` applique cet ordre lorsqu’un état Terraform local est
-présent. L’audit `check-aws-cleanup.sh` vérifie ensuite l’absence de ressources P5
-sur l’ensemble du compte/région ciblé.
+- son code via Git ;
+- ses états Terraform locaux tant que les ressources existent ;
+- ses preuves et logs runtime ;
+- ses livrables.
 
-L'arrêt ou la sauvegarde de `p5-devops` est indépendant de cette destruction :
-arrêter WSL2 ne détruit aucune ressource AWS.
+## Références
 
-## 8. Tags et garde-fous communs
-
-Les trois providers Terraform utilisent :
-
-- `allowed_account_ids` ;
-- `Project = p5-openclassrooms` ;
-- `ManagedBy = Terraform` ;
-- `Purpose = training-lab` ;
-- un tag `Exercise` propre au module.
-
-Ces tags servent à la compréhension, au contrôle des collisions, à l’inventaire
-et au nettoyage final.
-
-## 9. Où aller ensuite
-
-- Poste WSL2 : [guide Windows 11 + WSL2](../environment/wsl2/README.md)
-- Préparation : [étape 0A](00-preparation-environnement.md)
-- Exécution complète : [parcours de bout en bout](01-parcours-debutant.md)
-- Exercice 1 : [Terraform + Ansible + Angular](exercices/01-terraform-ansible.md)
-- Exercice 2 : [OpenSearch](exercices/02-elk-opensearch.md)
-- Exercice 3 : [HAProxy](exercices/03-haproxy.md)
-- Preuves et nettoyage : [validation, preuves et finalisation](validation-preuves-nettoyage.md)
-- Problèmes : [guide de diagnostic](troubleshooting.md)
+- [Préparation de l'environnement](00-preparation-environnement.md)
+- [Contrat WSL2](../environment/wsl2/README.md)
+- [Parcours d'exécution](01-parcours-debutant.md)
+- [Runbook A → Z](RUNBOOK_EXECUTION_GUIDEE.md)
+- [Convergence](convergence-et-reexecution.md)
