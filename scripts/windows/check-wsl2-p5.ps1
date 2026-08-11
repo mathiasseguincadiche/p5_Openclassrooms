@@ -31,11 +31,12 @@ if ($errors -gt 0) { exit 1 }
 
 $kernel = (Invoke-P5Wsl -Distro $DistroName -Command 'uname -r' | Select-Object -First 1).Trim()
 $cpu = [int]((Invoke-P5Wsl -Distro $DistroName -Command 'nproc' | Select-Object -First 1).Trim())
-$memoryMiB = [int]((Invoke-P5Wsl -Distro $DistroName -Command "awk '/MemTotal:/ {printf \"%.0f\", `$2/1024}' /proc/meminfo" | Select-Object -First 1).Trim())
+$memoryKiB = [int64]((Invoke-P5Wsl -Distro $DistroName -Command 'grep MemTotal /proc/meminfo | tr -s " " | cut -d " " -f 2' | Select-Object -First 1).Trim())
+$memoryMiB = [int][math]::Floor($memoryKiB / 1024)
 $pid1 = (Invoke-P5Wsl -Distro $DistroName -Command 'ps -p 1 -o comm=' | Select-Object -First 1).Trim()
 $hostname = (Invoke-P5Wsl -Distro $DistroName -Command 'hostname' | Select-Object -First 1).Trim()
-$ip = (Invoke-P5Wsl -Distro $DistroName -Command "hostname -I | awk '{print `$1}'" | Select-Object -First 1).Trim()
-$gateway = (Invoke-P5Wsl -Distro $DistroName -Command "ip route show default | awk '{print `$3; exit}'" | Select-Object -First 1).Trim()
+$ip = (Invoke-P5Wsl -Distro $DistroName -Command 'hostname -I | tr " " "\n" | head -n 1' | Select-Object -First 1).Trim()
+$gateway = (Invoke-P5Wsl -Distro $DistroName -Command 'ip route show default | head -n 1 | cut -d " " -f 3' | Select-Object -First 1).Trim()
 $route = (Invoke-P5Wsl -Distro $DistroName -Command 'ip route show default' | Select-Object -First 1).Trim()
 
 Check-Value ($kernel -match '(?i)microsoft.*WSL2|WSL2.*microsoft') "noyau WSL2 : $kernel" "noyau WSL2 non confirme : $kernel"
@@ -56,10 +57,10 @@ Check-Value $dnsOk 'resolution DNS : OK' 'resolution DNS : KO'
 
 $internetOk = $false
 try {
-    Invoke-P5Wsl -Distro $DistroName -Command 'curl -fsSIL --max-time 10 https://github.com >/dev/null' | Out-Null
+    Invoke-P5Wsl -Distro $DistroName -Command "timeout 10 bash -c '</dev/tcp/github.com/443'" | Out-Null
     $internetOk = $true
 } catch {}
-Check-Value $internetOk 'sortie HTTPS : OK' 'sortie HTTPS : KO'
+Check-Value $internetOk 'sortie TCP/443 : OK' 'sortie TCP/443 : KO'
 
 Write-Host ''
 Write-Host 'Outils DevOps'
