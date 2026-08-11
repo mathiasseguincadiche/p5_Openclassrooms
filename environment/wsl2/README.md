@@ -59,8 +59,6 @@ Les commandes P5 documentées utilisent donc :
 wsl -d Ubuntu
 ```
 
-et non l'ancien nom `p5-devops`.
-
 ## Profils acceptés
 
 Le dépôt Windows définit actuellement :
@@ -130,9 +128,9 @@ par AWS**, et non une adresse d'interface WSL.
 
 ## Sauvegarde
 
-P5 ne fournit plus de scripts d'export/restauration WSL2.
+La sauvegarde et la restauration WSL2 appartiennent au dépôt Windows.
 
-La V7 du dépôt `Windows_11_Pro_Custom` est la source de vérité pour :
+La V7 de `Windows_11_Pro_Custom` est la source de vérité pour :
 
 - image Windows `C:` + `D:` ;
 - volumes critiques ;
