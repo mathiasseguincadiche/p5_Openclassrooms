@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="340" viewBox="0 0 1200 340" role="img" aria-labelledby="title desc" preserveAspectRatio="xMidYMid meet">
 <title id="title">Vue d’ensemble du projet P5</title>
-<desc id="desc">Parcours compact du poste DevOps local vers les trois exercices AWS, puis les preuves et le nettoyage.</desc>
+<desc id="desc">Parcours du poste Windows 11 et WSL2 vers les trois exercices AWS, puis les preuves et le nettoyage.</desc>
 <defs>
   <marker id="arrow" markerWidth="10" markerHeight="10" refX="8.8" refY="5" orient="auto">
     <path d="M0 0L10 5L0 10Z" fill="#64748b"/>
@@ -24,13 +24,13 @@
   .chip{fill:#fff;stroke:#cbd5e1;stroke-width:1.2}
 </style>
 <rect width="1200" height="340" rx="22" fill="#f8fafc"/>
-<text x="42" y="48" class="k" text-anchor="start">DU LAB LOCAL AU NETTOYAGE AWS</text>
+<text x="42" y="48" class="k" text-anchor="start">DU POSTE WSL2 AU NETTOYAGE AWS</text>
 <text x="42" y="78" class="h" text-anchor="start">Une seule chaîne exécutable, cinq portes de validation.</text>
 <rect x="308" y="105" width="650" height="164" rx="20" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.8"/><text x="332" y="133" class="k" text-anchor="start" fill="#7c3aed">PÉRIMÈTRE AWS</text>
 <rect x="42" y="132" width="220" height="116" rx="16" fill="#f1f5f9" stroke="#64748b" stroke-width="1.8"/><circle cx="72" cy="162" r="17" fill="#64748b"/><text x="72" y="167" class="t" text-anchor="middle" fill="#fff">0</text>
 <text x="98" y="161" class="t" text-anchor="start" fill="#0f172a">PRÉPARER</text>
-<text x="62" y="198" class="s" text-anchor="start" fill="#475569">Ubuntu · outils · accès</text>
-<text x="62" y="221" class="s" text-anchor="start" fill="#475569">GO TERRAFORM</text>
+<text x="62" y="198" class="s" text-anchor="start" fill="#475569">Windows 11 · WSL2</text>
+<text x="62" y="221" class="s" text-anchor="start" fill="#475569">Ubuntu · outils · AWS Ready</text>
 <rect x="332" y="151" width="176" height="90" rx="16" fill="#eff6ff" stroke="#2563eb" stroke-width="1.8"/><circle cx="362" cy="181" r="17" fill="#2563eb"/><text x="362" y="186" class="t" text-anchor="middle" fill="#fff">1</text>
 <text x="388" y="180" class="t" text-anchor="start" fill="#0f172a">DÉPLOYER</text>
 <text x="352" y="217" class="s" text-anchor="start" fill="#475569">Terraform + Ansible</text>
@@ -52,5 +52,5 @@
 <rect x="382" y="284" width="178" height="30" rx="15" fill="#fff7ed" stroke="#fdba74"/><text x="471.0" y="304" class="s" text-anchor="middle" fill="#b45309">dashboard exploitable</text>
 <rect x="574" y="284" width="184" height="30" rx="15" fill="#ecfdf5" stroke="#6ee7b7"/><text x="666.0" y="304" class="s" text-anchor="middle" fill="#047857">service disponible</text>
 <rect x="772" y="284" width="156" height="30" rx="15" fill="#f5f3ff" stroke="#c4b5fd"/><text x="850.0" y="304" class="s" text-anchor="middle" fill="#6d28d9">preuves prêtes</text>
-<rect x="942" y="284" width="216" height="30" rx="15" fill="#0f172a" stroke="#0f172a"/><text x="1050.0" y="304" class="s" text-anchor="middle" fill="#fff">LAB PROPRE · 0 coût</text>
+<rect x="942" y="284" width="216" height="30" rx="15" fill="#0f172a" stroke="#0f172a"/><text x="1050.0" y="304" class="s" text-anchor="middle" fill="#fff">LAB PROPRE · 0 coût AWS</text>
 </svg>
