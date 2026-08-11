@@ -1,11 +1,11 @@
 # Convergence et réexécution intelligente
 
-Le P5 suit une règle commune pour les éléments persistants :
+Le P5 suit cette règle pour les éléments qu'il **possède** :
 
 ```text
 INSPECTER
    ↓
-COMPARER état actuel ↔ état attendu
+COMPARER état réel ↔ état attendu
    ↓
 aucun écart ? ── oui ──► NE RIEN MODIFIER
    │
@@ -18,108 +18,31 @@ VÉRIFIER À NOUVEAU
 JOURNALISER LE VERDICT
 ```
 
-Cette logique couvre désormais deux niveaux distincts :
+## Frontière avec la workstation
 
-1. **Windows 11 / WSL2** pour le poste de contrôle local ;
-2. **Ubuntu + AWS** pour le socle DevOps et les ressources évaluées.
+La plateforme Windows/WSL2 est gérée par
+`mathiasseguincadiche/Windows_11_Pro_Custom`.
 
-## WSL2
+P5 **ne converge pas** :
 
-La configuration globale attendue est définie dans :
+- Windows 11 Pro ;
+- WSL2 ;
+- `%UserProfile%\.wslconfig` ;
+- `/etc/wsl.conf` ;
+- la distribution `Ubuntu` ;
+- le chemin `D:\WSL\Ubuntu-DevOps` ;
+- les profils `standard`, `lab-heavy`, `nat-fallback` ;
+- le VHDX et la sauvegarde de la workstation.
 
-```text
-environment/wsl2/.wslconfig.example
-```
-
-Cible :
-
-```text
-6 processeurs logiques
-16 Go RAM
-8 Go swap
-NAT
-DNS tunneling
-firewall WSL/Hyper-V
-```
-
-La configuration de la distribution est définie dans :
-
-```text
-environment/wsl2/wsl.conf.example
-```
-
-avec notamment :
-
-```text
-systemd=true
-hostname=p5-devops
-```
-
-Les scripts Windows sont réexécutables :
+P5 considère la validation amont suivante comme un prérequis :
 
 ```powershell
-.\scripts\windows\install-wsl2-p5.ps1
-.\scripts\windows\configure-wsl2-p5.ps1
-.\scripts\windows\check-wsl2-p5.ps1
+.\install.ps1 -Mode Verify -ValidateWsl -ValidateDevOps
 ```
 
-Une distribution existante n'est pas supprimée ni recréée automatiquement.
+## Observer P5 sans modifier
 
-## Réseau WSL2
-
-Le mode retenu est NAT. L'IPv4 privée WSL2 n'est pas une donnée stable du projet.
-Elle est détectée au runtime avec :
-
-```powershell
-wsl -d p5-devops hostname -I
-```
-
-Le projet vérifie également la passerelle, la route par défaut et la résolution
-DNS. Une nouvelle IPv4 après `wsl --shutdown` ou un redémarrage Windows n'est pas
-considérée comme une dérive nécessitant une modification du dépôt.
-
-`P5_PUBLIC_IP_CIDR` reste l'IPv4 publique `/32` visible depuis AWS. Elle est
-indépendante de l'adresse NAT WSL2.
-
-## Démarrage et arrêt
-
-L'arrêt de `p5-devops` est persistant :
-
-```powershell
-.\scripts\windows\stop-p5.ps1
-```
-
-La reprise s'effectue avec :
-
-```powershell
-.\scripts\windows\start-p5.ps1
-wsl -d p5-devops
-```
-
-Aucun paquet, dépôt, état Terraform ou fichier utilisateur n'est perdu lors d'un
-arrêt normal de la distribution.
-
-## Sauvegarde et restauration
-
-La sauvegarde complète est volontairement explicite :
-
-```powershell
-.\scripts\windows\backup-p5.ps1
-```
-
-Elle produit un VHDX et son SHA-256.
-
-La restauration :
-
-```powershell
-.\scripts\windows\restore-p5.ps1 -BackupPath <fichier.vhdx>
-```
-
-est non destructive : elle refuse d'écraser une distribution existante.
-
-## Observer le socle Linux sans modifier
-
-Dans Ubuntu WSL2 :
+Dans la distribution `Ubuntu` :
 
 ```bash
 bash scripts/commands/p5.sh inspect
@@ -127,67 +50,51 @@ bash scripts/commands/p5.sh inspect
 
 Cette commande inspecte notamment :
 
-- version Ubuntu ;
-- présence et versions des outils ;
-- Docker ;
+- Ubuntu et les outils requis par P5 ;
 - configuration AWS locale ;
-- session AWS lorsqu'elle est active ;
+- session AWS existante ;
 - tfvars ;
 - clés SSH ;
 - états Terraform ;
 - inventaire Ansible ;
 - artefact Angular ;
-- preuves et logs existants.
+- preuves et logs.
 
-Elle ne déclenche ni installation, ni connexion AWS interactive, ni `apply`, ni
+Elle ne déclenche ni installation, ni connexion interactive, ni `apply`, ni
 destruction.
 
-## Bootstrap Ubuntu
+## Compatibilité du socle Linux
 
-Deux comportements sont disponibles :
+La workstation amont installe déjà une stack DevOps générale. P5 conserve un
+contrat de versions et de capacités propres au projet.
+
+Contrôle seul :
 
 ```bash
 bash scripts/commands/bootstrap-ubuntu-server.sh --check-only
+```
+
+Convergence du delta P5 uniquement :
+
+```bash
 bash scripts/commands/bootstrap-ubuntu-server.sh
 ```
 
-Le premier observe uniquement. Le second installe ou corrige seulement les
-paquets et outils non conformes.
-
-Le bootstrap compare notamment :
-
-- paquets APT ;
-- Terraform ;
-- Docker Engine et Compose ;
-- AWS CLI ;
-- Ansible Core ;
-- NVM et Node.js ;
-- `markdownlint-cli2`.
-
-Si l'appartenance au groupe Docker ou l'environnement NVM exige une nouvelle
-session, il suffit d'arrêter puis relancer `p5-devops` :
-
-```powershell
-.\scripts\windows\stop-p5.ps1
-.\scripts\windows\start-p5.ps1
-```
+Un composant déjà conforme est réutilisé. Le bootstrap ne doit jamais devenir un
+second installateur WSL2.
 
 ## AWS et authentification
 
-Le projet tente d'abord de réutiliser une session temporaire valide. Une nouvelle
-authentification n'est demandée que si aucune source utilisable n'existe.
+`aws-auth.sh` tente d'abord de réutiliser une session temporaire valide. Une
+nouvelle authentification n'est demandée que si aucune session utilisable
+n'existe.
 
-La configuration locale conserve les valeurs valides, détecte l'IPv4 publique,
-crée la clé SSH uniquement si nécessaire puis converge les tfvars.
+`configure-lab.sh` conserve les valeurs valides, détecte le compte et l'IPv4
+publique, crée la clé SSH seulement si elle manque puis converge les tfvars.
 
 ## Budget AWS
 
-Le garde-fou compare :
-
-- nom du budget ;
-- limite mensuelle ;
-- alertes 50 %, 80 % et 100 % ;
-- destinataire.
+Le garde-fou compare le budget réel à la cible : montant, alertes et destinataire.
 
 Contrôle :
 
@@ -205,7 +112,7 @@ Seuls les écarts sont corrigés.
 
 ## Terraform
 
-Pour chaque exercice, `p5.sh` utilise un vrai plan différentiel :
+Pour chaque exercice, `p5.sh` utilise un plan différentiel :
 
 ```text
 code 0 → aucun delta → aucun apply
@@ -213,30 +120,30 @@ code 1 → erreur       → arrêt
 code 2 → delta réel   → affichage + confirmation + apply
 ```
 
-Après `apply`, un nouveau plan doit revenir sans delta.
+Après un `apply`, un nouveau plan doit revenir sans delta.
 
-Une seconde exécution ne recrée donc pas inutilement VPC, EC2, OpenSearch ou
-HAProxy.
+Une seconde exécution ne recrée donc pas les EC2, le VPC, OpenSearch ou HAProxy si
+Terraform constate que l'état AWS est déjà conforme.
 
 ## Terraform tfvars
 
-`sync-terraform-tfvars.sh --apply` compare d'abord le contenu attendu :
+`sync-terraform-tfvars.sh --apply` construit le contenu attendu avant écriture :
 
-- absent ou différent → écriture ;
-- contenu identique mais permissions incorrectes → permissions corrigées ;
+- fichier absent ou différent → écriture ;
+- permissions seules incorrectes → correction des permissions ;
 - contenu et permissions conformes → aucune réécriture.
 
 ## Angular
 
-Le script de préparation compare les sources, dépendances et artefacts :
+Le script de préparation compare sources, dépendances et artefact :
 
-- dépendances inchangées → `npm ci` ignoré ;
+- dépendances inchangées → pas de `npm ci` inutile ;
 - sources et artefact inchangés → build ignoré ;
-- build identique → artefact Ansible non réécrit.
+- différence détectée → seule la chaîne nécessaire est rejouée.
 
 ## Ansible
 
-Le second passage doit produire :
+Le playbook est rejoué et doit prouver :
 
 ```text
 changed=0
@@ -244,34 +151,38 @@ unreachable=0
 failed=0
 ```
 
-Le projet prouve ainsi que la configuration distante est stable.
+Le premier passage configure ; le second prouve la stabilité de la cible.
 
 ## OpenSearch
 
-Le template distant est comparé au template attendu. Les documents utilisent des
-IDs déterministes et les IDs présents sont vérifiés avant import Bulk.
+Le script compare le template distant et les documents déjà présents avant les
+mutations. Les agrégations restent rejouées pour confirmer l'état fonctionnel
+actuel.
 
-Si tout est déjà présent, aucune mutation d'import n'est nécessaire ; les
-agrégations sont néanmoins revérifiées.
+## HAProxy
 
-## HAProxy et tests fonctionnels
+Terraform ne modifie rien sur plan vide. En revanche, les tests round-robin et
+failover sont volontairement rejoués : ce sont des preuves fonctionnelles, pas
+des réinstallations.
 
-Terraform ne modifie pas l'infrastructure lorsque son plan est vide. Les tests de
-round-robin et de failover sont en revanche rejouables pour prouver l'état
-fonctionnel actuel.
+## Nettoyage
 
-La distinction reste :
+`destroy-aws.sh` inspecte les trois états Terraform avant destruction.
 
-- **état persistant conforme** → ne pas refaire ;
-- **preuve fonctionnelle actuelle** → rejouer lorsque nécessaire.
+Ordre obligatoire :
 
-## Reprise normale après interruption
+```text
+Exercice 3 → Exercice 2 → Exercice 1
+```
 
-Après fermeture de terminal, arrêt WSL2 ou redémarrage Windows :
+La destruction réelle reste protégée par `DETRUIRE`.
+
+## Réexécution normale
+
+Après interruption :
 
 ```powershell
-.\scripts\windows\start-p5.ps1
-wsl -d p5-devops
+wsl -d Ubuntu
 ```
 
 Puis :
@@ -281,34 +192,20 @@ cd ~/labs/p5_Openclassrooms
 bash scripts/commands/p5.sh all
 ```
 
-Terraform réévalue l'état AWS réel. Ne jamais supprimer un `terraform.tfstate`
-pour forcer une reprise.
+Le projet réobserve l'environnement et l'état AWS au lieu de repartir de zéro.
 
-## Nettoyage
+## Sauvegarde
 
-Le nettoyage AWS inspecte les états Terraform et détruit dans l'ordre :
+La convergence et la sauvegarde de WSL2 ne relèvent plus du P5. La V7 de
+`Windows_11_Pro_Custom` est la source de vérité pour l'image Windows et l'export
+Ubuntu VHDX.
 
-```text
-Exercice 3 → Exercice 2 → Exercice 1
-```
-
-Le nettoyage AWS n'arrête ni ne supprime WSL2. La distribution reste disponible
-pour les preuves, archives ou autres travaux après suppression des ressources AWS.
-
-## Contrats CI
-
-Le modèle de convergence est protégé notamment par :
+## Contrat CI
 
 ```bash
 bash scripts/tests/test-convergence-contract.sh
 ```
 
-et le contrat WSL2 par :
-
-```text
-.github/workflows/wsl2-contract.yml
-```
-
-La CI vérifie notamment le profil 6 CPU / 16 Go, la présence des scripts Windows,
-le parsing PowerShell et l'absence des anciennes instructions KVM dans le parcours
-canonique.
+Ce test protège les branches « déjà conforme → aucune mutation » du P5. Un
+contrat CI séparé protège désormais la frontière avec la workstation amont afin
+d'empêcher la réintroduction d'un installateur WSL2 dans ce dépôt.
