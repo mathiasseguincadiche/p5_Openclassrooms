@@ -1,0 +1,10 @@
+[boot]
+systemd=true
+
+[network]
+hostname=p5-devops
+generateHosts=true
+generateResolvConf=true
+
+# Le bloc [user] est ajoute automatiquement par configure-wsl2-p5.ps1
+# avec l'utilisateur Linux deja cree lors du premier lancement Ubuntu.

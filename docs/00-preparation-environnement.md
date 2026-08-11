@@ -1,8 +1,9 @@
-# Étape 0A — Préparer la VM de lab
+# Étape 0A — Préparer le poste Windows 11 + WSL2
 
-Cette étape construit le **poste de contrôle DevOps** du projet. La VM exécute
-Terraform, Ansible, AWS CLI, Node.js, Docker et les scripts du dépôt ; elle ne
-remplace pas les infrastructures AWS évaluées.
+Cette étape construit le **poste de contrôle DevOps** du projet. Windows 11 Pro
+héberge WSL2 et la distribution `p5-devops` sous Ubuntu 26.04. Cette distribution
+exécute Terraform, Ansible, AWS CLI, Node.js, Docker et les scripts du dépôt ;
+elle ne remplace pas les infrastructures AWS évaluées.
 
 La préparation du compte est traitée ensuite dans
 [l’étape 0B — AWS Ready](00b-preparation-compte-aws.md).
@@ -11,15 +12,22 @@ La préparation du compte est traitée ensuite dans
 
 ## Résultat attendu
 
-Une VM nommée par exemple `p5-devops` avec :
+Un poste de contrôle avec :
 
-- Ubuntu Server 26.04 ;
-- environnement CLI sans bureau requis ;
-- accès réseau et SSH ;
+- Windows 11 Pro ;
+- WSL2 à jour ;
+- distribution `p5-devops` sous Ubuntu 26.04 LTS ;
+- 6 processeurs logiques maximum pour la VM WSL2 ;
+- 16 Go de RAM maximum pour la VM WSL2 ;
+- 8 Go de swap ;
+- `systemd` actif ;
+- réseau WSL2 NAT ;
+- IPv4, passerelle et route détectées dynamiquement ;
+- DNS tunneling ;
 - Git, Python, Terraform, Ansible, AWS CLI et Docker ;
 - Node.js 22.22.0 avec NVM ;
-- dépôt cloné ;
-- clé SSH dédiée au lab ;
+- dépôt cloné dans le système de fichiers Linux ;
+- clé SSH dédiée au lab AWS ;
 - validation locale réussie.
 
 Le verdict de fin d’étape est :
@@ -28,21 +36,27 @@ Le verdict de fin d’étape est :
 Étape 0A validée. Poursuivez avec le contrôle AWS Ready.
 ```
 
-## Dimensionnement conseillé
+## Dimensionnement retenu
 
-| Ressource | Minimum pratique | Recommandé |
-| --- | ---: | ---: |
-| vCPU | 2 | 4 |
-| Mémoire | 4 Gio | 8 Gio |
-| Disque | 30 Gio | 50 Gio extensibles |
-| Réseau | NAT | NAT avec accès SSH ou pont |
+| Ressource | Cible P5 |
+| --- | ---: |
+| Processeurs WSL2 | 6 |
+| Mémoire WSL2 | 16 Go |
+| Swap WSL2 | 8 Go |
+| Stockage | VHDX WSL2 dynamique |
+| Réseau | NAT WSL2 |
+| DNS | DNS tunneling |
 
-La VM ne porte pas le domaine Amazon OpenSearch du livrable : ce service est
-créé dans AWS.
+Le fichier `%UserProfile%\.wslconfig` configure la **VM WSL2 globale**. Si
+plusieurs distributions WSL2 sont lancées simultanément, elles partagent cette
+enveloppe de 6 CPU et 16 Go de RAM.
+
+La distribution ne porte pas le domaine Amazon OpenSearch du livrable : ce
+service est créé dans AWS.
 
 ## Versions de référence
 
-La source de vérité est :
+La source de vérité Linux est :
 
 ```text
 environment/versions.env
@@ -52,7 +66,9 @@ Le dépôt fixe notamment :
 
 | Composant | Référence |
 | --- | --- |
-| Ubuntu Server | 26.04 |
+| Hôte | Windows 11 Pro |
+| Virtualisation locale | WSL2 |
+| Ubuntu | 26.04 |
 | Node.js | 22.22.0 |
 | Ansible Core | 2.20.1 |
 | Terraform | 1.15.8 |
@@ -60,24 +76,112 @@ Le dépôt fixe notamment :
 | NGINX local de test | `nginx:1.28-alpine` |
 | HAProxy local de test | `haproxy:3.2-alpine` |
 
-## 1. Installer Ubuntu Server
+## 1. Installer WSL2 et Ubuntu 26.04
 
-1. créer une VM UEFI ;
-2. installer Ubuntu Server 26.04 ;
-3. créer un utilisateur administrateur non `root` ;
-4. activer OpenSSH Server ;
-5. ne pas installer d’environnement de bureau si inutile ;
-6. redémarrer après l’installation.
+Cloner d'abord le dépôt côté Windows ou récupérer les scripts, puis ouvrir un
+PowerShell administrateur :
 
-Puis :
-
-```bash
-sudo apt update
-sudo apt full-upgrade -y
-sudo reboot
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+.\scripts\windows\install-wsl2-p5.ps1
 ```
 
-## 2. Cloner le dépôt
+Le script :
+
+1. exige Windows 11 ;
+2. met WSL à jour ;
+3. définit WSL2 comme version par défaut ;
+4. applique `environment/wsl2/.wslconfig.example` ;
+5. installe Ubuntu 26.04 sous le nom `p5-devops` si nécessaire ;
+6. n'écrase pas une distribution existante ;
+7. arrête WSL pour appliquer le profil global.
+
+Le profil cible est :
+
+```ini
+[wsl2]
+memory=16GB
+processors=6
+swap=8GB
+networkingMode=nat
+localhostForwarding=true
+dnsTunneling=true
+firewall=true
+autoProxy=true
+```
+
+## 2. Créer l'utilisateur Ubuntu puis configurer la distribution
+
+Premier lancement :
+
+```powershell
+wsl -d p5-devops
+```
+
+Terminer la création de l'utilisateur Linux proposée par Ubuntu, puis revenir
+dans PowerShell :
+
+```powershell
+.\scripts\windows\configure-wsl2-p5.ps1
+```
+
+Ce script configure :
+
+- `systemd=true` ;
+- hostname `p5-devops` ;
+- génération normale de `/etc/hosts` et `/etc/resolv.conf` ;
+- utilisateur Ubuntu par défaut ;
+- distribution `p5-devops` comme distribution WSL par défaut.
+
+Il redémarre ensuite la distribution et exige `systemd` en PID 1.
+
+## 3. Contrôler CPU, RAM, réseau, route et DNS
+
+Depuis PowerShell :
+
+```powershell
+.\scripts\windows\check-wsl2-p5.ps1
+```
+
+Le contrôle valide notamment :
+
+- noyau WSL2 ;
+- au moins 6 processeurs disponibles ;
+- environ 16 Go de RAM visibles ;
+- `systemd` ;
+- hostname ;
+- IPv4 WSL ;
+- passerelle ;
+- route par défaut ;
+- résolution DNS ;
+- sortie TCP/443.
+
+### Adressage WSL2
+
+Le mode retenu est NAT. L'adresse est obtenue dynamiquement :
+
+```powershell
+wsl -d p5-devops hostname -I
+```
+
+Dans Ubuntu :
+
+```bash
+ip -4 addr show
+ip route show default
+getent ahostsv4 github.com
+```
+
+L'IPv4 privée WSL n'est **pas** codée en dur : elle peut changer après un
+`wsl --shutdown` ou un redémarrage Windows. Le projet détecte donc l'IP et la
+passerelle au runtime.
+
+Le VPC AWS `10.0.0.0/16`, ses sous-réseaux et ses routes Terraform restent
+inchangés et indépendants de ce réseau local.
+
+## 4. Cloner le dépôt dans le système de fichiers Linux
+
+Le travail doit rester dans le VHDX Linux plutôt que sous `/mnt/c` :
 
 ```bash
 mkdir -p ~/labs
@@ -86,7 +190,10 @@ git clone https://github.com/mathiasseguincadiche/p5_Openclassrooms.git
 cd p5_Openclassrooms
 ```
 
-## 3. Installer le socle automatiquement
+Cette disposition évite de faire dépendre les performances des outils Linux des
+montages NTFS Windows.
+
+## 5. Installer le socle automatiquement
 
 ```bash
 ./scripts/commands/bootstrap-ubuntu-server.sh
@@ -114,14 +221,20 @@ Il ne :
 - crée aucune ressource AWS ;
 - crée aucune clé SSH à votre place.
 
-## 4. Se reconnecter
+## 6. Recharger la session Linux
 
-Après le bootstrap, déconnectez-vous puis reconnectez-vous à la VM.
+Après le bootstrap :
 
-Cette étape est nécessaire pour :
+```powershell
+.\scripts\windows\stop-p5.ps1
+.\scripts\windows\start-p5.ps1
+```
 
-- appliquer l’appartenance au groupe `docker` ;
-- charger NVM et Node.js dans un nouveau shell.
+Puis reconnectez-vous :
+
+```powershell
+wsl -d p5-devops
+```
 
 Vérifiez :
 
@@ -136,7 +249,7 @@ Node.js doit afficher :
 v22.22.0
 ```
 
-## 5. Configurer Git
+## 7. Configurer Git
 
 ```bash
 git config --global user.name "Votre nom"
@@ -144,7 +257,7 @@ git config --global user.email "votre-adresse@example.com"
 git config --global init.defaultBranch main
 ```
 
-## 6. Créer la clé SSH du lab
+## 8. Créer la clé SSH du lab
 
 ```bash
 mkdir -p ~/.ssh
@@ -164,7 +277,7 @@ ne doit jamais entrer dans le dépôt.
 
 La clé publique sera utilisée par Terraform pour créer la paire EC2.
 
-## 7. Préparer le profil AWS
+## 9. Préparer le profil AWS
 
 Le mode recommandé est IAM Identity Center :
 
@@ -180,27 +293,23 @@ Un rôle IAM fourni par une organisation est également acceptable.
 La validation stricte du compte est réalisée à l’étape 0B ; ici, on vérifie
 seulement que l’outil AWS CLI peut être utilisé.
 
-## 8. Valider la VM
+## 10. Valider le poste de contrôle
+
+Validation Linux :
 
 ```bash
 ./scripts/commands/setup.sh --check-only
 ```
 
-Le contrôle vérifie notamment :
+Validation Windows + WSL2 + outils :
 
-- version Ubuntu ;
-- outils obligatoires ;
-- version Node.js ;
-- moteur Docker ;
-- fichiers critiques du dépôt ;
-- véritable artefact Angular ;
-- validation locale `validate.sh`.
+```powershell
+.\scripts\windows\check-wsl2-p5.ps1 -RequireTools
+```
 
-Si la configuration AWS locale existe déjà et que le profil est actif, le script
-peut aussi signaler que l’identité AWS est accessible, mais **AWS Ready reste
-obligatoire**.
+Les deux doivent réussir avant AWS Ready.
 
-## 9. Validation locale complète
+## 11. Validation locale complète
 
 Commande standard :
 
@@ -231,25 +340,79 @@ P5_FULL_INTEGRATION=1 ./scripts/commands/validate.sh
 
 Cette validation ne crée aucune infrastructure AWS.
 
-## 10. Diagnostic en cas de problème
+## 12. Arrêt et reprise
+
+État :
+
+```powershell
+.\scripts\windows\status-p5.ps1
+```
+
+Arrêt de la distribution P5 uniquement :
+
+```powershell
+.\scripts\windows\stop-p5.ps1
+```
+
+Reprise :
+
+```powershell
+.\scripts\windows\start-p5.ps1
+```
+
+Arrêt de toute la VM WSL2 et de toutes les distributions :
+
+```powershell
+wsl --shutdown
+```
+
+Les données du VHDX sont persistantes entre les arrêts et démarrages.
+
+## 13. Point de restauration WSL2
+
+Après validation du socle :
+
+```powershell
+.\scripts\windows\backup-p5.ps1 -Destination D:\WSL-Backups
+```
+
+Le script :
+
+1. arrête `p5-devops` si nécessaire ;
+2. exporte un VHDX complet ;
+3. calcule un SHA-256 ;
+4. écrit un fichier `.sha256` associé ;
+5. relance la distribution si elle était active.
+
+Restauration non destructive :
+
+```powershell
+.\scripts\windows\restore-p5.ps1 `
+  -BackupPath D:\WSL-Backups\p5-devops-YYYYMMDD-HHMMSS.vhdx `
+  -NewDistroName p5-devops-restored `
+  -InstallLocation D:\WSL\p5-devops-restored
+```
+
+Le script refuse de remplacer automatiquement une distribution existante.
+
+## 14. Diagnostic en cas de problème
+
+Couche Windows/WSL2 :
+
+```powershell
+.\scripts\windows\check-wsl2-p5.ps1
+wsl --status
+wsl --version
+wsl --list --verbose
+```
+
+Couche Linux/P5 :
 
 ```bash
 bash scripts/commands/collect-diagnostics.sh
 ```
 
-Le collecteur produit une archive nettoyée partageable après relecture.
-
 Voir : [Troubleshooting](troubleshooting.md).
-
-## 11. Snapshot recommandé
-
-Après validation, créer un snapshot de la VM, par exemple :
-
-```text
-p5-etape-0a-socle-valide
-```
-
-Cela permet de revenir à un poste propre sans réinstaller le socle.
 
 ## Ce que l’étape 0A ne valide pas
 
@@ -260,9 +423,9 @@ Elle ne garantit pas :
 - le budget ;
 - les quotas ;
 - la région ;
-- l’IP `/32` ;
+- l’IPv4 publique d’administration `/32` ;
 - les permissions nécessaires ;
-- l’absence de collision avec des ressources déjà présentes.
+- l’absence de collision avec des ressources AWS déjà présentes.
 
 Ces éléments appartiennent à l’étape 0B.
 
