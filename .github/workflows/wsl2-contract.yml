@@ -5,19 +5,35 @@ on:
     paths:
       - '.github/workflows/wsl2-contract.yml'
       - '.gitignore'
+      - 'README.md'
       - 'environment/wsl2/**'
       - 'environment/README.md'
+      - 'docs/README.md'
       - 'docs/00-preparation-environnement.md'
+      - 'docs/01-parcours-debutant.md'
+      - 'docs/RUNBOOK_EXECUTION_GUIDEE.md'
       - 'docs/architecture-et-flux.md'
+      - 'docs/convergence-et-reexecution.md'
+      - 'docs/troubleshooting.md'
+      - 'docs/schemas/etape-0.svg'
+      - 'docs/schemas/vue-ensemble.svg'
       - 'scripts/windows/**'
   pull_request:
     paths:
       - '.github/workflows/wsl2-contract.yml'
       - '.gitignore'
+      - 'README.md'
       - 'environment/wsl2/**'
       - 'environment/README.md'
+      - 'docs/README.md'
       - 'docs/00-preparation-environnement.md'
+      - 'docs/01-parcours-debutant.md'
+      - 'docs/RUNBOOK_EXECUTION_GUIDEE.md'
       - 'docs/architecture-et-flux.md'
+      - 'docs/convergence-et-reexecution.md'
+      - 'docs/troubleshooting.md'
+      - 'docs/schemas/etape-0.svg'
+      - 'docs/schemas/vue-ensemble.svg'
       - 'scripts/windows/**'
 
 permissions:
@@ -67,16 +83,35 @@ jobs:
 
           grep -Fq 'systemd=true' environment/wsl2/wsl.conf.example
           grep -Fq 'hostname=p5-devops' environment/wsl2/wsl.conf.example
-          grep -Fq 'Windows 11 Pro' docs/00-preparation-environnement.md
+
+          canonical_docs=(
+            README.md
+            environment/README.md
+            docs/README.md
+            docs/00-preparation-environnement.md
+            docs/01-parcours-debutant.md
+            docs/RUNBOOK_EXECUTION_GUIDEE.md
+            docs/architecture-et-flux.md
+            docs/convergence-et-reexecution.md
+            docs/troubleshooting.md
+          )
+
+          for path in "${canonical_docs[@]}"; do
+            grep -Fq 'WSL2' "$path" || {
+              echo "KO documentation WSL2 absente: $path"
+              exit 1
+            }
+          done
+
+          grep -Fq 'Windows 11 Pro' README.md
           grep -Fq '6 processeurs' docs/00-preparation-environnement.md
           grep -Fq '16 Go' docs/00-preparation-environnement.md
           grep -Fq 'Windows 11 Pro' docs/architecture-et-flux.md
-          grep -Fq 'WSL2' environment/README.md
+          grep -Fq 'Windows 11' docs/schemas/etape-0.svg
+          grep -Fq 'WSL2' docs/schemas/vue-ensemble.svg
 
-          if grep -nE 'Fedora 44|virt-manager|virsh list|qemu-kvm|libvirt' \
-            environment/README.md \
-            docs/00-preparation-environnement.md \
-            docs/architecture-et-flux.md; then
+          if grep -nE 'Fedora 44|virt-manager|virsh list|qemu-kvm|libvirt|VM Ubuntu Server' \
+            "${canonical_docs[@]}"; then
             echo 'KO anciennes instructions hyperviseur detectees dans le parcours canonique.'
             exit 1
           fi
