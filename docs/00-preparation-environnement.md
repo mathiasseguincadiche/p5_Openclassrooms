@@ -192,10 +192,10 @@ doit jamais être remplacée par une adresse d'interface WSL2.
 
 ## 9. Sauvegarde et reprise de la workstation
 
-Le P5 ne fournit plus de scripts `backup-p5.ps1` ou `restore-p5.ps1`.
+La sauvegarde et la restauration Windows/WSL2 sont entièrement déléguées au dépôt
+`Windows_11_Pro_Custom`.
 
-La V7 de `Windows_11_Pro_Custom` est la seule source de vérité pour la sauvegarde
-Windows et WSL2 :
+La V7 du dépôt amont est la seule source de vérité :
 
 ```powershell
 .\install.ps1 -BackupAction Create -BackupTargetDrive E:
