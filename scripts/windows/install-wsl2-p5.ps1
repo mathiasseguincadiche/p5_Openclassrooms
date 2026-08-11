@@ -9,6 +9,7 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'lib-wsl2-p5.ps1')
 
 Assert-P5Windows11
+Assert-P5Administrator
 Assert-WslCommand
 
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
