@@ -16,6 +16,7 @@ on:
       - 'docs/schemas/etape-0.svg'
       - 'docs/schemas/vue-ensemble.svg'
       - 'scripts/windows/**'
+      - 'scripts/commands/bootstrap-ubuntu-server.sh'
   pull_request:
     paths:
       - '.github/workflows/wsl2-contract.yml'
@@ -31,6 +32,7 @@ on:
       - 'docs/schemas/etape-0.svg'
       - 'docs/schemas/vue-ensemble.svg'
       - 'scripts/windows/**'
+      - 'scripts/commands/bootstrap-ubuntu-server.sh'
 
 permissions:
   contents: read
@@ -78,10 +80,14 @@ jobs:
           grep -Fq 'wsl -d Ubuntu' docs/01-parcours-debutant.md
           grep -Fq 'wsl -d Ubuntu' docs/RUNBOOK_EXECUTION_GUIDEE.md
 
+          grep -Fq 'Ubuntu 26.04' environment/wsl2/README.md
           grep -Fq '20 Go' environment/wsl2/README.md
           grep -Fq 'mirrored' environment/wsl2/README.md
           grep -Fq 'lab-heavy' environment/wsl2/README.md
           grep -Fq 'nat-fallback' environment/wsl2/README.md
+          grep -Fq '~/labs/p5_Openclassrooms' environment/wsl2/README.md
+          grep -Fq '/mnt/c' environment/wsl2/README.md
+          grep -Fq '/mnt/d' environment/wsl2/README.md
 
           forbidden_files=(
             environment/wsl2/.wslconfig.example
@@ -121,3 +127,17 @@ jobs:
           grep -Fq 'nat-fallback' README.md
 
           echo 'Contrat workstation amont / P5: OK'
+
+      - name: Validate Linux checkout boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          bootstrap='scripts/commands/bootstrap-ubuntu-server.sh'
+          bash -n "$bootstrap"
+          grep -Fq '/mnt/c' "$bootstrap"
+          grep -Fq '/mnt/d' "$bootstrap"
+          grep -Fq 'findmnt -T "$PROJECT_ROOT" -n -o FSTYPE' "$bootstrap"
+          grep -Fq 'ext4' "$bootstrap"
+          grep -Fq 'P5_UBUNTU_VERSION_ID=26.04' environment/versions.env
+          grep -Fq 'P5_UBUNTU_CODENAME=resolute' environment/versions.env
+          echo 'Frontière checkout Linux P5: OK'

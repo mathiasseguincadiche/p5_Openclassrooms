@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Converge le socle DevOps du lab P5 vers l'état attendu.
+# Converge le socle DevOps du runtime Ubuntu/WSL2 P5 vers l'état attendu.
 # Réexécutable : inspecte d'abord, puis n'installe/corrige que ce qui est nécessaire.
 set -euo pipefail
 
@@ -18,7 +18,7 @@ show_help() {
 Usage: bash scripts/commands/bootstrap-ubuntu-server.sh [options]
 
 Options:
-  --check-only      inspecter la VM sans aucune modification
+  --check-only      inspecter le runtime Ubuntu/WSL2 sans aucune modification
   --upgrade-system  autoriser apt full-upgrade en plus de la convergence P5
   -h, --help        afficher cette aide
 
@@ -48,13 +48,30 @@ if [[ ! -r /etc/os-release || ! -r "$VERSIONS_FILE" ]]; then
     exit 1
 fi
 
+case "$PROJECT_ROOT" in
+    /mnt/c|/mnt/c/*|/mnt/d|/mnt/d/*)
+        printf 'KO  Le checkout P5 ne doit pas vivre sous /mnt/c ou /mnt/d : %s\n' "$PROJECT_ROOT" >&2
+        printf '    Clonez le dépôt dans ~/labs/p5_Openclassrooms puis relancez.\n' >&2
+        exit 1
+        ;;
+esac
+
+if grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null; then
+    PROJECT_FS="$(findmnt -T "$PROJECT_ROOT" -n -o FSTYPE 2>/dev/null || true)"
+    if [[ "$PROJECT_FS" != ext4* ]]; then
+        printf 'KO  Le checkout P5 sous WSL2 doit être sur ext4 ; détecté : %s (%s)\n' \
+            "${PROJECT_FS:-inconnu}" "$PROJECT_ROOT" >&2
+        exit 1
+    fi
+fi
+
 # shellcheck source=/dev/null
 source /etc/os-release
 # shellcheck source=/dev/null
 source "$VERSIONS_FILE"
 
 if [[ "${ID:-}" != ubuntu ]]; then
-    printf 'KO  Système non pris en charge : Ubuntu Server est requis.\n' >&2
+    printf 'KO  Système non pris en charge : Ubuntu est requis.\n' >&2
     exit 1
 fi
 
@@ -201,14 +218,14 @@ if [[ "$CHECK_ONLY" == true ]]; then
         || [[ "$NODE_VERSION_CURRENT" != "v${NODE_VERSION}" ]] \
         || ! command -v markdownlint-cli2 >/dev/null 2>&1 \
         || ((ERRORS > 0)); then
-        printf '\nVerdict : VM NON CONVERGÉE — bootstrap requis.\n' >&2
+        printf '\nVerdict : RUNTIME WSL2 NON CONVERGÉ — bootstrap requis.\n' >&2
         exit 1
     fi
     if ! docker info >/dev/null 2>&1; then
         printf '\nVerdict : OUTILS INSTALLÉS, mais Docker n’est pas accessible dans ce shell.\n' >&2
         exit 90
     fi
-    printf '\nVerdict : VM CONVERGÉE — aucune installation nécessaire.\n'
+    printf '\nVerdict : RUNTIME WSL2 CONVERGÉ — aucune installation nécessaire.\n'
     exit 0
 fi
 
@@ -363,13 +380,13 @@ AWS_VERSION="$(aws_current 2>/dev/null || true)"
 docker compose version >/dev/null 2>&1 || FINAL_ERRORS=$((FINAL_ERRORS + 1))
 
 if ((FINAL_ERRORS > 0)); then
-    printf 'KO  La convergence VM a laissé %s anomalie(s).\n' "$FINAL_ERRORS" >&2
+    printf 'KO  La convergence WSL2 a laissé %s anomalie(s).\n' "$FINAL_ERRORS" >&2
     exit 1
 fi
 
 printf '\nRésumé : déjà conformes=%s | modifications=%s\n' "$OK_COUNT" "$CHANGED"
 if [[ "$RECONNECT_REQUIRED" == true ]] || ! docker info >/dev/null 2>&1; then
-    printf 'Verdict : VM CONVERGÉE — reconnexion requise pour le groupe Docker.\n'
+    printf 'Verdict : RUNTIME WSL2 CONVERGÉ — reconnexion requise pour le groupe Docker.\n'
     exit 90
 fi
-printf 'Verdict : VM CONVERGÉE — aucune reconnexion nécessaire.\n'
+printf 'Verdict : RUNTIME WSL2 CONVERGÉ — aucune reconnexion nécessaire.\n'
