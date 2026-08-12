@@ -1,7 +1,6 @@
 # Contrat WSL2 du P5
 
-Le P5 **n'installe plus WSL2** et ne maintient plus sa propre configuration de
-workstation.
+Le P5 **n'installe plus WSL2** et ne maintient plus sa propre configuration de workstation.
 
 La plateforme Windows/WSL2 est fournie par :
 
@@ -19,6 +18,7 @@ Windows_11_Pro_Custom
 ├── Windows 11 Pro
 ├── installation/mise à jour WSL2
 ├── distribution Ubuntu
+├── contrat Ubuntu 26.04
 ├── D:\WSL\Ubuntu-DevOps
 ├── %UserProfile%\.wslconfig
 ├── /etc/wsl.conf
@@ -36,16 +36,24 @@ p5_Openclassrooms
 └── nettoyage AWS
 ```
 
-Il ne doit exister **qu'une seule source de vérité** pour `.wslconfig` et le VHDX
-WSL : le dépôt Windows.
+Il ne doit exister **qu'une seule source de vérité** pour `.wslconfig`, le VHDX, le nom de distribution et la release Ubuntu attendue : le dépôt Windows.
 
 ## Distribution utilisée
 
-La distribution fournie par le dépôt Windows est :
+La distribution fournie par le dépôt Windows est nommée :
 
 ```text
 Ubuntu
 ```
+
+Le P5 exige en plus :
+
+```text
+VERSION_ID=26.04
+VERSION_CODENAME=resolute
+```
+
+Le nom générique `Ubuntu` n'est donc pas suffisant à lui seul : la qualification amont doit confirmer la release réelle avant utilisation du P5.
 
 Son stockage cible est :
 
@@ -58,6 +66,31 @@ Les commandes P5 documentées utilisent donc :
 ```powershell
 wsl -d Ubuntu
 ```
+
+## Filesystem et emplacement du checkout
+
+Le checkout canonique P5 doit rester dans le filesystem Linux WSL2, par exemple :
+
+```text
+/home/<user>/labs/p5_Openclassrooms
+```
+
+Chemin attendu dans le shell :
+
+```bash
+cd ~/labs/p5_Openclassrooms
+```
+
+Les emplacements suivants sont interdits comme racines de travail P5 :
+
+```text
+/mnt/c/...
+/mnt/d/...
+```
+
+`D:\WSL\Ubuntu-DevOps` contient le VHDX de la distribution ; cela ne signifie pas que le dépôt doit être cloné sous `D:\...` puis utilisé via `/mnt/d`.
+
+Un outil Windows externe, y compris un assistant IA, peut prendre un **snapshot/ingestion** du projet pour analyse. Cette copie ne devient jamais le checkout opérationnel et ne doit pas être utilisée pour Docker, Terraform, Ansible, Node ou Git Linux.
 
 ## Profils acceptés
 
@@ -73,8 +106,7 @@ P5 ne recopie pas ces fichiers et ne tente pas de les modifier.
 
 ## Qualification amont obligatoire
 
-Avant de commencer P5, la workstation doit être qualifiée depuis le dépôt
-`Windows_11_Pro_Custom` :
+Avant de commencer P5, la workstation doit être qualifiée depuis le dépôt `Windows_11_Pro_Custom` :
 
 ```powershell
 .\install.ps1 -Mode Verify -ValidateWsl -ValidateDevOps
@@ -87,8 +119,15 @@ VERDICT: V3 DEVOPS READY
 VERDICT: V6 WSL2 PLATFORM READY
 ```
 
-Cette qualification vérifie notamment les ressources du profil actif, WSL2,
-`systemd`, le filesystem Linux et la stack DevOps générale.
+Cette qualification vérifie notamment :
+
+- la distribution `Ubuntu` ;
+- `VERSION_ID=26.04` ;
+- les ressources du profil actif ;
+- WSL2 ;
+- `systemd` ;
+- le filesystem Linux ;
+- la stack DevOps générale.
 
 ## Contrôle P5
 
@@ -106,8 +145,7 @@ bash scripts/commands/bootstrap-ubuntu-server.sh --check-only
 bash scripts/commands/p5.sh inspect
 ```
 
-Le premier contrôle compare la workstation déjà construite au contrat du P5.
-Il ne modifie rien avec `--check-only`.
+Le premier contrôle compare la workstation déjà construite au contrat du P5. Il ne modifie rien avec `--check-only`.
 
 Si un composant strictement nécessaire au P5 est absent ou incompatible :
 
@@ -119,12 +157,9 @@ Le bootstrap reste convergent : un outil déjà conforme n'est pas réinstallé.
 
 ## Réseau
 
-Le profil quotidien amont utilise `mirrored`. Le profil `nat-fallback` reste
-supporté.
+Le profil quotidien amont utilise `mirrored`. Le profil `nat-fallback` reste supporté.
 
-Le P5 ne dépend pas d'une adresse privée WSL codée en dur. La valeur
-`P5_PUBLIC_IP_CIDR` représente toujours **l'IPv4 publique d'administration vue
-par AWS**, et non une adresse d'interface WSL.
+Le P5 ne dépend pas d'une adresse privée WSL codée en dur. La valeur `P5_PUBLIC_IP_CIDR` représente toujours **l'IPv4 publique d'administration vue par AWS**, et non une adresse d'interface WSL.
 
 ## Sauvegarde
 
@@ -148,7 +183,4 @@ Exemples depuis le dépôt Windows :
 
 ## Règle de maintenance
 
-Si le dimensionnement WSL2, le mode réseau, le chemin du VHDX ou la politique de
-backup changent, la modification doit être faite **dans
-`Windows_11_Pro_Custom`**, puis P5 adapte seulement son contrat documentaire si
-nécessaire.
+Si le dimensionnement WSL2, le mode réseau, le chemin du VHDX, la release Ubuntu ou la politique de backup changent, la modification doit être faite **dans `Windows_11_Pro_Custom`**, puis P5 adapte seulement son contrat documentaire et ses contraintes spécifiques si nécessaire.
