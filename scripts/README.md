@@ -10,20 +10,66 @@ commandes spécialisées restent disponibles pour comprendre ou rejouer une éta
 bash scripts/commands/p5.sh
 ```
 
+Le Control Center V11 reste une façade au-dessus de `p5.sh`. Il ne duplique ni
+Terraform, ni Ansible, ni la logique AWS.
+
 Menu :
 
 ```text
-1  Préparer le lab
-2  Exercice 1 — Terraform / Ansible / Angular
-3  Exercice 2 — OpenSearch / dashboard
-4  Exercice 3 — HAProxy
-5  Tout exécuter de A à Z
-6  Statut / contrôles
-7  Finaliser les livrables
-8  Afficher les logs
-9  Nettoyer AWS
-q  Quitter
+DÉMARRER / REPRENDRE
+ 1  Inspecter ma situation actuelle
+ 2  Préparer / configurer le lab P5
+ 3  Vérifier si je suis prêt à déployer
+
+EXERCICES
+ 4  Exercice 1 — Terraform + Ansible + Angular/NGINX
+ 5  Exercice 2 — Amazon OpenSearch + logs
+ 6  Exercice 3 — HAProxy + haute disponibilité
+
+PARCOURS COMPLET
+ 7  Exécuter le projet complet de A à Z
+ 8  Reprendre un projet déjà commencé
+
+VALIDATION / SOUTENANCE
+ 9  Vérifier les preuves et livrables
+10  Diagnostic complet
+11  Consulter les journaux
+
+AIDE
+12  Que dois-je faire maintenant ?
+13  Afficher la documentation / Runbook
+14  Afficher l'aide des commandes
+
+MAINTENANCE
+15  Nettoyer les ressources AWS
+
+ 0  Quitter
 ```
+
+Le choix `0` est volontairement réservé à la sortie. La destruction AWS est
+placée en option `15` et reste protégée par les confirmations fortes du moteur.
+
+Documentation complète du menu :
+
+- [Centre de commande V11](../docs/CENTRE_DE_COMMANDE.md)
+
+### Commandes CLI exposées
+
+| Commande | Rôle |
+| --- | --- |
+| `p5.sh inspect` | observation sans mutation |
+| `p5.sh prepare` | convergence P5 + AWS + garde-fous |
+| `p5.sh status` | contrôles de préparation |
+| `p5.sh ex1` | exercice Terraform/Ansible/Angular |
+| `p5.sh ex2` | exercice OpenSearch |
+| `p5.sh ex3` | exercice HAProxy |
+| `p5.sh all` | parcours complet |
+| `p5.sh diagnostics` | diagnostics et structure des preuves |
+| `p5.sh finalize` | contrôle strict des livrables |
+| `p5.sh logs` | journaux |
+| `p5.sh guide` | assistant de choix de parcours |
+| `p5.sh docs` | carte documentaire |
+| `p5.sh cleanup` | destruction AWS contrôlée |
 
 Parcours complet :
 
@@ -88,6 +134,7 @@ collisions.
 Après une interruption :
 
 ```bash
+bash scripts/commands/p5.sh inspect
 bash scripts/commands/p5.sh all
 ```
 
@@ -124,12 +171,12 @@ Les journaux sont séparés de `proofs/runtime/` :
 
 | Fichier | Rôle |
 | --- | --- |
-| `scripts/commands/p5.sh` | orchestration du projet |
+| `scripts/commands/p5.sh` | orchestration et Control Center du projet |
 | `scripts/lib/p5-runtime.sh` | terminal, confirmations, logs |
 | `scripts/commands/aws-auth.sh` | connexion AWS temporaire et renouvellement |
 | `scripts/commands/configure-lab.sh` | compte, région, IP, SSH, tfvars |
 | `scripts/commands/generate-ansible-inventory.sh` | inventaire depuis Terraform |
-| `scripts/tests/test-p5-orchestrator.sh` | contrat de l'orchestrateur sans AWS |
+| `scripts/tests/test-p5-orchestrator.sh` | contrat orchestrateur + menu sans AWS |
 | `scripts/tests/test-aws-auth.sh` | contrat de connexion AWS sans contacter AWS |
 
 ## Préparation de la VM
@@ -334,6 +381,7 @@ BASCULE ET RÉINTÉGRATION HAPROXY VALIDÉES
 Via le centre de commande :
 
 ```bash
+bash scripts/commands/p5.sh diagnostics
 bash scripts/commands/p5.sh finalize
 bash scripts/commands/p5.sh cleanup
 ```
@@ -428,7 +476,9 @@ attendu qu'une fois tous les exercices fermés.
 
 - [README principal](../README.md)
 - [Portail documentaire](../docs/README.md)
-- [Runbook](../docs/01-parcours-debutant.md)
+- [Centre de commande V11](../docs/CENTRE_DE_COMMANDE.md)
+- [Runbook A → Z](../docs/RUNBOOK_EXECUTION_GUIDEE.md)
+- [Parcours débutant](../docs/01-parcours-debutant.md)
 - [Préparation AWS](../docs/00b-preparation-compte-aws.md)
 - [Validation et preuves](../docs/validation-preuves-nettoyage.md)
 - [Troubleshooting](../docs/troubleshooting.md)
