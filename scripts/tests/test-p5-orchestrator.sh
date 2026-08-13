@@ -6,6 +6,8 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
 P5_SCRIPT="$PROJECT_ROOT/scripts/commands/p5.sh"
 CONFIG_FILE="$PROJECT_ROOT/environment/aws-readiness.env"
+CONTROL_CENTER_DOC="$PROJECT_ROOT/docs/CENTRE_DE_COMMANDE.md"
+SCRIPTS_README="$PROJECT_ROOT/scripts/README.md"
 TMP_DIR="$(mktemp -d)"
 FAKE_BIN="$TMP_DIR/bin"
 TRACE_FILE="$TMP_DIR/trace.log"
@@ -18,6 +20,11 @@ trap cleanup EXIT
 
 [[ ! -e "$CONFIG_FILE" ]] || {
     printf "Le test refuse d'écraser une configuration AWS locale existante.\n" >&2
+    exit 1
+}
+
+[[ -f "$CONTROL_CENTER_DOC" ]] || {
+    printf 'Documentation Control Center absente : %s\n' "$CONTROL_CENTER_DOC" >&2
     exit 1
 }
 
@@ -93,16 +100,40 @@ export P5_LOG_DIR="$TMP_DIR/logs"
 export P5_TEST_TRACE="$TRACE_FILE"
 
 HELP_OUTPUT="$(/usr/bin/bash "$P5_SCRIPT" help)"
-grep -Fq 'all        exécuter prepare + ex1 + ex2 + ex3 + diagnostics' <<<"$HELP_OUTPUT"
-grep -Fq "cleanup    détruire AWS dans l'ordre prévu puis auditer le nettoyage" <<<"$HELP_OUTPUT"
+grep -Fq 'all          exécuter prepare + ex1 + ex2 + ex3 + diagnostics' <<<"$HELP_OUTPUT"
+grep -Fq 'diagnostics  collecter diagnostics et structure des preuves/livrables' <<<"$HELP_OUTPUT"
+grep -Fq "cleanup      détruire AWS dans l'ordre prévu puis auditer le nettoyage" <<<"$HELP_OUTPUT"
+grep -Fq 'guide        expliquer quel parcours choisir selon votre situation' <<<"$HELP_OUTPUT"
+grep -Fq 'docs         afficher la carte de la documentation P5' <<<"$HELP_OUTPUT"
+
+DOCS_OUTPUT="$(/usr/bin/bash "$P5_SCRIPT" docs)"
+grep -Fq 'JE DÉBUTE' <<<"$DOCS_OUTPUT"
+grep -Fq 'docs/CENTRE_DE_COMMANDE.md' <<<"$DOCS_OUTPUT"
+grep -Fq 'docs/troubleshooting.md' <<<"$DOCS_OUTPUT"
+
+MENU_OUTPUT="$(printf '0\n' | /usr/bin/bash "$P5_SCRIPT" menu)"
+grep -Fq 'P5 OPENCLASSROOMS — CONTROL CENTER V11' <<<"$MENU_OUTPUT"
+grep -Fq '12  Que dois-je faire maintenant ?' <<<"$MENU_OUTPUT"
+grep -Fq '15  Nettoyer les ressources AWS' <<<"$MENU_OUTPUT"
+grep -Fq '0  Quitter' <<<"$MENU_OUTPUT"
+
+# La documentation opérateur doit rester synchronisée avec les choix critiques.
+grep -Fq '15  Nettoyer les ressources AWS' "$SCRIPTS_README"
+grep -Fq '0  Quitter' "$SCRIPTS_README"
+if grep -Fq '0  Nettoyer AWS' "$SCRIPTS_README"; then
+    printf 'KO  scripts/README.md documente encore un ancien menu destructif en option 0.\n' >&2
+    exit 1
+fi
 
 /usr/bin/bash "$P5_SCRIPT" status --full-validation
 /usr/bin/bash "$P5_SCRIPT" ex1 --yes
 /usr/bin/bash "$P5_SCRIPT" ex3 --yes
+/usr/bin/bash "$P5_SCRIPT" diagnostics
 
 grep -Fq 'prepare-angular-artifact.sh' "$TRACE_FILE"
 grep -Fq 'generate-ansible-inventory.sh' "$TRACE_FILE"
 grep -Fq 'test-haproxy-failover.sh --url http://198.51.100.20 --backend-host 198.51.100.21 --apply' "$TRACE_FILE"
+grep -Fq 'collect-diagnostics.sh --complet --avec-preuves' "$TRACE_FILE"
 grep -Fq 'Idempotence Ansible confirmée' "$TMP_DIR/logs/p5.log"
 
 set +e
@@ -116,4 +147,4 @@ fi
 grep -Fq 'Le mode --yes ne valide pas une preuve manuelle à votre place.' <<<"$EX2_OUTPUT"
 grep -Fq 'Saisie interactive requise : OK' <<<"$EX2_OUTPUT"
 
-printf "OK  contrat de l'orchestrateur P5 validé sans mutation AWS.\n"
+printf "OK  contrat de l'orchestrateur et du Control Center P5 validé sans mutation AWS.\n"
