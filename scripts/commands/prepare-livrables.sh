@@ -53,24 +53,25 @@ check_headings() {
 if ((errors == 0)); then
     check_headings "$livrable_1" \
         '# Livrable 1 — Terraform, Ansible, NGINX et application Angular' \
-        '## 3. Preuves Terraform' \
-        '## 4. Preuves Ansible' \
-        "## 5. Preuve de l'application" \
-        '## 6. Nettoyage'
+        '## 5. Preuve Terraform' \
+        '## 6. Preuve Ansible — connectivité' \
+        "## 8. Preuve d'idempotence" \
+        '## 9. Preuve applicative' \
+        "## 12. Dépendance avec l'exercice 3"
     check_headings "$livrable_2" \
-        '# Livrable 2 — Dashboard ELK / OpenSearch' \
-        '## 3. Visualisation 1 — Donut des verbes HTTP' \
-        '## 4. Visualisation 2 — Octets par tranches de 12 heures' \
-        '## 5. Visualisation 3 — Top 5 des requêtes par 12 heures' \
-        '## 6. Dashboard complet' \
-        '## 7. Nettoyage'
+        '# Livrable 2 — Amazon OpenSearch et dashboard de logs' \
+        '## 8. Visualisation 1 — Donut des méthodes HTTP' \
+        '## 9. Visualisation 2 — Octets envoyés par 12 heures' \
+        '## 10. Visualisation 3 — Top 5 des URL par 12 heures' \
+        '## 11. Dashboard complet' \
+        '## 15. Nettoyage'
     check_headings "$livrable_3" \
         '# Livrable 3 — HAProxy et `nginxdemos/hello`' \
-        '## 2. Fichier `haproxy.cfg`' \
-        '## 3. Validation de la configuration' \
-        '## 4. Répartition de charge' \
-        '## 5. Panne et continuité de service' \
-        '## 6. Nettoyage'
+        '## 5. Configuration `haproxy.cfg`' \
+        '## 6. Validation de la configuration' \
+        '## 7. Preuve du round-robin' \
+        '## 9. Panne réelle et reprise' \
+        '## 13. Nettoyage'
 fi
 
 printf '\nComposants associés aux preuves\n'
