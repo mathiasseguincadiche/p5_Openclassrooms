@@ -75,6 +75,8 @@ jobs:
           grep -Fq 'mathiasseguincadiche/Windows_11_Pro_Custom' environment/wsl2/README.md
           grep -Fq 'mathiasseguincadiche/Windows_11_Pro_Custom' docs/00-preparation-environnement.md
 
+          grep -Fq 'Périmètre évalué : 100 % AWS' README.md
+          grep -Fq 'Installation et environnement de contrôle' README.md
           grep -Fq 'wsl -d Ubuntu' README.md
           grep -Fq 'wsl -d Ubuntu' docs/00-preparation-environnement.md
           grep -Fq 'wsl -d Ubuntu' docs/01-parcours-debutant.md
@@ -117,14 +119,17 @@ jobs:
             exit 1
           fi
 
-          if grep -nE 'Fedora 44|virt-manager|virsh list|qemu-kvm|libvirt|VM Ubuntu Server' \
+          legacy_os_label="$(printf '%s %s' 'Fedora' '44')"
+          if grep -nF -- "$legacy_os_label" "${canonical_docs[@]}"; then
+            echo 'KO ancienne cible OS détectée.'
+            exit 1
+          fi
+
+          if grep -nE 'virt-manager|virsh list|qemu-kvm|libvirt|VM Ubuntu Server' \
             "${canonical_docs[@]}"; then
             echo 'KO anciennes instructions hyperviseur détectées.'
             exit 1
           fi
-
-          grep -Fq 'mirrored' README.md
-          grep -Fq 'nat-fallback' README.md
 
           echo 'Contrat workstation amont / P5: OK'
 
