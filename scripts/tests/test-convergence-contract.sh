@@ -69,6 +69,7 @@ export P5_PROJECT_ROOT="$PROJECT_ROOT"
 export P5_RUN_ID="convergence-contract-test"
 export P5_LOG_DIR="$TMP_DIR/runtime-logs"
 export P5_STEP_PROOF_DIR="$TMP_DIR/runtime-proofs"
+export P5_STABLE_LOG_ROOT="$TMP_DIR/stable-logs"
 export P5_SESSION_ACTIVE=1
 # shellcheck source=../lib/p5-runtime.sh
 source scripts/lib/p5-runtime.sh
@@ -80,5 +81,24 @@ p5_run_step_allow '0 2' 'second' 'deuxième étape' true >/dev/null
 [[ -f "$P5_STEP_PROOF_DIR/01-first.log" ]]
 [[ -f "$P5_STEP_PROOF_DIR/02-second.log" ]]
 printf '  OK  journaux et preuves numérotés de manière stable.\n'
+[[ -f "$P5_STABLE_LOG_ROOT/external/first.log" ]]
+[[ -f "$P5_EVENT_LOG" ]]
+[[ -f "$P5_SUMMARY_LOG" ]]
+grep -Fq 'validated_steps=2' "$P5_SUMMARY_LOG"
+printf '  OK  journal persistant et résumé factuel du run présents.\n'
+
+PREVIEW="$(p5_command_preview command --api-token supersecret-value)"
+! grep -Fq 'supersecret-value' <<<"$PREVIEW"
+grep -Fq 'REDACTED' <<<"$PREVIEW"
+p5_run_step 'secret-output' 'sortie sensible' \
+    bash -c 'printf "AWS_SECRET_ACCESS_KEY=supersecret-value\\n"' >/dev/null
+! grep -Fq 'supersecret-value' "$P5_LAST_STEP_LOG"
+grep -Fq '<REDACTED>' "$P5_LAST_STEP_LOG"
+printf '  OK  aperçu de commande et sorties sensibles nettoyés avant journalisation.\n'
+
+grep -Fq "CLASSIFICATION='FIRST_RUN'" scripts/commands/inspect-state.sh
+grep -Fq "CLASSIFICATION='PARTIAL'" scripts/commands/inspect-state.sh
+grep -Fq "CLASSIFICATION='READY_CANDIDATE'" scripts/commands/inspect-state.sh
+printf '  OK  classification machine-first explicite.\n'
 
 printf '\nVerdict : CONTRAT DE CONVERGENCE P5 RESPECTÉ.\n'
