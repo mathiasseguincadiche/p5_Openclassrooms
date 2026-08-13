@@ -31,25 +31,25 @@ Le périmètre évalué est **AWS**. Windows 11 et WSL2 n'apparaissent dans cett
 
 ### Niveau 2 — Préparer le lab
 
-4. [`00-preparation-environnement.md`](00-preparation-environnement.md) — ouvrir WSL2, placer le checkout sur le filesystem Linux et qualifier les outils ;
-5. [`00b-preparation-compte-aws.md`](00b-preparation-compte-aws.md) — authentification, compte autorisé, SSH `/32`, budget, quotas et garde-fous ;
-6. [`contrat-informations-requises.md`](contrat-informations-requises.md) — comprendre les informations réellement nécessaires au moteur P5 et leur provenance.
+1. [`00-preparation-environnement.md`](00-preparation-environnement.md) — ouvrir WSL2, placer le checkout sur le filesystem Linux et qualifier les outils ;
+2. [`00b-preparation-compte-aws.md`](00b-preparation-compte-aws.md) — authentification, compte autorisé, SSH `/32`, budget, quotas et garde-fous ;
+3. [`contrat-informations-requises.md`](contrat-informations-requises.md) — comprendre les informations réellement nécessaires au moteur P5 et leur provenance.
 
 ### Niveau 3 — Exécuter le projet de A à Z
 
-7. [`RUNBOOK_EXECUTION_GUIDEE.md`](RUNBOOK_EXECUTION_GUIDEE.md) — procédure opératoire complète, commande par commande ;
-8. [`CENTRE_DE_COMMANDE.md`](CENTRE_DE_COMMANDE.md) — référence des commandes `p5.sh` et de leur niveau de risque ;
-9. [`exercices/01-terraform-ansible.md`](exercices/01-terraform-ansible.md) — Terraform, AWS, Ansible, NGINX et Angular ;
-10. [`exercices/02-elk-opensearch.md`](exercices/02-elk-opensearch.md) — Amazon OpenSearch, logs NGINX et dashboard ;
-11. [`exercices/03-haproxy.md`](exercices/03-haproxy.md) — HAProxy, round-robin, health checks, panne et reprise.
+1. [`RUNBOOK_EXECUTION_GUIDEE.md`](RUNBOOK_EXECUTION_GUIDEE.md) — procédure opératoire complète, commande par commande ;
+2. [`CENTRE_DE_COMMANDE.md`](CENTRE_DE_COMMANDE.md) — référence des commandes `p5.sh` et de leur niveau de risque ;
+3. [`exercices/01-terraform-ansible.md`](exercices/01-terraform-ansible.md) — Terraform, AWS, Ansible, NGINX et Angular ;
+4. [`exercices/02-elk-opensearch.md`](exercices/02-elk-opensearch.md) — Amazon OpenSearch, logs NGINX et dashboard ;
+5. [`exercices/03-haproxy.md`](exercices/03-haproxy.md) — HAProxy, round-robin, health checks, panne et reprise.
 
 ### Niveau 4 — Reprendre, diagnostiquer et prouver
 
-12. [`convergence-et-reexecution.md`](convergence-et-reexecution.md) — reprendre proprement après fermeture du terminal, reboot ou exécution partielle ;
-13. [`troubleshooting.md`](troubleshooting.md) — diagnostic par couche, sans « réparer au hasard » ;
-14. [`contrat-preuves-automatiques.md`](contrat-preuves-automatiques.md) — logs, preuves par étape, manifeste et limites de l'automatisation ;
-15. [`validation-preuves-nettoyage.md`](validation-preuves-nettoyage.md) — transformer les sorties runtime en preuves publiables puis fermer le lab ;
-16. [`livrables/README.md`](livrables/README.md) — contenu attendu pour chacun des trois livrables.
+1. [`convergence-et-reexecution.md`](convergence-et-reexecution.md) — reprendre proprement après fermeture du terminal, reboot ou exécution partielle ;
+2. [`troubleshooting.md`](troubleshooting.md) — diagnostic par couche, sans « réparer au hasard » ;
+3. [`contrat-preuves-automatiques.md`](contrat-preuves-automatiques.md) — logs, preuves par étape, manifeste et limites de l'automatisation ;
+4. [`validation-preuves-nettoyage.md`](validation-preuves-nettoyage.md) — transformer les sorties runtime en preuves publiables puis fermer le lab ;
+5. [`livrables/README.md`](livrables/README.md) — contenu attendu pour chacun des trois livrables.
 
 ## Documentation de conformité et de gouvernance
 
