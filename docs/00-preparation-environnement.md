@@ -1,6 +1,15 @@
-# Étape 0A — Préparer l'environnement de contrôle P5
+# Étape 0A — Installer et qualifier l'environnement de contrôle P5
 
-Cette étape **ne construit plus WSL2**.
+> **Rôle de ce document :** préparer le poste depuis lequel le P5 sera exécuté.
+> Il ne décrit ni l'objectif pédagogique du projet ni son architecture AWS.
+
+Pour comprendre le P5, commencer par :
+
+- [Cadre officiel](00-cadre-officiel.md)
+- [Parcours pédagogique](01-parcours-debutant.md)
+- [Architecture et flux](architecture-et-flux.md)
+
+Cette étape **ne construit plus WSL2 depuis le dépôt P5**.
 
 Le poste Windows/WSL2 est préparé en amont par le dépôt :
 
@@ -198,9 +207,9 @@ La sauvegarde et la restauration Windows/WSL2 sont entièrement déléguées au 
 La V7 du dépôt amont est la seule source de vérité :
 
 ```powershell
-.\install.ps1 -BackupAction Create -BackupTargetDrive E:
-.\install.ps1 -BackupAction Verify -BackupTargetDrive E:
-.\install.ps1 -BackupAction RestorePlan -BackupTargetDrive E:
+.\install.ps1 -BackupAction Create -BackupTargetDrive E:\
+.\install.ps1 -BackupAction Verify -BackupTargetDrive E:\
+.\install.ps1 -BackupAction RestorePlan -BackupTargetDrive E:\
 ```
 
 Cette procédure couvre notamment l'image Windows et l'export Ubuntu VHDX avec
