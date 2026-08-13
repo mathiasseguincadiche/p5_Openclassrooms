@@ -67,17 +67,11 @@ Le contrat vérifie :
 
 Une quatrième technologie ne doit pas être présentée comme exercice évalué.
 
-## 3. Aucun Mermaid
+## 3. Aucun moteur de diagramme dynamique
 
-La documentation utilise des SVG versionnés.
+La documentation utilise des SVG versionnés et le contrat refuse les blocs Mermaid dans les fichiers Markdown.
 
-Le contrat refuse les blocs :
-
-```text
-```mermaid
-```
-
-Cette règle garantit un rendu stable et indépendant d'un moteur Mermaid.
+Cette règle garantit un rendu stable et indépendant d'un moteur de rendu supplémentaire.
 
 ## 4. Application Angular réelle
 
