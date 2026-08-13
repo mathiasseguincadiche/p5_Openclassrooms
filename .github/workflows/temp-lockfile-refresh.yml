@@ -4,17 +4,26 @@ on:
     branches:
       - fix/angular-nanoid-audit
 permissions:
-  contents: read
+  contents: write
 jobs:
   refresh:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: fix/angular-nanoid-audit
       - uses: actions/setup-node@v6
         with:
           node-version: 22.22.0
       - run: npm install --package-lock-only --prefix application/angular --no-audit --no-fund
-      - uses: actions/upload-artifact@v4
-        with:
-          name: angular-lock
-          path: application/angular/package-lock.json
+      - name: Commit refreshed lockfile
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add application/angular/package-lock.json
+          if git diff --cached --quiet; then
+            echo "No lockfile change"
+          else
+            git commit -m "fix(deps): refresh Angular lockfile"
+            git push origin HEAD:fix/angular-nanoid-audit
+          fi
