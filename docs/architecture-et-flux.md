@@ -1,48 +1,81 @@
 # Architecture technique et flux du projet P5
 
-Ce document décrit l'architecture réelle du P5 et la frontière entre la
-workstation locale et l'infrastructure AWS évaluée.
+Ce document décrit **l'architecture réelle du P5**. Il part de ce qui est évalué
+— l'infrastructure et les flux AWS — puis explique seulement ensuite le rôle du
+poste de contrôle local.
 
-## Vue d'ensemble
-
-Le poste de contrôle est fourni par le dépôt
-`mathiasseguincadiche/Windows_11_Pro_Custom`.
+## 1. Vue d'ensemble
 
 ```text
-Windows_11_Pro_Custom
-└── Windows 11 Pro
-    └── WSL2
-        └── Ubuntu — D:\WSL\Ubuntu-DevOps
-            ├── systemd
-            ├── Docker Engine
-            ├── Terraform
-            ├── Ansible Core
-            ├── AWS CLI
-            ├── kubectl / Helm
-            └── outils DevOps
-                    │
-                    ▼
-p5_Openclassrooms
-├── Angular
-├── Terraform
-├── Ansible
-├── scripts de validation
-├── configuration AWS locale
-└── preuves / logs
-        │
-        ▼
+                           OPÉRATEUR
+                              │
+                              ▼
+                   scripts/commands/p5.sh
+                              │
+                              ▼
+                         COMPTE AWS
+                              │
+        ┌─────────────────────┼─────────────────────┐
+        │                     │                     │
+        ▼                     ▼                     ▼
+   EXERCICE 1            EXERCICE 2            EXERCICE 3
+   VPC + EC2              OpenSearch             HAProxy
+        │                     ▲                     ▲
+        ▼                     │                     │
+ Ansible → NGINX              │                     │
+        │                     │                     │
+     Angular                  │                     │
+        │                     │                     │
+        └── access.log ───────┘                     │
+        │                                           │
+        └──── VPC + subnets + key pair ─────────────┘
+                              │
+                              ▼
+                   preuves + validation
+                              │
+                              ▼
+                  nettoyage complet AWS
+```
+
+Le dépôt contient le **plan de contrôle**. AWS contient l'infrastructure évaluée.
+Les preuves relient les deux.
+
+## 2. Les trois couches du projet
+
+### Couche 1 — Orchestration et contrôle
+
+Le dépôt `p5_Openclassrooms` fournit :
+
+- `scripts/commands/p5.sh` ;
+- les scripts spécialisés ;
+- la configuration locale du lab ;
+- les modules Terraform ;
+- les playbooks Ansible ;
+- l'application Angular ;
+- les validateurs ;
+- les journaux et preuves runtime.
+
+Cette couche décrit, pilote et vérifie le lab.
+
+### Couche 2 — Infrastructure AWS évaluée
+
+La réalisation retenue utilise AWS pour les trois exercices.
+
+```text
 AWS — us-east-1
 │
 ├── Exercice 1
 │   ├── VPC 10.0.0.0/16
 │   ├── 2 sous-réseaux publics
-│   ├── Internet Gateway + table de routage
+│   ├── Internet Gateway
+│   ├── table de routage
+│   ├── Security Group
 │   ├── paire de clés EC2
-│   └── EC2 Ubuntu → Ansible → NGINX → Angular
+│   └── EC2 Ubuntu → NGINX → Angular
 │
 ├── Exercice 2
 │   └── Amazon OpenSearch Service
-│       └── nginx-access-* → Dashboards
+│       └── index nginx-access-* + Dashboards
 │
 └── Exercice 3
     ├── réutilise le réseau de l'exercice 1
@@ -50,170 +83,394 @@ AWS — us-east-1
     └── 2 EC2 backends → Docker → nginxdemos/hello
 ```
 
-## Responsabilités de la workstation
+### Couche 3 — Preuves et soutenance
 
-`Windows_11_Pro_Custom` possède :
-
-- installation et mise à jour WSL2 ;
-- distribution `Ubuntu` ;
-- stockage sous `D:\WSL\Ubuntu-DevOps` ;
-- `.wslconfig` ;
-- `/etc/wsl.conf` ;
-- profils `standard`, `lab-heavy`, `nat-fallback` ;
-- Docker, Terraform, Ansible, AWS CLI et outils DevOps généraux ;
-- backup/restauration Windows et WSL2.
-
-Le P5 ne recopie aucune de ces configurations.
-
-## Profils WSL2
-
-La source de vérité amont définit :
+Le projet produit deux familles d'artefacts :
 
 ```text
-standard
-└── 8 threads / 20 Go / 8 Go swap / mirrored
+logs/<UTC>/
+└── journaux d'exécution
 
-lab-heavy
-└── 12 threads / 28 Go / 12 Go swap / mirrored
-
-nat-fallback
-└── 8 threads / 20 Go / 8 Go swap / NAT
+proofs/runtime/
+├── diagnostics/
+├── exercice-1/
+├── exercice-2/
+└── exercice-3/
 ```
 
-Le choix du profil local n'a pas d'effet sur le plan d'adressage du VPC AWS.
+Un fichier de code versionné est une **implémentation**. Une sortie issue d'un lab
+AWS réel est une **preuve d'exécution**. Ces deux notions ne doivent pas être
+confondues.
 
-## Réseau local versus réseau AWS
+## 3. Architecture de l'exercice 1
 
-Deux notions doivent rester séparées :
+L'exercice 1 établit le socle réseau et la cible applicative.
 
 ```text
-réseau WSL2 local
-≠
-réseau AWS du lab
+Internet
+   │
+   ▼
+Internet Gateway
+   │
+   ▼
+VPC 10.0.0.0/16
+   │
+   ├── subnet public 1
+   └── subnet public 2
+           │
+           ▼
+       EC2 Ubuntu
+           │
+           ▼
+         NGINX
+           │
+           ▼
+         Angular
 ```
 
-Le mode `mirrored` est le profil quotidien de la workstation. `nat-fallback` est
-un secours local.
+Terraform crée l'infrastructure. Ansible configure l'EC2 et déploie
+l'application.
 
-Le VPC AWS reste :
+Les outputs Terraform fournissent notamment :
 
 ```text
-10.0.0.0/16
+vpc_id
+public_subnet_ids
+web_security_group_id
+web_public_ip
+web_private_ip
+web_public_dns
+web_url
 ```
 
-avec deux sous-réseaux publics et une Internet Gateway.
+`web_public_ip` alimente l'inventaire Ansible et `web_url` sert aux contrôles HTTP.
 
-`P5_PUBLIC_IP_CIDR` représente l'IPv4 publique `/32` depuis laquelle l'opérateur
-administre les ressources AWS. Ce n'est jamais une adresse WSL2.
-
-## Flux exercice 1
+## 4. Flux Terraform → Ansible → application
 
 ```text
 sources Angular
       ↓
-build local dans Ubuntu WSL2
+build
       ↓
-Terraform
+artefact versionné pour Ansible
       ↓
-AWS EC2
+Terraform plan
       ↓
-Ansible
+Terraform apply si delta
+      ↓
+output web_public_ip
+      ↓
+inventaire Ansible
+      ↓
+playbook deploy.yml
+      ↓
+NGINX + Angular
+      ↓
+contrôle HTTP
+      ↓
+second passage Ansible
+      ↓
+changed=0 / unreachable=0 / failed=0
+```
+
+Le second passage Ansible est une preuve d'idempotence, pas une simple répétition.
+
+## 5. Flux de logs vers l'exercice 2
+
+L'application réellement servie produit des logs NGINX.
+
+```text
+requêtes HTTP
       ↓
 NGINX
       ↓
-Angular
+/var/log/nginx/access.log
       ↓
-access.log réel
-```
-
-Le log NGINX réel peut ensuite alimenter l'exercice 2.
-
-## Flux exercice 2
-
-```text
-échantillon reproductible
-          +
-access.log réel
-          ↓
-conversion NDJSON
-          ↓
+collecte locale
+      ↓
+conversion des données
+      ↓
+Bulk API
+      ↓
 Amazon OpenSearch
-          ↓
-agrégations
-          ↓
-Dashboards
+      ↓
+index / agrégations
+      ↓
+OpenSearch Dashboards
 ```
 
-La création du dashboard et les captures restent des preuves humaines.
+Le dépôt fournit également un échantillon reproductible. Il sert aux validations
+et permet de tester les traitements sans prétendre qu'il remplace les logs réels.
 
-## Flux exercice 3
+## 6. Architecture de l'exercice 2
+
+L'exercice 2 crée un domaine Amazon OpenSearch configuré avec :
+
+- HTTPS obligatoire ;
+- TLS 1.2 minimum ;
+- chiffrement au repos ;
+- chiffrement inter-nœuds ;
+- accès limité à l'IPv4 publique `/32` de l'opérateur ;
+- volume `gp3` ;
+- budget et garde-fous contrôlés avant création.
+
+Flux logique :
 
 ```text
-VPC + subnets Exercice 1
-          ↓
-Terraform Exercice 3
-          ↓
-HAProxy
-      /         \
-Backend 1    Backend 2
-      ↓          ↓
- Docker       Docker
+logs
+  ↓
+index template
+  ↓
+Bulk API
+  ↓
+nginx-access-*
+  ↓
+agrégations
+  ↓
+visualisations Dashboards
 ```
 
-Le test de panne arrête réellement un backend, vérifie la continuité de service
-puis confirme sa réintégration.
+Les visualisations finales restent une action humaine afin de démontrer la
+compréhension du jeu de données.
 
-## Dépendance entre exercices
+## 7. Architecture de l'exercice 3
 
-L'exercice 3 réutilise l'infrastructure réseau de l'exercice 1 :
+L'exercice 3 ne recrée pas un nouveau réseau. Il recherche le VPC, les subnets et
+la paire de clés de l'exercice 1 grâce aux tags du projet.
+
+```text
+                       Internet
+                          │
+                          ▼
+                      EC2 HAProxy
+                       roundrobin
+                     /            \
+                    /              \
+             backend 1          backend 2
+                │                   │
+              Docker              Docker
+                │                   │
+       nginxdemos/hello   nginxdemos/hello
+```
+
+Les backends n'acceptent le trafic HTTP que depuis le Security Group HAProxy.
+
+Les health checks utilisent :
+
+```text
+GET /
+inter 3s
+fall 3
+rise 2
+```
+
+Le scénario de validation provoque une panne contrôlée d'un backend, vérifie la
+continuité du service, restaure le backend puis confirme sa réintégration.
+
+## 8. Dépendances entre exercices
+
+Les dépendances doivent être comprises avant le nettoyage.
 
 ```text
 Exercice 1
-└── VPC + subnets + clé EC2
-        ↓
-Exercice 3
+├── access.log ─────────────► Exercice 2
+└── VPC + subnets + key ───► Exercice 3
 ```
 
-L'exercice 1 ne doit donc pas être détruit avant la fin de l'exercice 3.
-
-## Convergence
-
-La workstation amont et le P5 ont des responsabilités différentes mais suivent
-la même idée : ne pas refaire inutilement ce qui est déjà conforme.
-
-Dans P5 :
+La dépendance infrastructurelle forte est :
 
 ```text
-inspection
-   ↓
-delta ?
-├── non → aucune mutation
-└── oui → correction ciblée
-   ↓
-vérification
-   ↓
-preuve / log
+Exercice 1 ──► Exercice 3
 ```
 
-Un outil DevOps déjà présent et compatible sur Ubuntu WSL2 est réutilisé.
+L'exercice 1 ne doit donc pas être détruit tant que l'exercice 3 existe.
 
-## Sauvegarde
+Ordre de fermeture :
 
-La sauvegarde de la plateforme n'appartient pas au P5. La V7 de
-`Windows_11_Pro_Custom` couvre l'image Windows et l'export Ubuntu VHDX avec
-SHA-256.
+```text
+Exercice 3 → Exercice 2 → Exercice 1 → audit global AWS
+```
 
-Le P5 protège de son côté :
+## 9. Plan de contrôle et sources de vérité
 
-- son code via Git ;
-- ses états Terraform locaux tant que les ressources existent ;
-- ses preuves et logs runtime ;
-- ses livrables.
+Le P5 évite de dupliquer les informations entre scripts.
 
-## Références
+| Sujet | Source de vérité |
+| --- | --- |
+| versions du lab | `environment/versions.env` |
+| paramètres AWS locaux | `environment/aws-readiness.env` |
+| orchestration | `scripts/commands/p5.sh` |
+| infrastructure Ex.1 | `terraform/exercice-1/` |
+| infrastructure Ex.2 | `terraform/exercice-2/` |
+| infrastructure Ex.3 | `terraform/exercice-3/` |
+| déploiement | `ansible/playbooks/deploy.yml` |
+| application | `application/angular/` |
+| artefact Ansible | `ansible/files/angular-app/` |
+| preuves runtime | `proofs/runtime/` |
+| logs runtime | `logs/` |
 
-- [Préparation de l'environnement](00-preparation-environnement.md)
-- [Contrat WSL2](../environment/wsl2/README.md)
-- [Parcours d'exécution](01-parcours-debutant.md)
+Les vrais `terraform.tfvars` sont générés à partir de la configuration locale et
+restent ignorés par Git.
+
+## 10. Convergence Terraform
+
+La logique de convergence est :
+
+```text
+terraform init
+      ↓
+terraform plan -detailed-exitcode
+      ↓
+      ├── 0 : aucun delta → aucun apply
+      ├── 2 : delta → afficher → confirmer → apply
+      └── autre : erreur → STOP
+      ↓
+post-plan
+      ↓
+preuve d'absence de delta
+```
+
+Le projet ne doit pas appliquer un plan vide.
+
+Cette logique permet la reprise après interruption sans repartir de zéro.
+
+## 11. Convergence au-delà de Terraform
+
+Le même principe est utilisé pour :
+
+- la toolchain P5 ;
+- la configuration AWS locale ;
+- le budget ;
+- la synchronisation des `tfvars` ;
+- l'artefact Angular ;
+- l'inventaire Ansible ;
+- certaines données OpenSearch ;
+- les validations et diagnostics.
+
+Le projet cherche à **corriger un écart**, pas à réinstaller aveuglément tout le
+lab à chaque exécution.
+
+## 12. Frontières de sécurité
+
+### Compte AWS
+
+Les providers utilisent `allowed_account_ids` pour éviter un déploiement sur un
+mauvais compte.
+
+### Accès réseau
+
+L'accès SSH est limité à l'IPv4 publique `/32` de l'opérateur.
+
+`P5_PUBLIC_IP_CIDR` n'est jamais une adresse privée WSL2.
+
+### EC2
+
+Les instances imposent notamment :
+
+- IMDSv2 ;
+- volumes racine chiffrés ;
+- règles réseau adaptées au rôle de l'instance.
+
+### OpenSearch
+
+Le domaine exige HTTPS et chiffrement.
+
+### Destruction
+
+Le nettoyage final exige une confirmation forte :
+
+```text
+DETRUIRE
+```
+
+## 13. Flux de preuves
+
+```text
+code versionné
+     ↓
+CI / validations locales
+     ↓
+exécution AWS réelle
+     ↓
+logs / outputs / captures
+     ↓
+proofs/runtime
+     ↓
+relecture
+     ↓
+livrables de soutenance
+```
+
+La CI ne doit jamais fabriquer une preuve en prétendant qu'elle vient d'une
+exécution AWS réelle.
+
+## 14. Rôle du poste de contrôle local
+
+Le poste local n'est qu'une couche d'exécution :
+
+```text
+Windows 11 Pro
+└── WSL2
+    └── Ubuntu
+        ├── Bash
+        ├── Terraform
+        ├── Ansible
+        ├── AWS CLI
+        ├── Docker
+        └── Node.js
+                │
+                ▼
+             p5.sh
+                │
+                ▼
+               AWS
+```
+
+La workstation est gérée en amont par
+`mathiasseguincadiche/Windows_11_Pro_Custom`.
+
+P5 ne doit pas devenir un second dépôt de configuration Windows/WSL2. Il consomme
+la plateforme et ne corrige que les écarts spécifiques au contrat P5.
+
+Pour les détails d'installation :
+[Préparation de l'environnement de contrôle](00-preparation-environnement.md).
+
+## 15. Réseau local versus réseau AWS
+
+Deux réseaux indépendants existent :
+
+```text
+réseau local Windows/WSL2
+          ≠
+VPC AWS 10.0.0.0/16
+```
+
+Le choix d'un mode réseau WSL2 n'altère pas les CIDR, routes ou Security Groups du
+lab AWS.
+
+L'IPv4 `/32` configurée dans P5 représente l'adresse publique vue depuis AWS.
+
+## 16. Sauvegarde et état
+
+La sauvegarde de Windows/WSL2 appartient au dépôt workstation.
+
+P5 doit protéger de son côté :
+
+- le code via Git ;
+- les états Terraform locaux tant que les ressources AWS existent ;
+- les preuves runtime ;
+- les journaux ;
+- les livrables.
+
+**Supprimer un `terraform.tfstate` alors que les ressources existent peut casser
+la capacité de Terraform à les gérer ou les détruire.**
+
+## 17. Références
+
+- [Cadre officiel](00-cadre-officiel.md)
+- [Parcours pédagogique](01-parcours-debutant.md)
+- [Correspondance consignes → implémentation → preuve](02-correspondance-consignes-depot.md)
 - [Runbook A → Z](RUNBOOK_EXECUTION_GUIDEE.md)
 - [Convergence](convergence-et-reexecution.md)
+- [Validation et nettoyage](validation-preuves-nettoyage.md)
+- [Préparation de l'environnement](00-preparation-environnement.md)
