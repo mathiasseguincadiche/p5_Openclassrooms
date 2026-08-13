@@ -1,143 +1,61 @@
 # Contrat WSL2 du P5
 
-Le P5 **n'installe plus WSL2** et ne maintient plus sa propre configuration de workstation.
+Le P5 **n'installe pas et ne maintient pas WSL2**. La plateforme Windows/WSL2 est fournie par :
 
-La plateforme Windows/WSL2 est fournie par :
+- [`mathiasseguincadiche/Windows_11_Pro_Custom`](https://github.com/mathiasseguincadiche/Windows_11_Pro_Custom)
 
-- `mathiasseguincadiche/Windows_11_Pro_Custom`
-- <https://github.com/mathiasseguincadiche/Windows_11_Pro_Custom>
-
-Ce dossier décrit uniquement le **contrat d'intégration** attendu par P5.
+Ce document décrit uniquement la frontière d'intégration nécessaire au projet P5.
 
 ## Source de vérité
 
-La propriété des éléments est la suivante :
+`Windows_11_Pro_Custom` reste la source de vérité pour Windows 11, WSL2 et la distribution Ubuntu.
 
-```text
-Windows_11_Pro_Custom
-├── Windows 11 Pro
-├── installation/mise à jour WSL2
-├── distribution Ubuntu
-├── contrat Ubuntu 26.04
-├── D:\WSL\Ubuntu-DevOps
-├── %UserProfile%\.wslconfig
-├── /etc/wsl.conf
-├── profils standard / lab-heavy / nat-fallback
-├── Docker / Terraform / Ansible / AWS CLI / Kubernetes
-├── qualification WSL2
-└── sauvegarde/restauration V7
+`p5_Openclassrooms` reste la source de vérité pour :
 
-p5_Openclassrooms
-├── contraintes spécifiques P5
-├── configuration AWS du lab
-├── Terraform des exercices
-├── Ansible / Angular / OpenSearch / HAProxy
-├── preuves et diagnostics
-└── nettoyage AWS
-```
+- les contraintes logicielles propres au P5 ;
+- la configuration AWS du lab ;
+- Terraform, Ansible, Angular, OpenSearch et HAProxy ;
+- les preuves, diagnostics et livrables ;
+- le nettoyage AWS.
 
-Il ne doit exister **qu'une seule source de vérité** pour `.wslconfig`, le VHDX, le nom de distribution et la release Ubuntu attendue : le dépôt Windows.
+Le P5 ne recopie pas la configuration interne de la workstation.
 
-## Distribution utilisée
+## Distribution requise
 
-La distribution fournie par le dépôt Windows est nommée :
+La distribution utilisée par le projet est nommée `Ubuntu` et le contrat P5 attend **Ubuntu 26.04**.
 
-```text
-Ubuntu
-```
-
-Le P5 exige en plus :
+Le contrôle vérifie précisément :
 
 ```text
 VERSION_ID=26.04
 VERSION_CODENAME=resolute
 ```
 
-Le nom générique `Ubuntu` n'est donc pas suffisant à lui seul : la qualification amont doit confirmer la release réelle avant utilisation du P5.
-
-Son stockage cible est :
-
-```text
-D:\WSL\Ubuntu-DevOps
-```
-
-Les commandes P5 documentées utilisent donc :
+Ouverture depuis Windows :
 
 ```powershell
 wsl -d Ubuntu
 ```
 
-## Filesystem et emplacement du checkout
+## Checkout opérationnel
 
-Le checkout canonique P5 doit rester dans le filesystem Linux WSL2, par exemple :
+Le dépôt doit rester dans le filesystem Linux WSL2, par exemple :
 
 ```text
 /home/<user>/labs/p5_Openclassrooms
 ```
 
-Chemin attendu dans le shell :
+Commande habituelle :
 
 ```bash
 cd ~/labs/p5_Openclassrooms
 ```
 
-Les emplacements suivants sont interdits comme racines de travail P5 :
+Les chemins `/mnt/c/...` et `/mnt/d/...` ne doivent pas servir de racine de travail pour le P5.
 
-```text
-/mnt/c/...
-/mnt/d/...
-```
-
-`D:\WSL\Ubuntu-DevOps` contient le VHDX de la distribution ; cela ne signifie pas que le dépôt doit être cloné sous `D:\...` puis utilisé via `/mnt/d`.
-
-Un outil Windows externe, y compris un assistant IA, peut prendre un **snapshot/ingestion** du projet pour analyse. Cette copie ne devient jamais le checkout opérationnel et ne doit pas être utilisée pour Docker, Terraform, Ansible, Node ou Git Linux.
-
-## Profils acceptés
-
-Le dépôt Windows définit actuellement :
-
-| Profil | Threads | RAM | Swap | Réseau | Usage P5 |
-| --- | ---: | ---: | ---: | --- | --- |
-| `standard` | 8 | 20 Go | 8 Go | `mirrored` | recommandé |
-| `lab-heavy` | 12 | 28 Go | 12 Go | `mirrored` | validations lourdes |
-| `nat-fallback` | 8 | 20 Go | 8 Go | `nat` | secours réseau |
-
-P5 ne recopie pas ces fichiers et ne tente pas de les modifier.
-
-## Qualification amont obligatoire
-
-Avant de commencer P5, la workstation doit être qualifiée depuis le dépôt `Windows_11_Pro_Custom` :
-
-```powershell
-.\install.ps1 -Mode Verify -ValidateWsl -ValidateDevOps
-```
-
-Verdicts attendus :
-
-```text
-VERDICT: V3 DEVOPS READY
-VERDICT: V6 WSL2 PLATFORM READY
-```
-
-Cette qualification vérifie notamment :
-
-- la distribution `Ubuntu` ;
-- `VERSION_ID=26.04` ;
-- les ressources du profil actif ;
-- WSL2 ;
-- `systemd` ;
-- le filesystem Linux ;
-- la stack DevOps générale.
-
-## Contrôle P5
+## Qualification côté P5
 
 Une fois dans Ubuntu :
-
-```powershell
-wsl -d Ubuntu
-```
-
-puis :
 
 ```bash
 cd ~/labs/p5_Openclassrooms
@@ -145,42 +63,22 @@ bash scripts/commands/bootstrap-ubuntu-server.sh --check-only
 bash scripts/commands/p5.sh inspect
 ```
 
-Le premier contrôle compare la workstation déjà construite au contrat du P5. Il ne modifie rien avec `--check-only`.
+Le premier contrôle vérifie le runtime Ubuntu/WSL2 requis par le projet sans modification.
 
-Si un composant strictement nécessaire au P5 est absent ou incompatible :
+Si un composant requis par le P5 est absent ou incompatible, le parcours de préparation peut aligner uniquement les outils nécessaires :
 
 ```bash
 bash scripts/commands/bootstrap-ubuntu-server.sh
 ```
 
-Le bootstrap reste convergent : un outil déjà conforme n'est pas réinstallé.
-
 ## Réseau
 
-Le profil quotidien amont utilise `mirrored`. Le profil `nat-fallback` reste supporté.
+Le P5 ne dépend d'aucune adresse privée WSL codée en dur.
 
-Le P5 ne dépend pas d'une adresse privée WSL codée en dur. La valeur `P5_PUBLIC_IP_CIDR` représente toujours **l'IPv4 publique d'administration vue par AWS**, et non une adresse d'interface WSL.
+`P5_PUBLIC_IP_CIDR` représente l'IPv4 publique d'administration vue par AWS, obligatoirement en `/32` pour les accès restreints du lab.
 
-## Sauvegarde
+## Hors périmètre de ce contrat
 
-La sauvegarde et la restauration WSL2 appartiennent au dépôt Windows.
+Le dimensionnement WSL2, le stockage de la distribution, les politiques de sauvegarde et les autres choix de workstation ne sont pas documentés ici. Ils appartiennent au dépôt `Windows_11_Pro_Custom`.
 
-La V7 de `Windows_11_Pro_Custom` est la source de vérité pour :
-
-- image Windows `C:` + `D:` ;
-- volumes critiques ;
-- export de la distribution Ubuntu en VHDX ;
-- SHA-256 ;
-- plan de restauration non destructif.
-
-Exemples depuis le dépôt Windows :
-
-```powershell
-.\install.ps1 -BackupAction Create -BackupTargetDrive E:
-.\install.ps1 -BackupAction Verify -BackupTargetDrive E:
-.\install.ps1 -BackupAction RestorePlan -BackupTargetDrive E:
-```
-
-## Règle de maintenance
-
-Si le dimensionnement WSL2, le mode réseau, le chemin du VHDX, la release Ubuntu ou la politique de backup changent, la modification doit être faite **dans `Windows_11_Pro_Custom`**, puis P5 adapte seulement son contrat documentaire et ses contraintes spécifiques si nécessaire.
+Cette séparation évite deux sources de vérité concurrentes.

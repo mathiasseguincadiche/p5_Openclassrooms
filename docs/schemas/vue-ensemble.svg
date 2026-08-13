@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
 <title id="title">Architecture et dépendances des trois exercices P5</title>
-<desc id="desc">Le poste de contrôle lance p5.sh. L'exercice 1 crée le réseau AWS et Angular avec Ansible. Ses logs alimentent OpenSearch dans l'exercice 2 et son réseau est réutilisé par HAProxy dans l'exercice 3. Les preuves sont finalisées avant le nettoyage 3, 2, 1.</desc>
+<desc id="desc">Le poste de contrôle lance p5.sh. L'exercice 1 crée le réseau AWS et Angular avec Ansible. Ses logs alimentent OpenSearch dans l'exercice 2 et son réseau est réutilisé par HAProxy dans l'exercice 3. Les preuves sont finalisées avant la fermeture du lab dans l'ordre 3, 2, 1.</desc>
 <defs><marker id="a" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#64748b"/></marker></defs>
 <style>text{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}.h{font-size:22px;font-weight:750;fill:#0f172a}.k{font-size:12px;font-weight:800;letter-spacing:1px;fill:#64748b}.t{font-size:16px;font-weight:750;fill:#0f172a}.s{font-size:13px;font-weight:550;fill:#334155}.w{fill:#fff}.ar{fill:none;stroke:#64748b;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#a)}</style>
 <rect width="1200" height="520" rx="22" fill="#f8fafc"/>
-<text x="42" y="46" class="k">P5 OPENCLASSROOMS · PÉRIMÈTRE ÉVALUÉ 100 % AWS</text>
+<text x="42" y="46" class="k">P5 OPENCLASSROOMS · IMPLÉMENTATION RETENUE · 100 % AWS</text>
 <text x="42" y="78" class="h">Trois exercices liés par des ressources et des preuves réelles</text>
 <rect x="42" y="108" width="235" height="104" rx="17" fill="#f1f5f9" stroke="#64748b" stroke-width="1.7"/>
 <text x="62" y="137" class="k">POSTE DE CONTRÔLE</text><text x="62" y="166" class="t">Windows 11 + WSL2</text><text x="62" y="190" class="s">Ubuntu 26.04 · p5.sh</text>
@@ -15,7 +15,7 @@
 <rect x="332" y="326" width="360" height="130" rx="18" fill="#ecfdf5" stroke="#059669" stroke-width="1.8"/>
 <text x="354" y="355" class="k">EXERCICE 3 · DISPONIBILITÉ</text><text x="354" y="384" class="t">HAProxy + 2 × nginxdemos/hello</text><text x="354" y="411" class="s">Réutilise VPC, subnets et clé de l'exercice 1</text><text x="354" y="435" class="s">round-robin · health checks · panne · reprise</text>
 <rect x="762" y="326" width="396" height="130" rx="18" fill="#0f172a" stroke="#0f172a" stroke-width="1.8"/>
-<text x="784" y="355" class="k" fill="#cbd5e1">FINALISATION</text><text x="784" y="384" class="t w">Preuves → livrables → nettoyage</text><text x="784" y="411" class="s" fill="#cbd5e1">diagnostics · finalize · anonymisation</text><text x="784" y="435" class="s" fill="#cbd5e1">destruction obligatoire : exercice 3 → 2 → 1</text>
+<text x="784" y="355" class="k" fill="#cbd5e1">FINALISATION</text><text x="784" y="384" class="t w">Preuves → livrables → fermeture</text><text x="784" y="411" class="s" fill="#cbd5e1">diagnostics · finalize · anonymisation</text><text x="784" y="435" class="s" fill="#cbd5e1">ordre de fermeture : exercice 3 → 2 → 1</text>
 <path d="M277 160H322" class="ar"/><path d="M692 181H752" class="ar"/><path d="M512 254V316" class="ar"/><path d="M692 391H752" class="ar"/><path d="M960 254V316" class="ar"/>
-<text x="705" y="162" class="s">logs</text><text x="526" y="291" class="s">réseau AWS</text><text x="42" y="493" class="s">Principe : inspecter → calculer le delta → corriger → vérifier → conserver les preuves → nettoyer AWS.</text>
+<text x="705" y="162" class="s">logs</text><text x="526" y="291" class="s">réseau AWS</text><text x="42" y="493" class="s">Principe : inspecter → calculer le delta → corriger → vérifier → conserver les preuves → fermer le lab.</text>
 </svg>

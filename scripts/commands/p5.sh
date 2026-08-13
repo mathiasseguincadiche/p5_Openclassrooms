@@ -23,9 +23,9 @@ Usage:
   bash scripts/commands/p5.sh [commande] [options]
 
 Commandes:
-  menu         afficher le Control Center interactif (défaut)
+  menu         afficher le centre de commande interactif (défaut)
   inspect      observer l'état réel sans aucune mutation
-  prepare      inspecter puis converger VM, AWS, tfvars et garde-fous
+  prepare      inspecter puis converger Ubuntu/WSL2, AWS, tfvars et garde-fous
   status       lancer les contrôles de préparation sans mutation
   ex1          converger Terraform + Ansible + NGINX + Angular puis vérifier
   ex2          converger OpenSearch, données et vérifier les agrégations
@@ -47,8 +47,8 @@ Options globales:
 Principe :
   inspecter -> comparer -> corriger uniquement le delta -> vérifier -> journaliser.
 
-Un `terraform plan` vide n'est jamais appliqué. Une VM déjà conforme n'est pas
-réinstallée. Les tests fonctionnels restent rejoués afin de vérifier l'état réel.
+Un `terraform plan` vide n'est jamais appliqué. Un environnement Ubuntu WSL2 déjà
+conforme n'est pas modifié inutilement. Les tests fonctionnels restent rejoués afin de vérifier l'état réel.
 Une valeur d'infrastructure nécessaire à `all` doit provenir de Terraform ; si
 elle n'est pas vérifiable, l'orchestrateur s'arrête et indique la source à réparer.
 
@@ -139,26 +139,26 @@ ensure_toolchain() {
     case "$rc" in
         0)
             load_nvm_if_present
-            p5_ok 'VM déjà convergée : aucune installation nécessaire.'
+            p5_ok 'Environnement Ubuntu WSL2 déjà convergé : aucune installation nécessaire.'
             return 0
             ;;
         90)
             p5_header 'RECONNEXION REQUISE'
             p5_action 'Les outils sont déjà installés ; seul le groupe Docker n’est pas actif dans ce shell.'
-            p5_action 'Déconnectez-vous de la VM, reconnectez-vous, puis relancez exactement la même commande P5.'
+            p5_action 'Fermez puis rouvrez le shell Ubuntu WSL2, puis relancez exactement la même commande P5.'
             return 90
             ;;
         *)
-            p5_warn 'La VM présente un ou plusieurs écarts par rapport à l’état cible P5.'
+            p5_warn 'L’environnement Ubuntu WSL2 présente un ou plusieurs écarts par rapport à l’état cible P5.'
             ;;
     esac
 
     if ! p5_confirm 'Converger uniquement les outils/versions manquants ou incorrects ?'; then
-        p5_error 'La VM doit être convergée avant de poursuivre.'
+        p5_error 'L’environnement Ubuntu WSL2 doit être convergé avant de poursuivre.'
         return 1
     fi
 
-    p5_run_step_allow '0 90' 'bootstrap' 'Converger le socle DevOps de la VM' \
+    p5_run_step_allow '0 90' 'bootstrap' 'Converger le socle DevOps Ubuntu WSL2' \
         bash "$SCRIPT_DIR/bootstrap-ubuntu-server.sh"
     rc="$P5_LAST_STEP_RC"
     load_nvm_if_present
@@ -169,7 +169,7 @@ ensure_toolchain() {
         p5_latest_log_hint
         return 90
     fi
-    p5_ok 'VM convergée et utilisable dans ce shell.'
+    p5_ok 'Environnement Ubuntu WSL2 convergé et utilisable dans ce shell.'
 }
 
 terraform_state_has_resources() {
@@ -374,11 +374,11 @@ run_status() {
     rc=$?
     set -e
     if [[ "$rc" == 90 ]]; then
-        p5_warn 'VM installée mais reconnexion requise pour Docker.'
+        p5_warn 'Environnement Ubuntu WSL2 installé mais reconnexion requise pour Docker.'
         return 90
     fi
     if [[ "$rc" != 0 ]]; then
-        p5_warn 'VM non convergée ; `prepare` pourra corriger uniquement les écarts.'
+        p5_warn 'Environnement Ubuntu WSL2 non convergé ; `prepare` pourra corriger uniquement les écarts.'
         return 1
     fi
     load_nvm_if_present
@@ -642,7 +642,7 @@ show_guidance() {
   7  Je prépare mes preuves / ma soutenance
   8  Quelque chose ne fonctionne pas
   9  Je veux fermer le lab et nettoyer AWS
-  0  Retour au Control Center
+  0  Retour au centre de commande
 GUIDE
         printf '\nVotre situation : '
         local choice
@@ -760,7 +760,7 @@ menu_execute() {
 
 run_menu() {
     while true; do
-        p5_header 'P5 OPENCLASSROOMS — CONTROL CENTER V11'
+        p5_header 'P5 OPENCLASSROOMS — CENTRE DE COMMANDE'
         cat <<'MENU'
  DÉMARRER / REPRENDRE
  ------------------------------------------------------------
@@ -830,7 +830,7 @@ MENU
             0|q|quit|exit) return 0 ;;
             *) p5_warn 'Choix inconnu.' ;;
         esac
-        printf '\nAppuyez sur Entrée pour revenir au Control Center...'
+        printf '\nAppuyez sur Entrée pour revenir au centre de commande...'
         read -r _
     done
 }

@@ -309,6 +309,6 @@ du plan et des coûts reste une responsabilité humaine.
 - [Architecture](../docs/architecture-et-flux.md)
 - [Préparation AWS](../docs/00b-preparation-compte-aws.md)
 - [Exercice 1](../docs/exercices/01-terraform-ansible.md)
-- [Exercice 2](../docs/exercices/02-elk-opensearch.md)
+- [Exercice 2](../docs/exercices/02-opensearch.md)
 - [Exercice 3](../docs/exercices/03-haproxy.md)
 - [Nettoyage](../docs/validation-preuves-nettoyage.md)

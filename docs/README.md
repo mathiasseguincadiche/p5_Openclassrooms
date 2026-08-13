@@ -1,67 +1,63 @@
 # Documentation officielle du P5
 
-Ce dossier est la **source documentaire officielle** du projet P5 OpenClassrooms.
+Ce dossier est la source documentaire officielle du projet P5 OpenClassrooms.
 
-Le `README.md` à la racine présente le projet. Ici, la documentation explique **comment il fonctionne, comment l'exécuter, pourquoi chaque étape existe, comment lire les résultats, comment produire les preuves et comment nettoyer AWS sans perdre l'état Terraform**.
+Le `README.md` racine présente le projet. Ici, la documentation explique le fonctionnement, l'exécution, les preuves, les livrables et la préparation de la soutenance.
 
-## Règle de lecture
-
-Le projet doit toujours être compris dans cet ordre :
+## Ordre de lecture
 
 ```text
 1. comprendre le besoin
 2. préparer l'environnement
 3. observer l'état réel
-4. exécuter l'exercice
-5. vérifier le résultat
+4. exécuter les exercices
+5. vérifier les résultats
 6. conserver les preuves
-7. finaliser les livrables
-8. nettoyer AWS
+7. préparer la soutenance et les livrables
+8. fermer le lab proprement
 ```
 
-Le périmètre évalué est **AWS**. Windows 11 et WSL2 n'apparaissent dans cette documentation que lorsqu'ils sont nécessaires à l'exécution du projet depuis le poste de contrôle.
+Le **mode d'implémentation retenu dans ce dépôt est 100 % AWS**. Windows 11 et WSL2 servent uniquement d'environnement de contrôle.
 
-## Parcours conseillé si vous découvrez le dépôt
+## Niveau 1 — Comprendre le projet
 
-### Niveau 1 — Comprendre le projet
+1. [`00-cadre-officiel.md`](00-cadre-officiel.md) — consignes, trois exercices et choix d'implémentation ;
+2. [`architecture-et-flux.md`](architecture-et-flux.md) — architecture, responsabilités et dépendances ;
+3. [`01-parcours-debutant.md`](01-parcours-debutant.md) — parcours pédagogique progressif.
 
-1. [`00-cadre-officiel.md`](00-cadre-officiel.md) — ce que demande OpenClassrooms, les trois exercices et le choix AWS du dépôt ;
-2. [`architecture-et-flux.md`](architecture-et-flux.md) — architecture, responsabilité des outils et dépendances entre exercices ;
-3. [`01-parcours-debutant.md`](01-parcours-debutant.md) — explication progressive du parcours complet avant de lancer des ressources payantes.
+## Niveau 2 — Préparer le lab
 
-### Niveau 2 — Préparer le lab
+1. [`00-preparation-environnement.md`](00-preparation-environnement.md) — Ubuntu WSL2, checkout et qualification des outils ;
+2. [`00b-preparation-compte-aws.md`](00b-preparation-compte-aws.md) — identité, compte, réseau, budget, quotas et garde-fous ;
+3. [`contrat-informations-requises.md`](contrat-informations-requises.md) — informations réellement nécessaires au moteur P5.
 
-1. [`00-preparation-environnement.md`](00-preparation-environnement.md) — ouvrir WSL2, placer le checkout sur le filesystem Linux et qualifier les outils ;
-2. [`00b-preparation-compte-aws.md`](00b-preparation-compte-aws.md) — authentification, compte autorisé, SSH `/32`, budget, quotas et garde-fous ;
-3. [`contrat-informations-requises.md`](contrat-informations-requises.md) — comprendre les informations réellement nécessaires au moteur P5 et leur provenance.
+## Niveau 3 — Exécuter le projet
 
-### Niveau 3 — Exécuter le projet de A à Z
-
-1. [`RUNBOOK_EXECUTION_GUIDEE.md`](RUNBOOK_EXECUTION_GUIDEE.md) — procédure opératoire complète, commande par commande ;
-2. [`CENTRE_DE_COMMANDE.md`](CENTRE_DE_COMMANDE.md) — référence des commandes `p5.sh` et de leur niveau de risque ;
-3. [`exercices/01-terraform-ansible.md`](exercices/01-terraform-ansible.md) — Terraform, AWS, Ansible, NGINX et Angular ;
-4. [`exercices/02-elk-opensearch.md`](exercices/02-elk-opensearch.md) — Amazon OpenSearch, logs NGINX et dashboard ;
+1. [`RUNBOOK_EXECUTION_GUIDEE.md`](RUNBOOK_EXECUTION_GUIDEE.md) — procédure A à Z ;
+2. [`CENTRE_DE_COMMANDE.md`](CENTRE_DE_COMMANDE.md) — référence de `p5.sh` ;
+3. [`exercices/01-terraform-ansible.md`](exercices/01-terraform-ansible.md) — Terraform, Ansible, NGINX et Angular ;
+4. [`exercices/02-opensearch.md`](exercices/02-opensearch.md) — Amazon OpenSearch, logs NGINX et dashboard ;
 5. [`exercices/03-haproxy.md`](exercices/03-haproxy.md) — HAProxy, round-robin, health checks, panne et reprise.
 
-### Niveau 4 — Reprendre, diagnostiquer et prouver
+## Niveau 4 — Reprendre, diagnostiquer et prouver
 
-1. [`convergence-et-reexecution.md`](convergence-et-reexecution.md) — reprendre proprement après fermeture du terminal, reboot ou exécution partielle ;
-2. [`troubleshooting.md`](troubleshooting.md) — diagnostic par couche, sans « réparer au hasard » ;
-3. [`contrat-preuves-automatiques.md`](contrat-preuves-automatiques.md) — logs, preuves par étape, manifeste et limites de l'automatisation ;
-4. [`validation-preuves-nettoyage.md`](validation-preuves-nettoyage.md) — transformer les sorties runtime en preuves publiables puis fermer le lab ;
-5. [`livrables/README.md`](livrables/README.md) — contenu attendu pour chacun des trois livrables.
+1. [`convergence-et-reexecution.md`](convergence-et-reexecution.md) — reprise après interruption ;
+2. [`troubleshooting.md`](troubleshooting.md) — diagnostic par couche ;
+3. [`contrat-preuves-automatiques.md`](contrat-preuves-automatiques.md) — logs, preuves et limites de l'automatisation ;
+4. [`validation-preuves-nettoyage.md`](validation-preuves-nettoyage.md) — validation des preuves et fermeture du lab ;
+5. [`livrables/README.md`](livrables/README.md) — contenu attendu des livrables.
 
-## Documentation de conformité et de gouvernance
+## Niveau 5 — Préparer la soutenance
 
-Ces fichiers ne constituent **pas** le parcours d'exécution normal. Ils expliquent pourquoi le dépôt reste conforme au P5 et comment éviter les régressions documentaires ou techniques :
+[`05-soutenance.md`](05-soutenance.md) fournit l'ordre de démonstration, les commandes utiles, ce que chaque résultat prouve, les points à expliquer oralement, les erreurs à éviter et les questions techniques probables.
 
-- [`02-correspondance-consignes-depot.md`](02-correspondance-consignes-depot.md) — matrice OpenClassrooms → implémentation → vérification → preuve ;
-- [`03-audit-structurel.md`](03-audit-structurel.md) — règles structurelles du dépôt actuel ;
-- [`04-audit-non-regression.md`](04-audit-non-regression.md) — contrat exécutable empêchant de supprimer une capacité indispensable ;
-- [`suivi/decisions-techniques.md`](suivi/decisions-techniques.md) — décisions techniques et arbitrages ;
-- [`suivi/journal-de-session.md`](suivi/journal-de-session.md) — suivi des sessions de travail.
+## Conformité et gouvernance
 
-Ces documents peuvent mentionner une référence de comparaison ou une décision passée uniquement lorsqu'elle est nécessaire à l'audit. Ils ne doivent jamais être confondus avec les instructions opérationnelles actuelles.
+- [`02-correspondance-consignes-depot.md`](02-correspondance-consignes-depot.md) — consignes → implémentation → preuve ;
+- [`03-audit-structurel.md`](03-audit-structurel.md) — règles structurelles ;
+- [`04-audit-non-regression.md`](04-audit-non-regression.md) — contrat exécutable de non-régression ;
+- [`suivi/decisions-techniques.md`](suivi/decisions-techniques.md) — décisions techniques ;
+- [`suivi/journal-de-session.md`](suivi/journal-de-session.md) — suivi des sessions.
 
 ## Carte technique
 
@@ -84,21 +80,17 @@ Angular → EC2         │
      │                         + Dashboards
      │
      └── VPC/subnets ────────► EXERCICE 3
-                               HAProxy
-                               + 2 backends
+                               HAProxy + 2 backends
                                       │
                                       ▼
-                         preuves / livrables
-                                      │
-                                      ▼
-                         cleanup 3 → 2 → 1
+                              preuves / livrables
 ```
 
-Le schéma graphique de référence est [`schemas/vue-ensemble.svg`](schemas/vue-ensemble.svg).
+Schéma de référence : [`schemas/vue-ensemble.svg`](schemas/vue-ensemble.svg).
 
-## Source de vérité : code ou documentation ?
+## Source de vérité technique
 
-Les deux doivent rester cohérents, mais en cas de doute sur **ce qu'une commande fait réellement**, le code exécuté est la source technique :
+En cas de doute sur ce qu'une commande fait réellement :
 
 - orchestration : `scripts/commands/p5.sh` ;
 - runtime/logs/preuves : `scripts/lib/p5-runtime.sh` ;
@@ -106,13 +98,11 @@ Les deux doivent rester cohérents, mais en cas de doute sur **ce qu'une command
 - configuration : `ansible/playbooks/deploy.yml` ;
 - application : `application/angular/` ;
 - versions : `environment/versions.env` ;
-- règles de non-régression : `scripts/tools/audit_non_regression.py` et `.github/workflows/`.
+- non-régression : `scripts/tools/audit_non_regression.py` et `.github/workflows/`.
 
-La documentation officielle doit expliquer ces fichiers, jamais inventer une seconde implémentation.
+La documentation doit expliquer cette implémentation, jamais en créer une seconde.
 
-## Commandes de navigation rapide
-
-Depuis la racine du dépôt :
+## Navigation rapide
 
 ```bash
 bash scripts/commands/p5.sh docs
@@ -120,26 +110,19 @@ bash scripts/commands/p5.sh guide
 bash scripts/commands/p5.sh inspect
 ```
 
-- `docs` rappelle la carte documentaire ;
-- `guide` aide à choisir le prochain parcours ;
-- `inspect` observe l'état avant toute correction.
+## Invariants documentaires
 
-## Ce qui doit rester vrai
+- exactement trois exercices ;
+- mode AWS clairement identifié ;
+- Windows/WSL2 limité au poste de contrôle ;
+- aucune présentation de Kubernetes, Helm, Prometheus, Grafana ou Vault comme élément du P5 ;
+- distinction entre CI et preuve AWS réelle ;
+- dépendance exercice 1 → exercice 3 ;
+- flux de logs exercice 1 → exercice 2 ;
+- ordre de fermeture `3 → 2 → 1` ;
+- aucune suppression de `terraform.tfstate` comme méthode de reprise.
 
-La documentation est considérée comme cohérente lorsque :
-
-- elle décrit exactement **trois exercices** ;
-- elle ne transforme pas Windows/WSL2 en exercice évalué ;
-- elle ne présente pas Kubernetes, Helm, Prometheus, Grafana ou Vault comme éléments du P5 ;
-- elle respecte le choix AWS du dépôt ;
-- elle distingue clairement CI locale et preuve AWS réelle ;
-- elle explique la dépendance exercice 1 → exercice 3 ;
-- elle explique le flux de logs exercice 1 → exercice 2 ;
-- elle conserve l'ordre de nettoyage `3 → 2 → 1` ;
-- elle ne demande jamais de supprimer un `terraform.tfstate` pour « repartir proprement » ;
-- elle garde les secrets, états, inventaires et preuves brutes hors Git.
-
-L'audit correspondant est exécuté par :
+Audit :
 
 ```bash
 python3 scripts/tools/audit_non_regression.py

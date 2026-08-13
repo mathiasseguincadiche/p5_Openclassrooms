@@ -576,4 +576,4 @@ Terraform convergé
 + access.log réel collecté
 ```
 
-Étape suivante : [Exercice 2 — Amazon OpenSearch](02-elk-opensearch.md).
+Étape suivante : [Exercice 2 — Amazon OpenSearch](02-opensearch.md).

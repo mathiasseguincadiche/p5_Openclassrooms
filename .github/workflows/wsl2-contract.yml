@@ -75,7 +75,7 @@ jobs:
           grep -Fq 'mathiasseguincadiche/Windows_11_Pro_Custom' environment/wsl2/README.md
           grep -Fq 'mathiasseguincadiche/Windows_11_Pro_Custom' docs/00-preparation-environnement.md
 
-          grep -Fq 'Périmètre évalué : 100 % AWS' README.md
+          grep -Fq "Mode d'implémentation retenu dans ce dépôt : 100 % AWS" README.md
           grep -Fq 'Installation et environnement de contrôle' README.md
           grep -Fq 'wsl -d Ubuntu' README.md
           grep -Fq 'wsl -d Ubuntu' docs/00-preparation-environnement.md
@@ -83,10 +83,6 @@ jobs:
           grep -Fq 'wsl -d Ubuntu' docs/RUNBOOK_EXECUTION_GUIDEE.md
 
           grep -Fq 'Ubuntu 26.04' environment/wsl2/README.md
-          grep -Fq '20 Go' environment/wsl2/README.md
-          grep -Fq 'mirrored' environment/wsl2/README.md
-          grep -Fq 'lab-heavy' environment/wsl2/README.md
-          grep -Fq 'nat-fallback' environment/wsl2/README.md
           grep -Fq '~/labs/p5_Openclassrooms' environment/wsl2/README.md
           grep -Fq '/mnt/c' environment/wsl2/README.md
           grep -Fq '/mnt/d' environment/wsl2/README.md
@@ -125,9 +121,9 @@ jobs:
             exit 1
           fi
 
-          if grep -nE 'virt-manager|virsh list|qemu-kvm|libvirt|VM Ubuntu Server' \
+          if grep -nE 'virt-manager|virsh list|qemu-kvm|libvirt|VM Ubuntu Server|lab-heavy|nat-fallback|V3 DEVOPS READY|V6 WSL2 PLATFORM READY' \
             "${canonical_docs[@]}"; then
-            echo 'KO anciennes instructions hyperviseur détectées.'
+            echo 'KO anciennes instructions workstation détectées.'
             exit 1
           fi
 
