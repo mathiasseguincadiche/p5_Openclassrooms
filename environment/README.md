@@ -1,103 +1,25 @@
-# Environnement de lab — Étapes 0A et 0B
+# Environnement du projet P5
 
-Ce dossier définit les **prérequis P5** et la **source de configuration AWS**.
+Ce dossier définit uniquement les **prérequis et paramètres propres au P5**.
 
-La plateforme Windows/WSL2 n'est plus provisionnée par ce dépôt. Elle est fournie
-et maintenue par le dépôt amont :
+La construction, la configuration et la maintenance du poste Windows/WSL2 appartiennent au dépôt amont :
 
-- `mathiasseguincadiche/Windows_11_Pro_Custom`
-- <https://github.com/mathiasseguincadiche/Windows_11_Pro_Custom>
+- [`mathiasseguincadiche/Windows_11_Pro_Custom`](https://github.com/mathiasseguincadiche/Windows_11_Pro_Custom)
 
-## 1. Séparation des responsabilités
+Le P5 consomme cette plateforme ; il ne la duplique pas.
 
-```text
-Windows_11_Pro_Custom
-└── Windows 11 Pro
-    └── WSL2
-        └── Ubuntu — D:\WSL\Ubuntu-DevOps
-            ├── systemd
-            ├── Docker Engine
-            ├── Terraform
-            ├── Ansible Core
-            ├── AWS CLI
-            ├── kubectl / Helm
-            ├── Minikube / kind
-            └── outils qualité DevOps
+## Contrat attendu par le P5
 
-p5_Openclassrooms
-└── consomme l'Ubuntu WSL2 existant
-    ├── vérifie les prérequis du P5
-    ├── converge uniquement les écarts propres au projet
-    ├── prépare AWS et les terraform.tfvars
-    └── exécute les exercices P5
-```
+Le poste de contrôle doit fournir :
 
-P5 **ne possède plus** :
+- WSL2 fonctionnel ;
+- une distribution **Ubuntu 26.04** nommée `Ubuntu` ;
+- un checkout P5 dans le filesystem Linux, par exemple `~/labs/p5_Openclassrooms` ;
+- les outils compatibles avec [`versions.env`](versions.env) ;
+- Docker disponible pour les validations locales ;
+- un accès réseau permettant de joindre AWS et les ressources du lab.
 
-- l'installation de WSL2 ;
-- la création de la distribution Ubuntu ;
-- `%UserProfile%\.wslconfig` ;
-- `/etc/wsl.conf` ;
-- les profils `standard`, `lab-heavy` et `nat-fallback` ;
-- le stockage du VHDX ;
-- le swap WSL ;
-- la sauvegarde/restauration Windows ou WSL2.
-
-Ces éléments restent la responsabilité de `Windows_11_Pro_Custom` afin d'éviter
-deux sources de vérité concurrentes.
-
-## 2. Plateforme amont attendue
-
-Le dépôt Windows fournit actuellement les profils suivants :
-
-| Profil | CPU | RAM | Swap | Réseau |
-| --- | ---: | ---: | ---: | --- |
-| `standard` | 8 threads | 20 Go | 8 Go | `mirrored` |
-| `lab-heavy` | 12 threads | 28 Go | 12 Go | `mirrored` |
-| `nat-fallback` | 8 threads | 20 Go | 8 Go | `nat` |
-
-Pour le P5, `standard` est le profil quotidien recommandé. `lab-heavy` peut être
-utilisé pour les validations locales lourdes. `nat-fallback` reste accepté en cas
-d'incompatibilité réseau.
-
-La distribution attendue par le poste Windows est nommée :
-
-```text
-Ubuntu
-```
-
-Elle est stockée sous :
-
-```text
-D:\WSL\Ubuntu-DevOps
-```
-
-## 3. Préparer la workstation avant P5
-
-Dans le dépôt `Windows_11_Pro_Custom`, depuis PowerShell administrateur :
-
-```powershell
-.\install.ps1 -Mode Apply
-```
-
-Après le premier lancement Ubuntu et la création de l'utilisateur Linux :
-
-```powershell
-.\install.ps1 -Mode Apply -InstallDevOps
-wsl --shutdown
-.\install.ps1 -Mode Verify -ValidateWsl -ValidateDevOps
-```
-
-Les verdicts amont recherchés sont notamment :
-
-```text
-VERDICT: V3 DEVOPS READY
-VERDICT: V6 WSL2 PLATFORM READY
-```
-
-Une fois ces contrôles verts, **ne relancez pas une installation WSL depuis P5**.
-
-## 4. Entrer dans l'environnement P5
+Le checkout opérationnel ne doit pas être placé sous `/mnt/c` ou `/mnt/d`.
 
 Depuis Windows :
 
@@ -105,154 +27,96 @@ Depuis Windows :
 wsl -d Ubuntu
 ```
 
-Dans Ubuntu, conserver le dépôt sur le filesystem Linux :
+Puis dans Ubuntu :
 
 ```bash
-mkdir -p ~/labs
-cd ~/labs
-git clone https://github.com/mathiasseguincadiche/p5_Openclassrooms.git
-cd p5_Openclassrooms
-```
-
-Éviter `/mnt/c` et `/mnt/d` pour le checkout de travail Linux.
-
-## 5. Convergence spécifique P5
-
-Le dépôt Windows fournit déjà la stack DevOps générale. Le bootstrap P5 doit donc
-être vu comme un **contrôle de compatibilité et de delta projet**, pas comme un
-installateur de workstation.
-
-Commencer sans mutation :
-
-```bash
+cd ~/labs/p5_Openclassrooms
 bash scripts/commands/bootstrap-ubuntu-server.sh --check-only
+bash scripts/commands/p5.sh inspect
 ```
 
-Si le verdict indique que tout est conforme, aucune installation n'est faite.
-Si un écart propre au P5 existe — par exemple une version Node.js de référence —
-le bootstrap normal peut converger uniquement cet écart :
+Si le contrôle du socle détecte un écart strictement nécessaire au P5 :
 
 ```bash
 bash scripts/commands/bootstrap-ubuntu-server.sh
 ```
 
-Puis :
+Le bootstrap est convergent : un composant déjà conforme n'est pas réinstallé inutilement.
 
-```bash
-bash scripts/commands/p5.sh inspect
-```
+## `versions.env` — contrat logiciel
 
-## 6. `versions.env` — contrat du projet
+[`versions.env`](versions.env) fixe les versions ou minima nécessaires à la reproductibilité du projet : Ubuntu, Terraform, Ansible, Node.js, AWS CLI et outils utilisés par les scripts et la CI.
 
-`environment/versions.env` fixe les versions ou minima utilisés par les scripts
-et la CI du **P5**. Ces contraintes restent dans ce dépôt car elles font partie de
-la reproductibilité du projet, même lorsque les outils sont déjà installés par la
-workstation amont.
+La workstation peut fournir davantage d'outils ; ils ne deviennent pas pour autant des dépendances ou des exercices du P5.
 
-Le principe reste :
+## `aws-readiness.env` — configuration locale du lab
+
+Le modèle versionné est :
 
 ```text
-outil amont déjà compatible
-        ↓
-aucune mutation
-
-outil absent ou incompatible avec le contrat P5
-        ↓
-correction du delta uniquement
+environment/aws-readiness.env.example
 ```
 
-## 7. `aws-readiness.env` — source unique des paramètres AWS
+Le fichier réel :
 
-Créer la configuration locale :
-
-```bash
-cp environment/aws-readiness.env.example environment/aws-readiness.env
-$EDITOR environment/aws-readiness.env
+```text
+environment/aws-readiness.env
 ```
 
-Ce fichier centralise notamment :
+est créé ou réconcilié par le parcours de préparation et reste ignoré par Git.
 
-| Catégorie | Variables principales |
-| --- | --- |
-| Session | `AWS_PROFILE`, `AWS_REGION` |
-| Compte | `P5_EXPECTED_ACCOUNT_ID` |
-| Réseau d'administration | `P5_PUBLIC_IP_CIDR` |
-| EC2 | AMI optionnelle, type d'instance, clé SSH |
-| OpenSearch | moteur, nœud, domaine, stockage |
-| Quotas | vCPU Standard requis |
-| Coûts | budget, limite et e-mail de notification |
-| Sécurité | confirmations MFA, root, IAM et facturation |
+Il centralise notamment :
 
-`P5_PUBLIC_IP_CIDR` représente l'IPv4 publique d'administration visible depuis
-AWS. Ce n'est pas une adresse privée WSL2, quel que soit le profil réseau actif.
+- profil et région AWS ;
+- compte AWS attendu ;
+- IPv4 publique d'administration en `/32` ;
+- clé SSH du lab ;
+- types d'instances ;
+- paramètres Amazon OpenSearch ;
+- budget et e-mail d'alerte ;
+- confirmations de sécurité requises.
 
-## 8. Générer les `terraform.tfvars`
+Il ne doit contenir aucune clé d'accès AWS longue durée.
 
-Aperçu :
+## Synchronisation Terraform
 
-```bash
-bash scripts/commands/sync-terraform-tfvars.sh
-```
-
-Écriture :
+La configuration locale alimente les trois `terraform.tfvars` :
 
 ```bash
 bash scripts/commands/sync-terraform-tfvars.sh --apply
-```
-
-Contrôle :
-
-```bash
 bash scripts/commands/sync-terraform-tfvars.sh --check
 ```
 
-## 9. Garde-fous AWS
+Les vrais `terraform.tfvars` restent locaux et ignorés par Git.
 
-Préparer puis vérifier :
-
-```bash
-bash scripts/commands/setup-aws-guardrails.sh --apply
-bash scripts/commands/check-aws-readiness.sh --stage initial
-bash scripts/commands/pre-deployment-check.sh --stage initial
-```
-
-Verdicts recherchés :
+## Frontière de responsabilité
 
 ```text
-GO AWS
-GO TERRAFORM
+Windows_11_Pro_Custom
+└── construit et maintient le poste Windows + WSL2
+
+p5_Openclassrooms
+├── vérifie le contrat Ubuntu/WSL2 nécessaire au projet
+├── fixe ses versions logicielles
+├── prépare les paramètres AWS du lab
+├── génère les tfvars
+└── exécute les trois exercices P5
 ```
 
-## 10. Sauvegarde et restauration
+Pour construire, réparer ou sauvegarder la workstation, consulter directement `Windows_11_Pro_Custom`.
 
-La sauvegarde de la workstation et de WSL2 appartient au dépôt Windows. Le P5 ne
-fournit pas de système VHDX concurrent.
-
-Dans `Windows_11_Pro_Custom` :
-
-```powershell
-.\install.ps1 -BackupAction Create -BackupTargetDrive E:
-.\install.ps1 -BackupAction Verify -BackupTargetDrive E:
-.\install.ps1 -BackupAction RestorePlan -BackupTargetDrive E:
-```
-
-La V7 du dépôt amont protège l'image Windows et exporte également Ubuntu en VHDX
-avec SHA-256.
-
-## 11. Ce qui ne doit jamais être versionné
+## À ne jamais versionner
 
 - `environment/aws-readiness.env` ;
 - `terraform.tfvars` ;
 - états et plans Terraform ;
 - clés SSH privées ;
 - credentials AWS ;
-- sauvegardes VHD/VHDX ;
 - preuves runtime brutes.
 
-## Références
+## Références P5
 
-- [Contrat workstation WSL2](wsl2/README.md)
-- [Préparation de l'environnement](../docs/00-preparation-environnement.md)
-- [Architecture et flux](../docs/architecture-et-flux.md)
-- [Parcours complet](../docs/01-parcours-debutant.md)
-- [Troubleshooting](../docs/troubleshooting.md)
+- [Contrat WSL2 minimal](wsl2/README.md)
+- [Installation et environnement de contrôle](../docs/00-preparation-environnement.md)
+- [Préparation du compte AWS](../docs/00b-preparation-compte-aws.md)
+- [Runbook A à Z](../docs/RUNBOOK_EXECUTION_GUIDEE.md)
