@@ -26,8 +26,15 @@ p5_session_start() {
     P5_STEP_PROOF_MANIFEST="$P5_STEP_PROOF_DIR/manifest.tsv"
     export P5_LOG_DIR P5_STEP_PROOF_DIR P5_STEP_PROOF_MANIFEST
 
+    P5_STABLE_LOG_ROOT="${P5_STABLE_LOG_ROOT:-$P5_PROJECT_ROOT/logs/scripts}"
+    P5_EVENT_LOG="${P5_EVENT_LOG:-$P5_LOG_DIR/events.log}"
+    P5_SUMMARY_LOG="${P5_SUMMARY_LOG:-$P5_LOG_DIR/summary.log}"
+    export P5_STABLE_LOG_ROOT P5_EVENT_LOG P5_SUMMARY_LOG
+
     umask 077
-    mkdir -p "$P5_LOG_DIR" "$P5_STEP_PROOF_DIR"
+    mkdir -p "$P5_LOG_DIR" "$P5_STEP_PROOF_DIR" "$P5_STABLE_LOG_ROOT"
+    touch "$P5_EVENT_LOG"
+    chmod 600 "$P5_EVENT_LOG"
     if [[ ! -f "$P5_STEP_PROOF_MANIFEST" ]]; then
         printf 'utc\tstep\tkey\tstatus\trc\tduration_s\tsha256\tproof_log\tlabel\n' \
             > "$P5_STEP_PROOF_MANIFEST"
@@ -94,17 +101,109 @@ p5_authoritative_unknown() {
     return 1
 }
 
-p5_command_preview() {
-    printf '       Commande :'
-    printf ' %q' "$@"
-    printf '\n'
+p5_sensitive_name() {
+    local name="${1,,}"
+    [[ "$name" == *password* \
+        || "$name" == *passwd* \
+        || "$name" == *secret* \
+        || "$name" == *token* \
+        || "$name" == *credential* \
+        || "$name" == *api-key* \
+        || "$name" == *apikey* ]]
 }
 
+p5_redact_stream() {
+    sed -E \
+        -e 's/(AWS_SECRET_ACCESS_KEY|AWS_SESSION_TOKEN|OPENROUTER_API_KEY|GITHUB_TOKEN|GH_TOKEN)=([^[:space:]]+)/\1=<REDACTED>/g' \
+        -e 's/(sk-or-[A-Za-z0-9_-]{12,}|github_pat_[A-Za-z0-9_]{12,}|glpat-[A-Za-z0-9_-]{12,})/<REDACTED>/g' \
+        -e 's/([Bb]earer[[:space:]]+)[A-Za-z0-9._~+\/-]{12,}/\1<REDACTED>/g'
+}
+
+p5_command_preview() {
+    local arg key redact_next=0
+    printf '       Commande :'
+    for arg in "$@"; do
+        if ((redact_next)); then
+            printf ' %q' '<REDACTED>'
+            redact_next=0
+            continue
+        fi
+        if [[ "$arg" == *=* ]]; then
+            key="${arg%%=*}"
+            if p5_sensitive_name "$key"; then
+                arg="${key}=<REDACTED>"
+            fi
+        elif [[ "$arg" == --* ]] && p5_sensitive_name "$arg"; then
+            redact_next=1
+        fi
+        printf ' %q' "$arg"
+    done
+    printf '\n'
+}
 p5_slug() {
     printf '%s' "$1" \
         | tr '[:upper:]' '[:lower:]' \
         | tr ' /:' '---' \
         | tr -cd 'a-z0-9._-'
+}
+
+p5_stable_log_for_command() {
+    local key="$1"
+    shift
+    local candidate rel safe_key
+    for candidate in "$@"; do
+        if [[ "$candidate" == "$P5_PROJECT_ROOT/"* && -f "$candidate" ]]; then
+            rel="${candidate#"$P5_PROJECT_ROOT/"}"
+        elif [[ "$candidate" == scripts/* && -f "$P5_PROJECT_ROOT/$candidate" ]]; then
+            rel="$candidate"
+        else
+            continue
+        fi
+        case "$rel" in
+            *.sh|*.py)
+                rel="${rel#scripts/}"
+                rel="${rel%.*}"
+                mkdir -p "$P5_STABLE_LOG_ROOT/$(dirname -- "$rel")"
+                printf '%s/%s.log\n' "$P5_STABLE_LOG_ROOT" "$rel"
+                return 0
+                ;;
+        esac
+    done
+    safe_key="$(p5_slug "$key")"
+    mkdir -p "$P5_STABLE_LOG_ROOT/external"
+    printf '%s/external/%s.log\n' "$P5_STABLE_LOG_ROOT" "$safe_key"
+}
+
+p5_refresh_summary() {
+    local validated failed
+    validated="$(awk -F '\t' '$2 == "VALIDE" {count++} END {print count+0}' "$P5_EVENT_LOG" 2>/dev/null || printf 0)"
+    failed="$(awk -F '\t' '$2 == "ECHEC" {count++} END {print count+0}' "$P5_EVENT_LOG" 2>/dev/null || printf 0)"
+    {
+        printf 'run_id=%s\n' "$P5_RUN_ID"
+        printf 'validated_steps=%s\n' "$validated"
+        printf 'failed_steps=%s\n' "$failed"
+        printf 'result=%s\n' "$(if ((failed == 0)); then printf OK; else printf KO; fi)"
+        printf 'updated_at=%s\n' "$(date -u --iso-8601=seconds)"
+    } > "$P5_SUMMARY_LOG"
+    chmod 600 "$P5_SUMMARY_LOG"
+}
+
+p5_finalize_step_observability() {
+    local key="$1" status="$2" rc="$3" duration="$4" step_log="$5" stable_log="$6"
+    local utc
+    utc="$(date -u --iso-8601=seconds)"
+    mkdir -p "$(dirname -- "$stable_log")"
+    {
+        printf '\n===============================================================================\n'
+        printf '[RUN] %s | step=%s | status=%s | rc=%s | duration_s=%s\n' \
+            "$P5_RUN_ID" "$key" "$status" "$rc" "$duration"
+        cat "$step_log"
+    } | p5_redact_stream >> "$stable_log"
+    chmod 600 "$stable_log"
+    printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
+        "$utc" "$status" "$key" "$rc" "$duration" "$stable_log" >> "$P5_EVENT_LOG"
+    chmod 600 "$P5_EVENT_LOG"
+    p5_refresh_summary
 }
 
 p5_prepare_step_file() {
@@ -160,9 +259,10 @@ p5_run_step() {
     local label="$2"
     shift 2
 
-    local log_file start_time end_time rc status
+    local log_file stable_log start_time end_time rc status
     p5_prepare_step_file "$key"
     log_file="$P5_CURRENT_STEP_LOG"
+    stable_log="$(p5_stable_log_for_command "$key" "$@")"
 
     p5_header "$P5_CURRENT_STEP_NUMBER — $label"
     p5_command_preview "$@"
@@ -170,8 +270,8 @@ p5_run_step() {
 
     start_time="$(date +%s)"
     set +e
-    "$@" > >(tee "$log_file") 2>&1
-    rc=$?
+    "$@" 2>&1 | p5_redact_stream | tee "$log_file"
+    rc=${PIPESTATUS[0]}
     set -e
     end_time="$(date +%s)"
 
@@ -182,10 +282,12 @@ p5_run_step() {
     if ((rc == 0)); then
         status='VALIDE'
         p5_record_step_proof "$key" "$label" "$status" "$rc" "$log_file" "$start_time" "$end_time"
+        p5_finalize_step_observability "$key" "$status" "$rc" "$((end_time - start_time))" "$log_file" "$stable_log"
         p5_ok "$label — $((end_time - start_time)) s"
     else
         status='ECHEC'
         p5_record_step_proof "$key" "$label" "$status" "$rc" "$log_file" "$start_time" "$end_time"
+        p5_finalize_step_observability "$key" "$status" "$rc" "$((end_time - start_time))" "$log_file" "$stable_log"
         p5_error "$label — code retour $rc — voir $log_file"
     fi
     return "$rc"
@@ -197,9 +299,10 @@ p5_run_step_allow() {
     local label="$3"
     shift 3
 
-    local log_file start_time end_time rc status
+    local log_file stable_log start_time end_time rc status
     p5_prepare_step_file "$key"
     log_file="$P5_CURRENT_STEP_LOG"
+    stable_log="$(p5_stable_log_for_command "$key" "$@")"
 
     p5_header "$P5_CURRENT_STEP_NUMBER — $label"
     p5_command_preview "$@"
@@ -207,8 +310,8 @@ p5_run_step_allow() {
 
     start_time="$(date +%s)"
     set +e
-    "$@" > >(tee "$log_file") 2>&1
-    rc=$?
+    "$@" 2>&1 | p5_redact_stream | tee "$log_file"
+    rc=${PIPESTATUS[0]}
     set -e
     end_time="$(date +%s)"
 
@@ -219,6 +322,7 @@ p5_run_step_allow() {
     if [[ " $accepted_codes " == *" $rc "* ]]; then
         status='VALIDE'
         p5_record_step_proof "$key" "$label" "$status" "$rc" "$log_file" "$start_time" "$end_time"
+        p5_finalize_step_observability "$key" "$status" "$rc" "$((end_time - start_time))" "$log_file" "$stable_log"
         if ((rc == 0)); then
             p5_ok "$label — $((end_time - start_time)) s"
         else
@@ -229,6 +333,7 @@ p5_run_step_allow() {
 
     status='ECHEC'
     p5_record_step_proof "$key" "$label" "$status" "$rc" "$log_file" "$start_time" "$end_time"
+    p5_finalize_step_observability "$key" "$status" "$rc" "$((end_time - start_time))" "$log_file" "$stable_log"
     p5_error "$label — code retour $rc — voir $log_file"
     return "$rc"
 }
@@ -402,6 +507,8 @@ p5_latest_log_hint() {
     printf '\nLogs de cette exécution : %s\n' "$P5_LOG_DIR"
     printf 'Preuves par étape        : %s\n' "$P5_STEP_PROOF_DIR"
     printf 'Manifeste des preuves    : %s\n' "$P5_STEP_PROOF_MANIFEST"
+    printf 'Journaux par script      : %s\n' "$P5_STABLE_LOG_ROOT"
+    printf 'Résumé factuel du run    : %s\n' "$P5_SUMMARY_LOG"
     if [[ -n "${P5_MASTER_LOG:-}" ]]; then
         printf 'Journal principal       : %s\n' "$P5_MASTER_LOG"
     fi

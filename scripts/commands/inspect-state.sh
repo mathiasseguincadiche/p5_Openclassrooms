@@ -6,6 +6,9 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
 CONFIG_FILE="$PROJECT_ROOT/environment/aws-readiness.env"
 INVENTORY_FILE="$PROJECT_ROOT/ansible/inventories/hosts_aws"
+TFVARS_RC=1
+AWS_RC=1
+SSH_PAIR_READY=0
 
 unknown() {
     local label="$1" reason="$2" action="$3"
@@ -49,6 +52,7 @@ if [[ -r "$CONFIG_FILE" ]]; then
     PRIVATE_KEY="${P5_SSH_KEY_PATH:-${PUBLIC_KEY%.pub}}"
     PRIVATE_KEY="${PRIVATE_KEY/#\~/$HOME}"
     if [[ -f "$PRIVATE_KEY" && -f "$PUBLIC_KEY" ]]; then
+        SSH_PAIR_READY=1
         printf '  OK  paire de clés SSH locale présente.\n'
     else
         unknown 'paire SSH locale' \
@@ -138,4 +142,31 @@ if [[ -d "$PROJECT_ROOT/logs" ]]; then
     printf '  INFO %s journal/journaux opérateur déjà présent(s).\n' "$LOG_FILES"
 fi
 
+STATE_FILES="$(find "$PROJECT_ROOT/terraform" -maxdepth 2 -type f -name 'terraform.tfstate' 2>/dev/null | wc -l)"
+RUNTIME_PROOFS=0
+if [[ -d "$PROJECT_ROOT/proofs/runtime" ]]; then
+    RUNTIME_PROOFS="$(find "$PROJECT_ROOT/proofs/runtime" -type f 2>/dev/null | wc -l)"
+fi
+if ((VM_RC == 0 && TFVARS_RC == 0 && AWS_RC == 0 && SSH_PAIR_READY == 1)); then
+    CLASSIFICATION='READY_CANDIDATE'
+elif ((VM_RC != 0 && STATE_FILES == 0 && RUNTIME_PROOFS == 0)) && [[ ! -r "$CONFIG_FILE" ]]; then
+    CLASSIFICATION='FIRST_RUN'
+else
+    CLASSIFICATION='PARTIAL'
+fi
+printf '\nClassification : %s\n' "$CLASSIFICATION"
+case "$CLASSIFICATION" in
+    FIRST_RUN)
+        printf '  Première préparation détectée : aucun état P5 persistant exploitable n’a été trouvé.\n'
+        printf '  Prochaine action : bash scripts/commands/p5.sh prepare\n'
+        ;;
+    PARTIAL)
+        printf '  État partiel détecté : les éléments déjà conformes seront conservés et seuls les écarts seront convergés.\n'
+        printf '  Prochaine action : bash scripts/commands/p5.sh prepare\n'
+        ;;
+    READY_CANDIDATE)
+        printf '  Socle prêt candidat : outils, configuration, SSH et identité AWS sont actuellement vérifiables.\n'
+        printf '  Prochaine action : bash scripts/commands/p5.sh status pour revalider sans mutation.\n'
+        ;;
+esac
 printf '\nVerdict : ÉTAT OBSERVÉ — aucune mutation, aucune valeur inventée.\n'
