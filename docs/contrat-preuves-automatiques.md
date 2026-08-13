@@ -1,177 +1,284 @@
-# Contrat des preuves automatiques P5
+# Contrat des preuves automatiques
 
 ## Objectif
 
-Une étape ne doit pas être considérée comme validée uniquement parce que le
-terminal a affiché `OK`. L'exécution doit laisser une preuve locale identifiable,
-horodatée et reliée à la commande réellement exécutée.
+Le runtime P5 ne se contente pas d'afficher des commandes. Il conserve une trace structurée de chaque étape orchestrée afin de faciliter :
 
-Le contrat est :
+- le diagnostic ;
+- la reprise ;
+- la sélection des preuves ;
+- la compréhension de ce qui a réellement été exécuté.
 
-```text
-commande réelle
-    ↓
-log complet de l'étape
-    ↓
-verdict
-    ↓
-copie privée de preuve
-    ↓
-SHA-256 + manifeste horodaté
-```
+Ces traces ne remplacent pas les preuves humaines demandées par OpenClassrooms.
 
-Les preuves runtime restent privées et sont ignorées par Git.
+## 1. Une session = un identifiant de run
 
-## Preuve automatique de chaque étape `p5.sh`
-
-Pour chaque appel à `p5_run_step` ou `p5_run_step_allow`, le moteur conserve :
-
-- le log complet de l'étape ;
-- son numéro ;
-- sa clé technique ;
-- son libellé ;
-- le code retour ;
-- le verdict `VALIDE` ou `ECHEC` ;
-- la durée ;
-- le SHA-256 du fichier de preuve.
-
-Arborescence :
+Au démarrage d'une session orchestrée, le runtime génère un identifiant UTC :
 
 ```text
-proofs/runtime/steps/<UTC>/
-├── manifest.tsv
-├── 01-....log
-├── 02-....log
-└── ...
+YYYYMMDDTHHMMSSZ
 ```
 
-Le manifeste permet de relier chaque verdict à un fichier précis et de vérifier
-que la preuve n'a pas été modifiée après sa collecte.
+Les journaux sont stockés sous :
 
-## Preuves d'état AWS
+```text
+logs/<RUN_ID>/
+```
 
-Les logs Terraform prouvent le plan, l'application et l'absence de delta. Pour
-éviter de confondre « Terraform a terminé » avec « la ressource AWS est réellement
-opérationnelle », le parcours ajoute une vérification AWS explicite.
+## 2. Journal principal
 
-Commande spécialisée :
+Une exécution de `p5.sh` écrit un journal principal :
+
+```text
+logs/<RUN_ID>/p5.log
+```
+
+Il rassemble la sortie de la session dans l'ordre d'exécution.
+
+## 3. Journaux par étape
+
+Chaque étape possède aussi son propre fichier numéroté :
+
+```text
+01-<step>.log
+02-<step>.log
+03-<step>.log
+...
+```
+
+Cette granularité permet de partager ou relire un échec sans parcourir tout le run.
+
+## 4. Preuves par étape
+
+Les logs d'étape sont copiés dans :
+
+```text
+proofs/runtime/steps/<RUN_ID>/
+```
+
+avec permissions restrictives.
+
+Un manifeste est conservé :
+
+```text
+manifest.tsv
+```
+
+Il contient notamment :
+
+```text
+UTC
+numéro d'étape
+clé d'étape
+statut
+code retour
+durée
+SHA-256
+nom de la preuve
+libellé
+```
+
+## 5. Statuts
+
+Le runtime utilise principalement :
+
+```text
+VALIDE
+ECHEC
+```
+
+Une étape n'est `VALIDE` que si son code retour fait partie des codes acceptés pour ce contexte.
+
+Exemple particulier : `terraform plan -detailed-exitcode` peut légitimement retourner `2` pour signifier « delta présent ». Le moteur sait traiter ce code comme un état attendu avant décision.
+
+## 6. Hash des preuves
+
+Lorsque `sha256sum` est disponible, une empreinte SHA-256 est calculée pour la copie de preuve.
+
+But :
+
+- identifier précisément le fichier produit ;
+- détecter une modification ultérieure ;
+- améliorer la traçabilité technique.
+
+Le hash ne prouve pas que le contenu est pédagogiquement suffisant. Il prouve seulement l'identité du fichier.
+
+## 7. Résumé factuel du run
+
+Le runtime maintient :
+
+```text
+logs/<RUN_ID>/summary.log
+```
+
+avec notamment :
+
+```text
+run_id
+validated_steps
+failed_steps
+result
+updated_at
+```
+
+Ce résumé est utile pour savoir rapidement si le run contient un échec.
+
+## 8. Journal stable par script
+
+En complément du journal de session, le runtime maintient des historiques sous :
+
+```text
+logs/scripts/
+```
+
+Le but est de retrouver plusieurs exécutions successives d'un même script spécialisé.
+
+## 9. Redaction des secrets
+
+Avant écriture des logs orchestrés, le runtime filtre plusieurs signatures sensibles, notamment :
+
+- `AWS_SECRET_ACCESS_KEY` ;
+- `AWS_SESSION_TOKEN` ;
+- tokens GitHub courants ;
+- certaines clés/tokens API ;
+- en-têtes `Bearer`.
+
+Les aperçus de commandes masquent également les arguments dont le nom ressemble à `password`, `secret`, `token`, `credential` ou `api-key`.
+
+### Limite
+
+Aucune redaction automatique n'est parfaite.
+
+Avant publication d'une preuve :
+
+```text
+toujours relire manuellement
+```
+
+## 10. Information inconnue
+
+Le runtime distingue une erreur d'une information non vérifiable.
+
+Exemple : Terraform devrait produire `web_public_ip`, mais l'output est absent.
+
+Le comportement attendu est :
+
+```text
+INCONNU
+Raison : output absent/invalide
+Action : réparer le module/state puis relancer
+```
+
+Le runtime ne remplace pas l'IP par une valeur copiée arbitrairement.
+
+## 11. Checkpoint humain
+
+Certaines preuves doivent rester humaines.
+
+Exemple principal : exercice 2 OpenSearch Dashboards.
+
+Le runtime peut vérifier :
+
+- endpoint ;
+- index ;
+- mapping ;
+- documents ;
+- agrégations.
+
+Il ne peut pas honnêtement affirmer que l'étudiant a :
+
+- compris les trois visualisations ;
+- vérifié leur lisibilité ;
+- produit les quatre captures.
+
+Le moteur utilise donc un checkpoint manuel et demande une confirmation explicite.
+
+Le mode `--yes` ne doit pas valider ce checkpoint.
+
+## 12. Preuve automatique vs preuve évaluateur
+
+| Type | Exemple | Suffit seul ? |
+| --- | --- | --- |
+| log automatique | sortie `terraform plan` | non |
+| test automatique | round-robin en CI | non pour la preuve AWS réelle |
+| preuve runtime AWS | sortie du failover réel | souvent utile, à contextualiser |
+| capture | dashboard OpenSearch | oui pour l'élément visuel si lisible et réel |
+| livrable contextualisé | commande + résultat + conclusion | format recommandé |
+
+## 13. Convention de preuve
+
+Une preuve finale doit idéalement être présentée ainsi :
+
+```text
+Objectif
+  ce que l'on cherche à démontrer
+
+Commande / action
+  ce qui a réellement été exécuté
+
+Résultat
+  sortie, capture ou valeur observée
+
+Interprétation
+  pourquoi cela valide le besoin
+```
+
+Exemple HAProxy :
+
+```text
+Objectif : vérifier la répartition entre deux backends.
+Commande : test-haproxy-roundrobin.sh --requests 12.
+Résultat : p5-hello-1 et p5-hello-2 sont observés.
+Conclusion : les deux backends participent au pool HAProxy.
+```
+
+## 14. Dossiers runtime privés
+
+Par défaut, traiter comme privés :
+
+```text
+logs/<RUN_ID>/
+proofs/runtime/
+```
+
+Ils peuvent contenir :
+
+- IP ;
+- endpoints ;
+- ARNs ;
+- détails d'infrastructure ;
+- chemins locaux ;
+- sorties exhaustives.
+
+Ils ne sont pas des pièces à publier en bloc.
+
+## 15. Audit avant publication
+
+Avant d'ajouter un extrait aux livrables :
+
+1. ouvrir la preuve ;
+2. vérifier qu'elle correspond au bon run ;
+3. supprimer les informations inutiles ;
+4. anonymiser si nécessaire ;
+5. conserver les lignes qui démontrent le résultat ;
+6. ajouter une explication ;
+7. vérifier qu'aucun secret n'est présent.
+
+Commande complémentaire :
 
 ```bash
-bash scripts/commands/verify-aws-exercise-state.sh --exercise 1
-bash scripts/commands/verify-aws-exercise-state.sh --exercise 2
-bash scripts/commands/verify-aws-exercise-state.sh --exercise 3
+python3 scripts/tools/audit_secrets.py
 ```
 
-Dans le parcours orchestré, ces preuves sont déclenchées automatiquement à la fin
-des validations techniques correspondantes.
+## 16. Ce que le contrat garantit
 
-### Exercice 1
+Le contrat améliore la traçabilité de l'exécution orchestrée.
 
-La preuve vérifie depuis AWS que l'instance correspondant à l'IP Terraform est
-réellement en état :
+Il ne garantit pas :
 
-```text
-running
-```
+- que chaque capture a été prise ;
+- que le dashboard est pédagogiquement correct ;
+- que toutes les ressources externes au périmètre P5 ont été nettoyées ;
+- qu'un log brut peut être publié sans relecture.
 
-Verdict attendu :
-
-```text
-ÉTAT AWS EXERCICE 1 VALIDÉ — EC2 RUNNING
-```
-
-Cette preuve complète :
-
-- le plan Terraform ;
-- l'apply ;
-- le post-plan sans delta ;
-- SSH/cloud-init ;
-- le ping Ansible ;
-- l'idempotence ;
-- HTTP/Angular/NGINX.
-
-### Exercice 2
-
-La preuve interroge Amazon OpenSearch Service et exige un domaine :
-
-- créé ;
-- non supprimé ;
-- hors phase de traitement ;
-- hors phase d'upgrade.
-
-Verdict :
-
-```text
-ÉTAT AWS EXERCICE 2 VALIDÉ — OPENSEARCH ACTIF
-```
-
-Les mappings, documents, agrégations et captures Dashboards restent des preuves
-complémentaires indispensables.
-
-### Exercice 3
-
-La preuve vérifie que :
-
-- l'EC2 HAProxy est `running` ;
-- le backend 1 est `running` ;
-- le backend 2 est `running`.
-
-Verdict :
-
-```text
-ÉTAT AWS EXERCICE 3 VALIDÉ — 3 EC2 RUNNING
-```
-
-Le round-robin, la panne et la réintégration restent ensuite les preuves
-fonctionnelles de haute disponibilité.
-
-## Une preuve ne remplace pas une autre
-
-Exemple exercice 1 :
-
-```text
-EC2 running                 → preuve infrastructure AWS
-SSH prêt                    → preuve de connectivité
-Ansible ping OK             → preuve de gestion par Ansible
-changed=0                   → preuve d'idempotence
-HTTP 200                    → preuve de service
-Angular + SPA + headers     → preuve applicative
-access.log réel             → preuve d'observabilité
-```
-
-Le projet conserve ces niveaux séparément afin qu'une validation superficielle
-ne puisse pas masquer une panne à une couche différente.
-
-## Échec
-
-Une étape en échec produit également une copie de son log avec le statut
-`ECHEC`. Ce fichier n'est pas une preuve de réussite : il sert au diagnostic et
-permet de retrouver exactement l'état qui a provoqué l'arrêt.
-
-## Sécurité
-
-`proofs/runtime/` est privé par défaut. Il peut contenir des IP, identifiants de
-ressources, chemins ou autres données utiles au diagnostic.
-
-Avant toute publication :
-
-1. relire la preuve ;
-2. anonymiser les informations inutiles ;
-3. ne jamais publier de credentials, token, clé privée, tfvars ou state ;
-4. ne copier dans le livrable que l'extrait nécessaire à la démonstration.
-
-## Test de non-régression
-
-Le contrat est vérifié par :
-
-```bash
-bash scripts/tests/test-proof-contract.sh
-```
-
-La CI doit échouer si :
-
-- une étape ne crée plus sa preuve ;
-- le manifeste disparaît ;
-- le SHA-256 n'est plus produit ;
-- les hooks AWS des trois exercices disparaissent ;
-- les verdicts AWS ne sont plus présents.
+La suite du cycle de preuve est documentée dans [`validation-preuves-nettoyage.md`](validation-preuves-nettoyage.md).
