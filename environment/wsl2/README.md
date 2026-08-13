@@ -22,13 +22,9 @@ Le P5 ne recopie pas la configuration interne de la workstation.
 
 ## Distribution requise
 
-La distribution utilisée par le projet est nommée :
+La distribution utilisée par le projet est nommée `Ubuntu` et le contrat P5 attend **Ubuntu 26.04**.
 
-```text
-Ubuntu
-```
-
-Le contrat P5 exige :
+Le contrôle vérifie précisément :
 
 ```text
 VERSION_ID=26.04
