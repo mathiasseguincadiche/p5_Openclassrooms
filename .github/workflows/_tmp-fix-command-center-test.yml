@@ -1,0 +1,100 @@
+name: Temporary command center contract fix
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/_tmp-fix-command-center-test.yml'
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - name: Align orchestrator test and enable manual CI runs
+        shell: python
+        run: |
+          from pathlib import Path
+
+          test = Path('scripts/tests/test-p5-orchestrator.sh')
+          text = test.read_text(encoding='utf-8')
+          replacements = {
+              'CONTROL_CENTER_DOC="$PROJECT_ROOT/docs/CENTRE_DE_COMMANDE.md"': 'COMMAND_CENTER_DOC="$PROJECT_ROOT/docs/CENTRE_DE_COMMANDE.md"',
+              '[[ -f "$CONTROL_CENTER_DOC" ]]': '[[ -f "$COMMAND_CENTER_DOC" ]]',
+              "printf 'Documentation Control Center absente : %s\\n' \"$CONTROL_CENTER_DOC\"": "printf 'Documentation du centre de commande absente : %s\\n' \"$COMMAND_CENTER_DOC\"",
+              "grep -Fq 'P5 OPENCLASSROOMS — CONTROL CENTER V11' <<<\"$MENU_OUTPUT\"": "grep -Fq 'P5 OPENCLASSROOMS — CENTRE DE COMMANDE' <<<\"$MENU_OUTPUT\"",
+              'printf "OK  contrat de l\'orchestrateur et du Control Center P5 validé sans mutation AWS.\\n"': 'printf "OK  contrat de l\'orchestrateur et du centre de commande P5 validé sans mutation AWS.\\n"',
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f'Marqueur de test attendu absent: {old!r}')
+              text = text.replace(old, new)
+          if 'Control Center' in text or 'CONTROL CENTER' in text:
+              raise SystemExit('Ancien libellé Control Center encore présent dans le test')
+          test.write_text(text, encoding='utf-8')
+
+          for workflow in (
+              Path('.github/workflows/ci.yml'),
+              Path('.github/workflows/non-regression.yml'),
+              Path('.github/workflows/security.yml'),
+              Path('.github/workflows/wsl2-contract.yml'),
+          ):
+              content = workflow.read_text(encoding='utf-8')
+              if 'workflow_dispatch:' not in content:
+                  marker = 'on:\n'
+                  if marker not in content:
+                      raise SystemExit(f'Bloc on: absent de {workflow}')
+                  content = content.replace(marker, 'on:\n  workflow_dispatch:\n', 1)
+                  workflow.write_text(content, encoding='utf-8')
+
+      - name: Validate corrected contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/tests/test-p5-orchestrator.sh
+          bash scripts/tests/test-p5-orchestrator.sh
+          python3 scripts/tools/audit_non_regression.py
+
+      - name: Commit correction
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/_tmp-fix-command-center-test.yml
+          git add scripts/tests/test-p5-orchestrator.sh \
+            .github/workflows/ci.yml \
+            .github/workflows/non-regression.yml \
+            .github/workflows/security.yml \
+            .github/workflows/wsl2-contract.yml
+          git commit -m 'test: aligner le contrat du centre de commande'
+          git push origin HEAD:main
+
+      - name: Dispatch all validation workflows
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 3
+          for workflow in ci.yml non-regression.yml security.yml wsl2-contract.yml; do
+            for attempt in 1 2 3 4 5; do
+              if gh workflow run "$workflow" --ref main; then
+                break
+              fi
+              if [[ "$attempt" -eq 5 ]]; then
+                echo "Impossible de lancer $workflow" >&2
+                exit 1
+              fi
+              sleep 3
+            done
+          done
