@@ -1,43 +1,74 @@
 # RUNBOOK P5 OpenClassrooms — Exécution guidée A → Z
 
-> **But :** exécuter le P5 AWS depuis la workstation Windows 11 Pro / WSL2 déjà
-> construite par `Windows_11_Pro_Custom`, sans dupliquer l'installation ou la
-> configuration WSL2.
+> **But :** exécuter, reprendre, diagnostiquer et fermer proprement le lab P5 AWS.
 
-## Comment utiliser ce Runbook
+Ce Runbook est la **procédure opératoire** du projet. Il suppose que le poste de
+contrôle est déjà disponible.
 
-Ce document est la **procédure opératoire**. Pour une découverte plus douce,
-commencer par [01-parcours-debutant.md](01-parcours-debutant.md). Pour utiliser le
-menu interactif, consulter [CENTRE_DE_COMMANDE.md](CENTRE_DE_COMMANDE.md).
+Pour comprendre les concepts avant d'exécuter les commandes, lire :
+[01-parcours-debutant.md](01-parcours-debutant.md).
 
-À chaque phase, appliquer la même méthode :
+Pour installer ou réparer Windows 11 / WSL2 / Ubuntu, utiliser uniquement :
+[00-preparation-environnement.md](00-preparation-environnement.md).
+
+## 1. Résultat attendu
+
+Le parcours P5 doit démontrer :
+
+```text
+Exercice 1
+Terraform → AWS → Ansible → NGINX → Angular
+                     ↓
+              idempotence Ansible
+                     ↓
+                 access.log
+                     │
+                     ├────────────► Exercice 2
+                     │              OpenSearch
+                     │
+                     └────────────► Exercice 3
+                                    réseau AWS réutilisé
+                                    HAProxy + 2 backends
+```
+
+Puis :
+
+```text
+preuves
+   ↓
+finalisation
+   ↓
+destruction 3 → 2 → 1
+   ↓
+NETTOYAGE AWS COMPLET
+```
+
+## 2. Règle opératoire
+
+À chaque phase :
 
 ```text
 OBJECTIF
    ↓
-PRÉREQUIS
+OBSERVER
    ↓
-COMMANDE
-   ↓
-VÉRIFIER CE QUI PEUT ÊTRE MODIFIÉ
+VÉRIFIER LES PRÉREQUIS
    ↓
 EXÉCUTER
    ↓
 LIRE LE VERDICT
    ↓
-SI KO : LOGS + INSPECT, PAS DE SUPPRESSION IMPROVISÉE
+SI KO : LOGS + DIAGNOSTIC
+   ↓
+CORRIGER UNIQUEMENT LA CAUSE
+   ↓
+RELANCER LA MÊME COMMANDE
 ```
 
-Le Control Center V11 est accessible avec :
+Ne supprimez pas un état Terraform, une ressource AWS ou un fichier runtime pour
+« repartir proprement » sans avoir identifié la cause.
 
-```bash
-bash scripts/commands/p5.sh
-```
-
-Il indique avant les actions principales si une mutation locale, une mutation AWS
-ou un coût AWS est possible. La CLI reste la source de vérité technique.
-
-## Carte des risques
+## 3. Carte des commandes et des risques
 
 | Phase | Commande | Mutation locale | Mutation AWS | Coût possible |
 | --- | --- | --- | --- | --- |
@@ -52,96 +83,29 @@ ou un coût AWS est possible. La CLI reste la source de vérité technique.
 | Finalisation | `p5.sh finalize` | preuves/livrables | non | non |
 | Nettoyage | `p5.sh cleanup` | oui | destruction | arrête les coûts |
 
-## 1. Modèle à retenir
+Le Control Center V11 affiche ces informations avant les actions importantes :
 
-```text
-Windows_11_Pro_Custom
-└── Windows 11 Pro + WSL2
-    └── Ubuntu — D:\WSL\Ubuntu-DevOps
-        └── stack DevOps générale
-                │
-                ▼
-p5_Openclassrooms
-└── contrat projet + AWS + exercices + preuves
+```bash
+bash scripts/commands/p5.sh
 ```
 
-La workstation est une **dépendance amont**, pas un sous-projet géré par P5.
+# PHASE A — OUVRIR ET QUALIFIER LE P5
 
-## 2. Ce que P5 ne fait plus
+## 4. Ouvrir l'environnement de contrôle
 
-P5 ne doit jamais :
-
-- installer ou mettre à jour WSL2 ;
-- créer une distribution WSL ;
-- écrire `%UserProfile%\.wslconfig` ;
-- écrire `/etc/wsl.conf` ;
-- choisir le chemin du VHDX ou du swap WSL ;
-- créer une sauvegarde Windows/WSL concurrente.
-
-Ces responsabilités appartiennent à `Windows_11_Pro_Custom`.
-
-# PHASE A — QUALIFIER LA WORKSTATION
-
-## 3. Objectif
-
-Prouver que la plateforme Windows/WSL2 fournie en amont est prête avant de faire
-porter au P5 des problèmes qui ne lui appartiennent pas.
-
-## 4. Vérifier la plateforme amont
-
-Dans le dépôt `Windows_11_Pro_Custom`, PowerShell administrateur :
-
-```powershell
-.\install.ps1 -Mode Verify -ValidateWsl -ValidateDevOps
-```
-
-Verdicts attendus :
-
-```text
-VERDICT: V3 DEVOPS READY
-VERDICT: V6 WSL2 PLATFORM READY
-```
-
-Si l'un de ces verdicts échoue, arrêter ici et corriger la workstation dans le
-dépôt amont.
-
-## 5. Profils WSL2 disponibles
-
-La source de vérité amont propose :
-
-```text
-standard     → 8 threads / 20 Go / 8 Go swap / mirrored
-lab-heavy    → 12 threads / 28 Go / 12 Go swap / mirrored
-nat-fallback → 8 threads / 20 Go / 8 Go swap / NAT
-```
-
-`standard` est recommandé pour le P5.
-
-## 6. Ouvrir Ubuntu
+Depuis Windows :
 
 ```powershell
 wsl -d Ubuntu
 ```
 
-Dans Ubuntu :
+Puis :
 
 ```bash
-ps -p 1 -o comm=
-findmnt -T "$HOME" -n -o FSTYPE
+cd ~/labs/p5_Openclassrooms
 ```
 
-Attendu : `systemd` et un HOME sur filesystem Linux.
-
-### Si cette phase échoue
-
-Ne pas modifier le P5 pour contourner un problème WSL2. Revenir dans
-`Windows_11_Pro_Custom` et corriger la plateforme amont.
-
-# PHASE B — PRÉPARER P5
-
-## 7. Mettre le dépôt P5 à disposition
-
-Clone neuf :
+Pour un clone neuf :
 
 ```bash
 mkdir -p ~/labs
@@ -150,53 +114,57 @@ git clone https://github.com/mathiasseguincadiche/p5_Openclassrooms.git
 cd p5_Openclassrooms
 ```
 
-Dépôt existant :
+Le checkout principal doit rester dans le filesystem Linux, pas sous `/mnt/c` ou
+`/mnt/d`.
 
-```bash
-cd ~/labs/p5_Openclassrooms
-git pull
-git status
-```
+Si `wsl -d Ubuntu` ne fonctionne pas ou si la toolchain générale de la workstation
+est absente, corrigez d'abord le poste de contrôle avec le guide d'installation.
 
-Ne pas travailler sous `/mnt/c` ou `/mnt/d`.
+## 5. Vérifier le contrat spécifique P5
 
-## 8. Vérifier le delta projet
+Sans mutation :
 
 ```bash
 bash scripts/commands/bootstrap-ubuntu-server.sh --check-only
 ```
 
-Ce contrôle vérifie les exigences P5 sans modifier la workstation.
+Ce contrôle vérifie les outils et versions attendus par le P5.
 
-Si un composant est absent ou incompatible :
+Si un delta propre au projet existe :
 
 ```bash
 bash scripts/commands/bootstrap-ubuntu-server.sh
 ```
 
-Le bootstrap reste convergent : un outil déjà conforme n'est pas réinstallé.
+Le bootstrap ne doit corriger que le delta P5.
 
-S'il ajoute l'utilisateur au groupe Docker :
+Après un éventuel ajout au groupe Docker :
 
 ```powershell
 wsl --shutdown
 wsl -d Ubuntu
 ```
 
-Puis revenir dans le dépôt et relancer `--check-only`.
+Puis revenez dans le dépôt et relancez `--check-only`.
 
-## 9. Inspecter le P5
+## 6. Observer l'état réel
 
 ```bash
 bash scripts/commands/p5.sh inspect
 ```
 
-`inspect` doit rester sans mutation : aucune installation, aucune authentification
-interactive, aucun `terraform apply`, aucune création ou destruction AWS.
+`inspect` ne doit créer ni modifier de ressource AWS.
 
-### Verdict opérationnel
+Relisez notamment :
 
-Si l'inspection ne montre pas de blocage amont, continuer avec `prepare`.
+- état de la toolchain ;
+- présence de la configuration locale AWS ;
+- session AWS ;
+- clé SSH ;
+- états Terraform existants ;
+- inventaire Ansible ;
+- artefact Angular ;
+- preuves et logs existants.
 
 ### Si cette phase échoue
 
@@ -205,35 +173,28 @@ bash scripts/commands/p5.sh logs
 bash scripts/commands/p5.sh diagnostics
 ```
 
-Puis consulter [troubleshooting.md](troubleshooting.md).
+Puis consultez [Troubleshooting](troubleshooting.md).
 
-# PHASE C — PRÉPARATION AWS
+# PHASE B — PRÉPARER AWS
 
-## 10. Préparer le lab
-
-Commande explicite :
+## 7. Préparer le lab
 
 ```bash
 bash scripts/commands/p5.sh prepare
 ```
 
-Ou parcours complet :
+Cette phase :
 
-```bash
-bash scripts/commands/p5.sh all
-```
+1. inspecte d'abord le lab ;
+2. vérifie/converge le contrat P5 local ;
+3. réconcilie la configuration AWS ;
+4. vérifie le budget ;
+5. synchronise les trois `terraform.tfvars` ;
+6. lance les contrôles AWS nécessaires.
 
-Le centre de commande complet enchaîne :
+## 8. Configuration locale AWS
 
-```text
-prepare → ex1 → ex2 → ex3 → diagnostics
-```
-
-Le mode `all` ne détruit pas AWS.
-
-## 11. Configuration locale
-
-La source locale des paramètres AWS est :
+La source locale est :
 
 ```text
 environment/aws-readiness.env
@@ -246,59 +207,71 @@ cp environment/aws-readiness.env.example environment/aws-readiness.env
 $EDITOR environment/aws-readiness.env
 ```
 
-Cette configuration centralise profil, région, compte, IPv4 publique `/32`, clé
-SSH, OpenSearch, quotas et budget.
+Cette configuration centralise notamment :
 
-`P5_PUBLIC_IP_CIDR` est l'IPv4 publique vue depuis AWS. Elle n'est pas liée à
-l'adresse privée WSL2 ni au choix `mirrored`/NAT.
+- profil AWS ;
+- région ;
+- compte AWS attendu ;
+- IPv4 publique `/32` ;
+- clé SSH ;
+- paramètres OpenSearch ;
+- quotas ;
+- budget.
 
-## 12. Porte AWS Ready
+`P5_PUBLIC_IP_CIDR` représente l'IPv4 publique d'administration vue depuis AWS.
 
-Le parcours doit atteindre :
+## 9. Portes de validation
+
+Avant Terraform, le parcours doit atteindre :
 
 ```text
 GO AWS
 GO TERRAFORM
 ```
 
-Ne jamais contourner `STOP AWS` ou un `[ KO ]`.
+Ne contournez jamais un `STOP AWS` ou un `[ KO ]` par un `terraform apply`
+manuellement lancé à côté de l'orchestrateur.
 
-### Si cette phase échoue
+### Si la préparation échoue
 
-1. ne lancer aucun `terraform apply` manuel pour contourner le contrôle ;
-2. exécuter `p5.sh inspect` ;
-3. consulter `p5.sh logs` ;
-4. corriger uniquement l'information ou permission explicitement signalée ;
-5. relancer `p5.sh prepare`.
+1. exécutez `p5.sh inspect` ;
+2. consultez `p5.sh logs` ;
+3. corrigez l'information, la permission ou le quota explicitement signalé ;
+4. relancez `p5.sh prepare`.
 
-# PHASE D — EXERCICE 1
+# PHASE C — EXERCICE 1
 
-## 13. Objectif
+## 10. Objectif
 
-Converger l'infrastructure, déployer Angular derrière NGINX avec Ansible et
-prouver l'idempotence.
+Créer/converger l'infrastructure AWS, déployer Angular derrière NGINX avec
+Ansible et prouver l'idempotence.
 
-## 14. Exécuter
+## 11. Exécuter
 
 ```bash
 bash scripts/commands/p5.sh ex1
 ```
 
-Le parcours :
+Le parcours réalise :
 
-1. prépare l'artefact Angular si nécessaire ;
-2. lance Terraform `init` puis `plan -detailed-exitcode` ;
-3. n'applique rien sur plan vide ;
-4. crée/converge l'infrastructure après confirmation si delta ;
-5. génère l'inventaire Ansible ;
-6. attend SSH et cloud-init ;
-7. exécute Ansible ;
-8. rejoue le playbook ;
-9. exige `changed=0`, `unreachable=0`, `failed=0` ;
-10. vérifie Angular/NGINX ;
-11. collecte le vrai `access.log`.
+1. préparation de l'artefact Angular si nécessaire ;
+2. `terraform init` ;
+3. `terraform plan -detailed-exitcode` ;
+4. affichage du plan ;
+5. aucun `apply` si le plan est vide ;
+6. confirmation puis application du delta s'il existe ;
+7. post-plan pour vérifier la convergence ;
+8. génération de l'inventaire Ansible ;
+9. attente SSH et cloud-init ;
+10. premier passage Ansible ;
+11. second passage Ansible ;
+12. contrôle HTTP de NGINX/Angular ;
+13. génération de trafic ;
+14. collecte du vrai `access.log`.
 
-Résultat attendu :
+## 12. Verdict Ansible
+
+Le second passage doit se terminer avec :
 
 ```text
 changed=0
@@ -306,84 +279,140 @@ unreachable=0
 failed=0
 ```
 
-### Si cette phase échoue
+Si `changed` reste supérieur à zéro, l'idempotence n'est pas démontrée.
+
+## 13. Si l'exercice 1 échoue
 
 ```bash
 bash scripts/commands/p5.sh inspect
 bash scripts/commands/p5.sh logs
 ```
 
-Ne pas supprimer le state. Corriger le delta indiqué, puis relancer exactement :
+Ne supprimez pas le `terraform.tfstate`.
+
+Corrigez le delta identifié puis relancez :
 
 ```bash
 bash scripts/commands/p5.sh ex1
 ```
 
-# PHASE E — EXERCICE 2
+# PHASE D — EXERCICE 2
 
-## 15. Objectif
+## 14. Objectif
 
-Converger Amazon OpenSearch, importer les données et produire les preuves
-fonctionnelles attendues.
+Créer/converger Amazon OpenSearch, importer les données et produire les contrôles
+techniques nécessaires au dashboard.
 
-## 16. OpenSearch
+## 15. Exécuter
 
 ```bash
 bash scripts/commands/p5.sh ex2
 ```
 
-Le parcours converge Amazon OpenSearch, importe le jeu reproductible et le vrai
-log NGINX lorsqu'il est disponible, puis vérifie mappings et agrégations.
+Le parcours :
 
-Le dashboard et les captures restent manuels.
+1. fait converger le domaine Amazon OpenSearch ;
+2. prépare le jeu de données reproductible ;
+3. utilise le vrai log NGINX de l'exercice 1 lorsqu'il est disponible ;
+4. importe les documents avec la Bulk API ;
+5. vérifie les mappings ;
+6. vérifie le nombre de documents ;
+7. vérifie les agrégations attendues.
 
-### Checkpoint humain
+## 16. Checkpoint humain Dashboards
 
-Ne pas valider `OK` sans avoir réellement vérifié/créé les visualisations et
-conservé les captures demandées.
+Les visualisations et captures ne doivent pas être déclarées conformes sans les
+avoir réellement vérifiées.
 
-### Si cette phase échoue
+Le dépôt attend notamment les visualisations définies dans le guide de
+l'exercice 2.
+
+Guide : [Exercice 2 — OpenSearch](exercices/02-elk-opensearch.md).
+
+## 17. Si l'exercice 2 échoue
 
 ```bash
 bash scripts/commands/p5.sh logs
 bash scripts/commands/p5.sh diagnostics
 ```
 
-Vérifier ensuite la section OpenSearch de `troubleshooting.md` avant toute
-modification manuelle.
+Puis consultez la section OpenSearch de
+[troubleshooting.md](troubleshooting.md).
 
-# PHASE F — EXERCICE 3
+# PHASE E — EXERCICE 3
 
-## 17. Objectif
+## 18. Objectif
 
-Prouver la distribution du trafic et la continuité de service lors d'une panne
+Démontrer la distribution du trafic et la continuité de service lors d'une panne
 contrôlée d'un backend.
 
-## 18. HAProxy
+## 19. Prérequis
+
+L'exercice 1 doit encore exister car l'exercice 3 réutilise :
+
+- le VPC ;
+- les sous-réseaux publics ;
+- la paire de clés EC2.
+
+## 20. Exécuter
 
 ```bash
 bash scripts/commands/p5.sh ex3
 ```
 
-Prérequis : l'exercice 1 doit toujours exister.
-
-Le test vérifie :
+Le test doit vérifier :
 
 - HAProxy accessible ;
 - deux backends ;
 - round-robin ;
 - panne réelle contrôlée ;
 - continuité du service ;
+- restauration ;
 - réintégration du backend.
 
-### Si cette phase échoue
+## 21. Si l'exercice 3 échoue
 
-Ne pas détruire l'exercice 1. Consulter les logs de l'étape HAProxy puis relancer
-`ex3` après correction du delta.
+Ne détruisez pas l'exercice 1.
+
+Consultez les logs HAProxy, corrigez la cause puis relancez :
+
+```bash
+bash scripts/commands/p5.sh ex3
+```
+
+# PHASE F — PARCOURS COMPLET
+
+## 22. Exécuter de bout en bout
+
+```bash
+bash scripts/commands/p5.sh all
+```
+
+Enchaînement :
+
+```text
+prepare → ex1 → ex2 → ex3 → diagnostics
+```
+
+Le mode `all` ne détruit pas AWS.
+
+## 23. Mode `--yes`
+
+```bash
+bash scripts/commands/p5.sh all --yes
+```
+
+Ce mode ne contourne jamais :
+
+- les validations humaines de sécurité ;
+- le checkpoint OpenSearch Dashboards ;
+- la confirmation `DETRUIRE`.
 
 # PHASE G — REPRISE ET DIAGNOSTIC
 
-## 19. Après fermeture du terminal ou redémarrage Windows
+## 24. Reprendre après une interruption
+
+Après fermeture du terminal ou redémarrage :
 
 ```powershell
 wsl -d Ubuntu
@@ -397,16 +426,21 @@ bash scripts/commands/p5.sh inspect
 bash scripts/commands/p5.sh all
 ```
 
-Le projet réévalue l'état réel. Ne jamais supprimer un `terraform.tfstate` pour
-forcer une reprise.
+Le projet réévalue l'état réel au lieu de repartir de zéro.
 
-## 20. Logs
+## 25. Journaux
 
 ```bash
 bash scripts/commands/p5.sh logs
 ```
 
-Pour un diagnostic partageable :
+Chaque exécution crée des journaux persistants sous :
+
+```text
+logs/<UTC>/
+```
+
+## 26. Diagnostic complet
 
 ```bash
 bash scripts/commands/p5.sh diagnostics
@@ -418,19 +452,18 @@ bash scripts/commands/p5.sh diagnostics
 bash scripts/commands/collect-diagnostics.sh --complet --avec-preuves
 ```
 
-Si le problème concerne WSL2, le profil réseau, Docker système ou la workstation,
-retourner dans `Windows_11_Pro_Custom` et exécuter sa validation.
+Le diagnostic doit rester non destructif côté AWS.
 
-## 21. Arbre de diagnostic recommandé
+## 27. Arbre de diagnostic
 
 ```text
 problème
    ↓
-p5.sh inspect
+inspect
    ↓
-p5.sh logs
+logs
    ↓
-p5.sh diagnostics
+diagnostics
    ↓
 troubleshooting.md
    ↓
@@ -439,9 +472,26 @@ corriger uniquement le delta identifié
 relancer la même commande
 ```
 
-# PHASE H — FINALISATION
+Si le problème concerne l'installation WSL2 ou la workstation elle-même, sortez
+du périmètre P5 et utilisez le guide d'environnement dédié.
 
-## 22. Vérifier les livrables
+# PHASE H — PREUVES ET FINALISATION
+
+## 28. Contrôler les preuves
+
+Avant la soutenance :
+
+```bash
+bash scripts/commands/p5.sh diagnostics
+```
+
+Relisez ensuite la matrice :
+
+[Correspondance consignes → implémentation → preuve](02-correspondance-consignes-depot.md).
+
+La présence d'un fichier dans Git ne remplace jamais une preuve AWS réelle.
+
+## 29. Finaliser
 
 ```bash
 bash scripts/commands/p5.sh finalize
@@ -453,10 +503,22 @@ Verdict attendu :
 LIVRABLES PRÊTS POUR RELECTURE FINALE
 ```
 
-Si le verdict n'est pas obtenu, compléter uniquement les preuves/captures
-signalées et relancer `finalize`.
+Si ce verdict n'est pas obtenu, complétez uniquement les éléments signalés puis
+relancez `finalize`.
 
-## 23. Nettoyer AWS
+# PHASE I — NETTOYAGE AWS
+
+## 30. Quand nettoyer ?
+
+Uniquement après :
+
+- collecte des preuves ;
+- validation du dashboard ;
+- test HAProxy terminé ;
+- captures réalisées ;
+- livrables contrôlés.
+
+## 31. Détruire proprement
 
 ```bash
 bash scripts/commands/p5.sh cleanup
@@ -468,43 +530,56 @@ Ordre obligatoire :
 Exercice 3 → Exercice 2 → Exercice 1
 ```
 
-La confirmation forte `DETRUIRE` reste obligatoire.
+La confirmation forte :
 
-Verdict final :
+```text
+DETRUIRE
+```
+
+reste obligatoire.
+
+## 32. Audit final
+
+Verdict attendu :
 
 ```text
 NETTOYAGE AWS COMPLET
 ```
 
-Tant que ce verdict n'est pas obtenu, ne pas supposer que tous les coûts P5 ont
-cessé.
+Tant que ce verdict n'est pas obtenu, ne supposez pas que toutes les ressources
+ou tous les coûts P5 ont disparu.
 
-# PHASE I — BACKUP DE LA WORKSTATION
+# CHECKLIST FINALE
 
-## 24. Sauvegarde hors P5
-
-La sauvegarde Windows/WSL2 est gérée uniquement par la V7 de
-`Windows_11_Pro_Custom` :
-
-```powershell
-.\install.ps1 -BackupAction Create -BackupTargetDrive E:
-.\install.ps1 -BackupAction Verify -BackupTargetDrive E:
-.\install.ps1 -BackupAction RestorePlan -BackupTargetDrive E:
-```
-
-P5 n'exporte plus de VHDX et ne restaure plus de distribution WSL.
-
-## Checklist finale
-
-- [ ] workstation V3 DevOps READY ;
-- [ ] workstation V6 WSL2 PLATFORM READY ;
-- [ ] `bootstrap-ubuntu-server.sh --check-only` conforme ;
+- [ ] environnement de contrôle disponible ;
+- [ ] contrat P5 conforme ;
 - [ ] `p5.sh inspect` relu avant mutation ;
-- [ ] `p5.sh all` exécuté sur AWS réel ;
+- [ ] `GO AWS` obtenu ;
+- [ ] `GO TERRAFORM` obtenu ;
+- [ ] exercice 1 exécuté sur AWS réel ;
 - [ ] idempotence Ansible prouvée ;
-- [ ] logs NGINX collectés ;
-- [ ] OpenSearch et dashboard validés ;
-- [ ] HAProxy panne/reprise validé ;
-- [ ] `p5.sh finalize` sans élément bloquant ;
-- [ ] livrables contrôlés ;
-- [ ] AWS nettoyé avec `NETTOYAGE AWS COMPLET`.
+- [ ] Angular réellement servi par NGINX ;
+- [ ] logs NGINX réels collectés ;
+- [ ] exercice 2 exécuté ;
+- [ ] données OpenSearch vérifiées ;
+- [ ] visualisations/captures Dashboards validées ;
+- [ ] exercice 3 exécuté ;
+- [ ] round-robin vérifié ;
+- [ ] panne et reprise vérifiées ;
+- [ ] diagnostics collectés ;
+- [ ] `p5.sh finalize` conforme ;
+- [ ] livrables relus ;
+- [ ] AWS nettoyé ;
+- [ ] `NETTOYAGE AWS COMPLET` obtenu.
+
+# RÉFÉRENCES
+
+- [Cadre officiel](00-cadre-officiel.md)
+- [Parcours pédagogique](01-parcours-debutant.md)
+- [Architecture et flux](architecture-et-flux.md)
+- [Centre de commande V11](CENTRE_DE_COMMANDE.md)
+- [Préparation AWS](00b-preparation-compte-aws.md)
+- [Convergence et réexécution](convergence-et-reexecution.md)
+- [Troubleshooting](troubleshooting.md)
+- [Validation, preuves et nettoyage](validation-preuves-nettoyage.md)
+- [Installation de l'environnement de contrôle](00-preparation-environnement.md)
