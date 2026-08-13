@@ -11,10 +11,10 @@ new = '''count = text.count(proof_line)
 if count != 3:
     raise SystemExit(f'expected 3 indented proof anchors, got {count}')
 text = text.replace(proof_line, replacement_line)
-proof_line_outer = '    p5_record_step_proof "$key" "$label" "$status" "$rc" "$log_file" "$start_time" "$end_time"\\n'
+proof_line_outer = '\\n    p5_record_step_proof "$key" "$label" "$status" "$rc" "$log_file" "$start_time" "$end_time"\\n'
 replacement_outer = proof_line_outer + '    p5_finalize_step_observability "$key" "$status" "$rc" "$((end_time - start_time))" "$log_file" "$stable_log"\\n'
 if text.count(proof_line_outer) != 1:
-    raise SystemExit('expected one outer proof anchor')
+    raise SystemExit('expected one exact outer proof anchor')
 text = text.replace(proof_line_outer, replacement_outer, 1)
 '''
 if old not in text:
