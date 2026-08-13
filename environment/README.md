@@ -41,7 +41,7 @@ Si le contrôle du socle détecte un écart strictement nécessaire au P5 :
 bash scripts/commands/bootstrap-ubuntu-server.sh
 ```
 
-Le bootstrap est convergent : un composant déjà conforme n'est pas réinstallé inutilement.
+Le bootstrap est convergent : un composant déjà conforme n'est pas réinstallé inutilement. Le contrat d'intégration Windows 11 / WSL2 / Ubuntu 26.04 est également vérifié automatiquement par la CI du dépôt.
 
 ## `versions.env` — contrat logiciel
 
