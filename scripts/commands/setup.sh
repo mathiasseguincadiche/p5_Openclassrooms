@@ -12,8 +12,8 @@ show_help() {
     cat <<'HELP'
 Usage: ./scripts/commands/setup.sh [--check-only]
 
-Contrôle non destructif de la VM, des outils et de l'arborescence du P5.
-Pour installer le socle sur Ubuntu Server 26.04 :
+Contrôle non destructif du runtime Ubuntu/WSL2, des outils et de l'arborescence du P5.
+Pour aligner le socle logiciel requis par le projet :
   ./scripts/commands/bootstrap-ubuntu-server.sh
 
 Ce contrôle valide l'étape 0A. Pour le compte AWS, utilisez ensuite :
@@ -52,7 +52,7 @@ if [[ -r /etc/os-release ]]; then
     if [[ "${ID:-}" == "ubuntu" && "${VERSION_ID:-}" == "$P5_UBUNTU_VERSION_ID" ]]; then
         ok "${PRETTY_NAME:-Ubuntu $P5_UBUNTU_VERSION_ID}"
     else
-        ko "Ubuntu Server $P5_UBUNTU_VERSION_ID attendu ; ${PRETTY_NAME:-inconnu} détecté"
+        ko "Ubuntu $P5_UBUNTU_VERSION_ID attendu ; ${PRETTY_NAME:-inconnu} détecté"
     fi
 else
     ko "/etc/os-release absent"
@@ -88,6 +88,7 @@ required=(
     docs/00-preparation-environnement.md
     docs/00b-preparation-compte-aws.md
     docs/04-audit-non-regression.md
+    docs/05-soutenance.md
     environment/aws-readiness.env.example
     environment/versions.env
     aws/README.md
@@ -112,7 +113,7 @@ required=(
     scripts/commands/test-haproxy-failover.sh
     scripts/tools/convert-nginx-logs.py
     docs/exercices/01-terraform-ansible.md
-    docs/exercices/02-elk-opensearch.md
+    docs/exercices/02-opensearch.md
     docs/exercices/03-haproxy.md
     terraform/exercice-1/main.tf
     terraform/exercice-2/main.tf
