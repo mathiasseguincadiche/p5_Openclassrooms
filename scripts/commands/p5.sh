@@ -23,18 +23,21 @@ Usage:
   bash scripts/commands/p5.sh [commande] [options]
 
 Commandes:
-  menu       afficher le menu interactif (défaut)
-  inspect    observer l'état réel sans aucune mutation
-  prepare    inspecter puis converger VM, AWS, tfvars et garde-fous
-  status     lancer les contrôles de préparation sans mutation
-  ex1        converger Terraform + Ansible + NGINX + Angular puis vérifier
-  ex2        converger OpenSearch, données et vérifier les agrégations
-  ex3        converger HAProxy + 2 backends puis tester panne/reprise
-  all        exécuter prepare + ex1 + ex2 + ex3 + diagnostics
-  finalize   contrôler les livrables et collecter les diagnostics complets
-  cleanup    détruire AWS dans l'ordre prévu puis auditer le nettoyage
-  logs       afficher les journaux disponibles
-  help       afficher cette aide
+  menu         afficher le Control Center interactif (défaut)
+  inspect      observer l'état réel sans aucune mutation
+  prepare      inspecter puis converger VM, AWS, tfvars et garde-fous
+  status       lancer les contrôles de préparation sans mutation
+  ex1          converger Terraform + Ansible + NGINX + Angular puis vérifier
+  ex2          converger OpenSearch, données et vérifier les agrégations
+  ex3          converger HAProxy + 2 backends puis tester panne/reprise
+  all          exécuter prepare + ex1 + ex2 + ex3 + diagnostics
+  diagnostics  collecter diagnostics et structure des preuves/livrables
+  finalize     contrôler les livrables et collecter les diagnostics complets
+  cleanup      détruire AWS dans l'ordre prévu puis auditer le nettoyage
+  logs         afficher les journaux disponibles
+  guide        expliquer quel parcours choisir selon votre situation
+  docs         afficher la carte de la documentation P5
+  help         afficher cette aide
 
 Options globales:
   --yes              confirmer automatiquement les mutations automatisables
@@ -54,6 +57,8 @@ Exemples:
   bash scripts/commands/p5.sh all
   bash scripts/commands/p5.sh all --yes
   bash scripts/commands/p5.sh status
+  bash scripts/commands/p5.sh diagnostics
+  bash scripts/commands/p5.sh docs
   bash scripts/commands/p5.sh cleanup
 
 Logs:
@@ -76,7 +81,7 @@ while (($# > 0)); do
             COMMAND=help
             shift
             ;;
-        menu|inspect|prepare|status|ex1|ex2|ex3|all|finalize|cleanup|logs)
+        menu|inspect|prepare|status|ex1|ex2|ex3|all|diagnostics|finalize|cleanup|logs|guide|docs)
             if [[ -n "$COMMAND" ]]; then
                 p5_error "Plusieurs commandes fournies : $COMMAND et $1"
                 exit 2
@@ -591,40 +596,241 @@ show_logs() {
         | sort -r | sed -n '1,80p'
 }
 
+show_docs() {
+    p5_header 'CARTE DE LA DOCUMENTATION P5'
+    cat <<'DOCS'
+JE DÉBUTE
+  docs/01-parcours-debutant.md
+  → comprendre le parcours, les étapes et les règles essentielles.
+
+JE VEUX EXÉCUTER LE PROJET
+  docs/RUNBOOK_EXECUTION_GUIDEE.md
+  → procédure opératoire A → Z avec commandes et verdicts attendus.
+
+JE VEUX UTILISER LE MENU
+  docs/CENTRE_DE_COMMANDE.md
+  → explication de chaque option, risques, mutations et commandes CLI.
+
+JE VEUX COMPRENDRE L'ARCHITECTURE
+  docs/architecture-et-flux.md
+
+JE SUIS BLOQUÉ
+  docs/troubleshooting.md
+  puis : bash scripts/commands/p5.sh inspect
+         bash scripts/commands/p5.sh logs
+         bash scripts/commands/p5.sh diagnostics
+
+JE PRÉPARE LA SOUTENANCE
+  docs/validation-preuves-nettoyage.md
+  docs/livrables/README.md
+
+PORTAIL COMPLET
+  docs/README.md
+DOCS
+}
+
+show_guidance() {
+    while true; do
+        p5_header 'QUE DOIS-JE FAIRE MAINTENANT ?'
+        cat <<'GUIDE'
+  1  C'est ma première exécution du projet
+  2  J'ai déjà commencé et je veux reprendre
+  3  Je veux seulement vérifier mon environnement
+  4  Je veux travailler sur l'exercice 1
+  5  Je veux travailler sur l'exercice 2
+  6  Je veux travailler sur l'exercice 3
+  7  Je prépare mes preuves / ma soutenance
+  8  Quelque chose ne fonctionne pas
+  9  Je veux fermer le lab et nettoyer AWS
+  0  Retour au Control Center
+GUIDE
+        printf '\nVotre situation : '
+        local choice
+        read -r choice
+        case "$choice" in
+            1)
+                cat <<'TXT'
+
+Parcours recommandé :
+  1. bash scripts/commands/p5.sh inspect
+  2. bash scripts/commands/p5.sh prepare
+  3. bash scripts/commands/p5.sh status
+  4. bash scripts/commands/p5.sh all
+
+Pour un parcours guidé complet, `all` conserve les confirmations de sécurité.
+TXT
+                ;;
+            2)
+                cat <<'TXT'
+
+Reprise recommandée :
+  1. bash scripts/commands/p5.sh inspect
+  2. bash scripts/commands/p5.sh all
+
+Ne supprimez jamais un terraform.tfstate pour forcer une reprise. Terraform
+recalcule le delta et l'orchestrateur réutilise l'état existant.
+TXT
+                ;;
+            3)
+                cat <<'TXT'
+
+Contrôles sans mutation AWS :
+  bash scripts/commands/p5.sh inspect
+  bash scripts/commands/p5.sh status
+TXT
+                ;;
+            4) printf '\nCommande : bash scripts/commands/p5.sh ex1\n' ;;
+            5) printf '\nCommande : bash scripts/commands/p5.sh ex2\n' ;;
+            6) printf '\nCommande : bash scripts/commands/p5.sh ex3\n' ;;
+            7)
+                cat <<'TXT'
+
+Préparation soutenance :
+  bash scripts/commands/p5.sh finalize
+
+Puis consulter :
+  docs/validation-preuves-nettoyage.md
+  docs/livrables/README.md
+TXT
+                ;;
+            8)
+                cat <<'TXT'
+
+Diagnostic recommandé, sans destruction AWS :
+  bash scripts/commands/p5.sh inspect
+  bash scripts/commands/p5.sh logs
+  bash scripts/commands/p5.sh diagnostics
+
+Puis consulter : docs/troubleshooting.md
+TXT
+                ;;
+            9)
+                cat <<'TXT'
+
+Nettoyage final :
+  bash scripts/commands/p5.sh cleanup
+
+Cette commande est destructive pour les ressources AWS suivies par Terraform.
+La confirmation forte `DETRUIRE` reste obligatoire dans le moteur de nettoyage.
+TXT
+                ;;
+            0) return 0 ;;
+            *) p5_warn 'Choix inconnu.' ;;
+        esac
+        printf '\nAppuyez sur Entrée pour continuer...'
+        read -r _
+    done
+}
+
+menu_action_profile() {
+    local level="$1"
+    local local_mutation="$2"
+    local aws_mutation="$3"
+    local cost="$4"
+    local command="$5"
+    p5_header "ACTION — $level"
+    printf 'Mutation locale : %s\n' "$local_mutation"
+    printf 'Mutation AWS    : %s\n' "$aws_mutation"
+    printf 'Coût AWS        : %s\n' "$cost"
+    printf 'Commande CLI    : %s\n' "$command"
+}
+
+menu_execute() {
+    local title="$1"
+    local level="$2"
+    local local_mutation="$3"
+    local aws_mutation="$4"
+    local cost="$5"
+    local command="$6"
+    local next_step="$7"
+    shift 7
+
+    menu_action_profile "$level" "$local_mutation" "$aws_mutation" "$cost" "$command"
+    if "$@"; then
+        p5_header 'RÉSULTAT'
+        p5_ok "$title terminé sans erreur signalée."
+        p5_action "Étape recommandée : $next_step"
+    else
+        local rc=$?
+        p5_header 'RÉSULTAT'
+        p5_warn "$title s'est arrêté avec le code $rc."
+        p5_action 'Consultez les logs, puis relancez inspect avant toute correction manuelle.'
+    fi
+}
+
 run_menu() {
     while true; do
-        p5_header 'CENTRE DE COMMANDE'
+        p5_header 'P5 OPENCLASSROOMS — CONTROL CENTER V11'
         cat <<'MENU'
-  1  Inspecter l'état actuel — aucune mutation
-  2  Préparer / converger le lab
-  3  Exercice 1 — Terraform / Ansible / Angular
-  4  Exercice 2 — OpenSearch / dashboard
-  5  Exercice 3 — HAProxy
-  6  Tout exécuter de A à Z
-  7  Statut / contrôles sans mutation
-  8  Finaliser les livrables
-  9  Afficher les logs
-  0  Nettoyer AWS
-  q  Quitter
+ DÉMARRER / REPRENDRE
+ ------------------------------------------------------------
+  1  Inspecter ma situation actuelle
+  2  Préparer / configurer le lab P5
+  3  Vérifier si je suis prêt à déployer
+
+ EXERCICES
+ ------------------------------------------------------------
+  4  Exercice 1 — Terraform + Ansible + Angular/NGINX
+  5  Exercice 2 — Amazon OpenSearch + logs
+  6  Exercice 3 — HAProxy + haute disponibilité
+
+ PARCOURS COMPLET
+ ------------------------------------------------------------
+  7  Exécuter le projet complet de A à Z
+  8  Reprendre un projet déjà commencé
+
+ VALIDATION / SOUTENANCE
+ ------------------------------------------------------------
+  9  Vérifier les preuves et livrables
+ 10  Diagnostic complet
+ 11  Consulter les journaux
+
+ AIDE
+ ------------------------------------------------------------
+ 12  Que dois-je faire maintenant ?
+ 13  Afficher la documentation / Runbook
+ 14  Afficher l'aide des commandes
+
+ MAINTENANCE
+ ------------------------------------------------------------
+ 15  Nettoyer les ressources AWS
+
+  0  Quitter
 MENU
         printf '\nVotre choix : '
         local choice
         read -r choice
-        case "${choice,,}" in
-            1) run_inspect ;;
-            2) run_prepare ;;
-            3) run_ex1 ;;
-            4) run_ex2 ;;
-            5) run_ex3 ;;
-            6) run_all ;;
-            7) run_status ;;
-            8) run_finalize ;;
-            9) show_logs ;;
-            0) run_cleanup ;;
-            q|quit|exit) return 0 ;;
+        case "$choice" in
+            1) menu_execute 'Inspection' 'OBSERVATION' 'NON' 'NON' 'NON' \
+                'bash scripts/commands/p5.sh inspect' 'Préparer ou vérifier le lab.' run_inspect ;;
+            2) menu_execute 'Préparation du lab' 'CONVERGENCE' 'OUI, si delta' 'OUI, budget/config si delta' 'POSSIBLE' \
+                'bash scripts/commands/p5.sh prepare' 'Lancer status puis l’exercice 1.' run_prepare ;;
+            3) menu_execute 'Contrôle de préparation' 'OBSERVATION' 'NON' 'NON' 'NON' \
+                'bash scripts/commands/p5.sh status' 'Corriger uniquement les écarts signalés, ou lancer ex1.' run_status ;;
+            4) menu_execute 'Exercice 1' 'DÉPLOIEMENT' 'OUI' 'OUI' 'OUI' \
+                'bash scripts/commands/p5.sh ex1' 'Passer à l’exercice 2.' run_ex1 ;;
+            5) menu_execute 'Exercice 2' 'DÉPLOIEMENT' 'OUI' 'OUI' 'OUI' \
+                'bash scripts/commands/p5.sh ex2' 'Passer à l’exercice 3.' run_ex2 ;;
+            6) menu_execute 'Exercice 3' 'DÉPLOIEMENT / TEST DE RÉSILIENCE' 'OUI' 'OUI' 'OUI' \
+                'bash scripts/commands/p5.sh ex3' 'Finaliser les preuves et livrables.' run_ex3 ;;
+            7) menu_execute 'Parcours complet' 'DÉPLOIEMENT COMPLET' 'OUI' 'OUI' 'OUI' \
+                'bash scripts/commands/p5.sh all' 'Finaliser les preuves puis nettoyer AWS après la soutenance.' run_all ;;
+            8) menu_execute 'Reprise du projet' 'REPRISE CONVERGENTE' 'OUI, si delta' 'OUI, si delta' 'POSSIBLE' \
+                'bash scripts/commands/p5.sh all' 'Poursuivre jusqu’au dernier exercice requis.' run_all ;;
+            9) menu_execute 'Finalisation' 'VALIDATION / PREUVES' 'OUI, fichiers de preuves' 'NON' 'NON' \
+                'bash scripts/commands/p5.sh finalize' 'Relire les livrables et préparer la soutenance.' run_finalize ;;
+            10) menu_execute 'Diagnostic complet' 'DIAGNOSTIC' 'OUI, journaux/preuves' 'NON' 'NON' \
+                'bash scripts/commands/p5.sh diagnostics' 'Consulter troubleshooting.md si un KO subsiste.' run_diagnostics ;;
+            11) show_logs ;;
+            12) show_guidance ;;
+            13) show_docs ;;
+            14) show_help ;;
+            15) menu_execute 'Nettoyage AWS' 'DESTRUCTION' 'OUI' 'OUI — DESTRUCTIF' 'ARRÊT DES COÛTS' \
+                'bash scripts/commands/p5.sh cleanup' 'Vérifier le verdict NETTOYAGE AWS COMPLET.' run_cleanup ;;
+            0|q|quit|exit) return 0 ;;
             *) p5_warn 'Choix inconnu.' ;;
         esac
-        printf '\nAppuyez sur Entrée pour revenir au menu...'
+        printf '\nAppuyez sur Entrée pour revenir au Control Center...'
         read -r _
     done
 }
@@ -638,9 +844,12 @@ case "$COMMAND" in
     ex2) run_ex2 ;;
     ex3) run_ex3 ;;
     all) run_all ;;
+    diagnostics) run_diagnostics ;;
     finalize) run_finalize ;;
     cleanup) run_cleanup ;;
     logs) show_logs ;;
+    guide) show_guidance ;;
+    docs) show_docs ;;
 esac
 
 p5_latest_log_hint

@@ -12,6 +12,31 @@ Angular/NGINX, Amazon OpenSearch et HAProxy.
 > **Périmètre évalué : 100 % AWS.** La workstation Windows/WSL2 est un poste de
 > contrôle local ; les ressources évaluées sont créées dans AWS.
 
+## Démarrage rapide — quel document ouvrir ?
+
+Le dépôt conserve plusieurs documents parce qu'ils répondent à des besoins
+différents. Pour un débutant, utiliser cette règle simple :
+
+| Je veux... | Commencer par |
+| --- | --- |
+| comprendre le projet | [Parcours débutant](docs/01-parcours-debutant.md) |
+| lancer le projet | [Runbook A → Z](docs/RUNBOOK_EXECUTION_GUIDEE.md) |
+| utiliser le menu | [Centre de commande V11](docs/CENTRE_DE_COMMANDE.md) |
+| comprendre l'architecture | [Architecture et flux](docs/architecture-et-flux.md) |
+| résoudre un problème | [Troubleshooting](docs/troubleshooting.md) |
+| préparer les preuves | [Validation, preuves et nettoyage](docs/validation-preuves-nettoyage.md) |
+| parcourir toute la documentation | [Portail documentaire](docs/README.md) |
+
+Le point d'entrée opérationnel reste unique :
+
+```bash
+bash scripts/commands/p5.sh
+```
+
+Le **Control Center V11** est une amélioration ergonomique du menu existant. Il
+ne remplace ni Terraform, ni Ansible, ni les scripts P5 et n'introduit pas de
+deuxième logique d'orchestration.
+
 ## Workstation utilisée
 
 Le P5 ne construit plus sa propre plateforme WSL2. Il consomme la workstation
@@ -135,6 +160,18 @@ les composants nécessaires au P5.
 
 ## Démarrage recommandé
 
+Pour ouvrir le menu interactif :
+
+```bash
+bash scripts/commands/p5.sh
+```
+
+Le Control Center V11 distingue clairement observation, convergence, déploiement,
+diagnostic, finalisation, aide et destruction. Avant une action opérationnelle,
+il rappelle si elle peut modifier la machine, AWS ou générer des coûts.
+
+Pour démarrer directement en CLI :
+
 ```bash
 bash scripts/commands/p5.sh inspect
 bash scripts/commands/p5.sh all
@@ -142,12 +179,6 @@ bash scripts/commands/p5.sh all
 
 `inspect` observe l'état actuel sans mutation. `all` exécute le parcours
 technique complet sans détruire automatiquement les ressources AWS.
-
-Pour le menu interactif :
-
-```bash
-bash scripts/commands/p5.sh
-```
 
 Pour automatiser uniquement les confirmations automatisables :
 
@@ -162,6 +193,7 @@ OpenSearch Dashboards ni la confirmation `DETRUIRE`.
 
 | Commande | Rôle |
 | --- | --- |
+| `p5.sh` / `p5.sh menu` | Control Center interactif V11 |
 | `p5.sh inspect` | observation sans mutation |
 | `p5.sh prepare` | convergence P5 + AWS + budget + tfvars |
 | `p5.sh status` | contrôles de préparation |
@@ -169,9 +201,15 @@ OpenSearch Dashboards ni la confirmation `DETRUIRE`.
 | `p5.sh ex2` | Amazon OpenSearch et données |
 | `p5.sh ex3` | HAProxy, round-robin, panne et reprise |
 | `p5.sh all` | parcours technique complet |
+| `p5.sh diagnostics` | diagnostics et structure des preuves |
 | `p5.sh finalize` | validation stricte des preuves/livrables |
 | `p5.sh logs` | journaux d'exécution |
+| `p5.sh guide` | aide au choix du parcours |
+| `p5.sh docs` | carte de la documentation |
 | `p5.sh cleanup` | destruction 3 → 2 → 1 puis audit AWS |
+
+Le détail complet de chaque option est dans
+[docs/CENTRE_DE_COMMANDE.md](docs/CENTRE_DE_COMMANDE.md).
 
 ## Architecture AWS
 
@@ -293,11 +331,24 @@ Puis :
 
 ```bash
 cd ~/labs/p5_Openclassrooms
+bash scripts/commands/p5.sh inspect
 bash scripts/commands/p5.sh all
 ```
 
 Ne supprimez jamais un `terraform.tfstate` pour forcer une reprise tant que les
 ressources AWS associées existent.
+
+## Diagnostic
+
+Le parcours recommandé avant toute correction manuelle est :
+
+```bash
+bash scripts/commands/p5.sh inspect
+bash scripts/commands/p5.sh logs
+bash scripts/commands/p5.sh diagnostics
+```
+
+Puis consulter [Troubleshooting](docs/troubleshooting.md).
 
 ## Sauvegarde de la workstation
 
@@ -325,10 +376,11 @@ La V7 protège Windows et exporte Ubuntu en VHDX avec SHA-256.
 | Besoin | Document |
 | --- | --- |
 | Portail | [docs/README.md](docs/README.md) |
+| Control Center V11 | [docs/CENTRE_DE_COMMANDE.md](docs/CENTRE_DE_COMMANDE.md) |
 | Préparation | [docs/00-preparation-environnement.md](docs/00-preparation-environnement.md) |
 | Contrat WSL2 | [environment/wsl2/README.md](environment/wsl2/README.md) |
 | Runbook A → Z | [docs/RUNBOOK_EXECUTION_GUIDEE.md](docs/RUNBOOK_EXECUTION_GUIDEE.md) |
-| Parcours | [docs/01-parcours-debutant.md](docs/01-parcours-debutant.md) |
+| Parcours débutant | [docs/01-parcours-debutant.md](docs/01-parcours-debutant.md) |
 | Architecture | [docs/architecture-et-flux.md](docs/architecture-et-flux.md) |
 | Convergence | [docs/convergence-et-reexecution.md](docs/convergence-et-reexecution.md) |
 | Troubleshooting | [docs/troubleshooting.md](docs/troubleshooting.md) |
