@@ -1,223 +1,347 @@
 # Contrat des informations requises
 
-Le projet P5 applique une règle stricte lorsqu'une information n'est pas disponible.
+## Objectif
+
+Le P5 doit savoir distinguer trois catégories :
+
+1. information **détectable automatiquement** ;
+2. information **fournie par l'opérateur** ;
+3. information **autoritaire issue de Terraform/AWS**.
+
+Une valeur ne doit jamais être inventée simplement pour permettre à l'orchestrateur de continuer.
+
+## Principe
 
 ```text
-DÉTECTER / LIRE LA SOURCE RÉELLE
-            ↓
-      valeur disponible ?
-        ┌───────┴───────┐
-       oui             non
-        │               │
-   VALIDER LE       CLASSER LA
-     FORMAT          VALEUR
-                        │
-             ┌──────────┴──────────┐
-             │                     │
-      valeur opérateur       valeur authoritative
-             │                     │
-       EXPLIQUER +             NE PAS INVENTER
-       DEMANDER              BLOQUER + EXPLIQUER
-             │                     │
-       VALIDER +               RÉTABLIR AWS /
-       ENREGISTRER             TERRAFORM / SOURCE
+peut être détecté ?
+  ├── oui → détecter et valider
+  └── non → expliquer le besoin et demander
+
+provient de Terraform/AWS ?
+  └── absent/invalide → état INCONNU + arrêt
 ```
 
-## Pourquoi ce contrat existe
-
-Un script ne doit jamais :
-
-- supposer qu'une valeur d'exemple est réelle ;
-- transformer une détection impossible en une fausse valeur ;
-- afficher uniquement « invalide ou absent » sans expliquer quoi faire ;
-- demander à l'opérateur d'inventer une valeur qui doit venir d'AWS ou Terraform ;
-- continuer silencieusement avec une preuve incomplète.
-
-## 1. Valeurs que l'opérateur peut fournir
-
-Lorsqu'une valeur dépend réellement de l'opérateur et que la détection automatique
-échoue, le terminal doit afficher :
-
-1. **le nom de l'information** ;
-2. **pourquoi elle est nécessaire** ;
-3. **le format attendu** ;
-4. **un exemple** ;
-5. **comment la transmettre** dans le terminal ou via une option CLI ;
-6. **une validation du format** avant utilisation.
-
-Exemple attendu :
-
-```text
-P5  INFORMATION REQUISE — IPv4 publique actuelle
-
-[INFO] Elle sert à limiter SSH et OpenSearch à votre connexion actuelle.
-       Format attendu : IPv4 seule, sans /32
-       Exemple        : 198.51.100.42
-       Transmission   : saisissez-la ici ou utilisez --public-ip 198.51.100.42
-
-IPv4 publique actuelle :
-```
-
-Le script ajoute ensuite `/32`, valide le CIDR et enregistre la valeur dans
-`environment/aws-readiness.env`.
-
-### Valeurs concernées
-
-| Information | Détection normale | Fallback opérateur |
-| --- | --- | --- |
-| IPv4 publique | `checkip.amazonaws.com` | saisie IPv4 ou `--public-ip` |
-| e-mail budget | configuration locale | saisie e-mail ou `--budget-email` |
-| clé SSH existante | configuration/fichier | chemin ou `--ssh-key` |
-| profil AWS existant | `aws configure list-profiles` | sélection/saisie du nom exact |
-| URL Angular/NGINX de diagnostic | output Terraform | `--url` ou saisie manuelle |
-| hôte NGINX de diagnostic | output Terraform | `--host` ou saisie manuelle |
-| endpoint OpenSearch de diagnostic | output Terraform | `--endpoint` ou saisie manuelle |
-| URL HAProxy de diagnostic | output Terraform | `--url` ou saisie manuelle |
-| backend HAProxy de diagnostic | output Terraform | `--backend-host` ou saisie manuelle |
-
-Les overrides manuels servent principalement au **diagnostic**. Le parcours normal
-`p5.sh all` continue de privilégier les valeurs provenant de Terraform.
-
-## 2. Valeurs qui ne doivent pas être inventées
-
-Certaines informations sont des preuves de l'état réel. Une saisie manuelle ne
-constituerait pas une preuve fiable.
-
-### Compte et identité AWS
-
-Le compte actif doit venir de :
-
-```bash
-aws sts get-caller-identity
-```
-
-Si STS ne répond pas, le projet ne demande pas « quel est votre Account ID ? ».
-Il indique que l'identité n'est pas vérifiable et demande de rétablir la session.
-
-### Credentials temporaires
-
-La présence de `SessionToken` et `Expiration` doit être vérifiée par AWS CLI.
-Elle ne peut pas être confirmée par une simple saisie utilisateur.
-
-### Outputs Terraform d'infrastructure
-
-Pour le parcours normal, les adresses et endpoints d'infrastructure doivent venir
-de Terraform :
-
-```text
-web_public_ip
-web_url
-opensearch_endpoint
-opensearch_dashboards_endpoint
-haproxy_url
-hello_1_public_ip
-hello_2_public_ip
-```
-
-Si un output nécessaire à une étape orchestrée n'est pas disponible, le bon
-comportement est :
-
-```text
-[INCONNU] sortie Terraform ...
-[ACTION REQUISE] relancer l'exercice concerné / consulter le log tf-ex*-*
-```
-
-et non une valeur inventée.
-
-### Nettoyage AWS
-
-L'audit final doit vérifier le **compte actif réel** et interroger AWS. Si le
-compte ou la session n'est pas vérifiable, le nettoyage n'est pas déclaré complet.
-
-## 3. Observation et exécution ne se comportent pas de la même façon
-
-### `inspect`, `status`, `--check`
-
-Ces commandes sont non mutantes et non interactives par principe.
-
-Si une information manque :
-
-```text
-INCONNU / KO bloquant
-+ raison
-+ action exacte pour la renseigner ou rétablir la source
-```
-
-Elles ne doivent pas ouvrir une collecte interactive.
-
-### `prepare`, `all` et scripts de diagnostic interactifs
-
-Ces commandes peuvent demander une valeur opérateur lorsqu'elle est réellement
-nécessaire et impossible à détecter.
-
-Le collecteur principal reste :
-
-```bash
-bash scripts/commands/p5.sh prepare
-```
-
-Le parcours complet l'exécute automatiquement :
-
-```bash
-bash scripts/commands/p5.sh all
-```
-
-## 4. Source de vérité locale
-
-Les valeurs opérateur persistantes sont centralisées dans :
+## Fichier local principal
 
 ```text
 environment/aws-readiness.env
 ```
 
-Ce fichier :
+Il est créé à partir de :
 
-- est ignoré par Git ;
-- est protégé en mode `600` ;
-- ne contient aucune clé AWS ;
-- alimente les trois `terraform.tfvars` ;
-- évite de redemander une valeur déjà connue et encore valide.
-
-## 5. Réexécution
-
-Une valeur déjà connue n'est pas redemandée sans raison.
-
-Exemples :
-
-- session AWS valide → réutilisée ;
-- e-mail budget valide → conservé ;
-- clé SSH présente → conservée ;
-- tfvars cohérents → non réécrits ;
-- output Terraform disponible → relu automatiquement.
-
-En revanche, une valeur détectable qui a changé, comme l'IPv4 publique, est
-réévaluée afin de refléter la réalité actuelle.
-
-## 6. Contrat CI
-
-Le test suivant protège ce comportement :
-
-```bash
-bash scripts/tests/test-operator-input-contract.sh
+```text
+environment/aws-readiness.env.example
 ```
 
-Il vérifie notamment :
+Il est ignoré par Git et ne doit contenir aucune clé secrète AWS.
 
-- les fonctions communes `p5_unknown`, `p5_prompt_value` et
-  `p5_authoritative_unknown` ;
-- les validateurs e-mail, IPv4, CIDR et URL ;
-- l'affichage `quoi / pourquoi / format / exemple / transmission` ;
-- les fallbacks `configure-lab.sh` ;
-- les overrides de diagnostic Angular, NGINX, OpenSearch et HAProxy ;
-- la protection des outputs Terraform utilisés par l'inventaire Ansible ;
-- la séparation entre observation non mutante et collecte interactive.
+## Paramètres AWS
 
-## Règle finale
+### `AWS_PROFILE`
 
-> **Si le projet peut connaître une valeur : il la détecte et la vérifie.**
->
-> **S'il ne peut pas connaître une valeur que l'opérateur est légitime à fournir :
-> il explique exactement ce qu'il attend puis la demande et la valide.**
->
-> **Si la valeur doit obligatoirement provenir d'AWS ou Terraform : il ne l'invente
-> jamais ; il bloque et explique comment rétablir la source réelle.**
+Rôle : profil AWS utilisé par le lab.
+
+Référence du modèle :
+
+```text
+p5-lab
+```
+
+Vérification :
+
+```bash
+aws sts get-caller-identity --profile p5-lab
+```
+
+### `AWS_REGION`
+
+Rôle : région AWS utilisée par les trois modules Terraform.
+
+Référence :
+
+```text
+us-east-1
+```
+
+La région doit rester cohérente avec les ressources, quotas et AMI.
+
+### `P5_AWS_AUTH_MODE`
+
+Rôle : stratégie d'authentification temporaire.
+
+Référence :
+
+```text
+auto
+```
+
+Le projet privilégie les sessions temporaires plutôt que les clés statiques longue durée.
+
+## Identité et compte
+
+### `P5_EXPECTED_ACCOUNT_ID`
+
+Cette valeur doit provenir de :
+
+```bash
+aws sts get-caller-identity
+```
+
+Elle est ensuite injectée dans :
+
+```text
+expected_aws_account_id
+```
+
+pour les trois modules Terraform.
+
+Le provider utilise `allowed_account_ids` afin de refuser un autre compte.
+
+## Réseau d'administration
+
+### `P5_PUBLIC_IP_CIDR`
+
+Format obligatoire :
+
+```text
+IPv4/32
+```
+
+Exemple :
+
+```text
+198.51.100.42/32
+```
+
+Utilisation :
+
+- SSH exercices 1 et 3 ;
+- accès OpenSearch.
+
+Si la détection automatique échoue, le moteur doit expliquer le format et demander l'IPv4 réelle.
+
+## EC2
+
+### `P5_AMI_ID`
+
+Peut rester vide.
+
+Si vide, Terraform sélectionne l'AMI Ubuntu 24.04 LTS selon les filtres du module.
+
+Une valeur explicite ne doit être fournie que si l'opérateur comprend qu'une AMI est régionale et architecture-dépendante.
+
+### `P5_EC2_INSTANCE_TYPE`
+
+Référence :
+
+```text
+t3.micro
+```
+
+Cette valeur est configurable afin de tenir compte du quota et des variations des consignes.
+
+### `P5_KEY_NAME`
+
+Nom de la paire de clés EC2 :
+
+```text
+p5-key
+```
+
+### `P5_SSH_KEY_PATH`
+
+Chemin local de la clé privée :
+
+```text
+~/.ssh/p5-key
+```
+
+### `P5_SSH_PUBLIC_KEY_PATH`
+
+Clé publique injectée dans Terraform :
+
+```text
+~/.ssh/p5-key.pub
+```
+
+La clé privée est une donnée locale sensible et ne doit jamais être versionnée.
+
+## OpenSearch
+
+### `P5_OPENSEARCH_INSTANCE_TYPE`
+
+Référence :
+
+```text
+t3.small.search
+```
+
+### `P5_OPENSEARCH_ENGINE`
+
+Référence :
+
+```text
+OpenSearch_2.19
+```
+
+### `P5_OPENSEARCH_DOMAIN`
+
+Référence :
+
+```text
+p5-opensearch
+```
+
+### `P5_OPENSEARCH_VOLUME_SIZE_GB`
+
+Référence :
+
+```text
+10
+```
+
+Ces valeurs sont synchronisées vers les variables Terraform de l'exercice 2.
+
+## Quota
+
+### `P5_REQUIRED_STANDARD_VCPUS`
+
+Référence :
+
+```text
+8
+```
+
+Elle représente le besoin potentiel lorsque l'EC2 de l'exercice 1 et les trois EC2 de l'exercice 3 coexistent avec des types `t3.micro`.
+
+Ce contrôle réduit les échecs tardifs liés aux quotas.
+
+## Budget
+
+### `P5_BUDGET_NAME`
+
+```text
+p5-lab-monthly
+```
+
+### `P5_BUDGET_LIMIT_USD`
+
+```text
+20
+```
+
+### `P5_BUDGET_EMAIL`
+
+Doit devenir une adresse réelle et valide.
+
+Le budget ne bloque pas automatiquement la consommation. Il sert d'alerte.
+
+## Confirmations de sécurité
+
+Le modèle contient plusieurs valeurs `no` qui ne doivent passer à `yes` qu'après vérification réelle :
+
+```text
+P5_ROOT_MFA_CONFIRMED
+P5_ROOT_ACCESS_KEYS_ABSENT_CONFIRMED
+P5_IAM_POLICY_ATTACHED_CONFIRMED
+P5_BILLING_CONTACTS_CONFIRMED
+```
+
+Ces éléments ne sont pas déduits de façon fiable par l'orchestrateur. La confirmation humaine est donc conservée.
+
+## Synchronisation vers Terraform
+
+La commande :
+
+```bash
+bash scripts/commands/sync-terraform-tfvars.sh --check
+```
+
+compare la configuration locale aux trois `terraform.tfvars`.
+
+La convergence utilise :
+
+```bash
+bash scripts/commands/sync-terraform-tfvars.sh --apply
+```
+
+Les vrais `tfvars` :
+
+```text
+terraform/exercice-1/terraform.tfvars
+terraform/exercice-2/terraform.tfvars
+terraform/exercice-3/terraform.tfvars
+```
+
+restent hors Git.
+
+## Informations autoritaires produites par Terraform
+
+Certaines valeurs ne doivent jamais être demandées à l'utilisateur si Terraform est censé les produire.
+
+### Exercice 1
+
+```text
+web_public_ip
+web_url
+```
+
+### Exercice 2
+
+```text
+opensearch_endpoint
+opensearch_dashboards_endpoint
+```
+
+### Exercice 3
+
+```text
+haproxy_url
+hello_1_public_ip
+```
+
+Le runtime utilise une fonction de lecture/validation des outputs. Si l'output est absent ou invalide, il produit un état **INCONNU** et indique comment réparer la source.
+
+## Pourquoi cette règle est importante
+
+Mauvais comportement :
+
+```text
+output Terraform absent
+→ prendre une IP vue dans la console
+→ continuer silencieusement
+```
+
+Bon comportement :
+
+```text
+output Terraform absent
+→ arrêter
+→ vérifier state/module
+→ réparer Terraform
+→ relire l'output
+```
+
+C'est ce qui garantit que les preuves et les actions suivantes ciblent les ressources réellement gérées par le projet.
+
+## Données interdites dans ce contrat
+
+Ne jamais stocker dans `aws-readiness.env` ou dans la documentation :
+
+- AWS secret access key ;
+- session token ;
+- clé SSH privée ;
+- token GitHub ;
+- bearer token ;
+- state Terraform ;
+- credentials exportés.
+
+## Commande normale
+
+L'opérateur n'a pas besoin d'éditer manuellement toutes ces valeurs. Le parcours recommandé est :
+
+```bash
+bash scripts/commands/p5.sh prepare
+```
+
+Le configurateur doit expliquer ce qu'il demande, valider le format et réutiliser ce qui est déjà conforme.
