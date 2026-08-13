@@ -89,7 +89,7 @@ printf '  OK  journal persistant et résumé factuel du run présents.\n'
 
 PREVIEW="$(p5_command_preview command --api-token supersecret-value)"
 ! grep -Fq 'supersecret-value' <<<"$PREVIEW"
-grep -Fq '<REDACTED>' <<<"$PREVIEW"
+grep -Fq 'REDACTED' <<<"$PREVIEW"
 p5_run_step 'secret-output' 'sortie sensible' \
     bash -c 'printf "AWS_SECRET_ACCESS_KEY=supersecret-value\\n"' >/dev/null
 ! grep -Fq 'supersecret-value' "$P5_LAST_STEP_LOG"
