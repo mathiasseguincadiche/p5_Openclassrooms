@@ -1,0 +1,20 @@
+name: TEMP lockfile refresh
+on:
+  push:
+    branches:
+      - fix/angular-nanoid-audit
+permissions:
+  contents: read
+jobs:
+  refresh:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22.22.0
+      - run: npm install --package-lock-only --prefix application/angular --no-audit --no-fund
+      - uses: actions/upload-artifact@v4
+        with:
+          name: angular-lock
+          path: application/angular/package-lock.json
