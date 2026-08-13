@@ -127,6 +127,8 @@ bash scripts/commands/p5.sh prepare
 bash scripts/commands/p5.sh status
 ```
 
+Le précontrôle est considéré comme valide lorsqu'il se termine par le verdict **`GO TERRAFORM`**. Ce verdict autorise à passer à la lecture du plan ; il ne dispense jamais de vérifier le delta et les coûts avant un `apply`.
+
 Détails : [Installation et environnement de contrôle](docs/00-preparation-environnement.md) et [Préparation du compte AWS](docs/00b-preparation-compte-aws.md).
 
 ![Préparation de l'environnement](docs/schemas/etape-0.svg)
