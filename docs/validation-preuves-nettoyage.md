@@ -1,304 +1,248 @@
-# Validation, preuves, publication et nettoyage
+# Validation, preuves, livrables et nettoyage AWS
 
-Ce document décrit le cycle de validation du projet, depuis les contrôles locaux
-jusqu'à la fermeture complète du lab AWS.
+## Objectif
 
-Le principe central est de ne pas confondre :
+Une réalisation technique n'est pas terminée lorsque « ça marche une fois ». Il faut :
 
-1. un dépôt cohérent ;
-2. une VM prête ;
-3. un compte AWS prêt ;
-4. un exercice réellement exécuté ;
-5. des preuves réellement capturées ;
-6. un nettoyage AWS réellement terminé.
+1. vérifier le résultat ;
+2. conserver les bonnes preuves ;
+3. transformer les preuves brutes en livrables compréhensibles ;
+4. vérifier l'absence de secrets ;
+5. détruire les ressources AWS ;
+6. auditer le nettoyage.
 
-## Parcours recommandé
+## 1. Trois niveaux de validation
 
-Les commandes principales sont :
-
-```bash
-bash scripts/commands/p5.sh status --full-validation
-bash scripts/commands/p5.sh all
-bash scripts/commands/p5.sh finalize
-bash scripts/commands/p5.sh cleanup
-```
-
-Elles correspondent respectivement à :
-
-```text
-validation locale et préparation
-        ↓
-déploiement et preuves techniques
-        ↓
-contrôle strict des livrables
-        ↓
-destruction et audit AWS final
-```
-
-## Les niveaux de validation
-
-| Niveau | Contrôle | Garantit | Ne garantit pas |
-| --- | --- | --- | --- |
-| Dépôt | `validate.sh` / CI | cohérence, syntaxe, intégrations locales | compte AWS prêt |
-| Orchestrateur | `test-p5-orchestrator.sh` | séquencement et garde-fous sans AWS | vrai `apply` AWS |
-| VM | `setup.sh --check-only` | outils, versions, structure | quotas/permissions AWS |
-| AWS | `check-aws-readiness.sh` | identité, région, IP, quotas, budget | futur `apply` réussi |
-| Pré-déploiement | `pre-deployment-check.sh` | VM + dépôt + tfvars + AWS Ready | validation humaine du plan |
-| Exercice | `p5.sh ex1/ex2/ex3` | scénario technique exécuté | qualité des captures humaines |
-| Finalisation | `p5.sh finalize` | livrables complets selon le contrat | destruction AWS |
-| Nettoyage | `p5.sh cleanup` | destruction ordonnée + audit | absence de coût hors périmètre P5 |
-
-Un `terraform apply` reste précédé de l'affichage du plan.
-
-## Validation locale
-
-Commande recommandée :
-
-```bash
-bash scripts/commands/p5.sh status --full-validation
-```
-
-Équivalent spécialisé :
-
-```bash
-P5_FULL_INTEGRATION=1 ./scripts/commands/validate.sh
-```
-
-La validation locale couvre notamment :
-
-- périmètre du dépôt ;
-- audit de non-régression ;
-- Bash/ShellCheck ;
-- JSON/YAML/Markdown ;
-- Angular, TypeScript et dépendances ;
-- vrai build Angular derrière NGINX ;
-- OpenSearch local, Bulk et agrégations ;
-- HAProxy local, round-robin, panne et reprise ;
-- Terraform ;
-- Ansible ;
-- structure des livrables ;
-- secrets.
-
-Elle est non destructive vis-à-vis d'AWS.
-
-## Test du centre de commande
-
-La CI exécute également :
-
-```bash
-bash scripts/tests/test-p5-orchestrator.sh
-```
-
-Ce test utilise des commandes factices et **ne crée aucune ressource AWS**. Il
-vérifie notamment :
-
-- aide et sous-commandes ;
-- exécution du statut ;
-- séquence de l'exercice 1 ;
-- preuve d'idempotence Ansible ;
-- séquence HAProxy ;
-- appel des scripts spécialisés ;
-- impossibilité pour `--yes` de contourner le checkpoint manuel OpenSearch.
-
-Ce test renforce le contrat de l'orchestrateur mais ne remplace pas le premier
-run réel AWS.
-
-## Préparation VM et AWS
-
-La commande :
-
-```bash
-bash scripts/commands/p5.sh prepare
-```
-
-prend en charge la préparation locale et les contrôles AWS.
-
-Elle peut :
-
-- proposer le bootstrap de la VM ;
-- configurer ou utiliser un profil AWS ;
-- relancer une session SSO ;
-- refuser l'identité root ;
-- détecter l'IPv4 publique ;
-- créer la clé SSH du lab ;
-- générer les tfvars ;
-- préparer le budget ;
-- lancer AWS Ready et le précontrôle.
-
-Les confirmations root MFA, absence de clés root, politique IAM et contacts de
-facturation restent humaines.
-
-Conditions attendues :
-
-```text
-GO AWS
-GO TERRAFORM
-```
-
-## Règle de mutation
-
-### Non destructif
+### Niveau A — validation du dépôt
 
 Exemples :
 
 ```bash
-bash scripts/commands/p5.sh status
-./scripts/commands/verify-opensearch-data.sh
+bash scripts/commands/validate.sh
+python3 scripts/tools/audit_non_regression.py
 python3 scripts/tools/audit_secrets.py
 ```
 
-### Mutation confirmée
+La CI exécute également ces contrats.
 
-`p5.sh` affiche les plans Terraform avant `apply`. `--yes` peut confirmer les
-mutations automatisables mais ne valide pas une preuve humaine.
+Ce niveau répond :
 
-Les scripts spécialisés conservent également leurs modes aperçu/`--apply` pour :
+> « Le code et la documentation sont-ils cohérents et reproductibles ? »
 
-- budget ;
-- import OpenSearch ;
-- failover HAProxy.
+### Niveau B — validation runtime AWS
 
-### Destruction protégée
+Exemples :
+
+- EC2 réellement créée ;
+- Ansible ping réel ;
+- application réellement accessible ;
+- OpenSearch réellement actif ;
+- failover HAProxy réellement rejoué.
+
+Ce niveau répond :
+
+> « Le lab fonctionne-t-il réellement sur le compte AWS ? »
+
+### Niveau C — validation pédagogique
+
+Exemples :
+
+- capture du dashboard ;
+- explication de l'idempotence ;
+- interprétation du failover ;
+- livrables lisibles pour un évaluateur.
+
+Ce niveau répond :
+
+> « Les preuves démontrent-elles clairement la compétence ? »
+
+## 2. Collecter les diagnostics
 
 ```bash
-bash scripts/commands/p5.sh cleanup
+bash scripts/commands/p5.sh diagnostics
 ```
 
-appelle `destroy-aws.sh`, qui exige la saisie exacte :
+Cette commande produit un état technique complet et vérifie la structure des livrables.
 
-```text
-DETRUIRE
-```
-
-## Preuves de l'exercice 1
-
-Le parcours automatisé produit ou vérifie :
-
-- plan et apply Terraform ;
-- ping Ansible ;
-- premier déploiement ;
-- seconde exécution Ansible ;
-- `changed=0` ;
-- `unreachable=0` ;
-- `failed=0` ;
-- application Angular servie par NGINX ;
-- fallback SPA et bundle ;
-- trafic NGINX ;
-- vrai `access.log` collecté.
-
-Le log réel est écrit sous :
-
-```text
-proofs/runtime/exercice-2/nginx-access-real.log
-```
-
-## Preuves de l'exercice 2
-
-Le parcours importe :
-
-1. le jeu de données versionné ;
-2. le vrai log NGINX, lorsqu'il existe.
-
-Le jeu versionné garantit les tranches temporelles nécessaires au dashboard. Le
-vrai log démontre la chaîne NGINX → OpenSearch.
-
-Le script de vérification contrôle :
-
-- mappings ;
-- volume de documents ;
-- méthodes HTTP ;
-- buckets de 12 h ;
-- chemins ;
-- agrégations.
-
-Restent manuels :
-
-- Discover ;
-- donut des méthodes ;
-- somme des octets par 12 h ;
-- top 5 des URL par 12 h ;
-- dashboard complet ;
-- captures.
-
-Le checkpoint exige la saisie exacte `OK` et n'est pas contourné par `--yes`.
-
-## Preuves de l'exercice 3
-
-Le parcours vérifie :
-
-- trois EC2 créées par le module ;
-- HAProxy accessible ;
-- deux backends en round-robin ;
-- panne réelle d'un backend ;
-- continuité du service ;
-- redémarrage ;
-- retour des deux backends.
-
-Le script de failover conserve un mécanisme de restauration en cas
-d'interruption.
-
-## Logs opérateur et preuves pédagogiques
-
-Ils sont volontairement séparés.
-
-### Logs opérateur
+Les fichiers runtime sont conservés sous :
 
 ```text
 logs/<UTC>/
-├── p5.log
-├── 01-....log
-├── 02-....log
-└── ...
+proofs/runtime/
 ```
 
-Ils servent au diagnostic de l'exécution.
+Ils sont privés par défaut.
 
-### Preuves pédagogiques
+## 3. Preuves de l'exercice 1
+
+### Terraform
+
+Conserver une preuve montrant :
+
+- le plan ;
+- le bon compte/région ;
+- les ressources attendues ;
+- l'apply réussi ;
+- le post-plan sans delta.
+
+### AWS
+
+Conserver une preuve montrant l'EC2 active et, si utile, les ressources réseau attendues.
+
+### Ansible
+
+Conserver :
+
+- `ansible ping` ;
+- recap du premier passage ;
+- recap du second passage.
+
+Le second passage doit montrer :
 
 ```text
-proofs/runtime/
-├── diagnostics/
-├── exercice-1/
-├── exercice-2/
-└── exercice-3/
+changed=0
+unreachable=0
+failed=0
 ```
 
-Elles servent aux livrables.
+### Application
 
-Les deux emplacements sont ignorés par Git pour les données runtime.
+Conserver une preuve que :
 
-## Diagnostic
+- NGINX sert Angular ;
+- l'URL HTTP est accessible ;
+- le fallback SPA fonctionne ;
+- le bundle JavaScript est chargé.
 
-Depuis l'orchestrateur :
+### Logs
+
+Conserver le `access.log` réel seulement comme source technique privée. Ne pas publier tout le log sans relecture.
+
+## 4. Preuves de l'exercice 2
+
+### Technique
+
+Conserver :
+
+- domaine OpenSearch actif ;
+- index/données ;
+- mapping ;
+- agrégations ;
+- absence d'erreur Bulk.
+
+### Visuel
+
+Captures obligatoires du parcours :
+
+```text
+1. donut méthodes HTTP
+2. bytes_sent / 12 h
+3. top 5 url_path / 12 h
+4. dashboard complet
+```
+
+Vérifier avant capture :
+
+- bonne plage de temps ;
+- absence de filtre parasite ;
+- titre lisible ;
+- légende lisible ;
+- valeurs visibles.
+
+## 5. Preuves de l'exercice 3
+
+Conserver :
+
+- configuration HAProxy lisible ;
+- validation `haproxy -c` ;
+- deux backends avant panne ;
+- un seul backend pendant la panne ;
+- réponse HTTP maintenue pendant la panne ;
+- retour des deux backends après restauration.
+
+La preuve doit montrer le **comportement**, pas seulement une configuration statique.
+
+## 6. Transformer une sortie brute en preuve
+
+Mauvais exemple :
+
+```text
+capture d'un terminal sans titre ni explication
+```
+
+Bon format :
+
+```text
+Objectif : prouver l'idempotence Ansible.
+Commande : deuxième exécution de deploy.yml.
+Résultat : changed=0, unreachable=0, failed=0.
+Interprétation : l'état demandé est déjà présent et Ansible n'effectue plus de changement inutile.
+```
+
+## 7. Anonymisation
+
+Ne jamais publier :
+
+- AWS access key ;
+- secret access key ;
+- session token ;
+- clé SSH privée ;
+- token GitHub ;
+- `environment/aws-readiness.env` ;
+- vrais `terraform.tfvars` ;
+- `terraform.tfstate` ;
+- inventaire Ansible réel complet ;
+- header d'autorisation ;
+- archive runtime brute non relue.
+
+Peuvent être masqués lorsqu'ils ne sont pas nécessaires à la démonstration :
+
+- IP publiques ;
+- ID de compte ;
+- ARN ;
+- endpoints ;
+- ID d'instances.
+
+L'anonymisation ne doit pas rendre la preuve incompréhensible.
+
+## 8. Livrables
+
+Les trois structures sont sous :
+
+```text
+docs/livrables/
+```
+
+Le contrôle structurel est :
 
 ```bash
-bash scripts/commands/p5.sh logs
+bash scripts/commands/prepare-livrables.sh --structure-only
 ```
 
-Diagnostic partageable :
+Il vérifie la structure sans exiger toutes les preuves réelles.
+
+Le contrôle strict est :
 
 ```bash
-bash scripts/commands/collect-diagnostics.sh --complet --avec-preuves
+bash scripts/commands/prepare-livrables.sh
 ```
 
-Le collecteur produit un résumé, un journal complet local, une version nettoyée,
-un manifeste et une archive partageable après relecture.
+Il refuse les marqueurs de type :
 
-Le journal complet non filtré n'est pas ajouté à l'archive.
+```text
+Gabarit à compléter
+Preuve à insérer
+Capture réelle à insérer
+À joindre
+```
 
-## Finalisation des livrables
-
-Une fois les captures réelles insérées et anonymisées :
+## 9. Finaliser avec l'orchestrateur
 
 ```bash
 bash scripts/commands/p5.sh finalize
 ```
 
-Cette commande :
-
-1. collecte les diagnostics ;
-2. contrôle la structure ;
-3. lance le contrôle strict des trois livrables.
+Cette commande exécute les diagnostics puis le contrôle strict.
 
 Verdict attendu :
 
@@ -306,126 +250,171 @@ Verdict attendu :
 LIVRABLES PRÊTS POUR RELECTURE FINALE
 ```
 
-Le contrôle strict échoue notamment si un fichier manque, si une section
-obligatoire a disparu, si un marqueur de preuve reste présent ou si une signature
-de secret est détectée.
+Ce verdict signifie « plus de marqueur structurel détecté ». Une relecture humaine reste nécessaire.
 
-## Publication
+## 10. Relecture comme évaluateur
 
-Tout contenu sous `proofs/runtime/` ou `logs/` est privé par défaut.
+Pour chaque preuve, se demander :
 
-| État | Publication |
-| --- | --- |
-| log complet | non |
-| preuve brute | non |
-| diagnostic nettoyé | après relecture |
-| capture anonymisée | oui si nécessaire |
-| gabarit non complété | ce n'est pas une preuve |
-| livrable final relu | oui selon le besoin |
+- est-ce que je comprends l'objectif sans connaître le terminal ?
+- est-ce que la commande est visible ou expliquée ?
+- est-ce que le résultat important est identifiable ?
+- est-ce que la conclusion est techniquement correcte ?
+- est-ce que cette preuve vient du vrai lab ?
+- est-ce qu'une donnée sensible est inutilement exposée ?
 
-Aucun masquage automatique ne remplace la relecture humaine.
+## 11. Quand détruire OpenSearch ?
 
-## Nettoyage
+Une fois :
 
-Commande recommandée :
+- les données vérifiées ;
+- les visualisations terminées ;
+- les quatre captures sauvegardées ;
+- aucune nouvelle démonstration OpenSearch nécessaire.
+
+Le nettoyage global reste cependant orchestré dans l'ordre `3 → 2 → 1`.
+
+## 12. Pourquoi l'ordre de destruction est obligatoire
+
+L'exercice 3 réutilise le réseau de l'exercice 1.
+
+Donc :
+
+```text
+Exercice 3 dépend de Exercice 1
+```
+
+On détruit :
+
+```text
+Exercice 3
+    ↓
+Exercice 2
+    ↓
+Exercice 1
+```
+
+et non l'inverse.
+
+## 13. Lancer le nettoyage
 
 ```bash
 bash scripts/commands/p5.sh cleanup
 ```
 
-Ordre obligatoire :
+La commande appelle :
 
 ```text
-Exercice 3 → Exercice 2 → Exercice 1
+scripts/commands/destroy-aws.sh
 ```
 
-Cette règle existe parce que l'exercice 3 réutilise le réseau et la clé de
-l'exercice 1.
+puis :
 
-L'audit final recherche notamment les ressources P5 restantes :
+```text
+scripts/commands/check-aws-cleanup.sh
+```
 
-- EC2 ;
-- volumes EBS ;
-- interfaces réseau ;
-- Elastic IP ;
-- groupes de sécurité ;
-- sous-réseaux ;
-- routes ;
-- Internet Gateway ;
-- VPC ;
-- paire de clés ;
-- domaine OpenSearch.
+## 14. Confirmation forte
 
-Verdict attendu :
+La destruction exige une saisie explicite :
+
+```text
+DETRUIRE
+```
+
+Cette barrière est volontaire : une commande de destruction Cloud ne doit pas être confondue avec un simple test.
+
+## 15. Ne pas supprimer le state avant destroy
+
+Le state permet à Terraform de savoir quelles ressources il doit supprimer.
+
+Mauvaise séquence :
+
+```text
+rm terraform.tfstate
+terraform destroy
+```
+
+Bonne séquence :
+
+```text
+conserver le state
+détruire avec Terraform
+vérifier le résultat
+autrement seulement analyser le state résiduel
+```
+
+## 16. Audit global AWS
+
+Après les destroys :
+
+```bash
+bash scripts/commands/check-aws-cleanup.sh
+```
+
+Le verdict attendu est :
 
 ```text
 NETTOYAGE AWS COMPLET
 ```
 
-Le budget reste volontairement actif après la destruction afin de signaler une
-ressource oubliée.
+Tant que ce verdict n'est pas présent, considérer qu'une ressource P5 peut encore exister.
 
-## Ne jamais supprimer les états Terraform avant `destroy`
+## 17. Si une ressource reste
 
-Les états permettent à Terraform de retrouver les ressources qu'il gère. Les
-supprimer pour « repartir proprement » peut orpheliner des ressources payantes.
+Ne pas commencer par la supprimer manuellement.
 
-En cas d'interruption, relancer :
+Procédure :
 
-```bash
-bash scripts/commands/p5.sh all
-```
+1. identifier le type de ressource ;
+2. identifier l'exercice propriétaire ;
+3. vérifier le state correspondant ;
+4. relancer le destroy ou corriger la dépendance ;
+5. relancer l'audit.
 
-et laisser le mode reprise réévaluer le lab.
+La suppression manuelle devient un dernier recours lorsqu'on a compris pourquoi Terraform ne gère plus correctement la ressource.
 
-## Ce que signifie une CI verte
+## 18. Après le nettoyage
 
-Une CI verte prouve :
-
-- le contrat du dépôt ;
-- les intégrations locales ;
-- le contrat simulé de l'orchestrateur ;
-- la qualité syntaxique et documentaire.
-
-Elle ne prouve pas :
-
-- que les credentials AWS de la VM sont valides ;
-- que les quotas sont suffisants au moment du run ;
-- qu'AWS ne rencontre aucune erreur de service ;
-- que le déploiement complet a déjà été exécuté dans le compte réel.
-
-La validation finale du système reste :
+Vérifier :
 
 ```bash
-bash scripts/commands/p5.sh all
+bash scripts/commands/p5.sh inspect
 ```
 
-sur la VM réelle avec une session AWS valide.
+Puis contrôler également la console Billing/Cost Explorer selon le contexte du compte.
 
-## Checklist de fermeture
+Un budget ou un dashboard de facturation peut avoir un délai d'actualisation. Le meilleur signal immédiat du projet est l'audit des ressources ciblées.
 
-- [ ] CI verte ;
-- [ ] `p5.sh all` exécuté sur AWS réel ;
-- [ ] idempotence Ansible prouvée ;
-- [ ] logs NGINX réels importés dans OpenSearch ;
-- [ ] dashboard capturé ;
-- [ ] panne/reprise HAProxy validée ;
-- [ ] diagnostics relus ;
-- [ ] livrables sans placeholder ;
+## 19. Checklist de fermeture
+
+- [ ] livrable 1 complet ;
+- [ ] livrable 2 complet ;
+- [ ] livrable 3 complet ;
+- [ ] quatre captures OpenSearch sauvegardées ;
+- [ ] preuve d'idempotence sauvegardée ;
+- [ ] preuve de failover sauvegardée ;
+- [ ] audit secrets exécuté ;
 - [ ] `p5.sh finalize` réussi ;
-- [ ] `p5.sh cleanup` exécuté ;
-- [ ] verdict `NETTOYAGE AWS COMPLET` ;
-- [ ] budget AWS surveillé après la démonstration.
+- [ ] exercice 3 détruit ;
+- [ ] exercice 2 détruit ;
+- [ ] exercice 1 détruit ;
+- [ ] audit AWS exécuté ;
+- [ ] `NETTOYAGE AWS COMPLET` obtenu.
 
-## Documents associés
+## 20. Fin réelle du P5
 
-- [Parcours complet](01-parcours-debutant.md)
-- [Architecture](architecture-et-flux.md)
-- [Exercice 1](exercices/01-terraform-ansible.md)
-- [Exercice 2](exercices/02-elk-opensearch.md)
-- [Exercice 3](exercices/03-haproxy.md)
-- [Livrables](livrables/README.md)
-- [Preuves runtime](../proofs/README.md)
-- [Scripts](../scripts/README.md)
-- [Sécurité](../SECURITY.md)
-- [Troubleshooting](troubleshooting.md)
+La fin opérationnelle du projet est :
+
+```text
+preuves compréhensibles
++ livrables relus
++ aucun secret publié
++ AWS nettoyé
+```
+
+et non simplement :
+
+```text
+terraform apply a fonctionné
+```
