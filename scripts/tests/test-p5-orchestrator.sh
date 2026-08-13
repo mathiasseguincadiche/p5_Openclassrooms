@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
 P5_SCRIPT="$PROJECT_ROOT/scripts/commands/p5.sh"
 CONFIG_FILE="$PROJECT_ROOT/environment/aws-readiness.env"
-CONTROL_CENTER_DOC="$PROJECT_ROOT/docs/CENTRE_DE_COMMANDE.md"
+COMMAND_CENTER_DOC="$PROJECT_ROOT/docs/CENTRE_DE_COMMANDE.md"
 SCRIPTS_README="$PROJECT_ROOT/scripts/README.md"
 TMP_DIR="$(mktemp -d)"
 FAKE_BIN="$TMP_DIR/bin"
@@ -23,8 +23,8 @@ trap cleanup EXIT
     exit 1
 }
 
-[[ -f "$CONTROL_CENTER_DOC" ]] || {
-    printf 'Documentation Control Center absente : %s\n' "$CONTROL_CENTER_DOC" >&2
+[[ -f "$COMMAND_CENTER_DOC" ]] || {
+    printf 'Documentation du centre de commande absente : %s\n' "$COMMAND_CENTER_DOC" >&2
     exit 1
 }
 
@@ -112,7 +112,7 @@ grep -Fq 'docs/CENTRE_DE_COMMANDE.md' <<<"$DOCS_OUTPUT"
 grep -Fq 'docs/troubleshooting.md' <<<"$DOCS_OUTPUT"
 
 MENU_OUTPUT="$(printf '0\n' | /usr/bin/bash "$P5_SCRIPT" menu)"
-grep -Fq 'P5 OPENCLASSROOMS — CONTROL CENTER V11' <<<"$MENU_OUTPUT"
+grep -Fq 'P5 OPENCLASSROOMS — CENTRE DE COMMANDE' <<<"$MENU_OUTPUT"
 grep -Fq '12  Que dois-je faire maintenant ?' <<<"$MENU_OUTPUT"
 grep -Fq '15  Nettoyer les ressources AWS' <<<"$MENU_OUTPUT"
 grep -Fq '0  Quitter' <<<"$MENU_OUTPUT"
@@ -147,4 +147,4 @@ fi
 grep -Fq 'Le mode --yes ne valide pas une preuve manuelle à votre place.' <<<"$EX2_OUTPUT"
 grep -Fq 'Saisie interactive requise : OK' <<<"$EX2_OUTPUT"
 
-printf "OK  contrat de l'orchestrateur et du Control Center P5 validé sans mutation AWS.\n"
+printf "OK  contrat de l'orchestrateur et du centre de commande P5 validé sans mutation AWS.\n"
