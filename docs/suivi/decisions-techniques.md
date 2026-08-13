@@ -1,121 +1,144 @@
 # Décisions techniques du P5
 
-Ce document enregistre les choix qui structurent l'implémentation actuelle. Il
-évite qu'une future simplification remplace une décision validée par une
-approximation ou une ancienne hypothèse.
+> Document de gouvernance. Il enregistre les choix de l'implémentation actuelle sans constituer un runbook.
 
 ## Périmètre
 
-Le dépôt couvre exactement les trois exercices officiels du P5. Le parcours
-retenu est **100 % AWS** : la VM Ubuntu Server sert de poste DevOps et les
-infrastructures évaluées sont créées dans AWS.
+Le projet évalué est **AWS**. La workstation Windows 11 + WSL2 + Ubuntu 26.04 fournit seulement le plan de contrôle.
 
-Les exemples Docker, Kubernetes et GitHub Actions génériques ne font pas partie
-du parcours principal. Docker reste néanmoins utilisé sur la VM et dans
-l'exercice HAProxy lorsque cette utilisation répond directement au besoin.
+Le dépôt maintient exactement trois exercices :
 
-## Socle commun
+```text
+1. Terraform + Ansible
+2. Amazon OpenSearch
+3. HAProxy
+```
 
-| Décision | Choix actuel | Justification |
+## Décisions transverses
+
+| Sujet | Choix actuel | Raison |
 | --- | --- | --- |
-| Poste DevOps | Ubuntu Server 26.04 | environnement CLI reproductible et proche des usages OPS |
-| Région AWS | `us-east-1` | région commune aux trois modules et aux contrôles de préparation |
-| Terraform | `>= 1.15.0, < 2.0.0` | version moderne, contrôlée par la CI |
-| Provider AWS | `~> 5.0` | compatibilité fixée dans chaque module |
-| Compte AWS | `allowed_account_ids` obligatoire | empêche un déploiement dans le mauvais compte |
-| Accès d'administration | IPv4 réelle en `/32` | évite d'ouvrir SSH ou OpenSearch au monde entier |
-| Tags | projet, gestionnaire, objectif et exercice | facilite l'inventaire, le nettoyage et le suivi des coûts |
-| Mutation | option `--apply` ou confirmation explicite | sépare l'aperçu non destructif de l'action réelle |
+| poste de contrôle | Windows 11 + WSL2 Ubuntu 26.04 | environnement CLI Linux reproductible |
+| emplacement checkout | `~/labs/p5_Openclassrooms` sur ext4 | compatibilité/performance des outils Linux |
+| région modèle | `us-east-1` | région commune au lab, configurable |
+| Terraform | `>= 1.15.0, < 2.0.0` | contrat actuel du dépôt |
+| AWS provider | `~> 5.0` | plage contrôlée par les lockfiles |
+| compte | `allowed_account_ids` | refuser un déploiement dans le mauvais compte |
+| administration | IPv4 publique `/32` | limiter SSH et OpenSearch |
+| configuration locale | `environment/aws-readiness.env` | source unique, non versionnée |
+| mutation | confirmation ou `--apply` explicite selon les scripts | distinguer observation et action |
+| secrets | hors Git + audit dédié | réduire le risque de fuite |
 
 ## Application Angular
 
-Le dépôt contient un **véritable projet Angular compilable** dans
-`application/angular/`, avec `package-lock.json` et Node.js 22.22.0.
+Le dépôt contient une **application Angular** réelle dans :
 
 ```text
-sources Angular
-    → npm ci
-    → npm run build
-    → artefact navigateur
-    → ansible/files/angular-app/
-    → NGINX sur EC2
+application/angular/
 ```
 
-La CI reconstruit l'application et compare exactement le build à l'artefact
-versionné pour Ansible. Une page HTML témoin ne peut donc pas remplacer
-silencieusement l'application réelle.
+Chaîne :
 
-## Exercice 1 — Terraform, Ansible et NGINX
+```text
+sources
+  ↓
+npm ci / tests / build
+  ↓
+artefact navigateur
+  ↓
+ansible/files/angular-app
+  ↓
+NGINX sur EC2
+```
 
-| Décision | Choix actuel | Justification |
+La CI reconstruit l'application et compare le build à l'artefact Ansible.
+
+## Exercice 1
+
+| Sujet | Choix | Raison |
 | --- | --- | --- |
-| Instance | `t3.micro` par défaut | dimension adaptée à une démonstration, coût à vérifier avant déploiement |
-| Système EC2 | Ubuntu Server 24.04 LTS | AMI Canonical sélectionnée automatiquement |
-| Provisionnement | Terraform | réseau, sécurité, clé SSH et EC2 déclaratifs |
-| Configuration | Ansible | installation NGINX et copie idempotente du build |
-| Serveur web | NGINX sur le port 80 | service simple à contrôler par HTTP et compatible SPA |
-| Preuve | HTTP, bundle JavaScript et fallback SPA | démontre que le véritable build est servi |
+| cible | AWS EC2 | mode Cloud retenu |
+| type par défaut | `t3.micro` | taille de lab, toujours soumise au coût/quota réel |
+| OS EC2 | Ubuntu 24.04 LTS | AMI Canonical automatique |
+| réseau | VPC + deux subnets publics | socle réutilisable par ex. 3 |
+| IaC | Terraform | infrastructure déclarative |
+| configuration | Ansible | séparation infra/configuration |
+| serveur HTTP | NGINX | servir Angular et produire `access.log` |
+| preuve forte | second playbook `changed=0` | idempotence |
 
-Le module crée le réseau qui sera réutilisé par l'exercice 3. Il ne doit donc
-pas être détruit avant la fin du test HAProxy.
+Le VPC de l'exercice 1 reste actif jusqu'à la fin de l'exercice 3.
 
-## Exercice 2 — Amazon OpenSearch
+## Exercice 2
 
-| Décision | Choix actuel | Justification |
+| Sujet | Choix | Raison |
 | --- | --- | --- |
-| Moteur | OpenSearch 2.19 | version déclarée explicitement dans Terraform |
-| Nœud | `t3.small.search`, un exemplaire | taille pédagogique minimale, service payant à surveiller |
-| Stockage | 10 Gio `gp3` | volume limité pour le jeu de données de démonstration |
-| Transport | HTTPS et TLS 1.2 minimum | évite un endpoint en clair |
-| Chiffrement | au repos et entre les nœuds | protection activée malgré le caractère pédagogique |
-| Accès | politique IP limitée à l'adresse `/32` | réduit l'exposition du domaine |
-| Données | mapping strict et 64 événements | garantit les trois agrégations demandées |
-| Dashboard | construction manuelle | la compréhension des champs et visualisations fait partie de l'évaluation |
+| mode | Amazon OpenSearch | option Cloud de l'exercice |
+| moteur | OpenSearch 2.19 | référence actuelle du lab |
+| instance | `t3.small.search` par défaut | dimension de démonstration configurable |
+| stockage | 10 Gio gp3 | dataset limité |
+| sécurité | HTTPS + chiffrement | éviter un domaine en clair |
+| accès | SourceIp `/32` | limiter l'exposition |
+| données | sample + log réel ex. 1 | reproductibilité + preuve réelle |
+| dashboard | manuel | conserver la compréhension pédagogique |
 
-L'import réel exige `--apply`. Le mode par défaut prépare et montre les données
-sans les envoyer au domaine.
+Le sample reproductible contient le volume de données nécessaire aux tests automatisés. Les logs réels restent un enrichissement runtime.
 
-## Exercice 3 — HAProxy et reprise
+## Exercice 3
 
-| Décision | Choix actuel | Justification |
+| Sujet | Choix | Raison |
 | --- | --- | --- |
-| Réseau | VPC et sous-réseaux de l'exercice 1 | évite une seconde architecture inutile |
-| Instances | trois `t3.micro` | un HAProxy et deux backends distincts |
-| Backends | deux conteneurs `nginxdemos/hello` | le nom de serveur rend l'alternance observable |
-| Algorithme | `roundrobin` | comportement simple à démontrer et à vérifier |
-| Santé | requête HTTP avec seuils `fall` et `rise` | retrait puis réintégration automatiques d'un backend |
-| Exposition | backends HTTP accessibles uniquement depuis HAProxy | limite l'accès direct au service interne |
-| Test destructif | option `--apply` et restauration par `trap` | évite une panne permanente en cas d'interruption |
+| réseau | VPC/subnets de l'exercice 1 | éviter une architecture AWS dupliquée |
+| instances | 1 HAProxy + 2 backends | topologie demandée |
+| backend | `nginxdemos/hello:plain-text` dans Docker | identifier facilement le serveur répondant |
+| algorithme | `roundrobin` | répartition simple et observable |
+| santé | check HTTP, `fall 3`, `rise 2` | panne et réintégration démontrables |
+| HTTP backend | autorisé depuis SG HAProxy uniquement | éviter le contournement public du répartiteur |
+| test réel | `--apply` après prévisualisation | mutation volontaire explicite |
+| restauration | mécanisme `trap` dans le script | réduire le risque de backend laissé arrêté |
 
-## Preuves et livrables
+## Convergence
 
-Les sorties et captures réelles sont placées dans `proofs/runtime/`, ignoré par
-Git. Les trois livrables restent dans `docs/livrables/` et le contrôle strict
-échoue tant qu'un marqueur de preuve manquante subsiste.
+Le projet privilégie :
 
-Le dépôt aide à collecter et vérifier les preuves, mais n'en fabrique aucune.
+```text
+inspecter
+→ planifier
+→ appliquer uniquement un delta
+→ vérifier l'absence de delta
+→ tester la fonction réelle
+```
 
-## Nettoyage et coûts
+Un state existant est une information à conserver, pas un obstacle à supprimer.
 
-La destruction suit obligatoirement l'ordre **3 → 2 → 1**, car l'exercice 3
-réutilise le réseau de l'exercice 1. Le script exige le mot `DETRUIRE`, puis
-`check-aws-cleanup.sh` recherche les ressources P5 restantes.
+## Preuves
 
-Le budget est conservé après la démonstration pour détecter un oubli. Aucun type
-d'instance ou service ne doit être supposé gratuit : le prix et les quotas du
-compte doivent être vérifiés avant chaque création.
+Les preuves brutes sont locales :
 
-## Documentation et schémas
+```text
+logs/<RUN_ID>/
+proofs/runtime/
+```
 
-Mermaid n'est pas utilisé. Les schémas sont des SVG statiques autonomes, légers
-et accessibles. Ils partagent une typographie, une palette sémantique et des
-règles de contraste, mais chaque vue possède une composition adaptée :
+Les livrables sélectionnent des éléments relus et contextualisés.
 
-- carte du parcours pour la vue globale ;
-- fondations et porte de validation pour l'étape 0 ;
-- couloirs pour le déploiement ;
-- pipeline pour les données OpenSearch ;
-- topologie et chronologie pour HAProxy ;
-- procédure de sortie pour la finalisation.
+La CI ne remplace jamais les preuves AWS réelles.
 
-La cohérence ne doit plus être confondue avec la duplication d'un gabarit.
+## Nettoyage
+
+L'ordre est :
+
+```text
+Exercice 3 → Exercice 2 → Exercice 1 → audit AWS
+```
+
+La destruction exige une confirmation forte et l'audit final doit produire :
+
+```text
+NETTOYAGE AWS COMPLET
+```
+
+## Documentation
+
+Les schémas sont des SVG statiques versionnés. Aucun moteur de diagramme dynamique n'est nécessaire au rendu du dépôt.
+
+Le README racine explique le projet ; `docs/` porte le détail. Les documents de gouvernance restent séparés du parcours d'exécution afin qu'un nouveau lecteur ne doive pas connaître l'historique des refontes.

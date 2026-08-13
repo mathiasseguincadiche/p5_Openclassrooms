@@ -1,423 +1,559 @@
-# Troubleshooting — diagnostic du projet P5
+# Troubleshooting — diagnostiquer le P5 sans casser l'état
 
-Ce guide sépare clairement les incidents de **workstation** des incidents du
-**projet P5**.
+## Règle générale
 
-## Règle de base
-
-```text
-Windows / WSL2 / profil / VHDX / Docker système
-        ↓
-Windows_11_Pro_Custom
-
-AWS / Terraform / Ansible / Angular / OpenSearch / HAProxy
-        ↓
-p5_Openclassrooms
-```
-
-Ne jamais supprimer un `terraform.tfstate` comme méthode de dépannage.
-
-## 1. WSL2 ou la distribution Ubuntu ne fonctionne pas
-
-Le propriétaire de la plateforme est :
+En cas d'échec :
 
 ```text
-mathiasseguincadiche/Windows_11_Pro_Custom
+ne pas modifier au hasard
+      ↓
+inspecter
+      ↓
+identifier la couche en échec
+      ↓
+lire le log de cette couche
+      ↓
+corriger la cause
+      ↓
+relancer la commande convergente
 ```
 
-Commencer dans PowerShell :
-
-```powershell
-wsl --status
-wsl --list --verbose
-```
-
-La distribution attendue est :
-
-```text
-Ubuntu
-```
-
-Puis, depuis le dépôt Windows :
-
-```powershell
-.\install.ps1 -Mode Verify -ValidateWsl -ValidateDevOps
-```
-
-P5 ne doit pas tenter de recréer WSL2 ou modifier `.wslconfig` pour contourner
-cet échec.
-
-## 2. Le profil WSL2 n'est pas le bon
-
-Les profils `standard`, `lab-heavy` et `nat-fallback` sont gérés uniquement dans
-`Windows_11_Pro_Custom`.
-
-Cibles actuelles :
-
-```text
-standard     → 8 threads / 20 Go / 8 Go / mirrored
-lab-heavy    → 12 threads / 28 Go / 12 Go / mirrored
-nat-fallback → 8 threads / 20 Go / 8 Go / NAT
-```
-
-Après un changement de profil dans le dépôt amont :
-
-```powershell
-wsl --shutdown
-```
-
-Puis relancer `Ubuntu` et la validation amont.
-
-## 3. Le mode mirrored pose problème avec un VPN ou le réseau
-
-Le profil `nat-fallback` existe précisément comme solution de secours dans le
-dépôt Windows. Effectuer le changement depuis ce dépôt, pas depuis P5.
-
-P5 reste indépendant d'une adresse privée WSL fixe.
-
-## 4. Docker est inaccessible sans sudo
-
-Valider d'abord la workstation :
-
-```powershell
-.\install.ps1 -Mode Verify -ValidateWsl -ValidateDevOps
-```
-
-Si l'utilisateur vient d'être ajouté au groupe Docker :
-
-```powershell
-wsl --shutdown
-wsl -d Ubuntu
-```
-
-Puis dans Ubuntu :
-
-```bash
-docker info
-```
-
-## 5. Le contrat P5 n'est pas conforme
-
-Dans Ubuntu :
-
-```bash
-cd ~/labs/p5_Openclassrooms
-bash scripts/commands/bootstrap-ubuntu-server.sh --check-only
-```
-
-Si un composant strictement nécessaire au P5 est absent ou incompatible :
-
-```bash
-bash scripts/commands/bootstrap-ubuntu-server.sh
-```
-
-Ce script corrige uniquement le delta projet. Il ne doit jamais écrire la
-configuration WSL2 globale.
-
-## 6. Le dépôt P5 est sous `/mnt/c` ou `/mnt/d`
-
-Recloner ou déplacer le checkout de travail dans le filesystem Linux :
-
-```bash
-mkdir -p ~/labs
-cd ~/labs
-git clone https://github.com/mathiasseguincadiche/p5_Openclassrooms.git
-```
-
-Utiliser ensuite :
-
-```bash
-cd ~/labs/p5_Openclassrooms
-```
-
-## 7. Diagnostic général P5
+Commencer par :
 
 ```bash
 bash scripts/commands/p5.sh inspect
 bash scripts/commands/p5.sh logs
 ```
 
-Diagnostic partageable :
+Pour un diagnostic complet :
 
 ```bash
-bash scripts/commands/collect-diagnostics.sh --complet --avec-preuves
+bash scripts/commands/p5.sh diagnostics
 ```
 
-Analyser d'abord le premier `[ KO ]` et le journal précis de l'étape.
+## 1. Le dépôt est sous `/mnt/c` ou `/mnt/d`
 
-## 8. Mauvais compte AWS ou session expirée
+### Symptôme
 
-Relancer :
+Le bootstrap refuse le checkout ou signale une frontière filesystem incorrecte.
+
+### Cause
+
+Le P5 attend le checkout actif sur le filesystem Linux WSL2.
+
+### Correction
 
 ```bash
-bash scripts/commands/p5.sh prepare
+mkdir -p ~/labs
+cd ~/labs
+git clone https://github.com/mathiasseguincadiche/p5_Openclassrooms.git
+cd p5_Openclassrooms
 ```
 
-Diagnostic manuel :
+Ne pas contourner le contrôle dans le script.
+
+## 2. Docker est installé mais inutilisable sans sudo
+
+### Symptôme
+
+Le bootstrap retourne l'état de reconnexion ou Docker refuse l'accès au daemon.
+
+### Cause probable
+
+L'utilisateur vient d'être ajouté au groupe Docker mais le shell courant n'a pas encore rechargé ses groupes.
+
+### Correction
+
+Fermer Ubuntu, puis depuis Windows :
+
+```powershell
+wsl -d Ubuntu
+```
+
+Ensuite :
 
 ```bash
-aws --profile p5-lab sts get-caller-identity
-aws configure get region --profile p5-lab
+cd ~/labs/p5_Openclassrooms
+bash scripts/commands/p5.sh status
 ```
 
-Ne jamais modifier l'identifiant de compte attendu pour faire correspondre un
-mauvais compte actif.
+Ne pas réinstaller Docker pour ce symptôme.
 
-## 9. L'adresse `/32` AWS n'est plus valide
+## 3. `aws sts get-caller-identity` échoue
 
-La connexion publique a changé.
+### Vérifier
 
 ```bash
-bash scripts/commands/p5.sh prepare
+aws --version
+aws configure list
+aws sts get-caller-identity
 ```
-
-Ou :
-
-```bash
-$EDITOR environment/aws-readiness.env
-bash scripts/commands/sync-terraform-tfvars.sh --apply
-bash scripts/commands/sync-terraform-tfvars.sh --check
-```
-
-`P5_PUBLIC_IP_CIDR` est l'IPv4 publique vue depuis AWS, pas une IP WSL2.
-
-## 10. `terraform.tfvars` désynchronisés
-
-```bash
-bash scripts/commands/sync-terraform-tfvars.sh --apply
-bash scripts/commands/sync-terraform-tfvars.sh --check
-```
-
-La source de vérité reste `environment/aws-readiness.env`.
-
-## 11. Collision de ressources P5
-
-Ne pas :
-
-- supprimer le `terraform.tfstate` ;
-- supprimer immédiatement les ressources dans la console AWS ;
-- changer les tags pour contourner le contrôle.
-
-Inspecter :
-
-```bash
-terraform -chdir=terraform/exercice-1 state list
-terraform -chdir=terraform/exercice-2 state list
-terraform -chdir=terraform/exercice-3 state list
-```
-
-Puis relancer :
-
-```bash
-bash scripts/commands/p5.sh all
-```
-
-## 12. Quota EC2 insuffisant
-
-Vérifier le quota EC2 Standard de la région. Les exercices 1 et 3 peuvent
-coexister et nécessiter plusieurs instances.
-
-Ne pas réduire artificiellement les garde-fous pour obtenir un faux `GO AWS`.
-
-## 13. Terraform ne trouve pas l'AMI Ubuntu
-
-```bash
-./scripts/commands/check-aws-readiness.sh --stage initial
-```
-
-La configuration normale sélectionne une AMI Canonical Ubuntu selon les filtres
-du module Terraform.
-
-## 14. Ansible ne joint pas l'EC2
-
-Consulter d'abord les logs `wait-ssh-ex1` et `ansible-ping`.
 
 Puis :
 
 ```bash
-terraform -chdir=terraform/exercice-1 output -raw web_public_ip
-cat ansible/inventories/hosts_aws
-ls -l ~/.ssh/p5-key
+bash scripts/commands/p5.sh prepare
 ```
 
-La clé privée doit être en mode `600` :
+### Ne pas faire
+
+Ne pas ajouter une access key en clair dans le dépôt pour « tester rapidement ».
+
+## 4. Mauvais compte AWS
+
+### Symptôme
+
+Terraform refuse le provider avec `allowed_account_ids`.
+
+### Diagnostic
 
 ```bash
-chmod 600 ~/.ssh/p5-key
+aws sts get-caller-identity
+cat environment/aws-readiness.env | grep P5_EXPECTED_ACCOUNT_ID
 ```
 
-Test direct :
+### Correction
+
+Revenir à la bonne session/profil, puis relancer :
 
 ```bash
-ssh -i ~/.ssh/p5-key ubuntu@ADRESSE_EC2
+bash scripts/commands/p5.sh prepare
 ```
 
-## 15. Le playbook Ansible échoue
+Ne pas remplacer le compte attendu par celui d'une session accidentelle.
 
-Consulter le log `ansible-deploy`.
+## 5. `terraform.tfvars` incohérent
+
+### Diagnostic
+
+```bash
+bash scripts/commands/sync-terraform-tfvars.sh --check
+```
+
+### Correction normale
+
+```bash
+bash scripts/commands/p5.sh prepare
+```
+
+Les vrais `tfvars` sont dérivés de la configuration locale, pas édités indépendamment sans raison.
+
+## 6. Terraform `init` échoue
+
+### Vérifier
+
+```bash
+terraform version
+ls -l terraform/exercice-1/.terraform.lock.hcl
+```
+
+Puis tester dans le module concerné :
+
+```bash
+terraform -chdir=terraform/exercice-1 init -input=false
+```
+
+Causes possibles :
+
+- accès réseau ;
+- provider indisponible temporairement ;
+- lockfile incohérent ;
+- version Terraform non conforme.
+
+Ne supprimer le lockfile qu'après avoir compris pourquoi, car il participe à la reproductibilité.
+
+## 7. Terraform `plan` retourne une erreur
+
+Distinguer :
+
+```text
+code 2 = delta normal avec -detailed-exitcode
+code autre que 0/2 = erreur
+```
+
+Lire le log d'étape et la sortie Terraform avant toute correction.
+
+## 8. Terraform propose une destruction inattendue
+
+### Action
+
+Refuser la confirmation.
+
+Puis :
+
+```bash
+bash scripts/commands/p5.sh inspect
+terraform -chdir=terraform/exercice-X state list
+terraform -chdir=terraform/exercice-X plan
+```
+
+Comparer :
+
+- state ;
+- code actuel ;
+- variables ;
+- compte/région.
+
+Ne pas accepter une destruction que vous ne pouvez pas expliquer.
+
+## 9. `terraform output` est vide
+
+### Vérifier
+
+```bash
+terraform -chdir=terraform/exercice-X state list
+terraform -chdir=terraform/exercice-X output
+```
+
+Si le module n'a pas de state exploitable, l'orchestrateur doit considérer la valeur comme inconnue.
+
+Ne pas injecter manuellement une IP provenant d'une autre ressource.
+
+## 10. SSH timeout vers l'exercice 1
+
+### Vérifier la valeur Terraform
+
+```bash
+WEB_IP="$(terraform -chdir=terraform/exercice-1 \
+  output -raw web_public_ip)"
+echo "$WEB_IP"
+```
+
+### Vérifier la clé
+
+```bash
+ls -l ~/.ssh/p5-key ~/.ssh/p5-key.pub
+```
+
+### Vérifier l'IP publique du poste
+
+Si elle a changé :
+
+```bash
+bash scripts/commands/p5.sh prepare
+```
+
+### Vérifier AWS
+
+- instance `running` ;
+- subnet public ;
+- Internet Gateway ;
+- route `0.0.0.0/0` ;
+- Security Group TCP/22 depuis la bonne IP `/32`.
+
+## 11. SSH `Permission denied (publickey)`
+
+Causes typiques :
+
+- mauvaise clé privée ;
+- mauvais `key_name` lors de la création ;
+- mauvais utilisateur ;
+- permissions locales de clé incorrectes.
+
+Utilisateur attendu pour l'AMI Ubuntu :
+
+```text
+ubuntu
+```
+
+## 12. Ansible ping `UNREACHABLE`
+
+Ne modifier pas `deploy.yml` en premier.
+
+Tester SSH directement.
+
+Puis :
+
+```bash
+ansible all \
+  -i ansible/inventories/hosts_aws \
+  -m ping -vvv
+```
+
+Le niveau `-vvv` est utile pour voir la commande SSH effective.
+
+## 13. Playbook Ansible échoue
+
+### Syntaxe
+
+```bash
+ansible-playbook \
+  --syntax-check \
+  -i ansible/inventories/hosts_aws \
+  ansible/playbooks/deploy.yml
+```
+
+### Exécution détaillée
+
+```bash
+ansible-playbook \
+  -i ansible/inventories/hosts_aws \
+  ansible/playbooks/deploy.yml -vvv
+```
+
+Lire la première tâche en échec plutôt que les conséquences suivantes.
+
+## 14. Second passage Ansible `changed>0`
+
+Ce n'est pas conforme à la preuve d'idempotence attendue.
+
+Identifier la tâche qui change à chaque run.
+
+Questions :
+
+- écrit-elle un fichier différent à chaque fois ?
+- exécute-t-elle une commande sans `changed_when` adapté ?
+- un handler est-il déclenché sans changement réel ?
+- l'artefact Angular est-il stable ?
+
+Corriger la cause puis rejouer deux passages.
+
+## 15. NGINX ne démarre pas
 
 Sur l'EC2 :
 
 ```bash
 sudo nginx -t
 sudo systemctl status nginx --no-pager
-sudo journalctl -u nginx --no-pager -n 100
+sudo journalctl -u nginx -n 100 --no-pager
 ```
 
-## 16. L'idempotence Ansible échoue
+Vérifier également :
 
-Le second passage doit donner :
+```bash
+ls -l /etc/nginx/sites-enabled/
+cat /etc/nginx/sites-available/p5
+```
+
+## 16. Angular renvoie 404 sur une route interne
+
+La racine `/` peut fonctionner alors qu'une route SPA échoue.
+
+Vérifier le `try_files` de `ansible/files/nginx-angular.conf` et tester :
+
+```bash
+curl -i "${WEB_URL}/parcours-p5"
+```
+
+Le fallback doit retourner `index.html`.
+
+## 17. Artefact Angular différent des sources
+
+La CI compare le build aux fichiers sous :
 
 ```text
-changed=0
-unreachable=0
-failed=0
+ansible/files/angular-app
 ```
 
-Si `changed>0`, identifier la tâche qui modifie encore la cible à chaque
-exécution.
-
-## 17. Angular ou l'artefact n'est plus synchronisé
+Relancer :
 
 ```bash
-./scripts/commands/prepare-angular-artifact.sh
-./scripts/commands/validate.sh
+bash scripts/commands/prepare-angular-artifact.sh
 ```
 
-Vérification du déploiement :
+Puis vérifier Git avant de commiter l'artefact mis à jour.
 
-```bash
-./scripts/commands/verify-angular-deployment.sh
-```
+## 18. OpenSearch prend longtemps à devenir actif
 
-## 18. Aucun log NGINX réel n'est disponible
+La création d'un domaine Cloud n'est pas instantanée.
 
-```bash
-bash scripts/commands/p5.sh ex1
-```
+Ne relancer pas plusieurs `apply` en parallèle.
 
-Ou :
-
-```bash
-./scripts/commands/generate-nginx-traffic.sh --requests 96
-./scripts/commands/collect-nginx-access-log.sh \
-  --output proofs/runtime/exercice-2/nginx-access-real.log
-```
-
-## 19. OpenSearch n'est pas accessible
+Vérifier :
 
 ```bash
 terraform -chdir=terraform/exercice-2 output
-./scripts/commands/check-aws-readiness.sh --stage exercice-2
 ```
 
-Vérifier domaine, endpoint HTTPS, IP publique `/32` et session AWS.
+et l'état du domaine dans AWS.
 
-## 20. Les données OpenSearch échouent
+## 19. OpenSearch Dashboards inaccessible
+
+Vérifier :
+
+- domaine actif ;
+- endpoint Terraform ;
+- bonne région ;
+- IP publique du poste encore identique ;
+- policy SourceIp.
+
+Après changement d'IP :
 
 ```bash
-./scripts/commands/import-opensearch-data.sh --apply
-./scripts/commands/verify-opensearch-data.sh
+bash scripts/commands/p5.sh prepare
+bash scripts/commands/p5.sh ex2
 ```
 
-La vérification porte sur le volume de documents, les méthodes HTTP, les tranches
-temporelles et les chemins distincts.
+Terraform doit proposer le delta de policy nécessaire, pas recréer arbitrairement tout le domaine.
 
-## 21. Le dashboard n'est pas complet
+## 20. Import Bulk échoue
 
-Le checkpoint reste manuel. Vérifier le data view `nginx-access-*` avec
-`@timestamp`, puis les trois visualisations demandées.
-
-## 22. L'exercice 3 ne trouve pas le VPC
-
-L'exercice 1 doit encore exister :
+Commencer par le mode de validation :
 
 ```bash
-./scripts/commands/check-aws-readiness.sh --stage exercice-3
+bash scripts/commands/import-opensearch-data.sh
 ```
 
-## 23. HAProxy ne montre qu'un backend
+Puis vérifier le log d'entrée :
 
 ```bash
-./scripts/commands/test-haproxy-roundrobin.sh --requests 12
+wc -l terraform/exercice-2/samples/nginx-access.log.sample
 ```
 
-Vérifier ensuite Docker sur les backends et HAProxy sur le frontal.
-
-## 24. Le test de panne HAProxy échoue
-
-Prévisualiser :
+Pour le log réel :
 
 ```bash
-./scripts/commands/test-haproxy-failover.sh
+ls -lh proofs/runtime/exercice-2/nginx-access-real.log
 ```
 
-Puis exécuter explicitement :
+Ne lancer `--apply` qu'après validation correcte.
+
+## 21. Aucune donnée dans Discover
+
+Contrôler :
+
+- index/data view ;
+- plage temporelle ;
+- timestamps ;
+- filtres globaux.
+
+Une plage « dernière heure » peut masquer un sample historique valide.
+
+## 22. `bytes_sent` ne peut pas être agrégé en somme
+
+Le champ doit être numérique.
+
+Vérifier mapping et pipeline :
 
 ```bash
-./scripts/commands/test-haproxy-failover.sh --apply
+bash scripts/commands/verify-opensearch-data.sh \
+  --endpoint "$ENDPOINT"
 ```
 
-## 25. `p5.sh all` a été interrompu
+Ne remplacez pas la métrique demandée par une autre simplement pour obtenir un graphique.
 
-Depuis Windows :
+## 23. Exercice 3 : Terraform ne trouve pas le VPC
 
-```powershell
-wsl -d Ubuntu
+Vérifier l'exercice 1 :
+
+```bash
+terraform -chdir=terraform/exercice-1 state list
+terraform -chdir=terraform/exercice-1 output vpc_id
 ```
+
+Si l'exercice 1 a été détruit, il faut restaurer le socle par le parcours normal avant ex3.
+
+## 24. HAProxy ne répond pas
+
+Sur l'EC2 HAProxy :
+
+```bash
+sudo haproxy -c -f /etc/haproxy/haproxy.cfg
+sudo systemctl status haproxy --no-pager
+sudo journalctl -u haproxy -n 100 --no-pager
+```
+
+Vérifier aussi le Security Group port 80.
+
+## 25. Un backend ne répond pas
+
+Sur le backend :
+
+```bash
+sudo systemctl status docker --no-pager
+sudo docker ps -a
+sudo docker logs nginx-hello
+curl -fsS http://127.0.0.1/
+```
+
+Le problème est backend si le service ne répond pas localement.
+
+## 26. Round-robin ne montre qu'un backend
+
+Vérifier d'abord les deux backends individuellement et l'état HAProxy.
 
 Puis :
 
 ```bash
-cd ~/labs/p5_Openclassrooms
-bash scripts/commands/p5.sh all
+bash scripts/commands/test-haproxy-roundrobin.sh \
+  --url "$HAPROXY_URL" --requests 12
 ```
 
-Terraform réévalue les états existants.
+Si un backend est DOWN, le comportement « un seul backend » peut être correct du point de vue HAProxy mais l'infrastructure n'est pas dans l'état sain attendu pour commencer la démonstration.
 
-## 26. `p5.sh finalize` échoue
+## 27. Le failover laisse le backend arrêté
 
-Consulter le log `livrables-strict`, compléter uniquement les preuves réelles,
-puis relancer :
+Vérifier immédiatement le backend et redémarrer le conteneur si nécessaire :
 
 ```bash
-bash scripts/commands/p5.sh finalize
+sudo docker start nginx-hello
 ```
 
-## 27. Nettoyage AWS incomplet
+Puis vérifier :
 
 ```bash
-bash scripts/commands/p5.sh cleanup
+sudo docker ps
+curl -fsS http://127.0.0.1/
 ```
 
-Le verdict final n'est attendu qu'après destruction 3 → 2 → 1 :
+Attendre ensuite la réintégration HAProxy.
+
+## 28. `finalize` échoue
+
+Le log indique normalement les marqueurs restant dans les livrables.
+
+Exécuter directement :
+
+```bash
+bash scripts/commands/prepare-livrables.sh
+```
+
+Compléter uniquement les preuves réellement disponibles. Ne supprimer pas un marqueur pour faire passer le contrôle si la preuve manque toujours.
+
+## 29. `cleanup` ne termine pas par `NETTOYAGE AWS COMPLET`
+
+Ne conclure pas que les coûts sont arrêtés.
+
+Lancer :
+
+```bash
+bash scripts/commands/check-aws-cleanup.sh
+```
+
+Identifier la ressource restante et son exercice propriétaire.
+
+Vérifier le state correspondant avant suppression manuelle.
+
+## 30. State absent mais ressource AWS présente
+
+C'est une situation de récupération, pas un run normal.
+
+Avant toute action :
+
+- identifier les tags ;
+- chercher un state sauvegardé ;
+- vérifier le compte/région ;
+- décider s'il faut importer ou supprimer proprement.
+
+Ne lancer pas un nouvel `apply` aveuglément.
+
+## 31. Ordre de diagnostic recommandé
+
+Toujours descendre par couche :
 
 ```text
-NETTOYAGE AWS COMPLET
+1. environnement local
+2. identité AWS
+3. Terraform/state
+4. réseau
+5. SSH
+6. Ansible/service
+7. application
+8. données OpenSearch
+9. dashboard
+10. HAProxy/backends
+11. preuves/livrables
+12. nettoyage
 ```
 
-## 28. La CI échoue
-
-Validation locale :
-
-```bash
-bash scripts/commands/p5.sh status --full-validation
-bash scripts/tests/test-p5-orchestrator.sh
-python3 scripts/tools/audit_non_regression.py
-python3 scripts/tools/audit_secrets.py
-```
-
-Une CI verte valide le dépôt et les intégrations locales, pas un déploiement réel
-sur le compte AWS.
-
-## 29. Backup ou restauration WSL2
-
-Ne pas utiliser P5 pour cela. Depuis `Windows_11_Pro_Custom` :
-
-```powershell
-.\install.ps1 -BackupAction Create -BackupTargetDrive E:
-.\install.ps1 -BackupAction Verify -BackupTargetDrive E:
-.\install.ps1 -BackupAction RestorePlan -BackupTargetDrive E:
-```
-
-La V7 amont est la seule procédure de sauvegarde/restauration de la workstation.
+Cette méthode évite de corriger une couche applicative lorsqu'en réalité la couche réseau ou identité est en panne.

@@ -1,97 +1,23 @@
-# RUNBOOK P5 OpenClassrooms — Exécution guidée A → Z
+# Runbook d'exécution guidée — P5 de A à Z
 
-> **But :** exécuter, reprendre, diagnostiquer et fermer proprement le lab P5 AWS.
+## But du runbook
 
-Ce Runbook est la **procédure opératoire** du projet. Il suppose que le poste de
-contrôle est déjà disponible.
+Ce document est la procédure opératoire principale pour **réaliser le P5 avec l'implémentation actuelle du dépôt**.
 
-Pour comprendre les concepts avant d'exécuter les commandes, lire :
-[01-parcours-debutant.md](01-parcours-debutant.md).
+Il ne remplace pas les guides pédagogiques : il donne l'ordre, les commandes, les contrôles et les points d'arrêt.
 
-Pour installer ou réparer Windows 11 / WSL2 / Ubuntu, utiliser uniquement :
-[00-preparation-environnement.md](00-preparation-environnement.md).
+## Règles avant de commencer
 
-## 1. Résultat attendu
+1. exécuter les commandes Linux depuis Ubuntu WSL2 ;
+2. rester dans `~/labs/p5_Openclassrooms` ;
+3. ne pas travailler depuis `/mnt/c` ou `/mnt/d` ;
+4. ne jamais supprimer un state Terraform pour forcer une reprise ;
+5. lire un plan Terraform avant de confirmer une mutation ;
+6. conserver les confirmations manuelles lorsqu'une preuve ne peut pas être automatisée ;
+7. considérer toute ressource AWS active comme potentiellement facturable ;
+8. terminer le projet par le nettoyage `3 → 2 → 1`.
 
-Le parcours P5 doit démontrer :
-
-```text
-Exercice 1
-Terraform → AWS → Ansible → NGINX → Angular
-                     ↓
-              idempotence Ansible
-                     ↓
-                 access.log
-                     │
-                     ├────────────► Exercice 2
-                     │              OpenSearch
-                     │
-                     └────────────► Exercice 3
-                                    réseau AWS réutilisé
-                                    HAProxy + 2 backends
-```
-
-Puis :
-
-```text
-preuves
-   ↓
-finalisation
-   ↓
-destruction 3 → 2 → 1
-   ↓
-NETTOYAGE AWS COMPLET
-```
-
-## 2. Règle opératoire
-
-À chaque phase :
-
-```text
-OBJECTIF
-   ↓
-OBSERVER
-   ↓
-VÉRIFIER LES PRÉREQUIS
-   ↓
-EXÉCUTER
-   ↓
-LIRE LE VERDICT
-   ↓
-SI KO : LOGS + DIAGNOSTIC
-   ↓
-CORRIGER UNIQUEMENT LA CAUSE
-   ↓
-RELANCER LA MÊME COMMANDE
-```
-
-Ne supprimez pas un état Terraform, une ressource AWS ou un fichier runtime pour
-« repartir proprement » sans avoir identifié la cause.
-
-## 3. Carte des commandes et des risques
-
-| Phase | Commande | Mutation locale | Mutation AWS | Coût possible |
-| --- | --- | --- | --- | --- |
-| Observation | `p5.sh inspect` | non | non | non |
-| Préparation | `p5.sh prepare` | si delta | possible | possible |
-| Vérification | `p5.sh status` | non | non destructif | non |
-| Exercice 1 | `p5.sh ex1` | oui | oui | oui |
-| Exercice 2 | `p5.sh ex2` | oui | oui | oui |
-| Exercice 3 | `p5.sh ex3` | oui | oui | oui |
-| Parcours complet | `p5.sh all` | oui | oui | oui |
-| Diagnostic | `p5.sh diagnostics` | journaux/preuves | non | non |
-| Finalisation | `p5.sh finalize` | preuves/livrables | non | non |
-| Nettoyage | `p5.sh cleanup` | oui | destruction | arrête les coûts |
-
-Le Control Center V11 affiche ces informations avant les actions importantes :
-
-```bash
-bash scripts/commands/p5.sh
-```
-
-# PHASE A — OUVRIR ET QUALIFIER LE P5
-
-## 4. Ouvrir l'environnement de contrôle
+## Phase 0 — Ouvrir le poste de contrôle
 
 Depuis Windows :
 
@@ -99,179 +25,324 @@ Depuis Windows :
 wsl -d Ubuntu
 ```
 
-Puis :
+Dans Ubuntu :
 
 ```bash
 cd ~/labs/p5_Openclassrooms
+pwd
+git status --short
 ```
 
-Pour un clone neuf :
+Résultat attendu :
 
-```bash
-mkdir -p ~/labs
-cd ~/labs
-git clone https://github.com/mathiasseguincadiche/p5_Openclassrooms.git
-cd p5_Openclassrooms
+```text
+/home/<utilisateur>/labs/p5_Openclassrooms
 ```
 
-Le checkout principal doit rester dans le filesystem Linux, pas sous `/mnt/c` ou
-`/mnt/d`.
+Le dépôt peut avoir des fichiers locaux ignorés par Git après une première exécution. `git status` ne doit pas montrer de secret ou d'état Terraform ajouté au suivi.
 
-Si `wsl -d Ubuntu` ne fonctionne pas ou si la toolchain générale de la workstation
-est absente, corrigez d'abord le poste de contrôle avec le guide d'installation.
-
-## 5. Vérifier le contrat spécifique P5
-
-Sans mutation :
-
-```bash
-bash scripts/commands/bootstrap-ubuntu-server.sh --check-only
-```
-
-Ce contrôle vérifie les outils et versions attendus par le P5.
-
-Si un delta propre au projet existe :
-
-```bash
-bash scripts/commands/bootstrap-ubuntu-server.sh
-```
-
-Le bootstrap ne doit corriger que le delta P5.
-
-Après un éventuel ajout au groupe Docker :
-
-```powershell
-wsl --shutdown
-wsl -d Ubuntu
-```
-
-Puis revenez dans le dépôt et relancez `--check-only`.
-
-## 6. Observer l'état réel
+## Phase 1 — Observer avant de modifier
 
 ```bash
 bash scripts/commands/p5.sh inspect
 ```
 
-`inspect` ne doit créer ni modifier de ressource AWS.
+### Pourquoi commencer par `inspect` ?
 
-Relisez notamment :
+Parce qu'une session précédente peut avoir laissé :
 
-- état de la toolchain ;
-- présence de la configuration locale AWS ;
-- session AWS ;
-- clé SSH ;
-- états Terraform existants ;
-- inventaire Ansible ;
-- artefact Angular ;
-- preuves et logs existants.
+- un state Terraform ;
+- des ressources AWS existantes ;
+- des outputs encore valides ;
+- un fichier de configuration locale ;
+- des preuves déjà collectées.
 
-### Si cette phase échoue
+Le moteur doit d'abord classifier la situation avant de décider s'il faut créer, reprendre ou ne rien faire.
 
-```bash
-bash scripts/commands/p5.sh logs
-bash scripts/commands/p5.sh diagnostics
-```
+### Point d'arrêt
 
-Puis consultez [Troubleshooting](troubleshooting.md).
+Si une valeur provenant de Terraform/AWS est affichée comme inconnue, **ne pas la remplacer par une valeur supposée**. Corriger la source indiquée par le diagnostic.
 
-# PHASE B — PRÉPARER AWS
-
-## 7. Préparer le lab
+## Phase 2 — Préparer le poste et AWS
 
 ```bash
 bash scripts/commands/p5.sh prepare
 ```
 
-Cette phase :
+`prepare` orchestre plusieurs sous-problèmes.
 
-1. inspecte d'abord le lab ;
-2. vérifie/converge le contrat P5 local ;
-3. réconcilie la configuration AWS ;
-4. vérifie le budget ;
-5. synchronise les trois `terraform.tfvars` ;
-6. lance les contrôles AWS nécessaires.
+### 2.1 Qualification du socle Linux
 
-## 8. Configuration locale AWS
+Le moteur vérifie l'équivalent de :
 
-La source locale est :
+```bash
+bash scripts/commands/bootstrap-ubuntu-server.sh --check-only
+```
+
+Si des écarts sont détectés, il propose de converger les outils nécessaires.
+
+### 2.2 Configuration locale AWS
+
+Le moteur crée ou réconcilie :
 
 ```text
 environment/aws-readiness.env
 ```
 
-Si elle n'existe pas :
+à partir du modèle :
 
-```bash
-cp environment/aws-readiness.env.example environment/aws-readiness.env
-$EDITOR environment/aws-readiness.env
+```text
+environment/aws-readiness.env.example
 ```
 
-Cette configuration centralise notamment :
+Les informations importantes sont :
 
 - profil AWS ;
 - région ;
 - compte AWS attendu ;
 - IPv4 publique `/32` ;
+- types d'instances ;
 - clé SSH ;
 - paramètres OpenSearch ;
-- quotas ;
-- budget.
+- budget et e-mail d'alerte ;
+- confirmations de sécurité.
 
-`P5_PUBLIC_IP_CIDR` représente l'IPv4 publique d'administration vue depuis AWS.
+### 2.3 Budget AWS
 
-## 9. Portes de validation
+Le moteur vérifie :
 
-Avant Terraform, le parcours doit atteindre :
+```bash
+bash scripts/commands/setup-aws-guardrails.sh --check
+```
+
+Si le budget n'est pas conforme, il peut proposer la convergence correspondante.
+
+### 2.4 Synchronisation Terraform
+
+La configuration locale alimente les trois fichiers `terraform.tfvars` ignorés par Git.
+
+Contrôle équivalent :
+
+```bash
+bash scripts/commands/sync-terraform-tfvars.sh --check
+```
+
+### Point d'arrêt
+
+Ne pas poursuivre si :
+
+- l'identité AWS n'est pas celle attendue ;
+- le compte root est utilisé pour le lab normal ;
+- l'IP SSH n'est pas en `/32` ;
+- la clé SSH privée manque ;
+- le budget n'est pas compris ;
+- les quotas sont insuffisants ;
+- les `tfvars` ne correspondent pas à la configuration locale.
+
+## Phase 3 — Vérifier l'état de préparation
+
+```bash
+bash scripts/commands/p5.sh status
+```
+
+Cette commande est non destructive.
+
+Elle doit permettre de répondre :
+
+> « Si je lance maintenant un exercice, les prérequis locaux et AWS sont-ils cohérents ? »
+
+Un des verdicts importants du contrôle Terraform est :
 
 ```text
-GO AWS
 GO TERRAFORM
 ```
 
-Ne contournez jamais un `STOP AWS` ou un `[ KO ]` par un `terraform apply`
-manuellement lancé à côté de l'orchestrateur.
+Ce verdict autorise la suite des contrôles ; il ne remplace jamais la lecture du plan.
 
-### Si la préparation échoue
+---
 
-1. exécutez `p5.sh inspect` ;
-2. consultez `p5.sh logs` ;
-3. corrigez l'information, la permission ou le quota explicitement signalé ;
-4. relancez `p5.sh prepare`.
+# Exercice 1 — Terraform + Ansible + Angular/NGINX
 
-# PHASE C — EXERCICE 1
-
-## 10. Objectif
-
-Créer/converger l'infrastructure AWS, déployer Angular derrière NGINX avec
-Ansible et prouver l'idempotence.
-
-## 11. Exécuter
+## Phase 4 — Lancer l'exercice 1
 
 ```bash
 bash scripts/commands/p5.sh ex1
 ```
 
-Le parcours réalise :
+L'orchestrateur exécute le parcours suivant.
 
-1. préparation de l'artefact Angular si nécessaire ;
-2. `terraform init` ;
-3. `terraform plan -detailed-exitcode` ;
-4. affichage du plan ;
-5. aucun `apply` si le plan est vide ;
-6. confirmation puis application du delta s'il existe ;
-7. post-plan pour vérifier la convergence ;
-8. génération de l'inventaire Ansible ;
-9. attente SSH et cloud-init ;
-10. premier passage Ansible ;
-11. second passage Ansible ;
-12. contrôle HTTP de NGINX/Angular ;
-13. génération de trafic ;
-14. collecte du vrai `access.log`.
+## 4.1 Préparer l'artefact Angular
 
-## 12. Verdict Ansible
+Commande interne principale :
 
-Le second passage doit se terminer avec :
+```bash
+bash scripts/commands/prepare-angular-artifact.sh
+```
+
+### Rôle
+
+Le dépôt contient :
+
+```text
+application/angular/          sources
+ansible/files/angular-app/    artefact à déployer
+```
+
+Le script vérifie/converge l'artefact afin qu'Ansible déploie le build issu des sources actuelles.
+
+### Vérification conceptuelle
+
+La CI exécute notamment :
+
+```bash
+npm ci --prefix application/angular --no-audit --no-fund
+npm run lint --prefix application/angular
+npm test --prefix application/angular
+npm run build --prefix application/angular
+```
+
+puis compare le build avec l'artefact Ansible.
+
+## 4.2 Initialiser Terraform
+
+Le moteur lance pour `terraform/exercice-1` :
+
+```bash
+terraform init -input=false
+```
+
+### Pourquoi ?
+
+`terraform init` prépare le répertoire de travail et télécharge les providers verrouillés par le module.
+
+Ce n'est pas une création de ressources AWS.
+
+## 4.3 Calculer le delta
+
+Le moteur utilise :
+
+```bash
+terraform plan -input=false -detailed-exitcode -out=tfplan
+```
+
+### Lire les codes
+
+```text
+0 → configuration déjà conforme
+2 → Terraform a détecté un changement à appliquer
+autre → erreur
+```
+
+Le plan sauvegardé est ensuite affiché avec :
+
+```bash
+terraform show -no-color tfplan
+```
+
+### Ce qu'il faut lire
+
+Avant d'accepter un delta, vérifier notamment :
+
+- bon compte et bonne région ;
+- VPC attendu ;
+- deux subnets publics ;
+- Security Group SSH `/32` ;
+- HTTP 80 ;
+- type EC2 attendu ;
+- clé EC2 attendue ;
+- volume chiffré ;
+- aucune ressource inattendue.
+
+## 4.4 Appliquer uniquement si nécessaire
+
+Si le plan retourne `2`, le moteur demande confirmation puis applique **le plan sauvegardé**.
+
+Après l'apply, il exécute un nouveau plan.
+
+Résultat attendu : aucun delta résiduel.
+
+## 4.5 Lire les outputs Terraform
+
+Le moteur récupère notamment :
+
+- l'IPv4 publique de l'EC2 Angular ;
+- l'URL HTTP de l'application.
+
+Ces valeurs doivent venir de Terraform. Ne pas recopier arbitrairement une autre EC2 depuis la console.
+
+Pour comprendre manuellement les outputs :
+
+```bash
+terraform -chdir=terraform/exercice-1 output
+```
+
+## 4.6 Générer l'inventaire Ansible
+
+```bash
+bash scripts/commands/generate-ansible-inventory.sh
+```
+
+Le fichier local est :
+
+```text
+ansible/inventories/hosts_aws
+```
+
+Il est ignoré par Git parce qu'il contient des informations propres au lab courant.
+
+## 4.7 Attendre SSH
+
+Le moteur attend que :
+
+- l'instance soit joignable ;
+- Python soit disponible ;
+- `cloud-init` soit terminé.
+
+Cette attente évite d'exécuter Ansible sur une EC2 encore en initialisation.
+
+## 4.8 Tester Ansible
+
+```bash
+ansible all -i ansible/inventories/hosts_aws -m ping
+```
+
+Résultat attendu : `SUCCESS` et `pong`.
+
+Si le ping échoue, ne pas passer au playbook. Diagnostiquer d'abord :
+
+- IP publique ;
+- Security Group ;
+- route Internet ;
+- clé SSH ;
+- utilisateur `ubuntu` ;
+- permissions de la clé.
+
+## 4.9 Déployer Angular et NGINX
+
+```bash
+ansible-playbook \
+  -i ansible/inventories/hosts_aws \
+  ansible/playbooks/deploy.yml
+```
+
+Le playbook :
+
+1. installe NGINX et `curl` ;
+2. crée le groupe et l'utilisateur applicatifs ;
+3. crée `/var/www/p5` ;
+4. copie l'artefact Angular ;
+5. installe la configuration NGINX ;
+6. active le site P5 ;
+7. retire le site par défaut ;
+8. exécute `nginx -t` ;
+9. démarre et active NGINX ;
+10. recharge NGINX lorsque les fichiers notifiés changent.
+
+## 4.10 Prouver l'idempotence
+
+Le moteur rejoue le même playbook.
+
+Résultat strict attendu :
 
 ```text
 changed=0
@@ -279,140 +350,351 @@ unreachable=0
 failed=0
 ```
 
-Si `changed` reste supérieur à zéro, l'idempotence n'est pas démontrée.
+Si `changed` est supérieur à zéro, comprendre quelle tâche change encore avant de considérer l'exercice convergé.
 
-## 13. Si l'exercice 1 échoue
-
-```bash
-bash scripts/commands/p5.sh inspect
-bash scripts/commands/p5.sh logs
-```
-
-Ne supprimez pas le `terraform.tfstate`.
-
-Corrigez le delta identifié puis relancez :
+## 4.11 Vérifier l'application
 
 ```bash
-bash scripts/commands/p5.sh ex1
+bash scripts/commands/verify-angular-deployment.sh --url <URL_TERRAFORM>
 ```
 
-# PHASE D — EXERCICE 2
+Le contrôle vérifie notamment :
 
-## 14. Objectif
+- HTTP disponible ;
+- application Angular servie ;
+- bundle JavaScript accessible ;
+- fallback SPA.
 
-Créer/converger Amazon OpenSearch, importer les données et produire les contrôles
-techniques nécessaires au dashboard.
+## 4.12 Générer et collecter les logs
 
-## 15. Exécuter
+Le moteur génère du trafic puis collecte le log NGINX :
+
+```bash
+bash scripts/commands/generate-nginx-traffic.sh \
+  --url <URL_TERRAFORM> --requests 96
+```
+
+puis :
+
+```bash
+bash scripts/commands/collect-nginx-access-log.sh \
+  --host <IP_TERRAFORM> \
+  --output proofs/runtime/exercice-2/nginx-access-real.log
+```
+
+### Definition of Done exercice 1
+
+- [ ] Terraform convergé ;
+- [ ] EC2 disponible ;
+- [ ] Ansible ping réussi ;
+- [ ] premier playbook sans échec ;
+- [ ] second playbook `changed=0`, `unreachable=0`, `failed=0` ;
+- [ ] Angular accessible derrière NGINX ;
+- [ ] log réel NGINX collecté ;
+- [ ] preuves utiles conservées.
+
+---
+
+# Exercice 2 — Amazon OpenSearch
+
+## Phase 5 — Lancer l'exercice 2
 
 ```bash
 bash scripts/commands/p5.sh ex2
 ```
 
-Le parcours :
+## 5.1 Terraform OpenSearch
 
-1. fait converger le domaine Amazon OpenSearch ;
-2. prépare le jeu de données reproductible ;
-3. utilise le vrai log NGINX de l'exercice 1 lorsqu'il est disponible ;
-4. importe les documents avec la Bulk API ;
-5. vérifie les mappings ;
-6. vérifie le nombre de documents ;
-7. vérifie les agrégations attendues.
+Le même mécanisme `init → plan → show → confirmation → apply → post-plan` est utilisé dans :
 
-## 16. Checkpoint humain Dashboards
+```text
+terraform/exercice-2
+```
 
-Les visualisations et captures ne doivent pas être déclarées conformes sans les
-avoir réellement vérifiées.
+Vérifier le plan :
 
-Le dépôt attend notamment les visualisations définies dans le guide de
-l'exercice 2.
+- domaine OpenSearch attendu ;
+- moteur attendu ;
+- un nœud pour le lab ;
+- volume EBS attendu ;
+- chiffrement ;
+- HTTPS ;
+- policy limitée à votre `/32` ;
+- absence de ressource inattendue.
 
-Guide : [Exercice 2 — OpenSearch](exercices/02-elk-opensearch.md).
+## 5.2 Lire les endpoints
 
-## 17. Si l'exercice 2 échoue
+Terraform fournit :
+
+- endpoint OpenSearch ;
+- URL OpenSearch Dashboards.
+
+L'orchestrateur refuse d'inventer ces valeurs si elles sont absentes.
+
+## 5.3 Valider les données avant import
+
+Le sample versionné est validé sans mutation OpenSearch :
 
 ```bash
-bash scripts/commands/p5.sh logs
+bash scripts/commands/import-opensearch-data.sh
+```
+
+Si le log réel de l'exercice 1 existe, il est également validé :
+
+```bash
+bash scripts/commands/import-opensearch-data.sh \
+  --input proofs/runtime/exercice-2/nginx-access-real.log
+```
+
+## 5.4 Importer dans OpenSearch
+
+Après confirmation, l'orchestrateur applique l'import :
+
+```bash
+bash scripts/commands/import-opensearch-data.sh \
+  --endpoint <ENDPOINT> --apply
+```
+
+et, si disponible :
+
+```bash
+bash scripts/commands/import-opensearch-data.sh \
+  --input proofs/runtime/exercice-2/nginx-access-real.log \
+  --endpoint <ENDPOINT> --apply
+```
+
+`--apply` est important : sans ce drapeau, le script reste dans une logique de validation/prévisualisation.
+
+## 5.5 Vérifier mappings et agrégations
+
+```bash
+bash scripts/commands/verify-opensearch-data.sh \
+  --endpoint <ENDPOINT>
+```
+
+Le but est de prouver que les données peuvent réellement produire les métriques du dashboard.
+
+## 5.6 Checkpoint humain OpenSearch Dashboards
+
+Ouvrir l'URL fournie par Terraform.
+
+Vérifier les données dans Discover, puis créer/vérifier :
+
+1. **donut des méthodes HTTP** ;
+2. **somme de `bytes_sent` par tranches de 12 h** ;
+3. **top 5 `url_path` par tranches de 12 h** ;
+4. dashboard contenant les trois.
+
+### Captures à conserver
+
+- capture du donut ;
+- capture de la métrique `bytes_sent` / 12 h ;
+- capture du top 5 / 12 h ;
+- capture du dashboard complet.
+
+Le mode `--yes` de l'orchestrateur **ne confirme pas** cette action à votre place. Le checkpoint demande une validation explicite lorsque la preuve est réellement produite.
+
+### Definition of Done exercice 2
+
+- [ ] domaine OpenSearch actif ;
+- [ ] données importées sans erreur Bulk ;
+- [ ] mapping exploitable ;
+- [ ] comptage et agrégations vérifiés ;
+- [ ] données visibles dans Dashboards ;
+- [ ] trois visualisations correctes ;
+- [ ] dashboard complet ;
+- [ ] quatre captures réelles conservées.
+
+---
+
+# Exercice 3 — HAProxy et résilience
+
+## Phase 6 — Lancer l'exercice 3
+
+```bash
+bash scripts/commands/p5.sh ex3
+```
+
+## 6.1 Précondition réseau
+
+L'exercice 3 réutilise le VPC et les subnets créés par l'exercice 1.
+
+Si les ressources de l'exercice 1 ont été détruites, l'exercice 3 ne peut pas résoudre correctement ses data sources.
+
+## 6.2 Terraform HAProxy
+
+Le module :
+
+```text
+terraform/exercice-3
+```
+
+crée :
+
+- Security Group HAProxy ;
+- Security Group backends ;
+- deux EC2 backend ;
+- une EC2 HAProxy.
+
+Les backends installent Docker et exécutent :
+
+```text
+nginxdemos/hello:plain-text
+```
+
+HAProxy est configuré pour pointer vers leurs IP privées.
+
+## 6.3 Attendre HAProxy
+
+Le moteur attend une réponse HTTP sur l'URL issue des outputs Terraform.
+
+Cette étape confirme que le `user_data` et le service HAProxy ont terminé leur initialisation.
+
+## 6.4 Vérifier le round-robin
+
+```bash
+bash scripts/commands/test-haproxy-roundrobin.sh \
+  --url <HAPROXY_URL> --requests 12
+```
+
+Le test doit observer les deux backends.
+
+## 6.5 Prévisualiser le scénario de panne
+
+Avant mutation réelle :
+
+```bash
+bash scripts/commands/test-haproxy-failover.sh \
+  --url <HAPROXY_URL> \
+  --backend-host <BACKEND_1_IP>
+```
+
+Cette exécution explique/valide le scénario sans arrêter réellement le backend.
+
+## 6.6 Rejouer la panne réelle
+
+Après confirmation :
+
+```bash
+bash scripts/commands/test-haproxy-failover.sh \
+  --url <HAPROXY_URL> \
+  --backend-host <BACKEND_1_IP> \
+  --apply
+```
+
+Le test doit démontrer :
+
+```text
+1. deux backends visibles avant panne
+2. arrêt contrôlé du backend 1
+3. HAProxy retire le backend défaillant
+4. HTTP continue via le backend 2
+5. backend 1 redémarré
+6. HAProxy le réintègre
+7. deux backends visibles à nouveau
+```
+
+Le script prévoit une restauration afin de ne pas laisser volontairement le backend arrêté après une interruption normale du test.
+
+### Definition of Done exercice 3
+
+- [ ] trois EC2 actives pendant la démonstration ;
+- [ ] HAProxy accessible ;
+- [ ] deux backends observés en round-robin ;
+- [ ] health checks actifs ;
+- [ ] un backend retiré pendant la panne ;
+- [ ] service disponible pendant la panne ;
+- [ ] backend restauré et réintégré ;
+- [ ] configuration HAProxy lisible disponible pour le livrable ;
+- [ ] preuves avant / panne / reprise conservées.
+
+---
+
+# Phase 7 — Diagnostics et finalisation
+
+## 7.1 Collecter les diagnostics
+
+```bash
 bash scripts/commands/p5.sh diagnostics
 ```
 
-Puis consultez la section OpenSearch de
-[troubleshooting.md](troubleshooting.md).
+Cette commande collecte l'état détaillé et vérifie la structure des livrables.
 
-# PHASE E — EXERCICE 3
-
-## 18. Objectif
-
-Démontrer la distribution du trafic et la continuité de service lors d'une panne
-contrôlée d'un backend.
-
-## 19. Prérequis
-
-L'exercice 1 doit encore exister car l'exercice 3 réutilise :
-
-- le VPC ;
-- les sous-réseaux publics ;
-- la paire de clés EC2.
-
-## 20. Exécuter
+## 7.2 Contrôle strict
 
 ```bash
-bash scripts/commands/p5.sh ex3
+bash scripts/commands/p5.sh finalize
 ```
 
-Le test doit vérifier :
+Le contrôle strict échoue si les livrables contiennent encore des marqueurs de preuve à compléter.
 
-- HAProxy accessible ;
-- deux backends ;
-- round-robin ;
-- panne réelle contrôlée ;
-- continuité du service ;
-- restauration ;
-- réintégration du backend.
-
-## 21. Si l'exercice 3 échoue
-
-Ne détruisez pas l'exercice 1.
-
-Consultez les logs HAProxy, corrigez la cause puis relancez :
-
-```bash
-bash scripts/commands/p5.sh ex3
-```
-
-# PHASE F — PARCOURS COMPLET
-
-## 22. Exécuter de bout en bout
-
-```bash
-bash scripts/commands/p5.sh all
-```
-
-Enchaînement :
+Verdict attendu :
 
 ```text
-prepare → ex1 → ex2 → ex3 → diagnostics
+LIVRABLES PRÊTS POUR RELECTURE FINALE
 ```
 
-Le mode `all` ne détruit pas AWS.
+## 7.3 Relire les preuves
 
-## 23. Mode `--yes`
+Avant publication :
+
+- retirer ou masquer les données sensibles inutiles ;
+- ne jamais publier de clé ou token ;
+- ne pas publier le state Terraform ;
+- ne pas publier les vrais `tfvars` ;
+- ne pas publier l'inventaire réel ;
+- contextualiser chaque capture ou sortie CLI.
+
+---
+
+# Phase 8 — Nettoyage AWS
+
+## 8.1 Pourquoi le nettoyage vient après les preuves
+
+Les ressources doivent rester disponibles tant que la démonstration ou les captures ont encore besoin d'elles.
+
+Mais dès que les preuves sont acquises, conserver OpenSearch et les EC2 ne produit plus de valeur pédagogique et peut produire des coûts.
+
+## 8.2 Lancer le nettoyage
 
 ```bash
-bash scripts/commands/p5.sh all --yes
+bash scripts/commands/p5.sh cleanup
 ```
 
-Ce mode ne contourne jamais :
+La commande appelle la destruction Terraform dans l'ordre :
 
-- les validations humaines de sécurité ;
-- le checkpoint OpenSearch Dashboards ;
-- la confirmation `DETRUIRE`.
+```text
+3 → 2 → 1
+```
 
-# PHASE G — REPRISE ET DIAGNOSTIC
+La confirmation forte `DETRUIRE` reste nécessaire.
 
-## 24. Reprendre après une interruption
+## 8.3 Auditer après destruction
 
-Après fermeture du terminal ou redémarrage :
+Le moteur appelle ensuite le contrôle AWS global.
+
+Verdict attendu :
+
+```text
+NETTOYAGE AWS COMPLET
+```
+
+### Si l'audit détecte encore une ressource
+
+Ne pas la supprimer au hasard depuis la console si elle appartient encore à un state Terraform valide.
+
+Procédure :
+
+1. identifier l'exercice propriétaire ;
+2. vérifier son state ;
+3. utiliser Terraform pour converger/détruire ;
+4. relancer l'audit.
+
+---
+
+# Reprise après interruption
+
+Si le terminal a été fermé ou Windows redémarré :
 
 ```powershell
 wsl -d Ubuntu
@@ -426,160 +708,62 @@ bash scripts/commands/p5.sh inspect
 bash scripts/commands/p5.sh all
 ```
 
-Le projet réévalue l'état réel au lieu de repartir de zéro.
+`all` réutilise les states et recalcule les deltas. Il ne doit pas être compris comme une commande « supprimer puis recréer ».
 
-## 25. Journaux
+Pour une reprise plus ciblée :
+
+```bash
+bash scripts/commands/p5.sh status
+bash scripts/commands/p5.sh ex1
+bash scripts/commands/p5.sh ex2
+bash scripts/commands/p5.sh ex3
+```
+
+selon l'étape réellement incomplète.
+
+# Parcours complet en une commande
+
+Une fois l'environnement compris et préparé :
+
+```bash
+bash scripts/commands/p5.sh all
+```
+
+Le moteur enchaîne :
+
+```text
+prepare
+  ↓
+ex1
+  ↓
+ex2
+  ↓
+ex3
+  ↓
+diagnostics
+```
+
+Il ne détruit pas AWS à la fin.
+
+Le mode :
+
+```bash
+bash scripts/commands/p5.sh all --yes
+```
+
+peut confirmer les mutations automatisables, mais ne contourne pas :
+
+- le checkpoint humain OpenSearch ;
+- les informations non vérifiables ;
+- la confirmation forte de destruction.
+
+# Commandes de support
 
 ```bash
 bash scripts/commands/p5.sh logs
-```
-
-Chaque exécution crée des journaux persistants sous :
-
-```text
-logs/<UTC>/
-```
-
-## 26. Diagnostic complet
-
-```bash
+bash scripts/commands/p5.sh guide
+bash scripts/commands/p5.sh docs
 bash scripts/commands/p5.sh diagnostics
 ```
 
-Équivalent spécialisé :
-
-```bash
-bash scripts/commands/collect-diagnostics.sh --complet --avec-preuves
-```
-
-Le diagnostic doit rester non destructif côté AWS.
-
-## 27. Arbre de diagnostic
-
-```text
-problème
-   ↓
-inspect
-   ↓
-logs
-   ↓
-diagnostics
-   ↓
-troubleshooting.md
-   ↓
-corriger uniquement le delta identifié
-   ↓
-relancer la même commande
-```
-
-Si le problème concerne l'installation WSL2 ou la workstation elle-même, sortez
-du périmètre P5 et utilisez le guide d'environnement dédié.
-
-# PHASE H — PREUVES ET FINALISATION
-
-## 28. Contrôler les preuves
-
-Avant la soutenance :
-
-```bash
-bash scripts/commands/p5.sh diagnostics
-```
-
-Relisez ensuite la matrice :
-
-[Correspondance consignes → implémentation → preuve](02-correspondance-consignes-depot.md).
-
-La présence d'un fichier dans Git ne remplace jamais une preuve AWS réelle.
-
-## 29. Finaliser
-
-```bash
-bash scripts/commands/p5.sh finalize
-```
-
-Verdict attendu :
-
-```text
-LIVRABLES PRÊTS POUR RELECTURE FINALE
-```
-
-Si ce verdict n'est pas obtenu, complétez uniquement les éléments signalés puis
-relancez `finalize`.
-
-# PHASE I — NETTOYAGE AWS
-
-## 30. Quand nettoyer ?
-
-Uniquement après :
-
-- collecte des preuves ;
-- validation du dashboard ;
-- test HAProxy terminé ;
-- captures réalisées ;
-- livrables contrôlés.
-
-## 31. Détruire proprement
-
-```bash
-bash scripts/commands/p5.sh cleanup
-```
-
-Ordre obligatoire :
-
-```text
-Exercice 3 → Exercice 2 → Exercice 1
-```
-
-La confirmation forte :
-
-```text
-DETRUIRE
-```
-
-reste obligatoire.
-
-## 32. Audit final
-
-Verdict attendu :
-
-```text
-NETTOYAGE AWS COMPLET
-```
-
-Tant que ce verdict n'est pas obtenu, ne supposez pas que toutes les ressources
-ou tous les coûts P5 ont disparu.
-
-# CHECKLIST FINALE
-
-- [ ] environnement de contrôle disponible ;
-- [ ] contrat P5 conforme ;
-- [ ] `p5.sh inspect` relu avant mutation ;
-- [ ] `GO AWS` obtenu ;
-- [ ] `GO TERRAFORM` obtenu ;
-- [ ] exercice 1 exécuté sur AWS réel ;
-- [ ] idempotence Ansible prouvée ;
-- [ ] Angular réellement servi par NGINX ;
-- [ ] logs NGINX réels collectés ;
-- [ ] exercice 2 exécuté ;
-- [ ] données OpenSearch vérifiées ;
-- [ ] visualisations/captures Dashboards validées ;
-- [ ] exercice 3 exécuté ;
-- [ ] round-robin vérifié ;
-- [ ] panne et reprise vérifiées ;
-- [ ] diagnostics collectés ;
-- [ ] `p5.sh finalize` conforme ;
-- [ ] livrables relus ;
-- [ ] AWS nettoyé ;
-- [ ] `NETTOYAGE AWS COMPLET` obtenu.
-
-# RÉFÉRENCES
-
-- [Cadre officiel](00-cadre-officiel.md)
-- [Parcours pédagogique](01-parcours-debutant.md)
-- [Architecture et flux](architecture-et-flux.md)
-- [Centre de commande V11](CENTRE_DE_COMMANDE.md)
-- [Préparation AWS](00b-preparation-compte-aws.md)
-- [Convergence et réexécution](convergence-et-reexecution.md)
-- [Troubleshooting](troubleshooting.md)
-- [Validation, preuves et nettoyage](validation-preuves-nettoyage.md)
-- [Installation de l'environnement de contrôle](00-preparation-environnement.md)
+En cas de problème, consulter [`troubleshooting.md`](troubleshooting.md) avant de modifier manuellement l'infrastructure.

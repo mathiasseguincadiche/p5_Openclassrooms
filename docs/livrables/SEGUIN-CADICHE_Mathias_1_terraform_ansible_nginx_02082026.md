@@ -1,88 +1,105 @@
 # Livrable 1 — Terraform, Ansible, NGINX et application Angular
 
-> **Gabarit à compléter.** Les preuves doivent provenir d’un déploiement réel.
-> La présence de ce document ne signifie pas que l’exercice a été exécuté.
+> **Gabarit à compléter avec des preuves réelles.** La présence de ce fichier ne prouve pas que l'exercice a été exécuté.
 
-## 1. Choix de réalisation
+## 1. Objectif
 
-- Mode retenu : **AWS**.
-- Région de référence : `us-east-1`.
-- Provisionnement : Terraform.
-- Configuration : Ansible.
-- Service web : NGINX.
-- Application : véritable projet Angular du dépôt.
-- Infrastructure : VPC, deux sous-réseaux publics, groupe de sécurité, paire de
-  clés et une cible EC2.
+Démontrer qu'une infrastructure AWS est provisionnée avec Terraform puis qu'Ansible configure l'EC2 afin de servir l'application Angular du dépôt avec NGINX.
 
-L’exercice 3 réutilise le VPC, les sous-réseaux et la paire de clés créés ici.
-Ils doivent donc rester disponibles jusqu’à la fin de la démonstration HAProxy.
+```text
+Terraform → AWS → EC2
+                 ↓
+              Ansible
+                 ↓
+          NGINX + Angular
+```
 
-## 2. Fichiers remis
+## 2. Choix de réalisation
+
+- mode : AWS ;
+- infrastructure : Terraform ;
+- configuration : Ansible ;
+- cible : EC2 Ubuntu ;
+- application : `application/angular/` ;
+- serveur HTTP : NGINX ;
+- port applicatif public : 80 ;
+- SSH : limité à l'IPv4 `/32` du poste.
+
+## 3. Fichiers remis
 
 ```text
 terraform/exercice-1/
-├── main.tf
-├── variables.tf
-├── outputs.tf
-├── terraform.tfvars.example
-└── .terraform.lock.hcl
-
-application/angular/             # sources Angular
-ansible/
-├── inventories/hosts_aws.example
-├── playbooks/deploy.yml
-└── files/
-    ├── angular-app/             # build de production synchronisé
-    └── nginx-angular.conf
+ansible/playbooks/deploy.yml
+ansible/files/nginx-angular.conf
+ansible/files/angular-app/
+application/angular/
 ```
 
-Fichiers exclus de toute remise publique :
+Ne pas joindre :
 
-- `terraform.tfvars` ;
-- `terraform.tfstate*` ;
-- `tfplan` ;
-- inventaire Ansible réel ;
-- clé privée SSH ;
-- contenu runtime non relu.
+```text
+terraform.tfvars
+terraform.tfstate*
+tfplan
+ansible/inventories/hosts_aws
+clé SSH privée
+logs runtime bruts
+```
 
-## 3. Preuves Terraform
+## 4. Exécution de référence
 
-### Validation
+Commande principale :
 
 ```bash
-terraform -chdir=terraform/exercice-1 init
-terraform -chdir=terraform/exercice-1 fmt -check
-terraform -chdir=terraform/exercice-1 validate
-terraform -chdir=terraform/exercice-1 plan -out=tfplan
-terraform -chdir=terraform/exercice-1 show tfplan
+bash scripts/commands/p5.sh ex1
 ```
 
-**Preuves à insérer :**
+Cette commande enchaîne le build Angular, Terraform, la génération d'inventaire, Ansible, l'idempotence, la vérification HTTP et la collecte des logs.
 
-- validation réussie ;
-- résumé du plan ;
-- VPC, deux sous-réseaux, groupe de sécurité, paire de clés et EC2 clairement
-  identifiables ;
-- règles SSH limitées au `/32` d’administration ;
-- absence de ressource inattendue.
+## 5. Preuve Terraform
 
-### Application
+### À montrer
 
-```bash
-terraform -chdir=terraform/exercice-1 apply tfplan
-terraform -chdir=terraform/exercice-1 output
+- `terraform init` réussi ;
+- plan relu ;
+- ressources attendues ;
+- apply réel ;
+- post-plan sans delta ;
+- outputs utiles.
+
+### Ressources attendues
+
+```text
+VPC
+2 subnets publics
+Internet Gateway
+route publique
+Security Group
+EC2 Key Pair
+1 EC2 p5-web
 ```
 
-**Preuves à insérer :**
+### Points de sécurité visibles
 
-- résumé de l’application ;
-- instance EC2 en état `running` ;
-- outputs utiles anonymisés ;
-- confirmation que la bonne région et le bon compte sont utilisés.
+```text
+SSH depuis /32
+HTTP :80 public
+IMDSv2 obligatoire
+volume racine chiffré
+compte AWS verrouillé
+```
 
-## 4. Preuves Ansible
+### Preuve à insérer
 
-### Connectivité
+**Preuve Terraform réelle à insérer ici**, avec les données inutiles anonymisées.
+
+### Interprétation à rédiger
+
+Expliquer pourquoi le plan et le post-plan démontrent que Terraform a convergé vers l'état attendu.
+
+## 6. Preuve Ansible — connectivité
+
+Commande :
 
 ```bash
 ansible all \
@@ -90,101 +107,145 @@ ansible all \
   -m ping
 ```
 
-**Preuve à insérer :** ping Ansible réussi.
-
-### Prévisualisation
-
-```bash
-ansible-playbook \
-  -i ansible/inventories/hosts_aws \
-  ansible/playbooks/deploy.yml --check --diff
-```
-
-### Déploiement réel
-
-```bash
-ansible-playbook \
-  -i ansible/inventories/hosts_aws \
-  ansible/playbooks/deploy.yml
-```
-
-### Idempotence
-
-Relancer le même playbook :
-
-```bash
-ansible-playbook \
-  -i ansible/inventories/hosts_aws \
-  ansible/playbooks/deploy.yml
-```
-
-**Preuves à insérer :**
-
-- première exécution sans échec ;
-- NGINX installé et actif ;
-- seconde exécution montrant l’idempotence ;
-- aucune donnée sensible affichée.
-
-## 5. Preuve de l'application
-
-Le dépôt contient les sources Angular sous `application/angular/` et l’artefact
-exact déployé par Ansible sous `ansible/files/angular-app/`.
-
-Avant le déploiement :
-
-```bash
-./scripts/commands/prepare-angular-artifact.sh
-```
-
-Après le déploiement :
-
-```bash
-./scripts/commands/verify-angular-deployment.sh
-```
-
-Verdict attendu :
+Résultat attendu :
 
 ```text
-APPLICATION ANGULAR DÉPLOYÉE ET SERVIE PAR NGINX
+SUCCESS
+pong
 ```
 
-**Preuves à insérer :**
+**Preuve Ansible ping à insérer ici.**
 
-- capture navigateur de l’application Angular réelle ;
-- réponse HTTP 200 ;
-- bundle JavaScript principal accessible ;
-- fallback SPA opérationnel ;
-- en-tête de sécurité NGINX ;
-- `nginx -t` valide.
+## 7. Preuve Ansible — premier déploiement
 
-### Logs pour l’exercice 2
+Commande :
 
 ```bash
-./scripts/commands/generate-nginx-traffic.sh --requests 64
-./scripts/commands/collect-nginx-access-log.sh
+ansible-playbook \
+  -i ansible/inventories/hosts_aws \
+  ansible/playbooks/deploy.yml
 ```
 
-**Preuve à insérer :** collecte d’un journal NGINX réel, sans publier le fichier
-brut s’il contient des informations inutiles ou sensibles.
+Le playbook doit :
 
-## 6. Nettoyage
+- installer NGINX ;
+- créer les droits applicatifs ;
+- copier Angular ;
+- installer la configuration NGINX ;
+- valider `nginx -t` ;
+- démarrer/activer NGINX.
 
-> **Ne pas détruire l’exercice 1 avant l’exercice 3.** Le module HAProxy
-> réutilise son VPC, ses sous-réseaux et sa paire de clés.
+Résultat minimal :
 
-Une fois l’exercice 3 terminé et toutes les preuves sauvegardées, la fermeture
-globale suit l’ordre :
+```text
+unreachable=0
+failed=0
+```
+
+**Preuve du premier passage à insérer ici.**
+
+## 8. Preuve d'idempotence
+
+Relancer exactement :
+
+```bash
+ansible-playbook \
+  -i ansible/inventories/hosts_aws \
+  ansible/playbooks/deploy.yml
+```
+
+Résultat strict attendu :
+
+```text
+changed=0
+unreachable=0
+failed=0
+```
+
+**Preuve du second passage à insérer ici.**
+
+### Interprétation
+
+Expliquer que l'état étant déjà conforme, Ansible ne réalise plus de modification inutile.
+
+## 9. Preuve applicative
+
+Récupérer les outputs :
+
+```bash
+WEB_IP="$(terraform -chdir=terraform/exercice-1 \
+  output -raw web_public_ip)"
+WEB_URL="$(terraform -chdir=terraform/exercice-1 \
+  output -raw web_url)"
+```
+
+Contrôle reproductible :
+
+```bash
+bash scripts/commands/verify-angular-deployment.sh \
+  --url "$WEB_URL"
+```
+
+### À montrer
+
+- application Angular réelle dans le navigateur ;
+- HTTP 200 ;
+- bundle JavaScript accessible ;
+- fallback SPA fonctionnel.
+
+**Capture de l'application à insérer ici.**
+
+## 10. Logs NGINX pour l'exercice 2
+
+Le parcours `p5.sh ex1` génère le trafic et collecte le log.
+
+Équivalent détaillé :
+
+```bash
+bash scripts/commands/generate-nginx-traffic.sh \
+  --url "$WEB_URL" \
+  --requests 96
+```
+
+Puis :
+
+```bash
+bash scripts/commands/collect-nginx-access-log.sh \
+  --host "$WEB_IP" \
+  --output proofs/runtime/exercice-2/nginx-access-real.log
+```
+
+Le fichier brut reste privé par défaut.
+
+## 11. Conclusion de l'exercice
+
+À rédiger après exécution :
+
+```text
+Terraform a créé et convergé l'infrastructure AWS attendue.
+Ansible a configuré l'EC2 et déployé Angular derrière NGINX.
+Le second passage a confirmé l'idempotence.
+L'application est accessible et produit des logs réels exploitables pour l'exercice 2.
+```
+
+## 12. Dépendance avec l'exercice 3
+
+Ne pas détruire le VPC de cet exercice avant la fin de l'exercice 3.
+
+Le nettoyage global est :
 
 ```text
 Exercice 3 → Exercice 2 → Exercice 1
 ```
 
-Commande recommandée en fin de projet :
+La fermeture du lab est effectuée avec :
 
 ```bash
-./scripts/commands/destroy-aws.sh
-./scripts/commands/check-aws-cleanup.sh
+bash scripts/commands/p5.sh cleanup
 ```
 
-**Preuve à insérer :** confirmation de la destruction finale et verdict
-`NETTOYAGE AWS COMPLET` après fermeture de l’ensemble du lab.
+Verdict final du projet :
+
+```text
+NETTOYAGE AWS COMPLET
+```

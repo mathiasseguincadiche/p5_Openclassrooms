@@ -1,41 +1,214 @@
-# 03 — Audit structurel et décisions de nettoyage
+# 03 — Audit structurel du dépôt
 
-## Dysfonctionnements constatés
+> Document de gouvernance. Il ne fait pas partie du parcours d'exécution du lab.
 
-- Cinq exercices génériques étaient présentés alors que le P5 n’en contient que trois.
-- Des cours et ressources étaient confondus avec des exercices évalués.
-- Kubernetes, Prometheus, Grafana, Vault et de nombreux templates généralistes occupaient le parcours principal sans répondre aux consignes.
-- Plusieurs documents utilisaient Mermaid malgré le besoin de schémas simples.
-- Le playbook Ansible pointait vers des dossiers renommés et ne pouvait plus copier l’application.
-- Des scripts calculaient une mauvaise racine du dépôt.
-- Les phases 4 et 5 pouvaient être prises pour des exercices supplémentaires.
-- Les automatismes de déploiement et de dashboard masquaient les commandes que le débutant doit comprendre.
-- Le nettoyage AWS détruisait l’exercice 1 avant l’exercice 3, alors que le troisième réutilise le réseau du premier.
-- Des textes historiques présentaient encore l’application Angular réelle comme un starter ou un artefact de démonstration.
-- Le contrôle des secrets était limité à quelques livrables au lieu de couvrir tous les fichiers suivis par Git.
+## Objectif
 
-## Corrections appliquées
+Cet audit décrit la **structure qui doit rester vraie aujourd'hui** pour que le dépôt demeure lisible, pédagogique et conforme aux trois exercices P5.
 
-- Trois fiches seulement, calquées sur les trois exercices officiels.
-- Séparation nette entre exercices, ressources, livrables et suivi.
-- Suppression des templates et guides hors périmètre.
-- Six schémas SVG autonomes en remplacement de Mermaid.
-- Restauration des chemins `angular-app` et `nginx-angular.conf`.
-- Une seule cible Ansible dans l’exercice 1, conformément au besoin minimal.
-- Suppression des lanceurs automatiques volumineux et des bibliothèques Bash historiques.
-- Conservation de scripts courts pour vérifier, préparer les livrables, nettoyer le poste et détruire AWS.
-- Destruction Terraform dans l’ordre 3 → 2 → 1.
-- Matrice explicite consigne → fichier → preuve.
-- Un seul parcours technique cohérent : AWS pour les trois exercices ; les variantes locales restent uniquement signalées comme options officielles.
-- Alignement de la documentation sur l’application Angular et le build réellement versionnés.
-- Ajout d’un audit global des secrets et fichiers sensibles dans la CI.
+Il ne raconte pas l'historique des refontes. Le lecteur opérationnel doit pouvoir ignorer ce document et suivre directement le portail `docs/README.md`.
 
-## Principe retenu
+## 1. Trois exercices uniquement
 
-Le dépôt doit répondre immédiatement à trois questions :
+La documentation évaluée doit exposer exactement :
 
-1. **Que demande OpenClassrooms ?**
-2. **Où se trouve l’implémentation ?**
-3. **Quelle preuve réelle faut-il produire ?**
+```text
+Exercice 1 — Terraform + Ansible
+Exercice 2 — OpenSearch / dashboard
+Exercice 3 — HAProxy / disponibilité
+```
 
-Tout contenu qui ne répond pas à l’une de ces questions est retiré du parcours principal ou déplacé dans la documentation spécialisée.
+Les cours ou ressources pédagogiques OpenClassrooms ne doivent pas devenir artificiellement des exercices supplémentaires.
+
+## 2. Un seul parcours d'implémentation
+
+Le dépôt maintient le choix :
+
+```text
+AWS pour les trois exercices
+```
+
+Les variantes locales proposées par OpenClassrooms sont expliquées comme contexte, mais elles ne constituent pas une seconde architecture à maintenir.
+
+## 3. Frontière workstation / projet
+
+La documentation doit conserver :
+
+```text
+Windows 11 + WSL2 = environnement de contrôle
+AWS = périmètre évalué
+```
+
+Le dépôt P5 ne doit pas réimplémenter la maintenance de la workstation.
+
+## 4. Structure technique
+
+```text
+application/
+  └── Angular source
+
+ansible/
+  ├── playbook
+  ├── configuration NGINX
+  └── artefact Angular
+
+terraform/
+  ├── exercice-1
+  ├── exercice-2
+  └── exercice-3
+
+scripts/
+  ├── commands
+  ├── lib
+  ├── tests
+  └── tools
+
+docs/
+  └── documentation officielle
+```
+
+Cette séparation doit rester compréhensible sans avoir besoin de connaître l'historique du dépôt.
+
+## 5. Responsabilités
+
+| Élément | Responsabilité |
+| --- | --- |
+| Terraform ex. 1 | réseau et EC2 Angular |
+| Ansible | NGINX + Angular sur l'EC2 |
+| Terraform ex. 2 | Amazon OpenSearch |
+| outils OpenSearch | conversion, import, vérification |
+| Terraform ex. 3 | HAProxy + deux backends |
+| scripts de tests HAProxy | round-robin et failover |
+| `p5.sh` | orchestration et convergence |
+| runtime | logs, preuves, confirmations et validation d'outputs |
+| CI | qualité du dépôt |
+
+## 6. Dépendances autorisées
+
+Deux dépendances sont intentionnelles :
+
+```text
+Exercice 1 → Exercice 2 : access.log NGINX réel
+Exercice 1 → Exercice 3 : VPC + subnets
+```
+
+La seconde impose l'ordre de destruction :
+
+```text
+3 → 2 → 1
+```
+
+## 7. Documentation officielle
+
+Le chemin normal est :
+
+```text
+README racine
+   ↓
+docs/README.md
+   ↓
+cadre / architecture / parcours
+   ↓
+runbook
+   ↓
+guides des exercices
+   ↓
+preuves / livrables / nettoyage
+```
+
+Les documents de gouvernance (`02`, `03`, `04`, `suivi/`) ne doivent pas interrompre le parcours opérationnel.
+
+## 8. Schémas
+
+Le dépôt conserve six schémas SVG spécialisés :
+
+```text
+docs/schemas/vue-ensemble.svg
+docs/schemas/etape-0.svg
+docs/schemas/exercice-1.svg
+docs/schemas/exercice-2.svg
+docs/schemas/exercice-3.svg
+docs/schemas/finalisation/finalisation.svg
+```
+
+Ils doivent rester :
+
+- légers ;
+- accessibles ;
+- autonomes ;
+- lisibles dans GitHub ;
+- sans dépendance externe ;
+- sans Mermaid.
+
+## 9. Données runtime hors Git
+
+Ne doivent pas être versionnés :
+
+```text
+environment/aws-readiness.env
+terraform.tfvars réels
+terraform.tfstate
+inventaire Ansible réel
+clés privées
+logs runtime
+preuves brutes runtime
+```
+
+Les fichiers exemples restent versionnés afin de documenter le contrat.
+
+## 10. Source Angular
+
+Le dépôt contient une application Angular réelle sous :
+
+```text
+application/angular/
+```
+
+L'artefact déployé par Ansible doit rester synchronisé avec le build de cette application.
+
+La CI protège cette relation.
+
+## 11. Architecture de sécurité minimale
+
+L'audit doit continuer à protéger :
+
+- `allowed_account_ids` ;
+- SSH `/32` ;
+- IMDSv2 ;
+- volumes EC2 chiffrés ;
+- OpenSearch chiffré et HTTPS ;
+- secrets hors Git ;
+- confirmation forte de destruction.
+
+## 12. Architecture de preuve
+
+La présence du code ne vaut pas preuve runtime.
+
+Le dépôt doit conserver :
+
+```text
+logs
++ preuves par étape
++ manifest
++ diagnostics
++ livrables
+```
+
+sans automatiser les preuves qui doivent rester humaines, notamment les visualisations OpenSearch.
+
+## 13. Critère de qualité
+
+Une évolution est structurellement acceptable si elle :
+
+1. rend le parcours plus clair ou plus sûr ;
+2. conserve les trois capacités pédagogiques ;
+3. ne duplique pas une responsabilité existante ;
+4. ne casse pas les dépendances ;
+5. ne réduit pas la capacité de produire les preuves ;
+6. passe l'audit de non-régression.
+
+Commande :
+
+```bash
+python3 scripts/tools/audit_non_regression.py
+```

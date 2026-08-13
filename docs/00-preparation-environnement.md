@@ -1,109 +1,156 @@
-# Étape 0A — Installer et qualifier l'environnement de contrôle P5
+# 00A — Préparer l'environnement de contrôle
 
-> **Rôle de ce document :** préparer le poste depuis lequel le P5 sera exécuté.
-> Il ne décrit ni l'objectif pédagogique du projet ni son architecture AWS.
+## Objectif
 
-Pour comprendre le P5, commencer par :
+Ce document prépare **le poste depuis lequel le P5 sera exécuté**. Il ne décrit pas un exercice OpenClassrooms.
 
-- [Cadre officiel](00-cadre-officiel.md)
-- [Parcours pédagogique](01-parcours-debutant.md)
-- [Architecture et flux](architecture-et-flux.md)
+Le projet évalué reste AWS. Le poste de contrôle fournit simplement Bash, Terraform, Ansible, AWS CLI, Docker, Node.js et Git.
 
-Cette étape **ne construit plus WSL2 depuis le dépôt P5**.
-
-Le poste Windows/WSL2 est préparé en amont par le dépôt :
-
-- `mathiasseguincadiche/Windows_11_Pro_Custom`
-- <https://github.com/mathiasseguincadiche/Windows_11_Pro_Custom>
-
-Le P5 commence lorsque cette workstation est déjà installée et qualifiée.
-
-La préparation du compte AWS est traitée ensuite dans
-[l'étape 0B — AWS Ready](00b-preparation-compte-aws.md).
-
-![Préparation de l'environnement](schemas/etape-0.svg)
-
-## 1. Architecture de responsabilité
+## Architecture du poste
 
 ```text
-Windows_11_Pro_Custom
-└── Windows 11 Pro
-    └── WSL2
-        └── Ubuntu
-            ├── systemd
-            ├── Docker
-            ├── Terraform
-            ├── Ansible
-            ├── AWS CLI
-            ├── kubectl / Helm
-            ├── Minikube / kind
-            └── outils qualité
-
-p5_Openclassrooms
-└── réutilise cet environnement
-    ├── contrôle le contrat P5
-    ├── converge uniquement les écarts propres au projet
-    ├── prépare AWS
-    └── exécute les trois exercices
+Windows 11 Pro
+   │
+   └── WSL2
+        └── Ubuntu 26.04
+             ├── Bash
+             ├── Terraform
+             ├── Ansible
+             ├── AWS CLI
+             ├── Docker CLI / Compose
+             ├── Node.js / npm
+             └── checkout P5 sur filesystem Linux
 ```
 
-Le P5 ne doit pas modifier les profils WSL, le VHDX ou la stratégie de backup de
-la workstation.
+La configuration générale de la workstation est maintenue dans le dépôt [`mathiasseguincadiche/Windows_11_Pro_Custom`](https://github.com/mathiasseguincadiche/Windows_11_Pro_Custom). P5 ne duplique pas `.wslconfig`, la gestion du VHDX, les sauvegardes Windows ou les scripts de cycle de vie WSL2.
 
-## 2. Plateforme attendue
+## Pourquoi le checkout doit rester côté Linux
 
-La distribution fournie par le dépôt Windows est nommée :
+Le dépôt actif doit être placé dans un chemin comme :
 
 ```text
-Ubuntu
+~/labs/p5_Openclassrooms
 ```
 
-Elle est stockée sous :
+et **pas** dans :
 
 ```text
-D:\WSL\Ubuntu-DevOps
+/mnt/c/...
+/mnt/d/...
 ```
 
-Les profils versionnés dans le dépôt amont sont :
+Le moteur vérifie ce point parce que les outils Linux, les permissions, les bits exécutables, les performances de nombreux petits fichiers et certains comportements de Docker/Git sont plus prévisibles sur le filesystem Linux WSL2.
 
-| Profil | Threads | RAM | Swap | Réseau |
-| --- | ---: | ---: | ---: | --- |
-| `standard` | 8 | 20 Go | 8 Go | `mirrored` |
-| `lab-heavy` | 12 | 28 Go | 12 Go | `mirrored` |
-| `nat-fallback` | 8 | 20 Go | 8 Go | `nat` |
+## Étape 1 — Ouvrir Ubuntu
 
-Pour P5, `standard` est recommandé. `lab-heavy` peut être utilisé pour les tests
-locaux plus lourds. `nat-fallback` reste accepté si le mode mirrored rencontre
-une incompatibilité réseau.
-
-## 3. Qualifier d'abord la workstation
-
-Depuis le dépôt `Windows_11_Pro_Custom`, PowerShell administrateur :
+Depuis PowerShell ou Windows Terminal :
 
 ```powershell
-.\install.ps1 -Mode Apply
+wsl -d Ubuntu
 ```
 
-Après le premier lancement Ubuntu et la création de l'utilisateur Linux :
+### Ce que fait la commande
 
-```powershell
-.\install.ps1 -Mode Apply -InstallDevOps
-wsl --shutdown
-.\install.ps1 -Mode Verify -ValidateWsl -ValidateDevOps
+- `wsl` appelle Windows Subsystem for Linux ;
+- `-d Ubuntu` choisit explicitement la distribution Ubuntu attendue ;
+- le shell qui s'ouvre devient l'environnement d'exécution des commandes P5.
+
+### Vérification
+
+Dans Ubuntu :
+
+```bash
+cat /etc/os-release
+uname -a
+pwd
 ```
 
-Verdicts attendus :
+Le contrat P5 attend Ubuntu 26.04. Les valeurs exactes de référence sont définies dans `environment/versions.env`.
+
+## Étape 2 — Créer le dossier de labs
+
+```bash
+mkdir -p ~/labs
+cd ~/labs
+```
+
+`mkdir -p` crée le dossier s'il n'existe pas et ne produit pas d'erreur s'il existe déjà.
+
+Vérifier le filesystem :
+
+```bash
+findmnt -T ~/labs -n -o FSTYPE
+```
+
+Le résultat attendu pour le checkout actif est `ext4`.
+
+## Étape 3 — Cloner le dépôt
+
+```bash
+git clone https://github.com/mathiasseguincadiche/p5_Openclassrooms.git
+cd p5_Openclassrooms
+```
+
+Si le dépôt existe déjà :
+
+```bash
+cd ~/labs/p5_Openclassrooms
+git status
+git pull --ff-only
+```
+
+`git pull --ff-only` refuse de créer automatiquement un commit de merge inattendu. Si la branche locale a divergé, diagnostiquer la situation avant de modifier l'historique.
+
+## Étape 4 — Vérifier le socle sans rien installer
+
+```bash
+bash scripts/commands/bootstrap-ubuntu-server.sh --check-only
+```
+
+Ce mode est une inspection. Il compare l'environnement réel aux versions et capacités attendues.
+
+Il vérifie notamment :
+
+- distribution Ubuntu attendue ;
+- emplacement du checkout ;
+- commandes système nécessaires ;
+- Terraform ;
+- Ansible ;
+- AWS CLI ;
+- Node.js/npm ;
+- Docker ;
+- outils de validation.
+
+### Interpréter le résultat
+
+- code `0` : le socle est conforme ;
+- code `90` : les outils sont installés, mais une reconnexion est nécessaire pour rendre le groupe Docker actif ;
+- autre code : au moins un écart doit être corrigé.
+
+Ne pas contourner un écart en installant au hasard une autre version. Le projet versionne son contrat dans `environment/versions.env`.
+
+## Étape 5 — Laisser P5 converger le socle
+
+La commande normale est :
+
+```bash
+bash scripts/commands/p5.sh prepare
+```
+
+`prepare` commence par inspecter l'état. Si le bootstrap est déjà conforme, aucune installation inutile n'est exécutée. S'il manque une capacité ou qu'une version ne correspond pas, le moteur demande confirmation avant correction.
+
+### Cas de la reconnexion Docker
+
+Après l'ajout de l'utilisateur au groupe Docker, le shell courant peut ne pas connaître encore le nouveau groupe.
+
+Le moteur retourne alors l'état spécifique de reconnexion. La bonne action est :
 
 ```text
-VERDICT: V3 DEVOPS READY
-VERDICT: V6 WSL2 PLATFORM READY
+1. quitter le shell Ubuntu
+2. rouvrir Ubuntu
+3. revenir dans ~/labs/p5_Openclassrooms
+4. relancer la même commande
 ```
-
-Cette qualification appartient au dépôt Windows. En cas d'échec WSL2, il faut
-corriger la workstation **dans ce dépôt amont**, pas ajouter une seconde
-configuration dans P5.
-
-## 4. Ouvrir Ubuntu
 
 Depuis Windows :
 
@@ -111,134 +158,102 @@ Depuis Windows :
 wsl -d Ubuntu
 ```
 
-Vérifications rapides :
-
-```bash
-ps -p 1 -o comm=
-findmnt -T "$HOME" -n -o FSTYPE
-nproc
-free -h
-```
-
-Résultats attendus :
-
-- PID 1 : `systemd` ;
-- HOME sur filesystem Linux ;
-- ressources cohérentes avec le profil WSL actif.
-
-## 5. Cloner P5 dans le filesystem Linux
-
-```bash
-mkdir -p ~/labs
-cd ~/labs
-git clone https://github.com/mathiasseguincadiche/p5_Openclassrooms.git
-cd p5_Openclassrooms
-```
-
-Ne pas utiliser `/mnt/c` ou `/mnt/d` comme emplacement principal du dépôt P5.
-
-## 6. Vérifier le contrat spécifique P5
-
-La workstation amont fournit déjà la stack générale. Le P5 commence donc par un
-contrôle non destructif :
-
-```bash
-bash scripts/commands/bootstrap-ubuntu-server.sh --check-only
-```
-
-Le bootstrap vérifie les versions et outils nécessaires au projet. S'ils sont
-déjà conformes, il ne fait rien.
-
-Si un delta existe :
-
-```bash
-bash scripts/commands/bootstrap-ubuntu-server.sh
-```
-
-Ce mode peut corriger uniquement ce qui manque au contrat P5, par exemple une
-version Node.js de référence. Il ne réinstalle pas WSL2 et ne touche pas au VHDX.
-
-Après un éventuel ajout au groupe Docker, fermer la session WSL puis appliquer :
-
-```powershell
-wsl --shutdown
-wsl -d Ubuntu
-```
-
-Puis vérifier :
+Puis :
 
 ```bash
 cd ~/labs/p5_Openclassrooms
-bash scripts/commands/bootstrap-ubuntu-server.sh --check-only
+bash scripts/commands/p5.sh prepare
 ```
 
-## 7. Inspection P5
+## Versions de référence
 
-Avant toute configuration AWS :
+Ne recopier les versions dans des scripts personnels que si cela est indispensable. La source de vérité est :
+
+```bash
+cat environment/versions.env
+```
+
+Le dépôt référence notamment :
+
+```text
+Ubuntu WSL2       26.04
+Node.js           22.22.0
+Ansible Core      2.20.1
+Terraform         1.15.8
+AWS CLI minimum   2.32.0
+```
+
+Ces versions concernent le **poste de contrôle**. Les instances EC2 des exercices 1 et 3 utilisent Ubuntu 24.04 LTS lorsque l'AMI est sélectionnée automatiquement.
+
+## Étape 6 — Vérifier Git et les fichiers locaux
+
+```bash
+git status --short
+```
+
+Avant le premier déploiement réel, il est normal que certains fichiers locaux soient créés par le moteur puis ignorés par Git, par exemple :
+
+- `environment/aws-readiness.env` ;
+- `terraform/exercice-*/terraform.tfvars` ;
+- `ansible/inventories/hosts_aws` ;
+- états et plans Terraform ;
+- `logs/` runtime ;
+- `proofs/runtime/`.
+
+Ils ne doivent pas être ajoutés au dépôt.
+
+Vérification supplémentaire :
+
+```bash
+python3 scripts/tools/audit_secrets.py
+```
+
+## Étape 7 — Inspection initiale P5
 
 ```bash
 bash scripts/commands/p5.sh inspect
 ```
 
-`inspect` ne doit ni installer un paquet, ni ouvrir une session AWS interactive,
-ni créer une ressource.
+Cette commande doit devenir un réflexe. Elle répond à la question :
 
-## 8. Réseau WSL2 et AWS
+> « Dans quel état réel se trouve mon lab avant que je décide de le modifier ? »
 
-Le P5 ne dépend pas d'une adresse privée WSL fixe.
+Elle n'est pas destinée à « faire fonctionner » le projet. Elle collecte des faits.
 
-Le profil amont quotidien utilise `networkingMode=mirrored`; un profil NAT de
-secours existe également. Ces choix concernent uniquement le poste local.
+## Étape 8 — Contrôle de préparation
 
-La variable :
-
-```text
-P5_PUBLIC_IP_CIDR
-```
-
-représente l'IPv4 publique `/32` d'administration autorisée dans AWS. Elle ne
-doit jamais être remplacée par une adresse d'interface WSL2.
-
-## 9. Sauvegarde et reprise de la workstation
-
-La sauvegarde et la restauration Windows/WSL2 sont entièrement déléguées au dépôt
-`Windows_11_Pro_Custom`.
-
-La V7 du dépôt amont est la seule source de vérité :
-
-```powershell
-.\install.ps1 -BackupAction Create -BackupTargetDrive E:\
-.\install.ps1 -BackupAction Verify -BackupTargetDrive E:\
-.\install.ps1 -BackupAction RestorePlan -BackupTargetDrive E:\
-```
-
-Cette procédure couvre notamment l'image Windows et l'export Ubuntu VHDX avec
-SHA-256.
-
-## 10. Passage à l'étape AWS
-
-Une fois la workstation qualifiée et le contrôle P5 conforme :
+Après `prepare` :
 
 ```bash
-cp environment/aws-readiness.env.example environment/aws-readiness.env
-$EDITOR environment/aws-readiness.env
+bash scripts/commands/p5.sh status
 ```
 
-Puis suivre :
+`status` ne déploie pas le projet. Il vérifie que les prérequis nécessaires sont cohérents : configuration locale, `tfvars`, budget et état AWS adapté à la situation.
 
-[Étape 0B — Préparer le compte AWS](00b-preparation-compte-aws.md).
+## Ce qu'il ne faut pas faire
 
-Les portes finales de préparation restent :
+Ne pas :
+
+- cloner le dépôt actif sous `/mnt/c` ou `/mnt/d` ;
+- modifier les versions de manière opportuniste parce qu'une commande échoue ;
+- stocker des clés AWS dans `aws-readiness.env` ;
+- utiliser le compte root AWS pour le lab normal ;
+- supprimer un `terraform.tfstate` pour « réinitialiser » un exercice ;
+- exécuter directement `terraform apply` sans savoir quel module et quel compte sont actifs ;
+- traiter Windows/WSL2 comme une partie du livrable P5.
+
+## Verdict de cette étape
+
+L'environnement de contrôle est prêt lorsque :
 
 ```text
-GO AWS
-GO TERRAFORM
+- Ubuntu WSL2 est conforme au contrat P5
+- le checkout actif est sur le filesystem Linux
+- les outils requis sont disponibles
+- Docker est utilisable dans le shell courant
+- p5.sh inspect fonctionne
+- p5.sh prepare peut terminer la préparation
+- p5.sh status ne signale pas de blocage non compris
 ```
 
-## Références
-
-- [Contrat WSL2 du P5](../environment/wsl2/README.md)
-- [Environnement](../environment/README.md)
-- [Architecture et flux](architecture-et-flux.md)
-- [Runbook A → Z](RUNBOOK_EXECUTION_GUIDEE.md)
-- [Troubleshooting](troubleshooting.md)
+La suite est [`00b-preparation-compte-aws.md`](00b-preparation-compte-aws.md).

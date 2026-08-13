@@ -1,69 +1,67 @@
 # Livrable 3 — HAProxy et `nginxdemos/hello`
 
-> **Gabarit à compléter avec des preuves réelles.** Les tests de répartition,
-> de panne et de reprise doivent être exécutés sur l'environnement AWS du projet.
+> **Gabarit à compléter avec des preuves réelles.** Le round-robin, la panne et la reprise doivent être démontrés sur l'environnement AWS du projet.
 
-## 1. Architecture
+## 1. Objectif
 
-Le mode retenu est **AWS avec Terraform**.
-
-L'exercice 3 réutilise le réseau et la paire de clés créés par l'exercice 1. Il
-ne crée donc pas un second VPC.
-
-Architecture déployée :
+Démontrer qu'un load-balancer HAProxy répartit les requêtes entre deux backends, retire un backend défaillant sans interrompre le service puis le réintègre après restauration.
 
 ```text
-Client HTTP
-   │
-   ▼
-EC2 p5-haproxy
-   │  roundrobin + health checks
-   ├───────────────┐
-   ▼               ▼
-EC2 p5-hello-1   EC2 p5-hello-2
-Docker            Docker
-nginxdemos/hello  nginxdemos/hello
+              HAProxy
+            /         \
+           ▼           ▼
+      p5-hello-1   p5-hello-2
 ```
 
-Caractéristiques à démontrer :
+## 2. Architecture
 
-- un serveur HAProxy ;
-- deux backends distincts ;
-- algorithme `roundrobin` ;
-- health check HTTP `GET /` ;
-- retrait après trois échecs (`fall 3`) ;
-- réintégration après deux succès (`rise 2`) ;
-- continuité du service pendant la panne d'un backend.
+- mode : AWS ;
+- réseau : VPC et subnets de l'exercice 1 ;
+- load-balancer : une EC2 HAProxy ;
+- backends : deux EC2 ;
+- service backend : `nginxdemos/hello:plain-text` dans Docker ;
+- algorithme : `roundrobin` ;
+- santé : `GET /`, `fall 3`, `rise 2`.
 
-### Précontrôle et déploiement
+L'exercice ne crée pas un second VPC.
 
-Avant Terraform :
+## 3. Exécution de référence
 
 ```bash
-./scripts/commands/pre-deployment-check.sh --stage exercice-3
+bash scripts/commands/p5.sh ex3
 ```
 
-Le contrôle doit notamment confirmer la présence du VPC et de la clé EC2 de
-l'exercice 1. Le verdict attendu est `GO TERRAFORM`.
+La commande converge Terraform, attend HAProxy, vérifie le round-robin, prévisualise la panne, demande confirmation puis exécute la panne et la reprise réelles.
 
-Déploiement :
+## 4. Preuve Terraform
 
-```bash
-terraform -chdir=terraform/exercice-3 init
-terraform -chdir=terraform/exercice-3 fmt -check
-terraform -chdir=terraform/exercice-3 validate
-terraform -chdir=terraform/exercice-3 plan -out=tfplan
-terraform -chdir=terraform/exercice-3 show tfplan
-terraform -chdir=terraform/exercice-3 apply tfplan
-terraform -chdir=terraform/exercice-3 output
+À montrer :
+
+```text
+1 EC2 HAProxy
+2 EC2 backends
+Security Group HAProxy
+Security Group backends
+réutilisation du VPC exercice 1
 ```
 
-**Preuves à insérer :** plan relu, trois instances actives et sorties Terraform
-anonymisées permettant d'identifier HAProxy et les deux backends.
+Les outputs disponibles comprennent :
 
-## 2. Fichier `haproxy.cfg`
+```text
+hello_1_public_ip
+hello_2_public_ip
+hello_1_private_ip
+hello_2_private_ip
+haproxy_public_ip
+haproxy_private_ip
+haproxy_url
+```
 
-La configuration réelle générée sur l'instance HAProxy contient au minimum :
+**Preuve Terraform/AWS réelle à insérer ici.**
+
+## 5. Configuration `haproxy.cfg`
+
+La configuration doit rendre visibles au minimum :
 
 ```text
 frontend http-in
@@ -74,175 +72,165 @@ backend hello-servers
     balance roundrobin
     option httpchk GET /
     http-check expect status 200
-    server hello-1 ADRESSE_PRIVEE_1:80 check inter 3s fall 3 rise 2
-    server hello-2 ADRESSE_PRIVEE_2:80 check inter 3s fall 3 rise 2
+    server hello-1 <IP_PRIVEE_1>:80 check inter 3s fall 3 rise 2
+    server hello-2 <IP_PRIVEE_2>:80 check inter 3s fall 3 rise 2
 ```
 
-Le générateur local peut produire une copie minimale équivalente :
+### Ce qu'il faut expliquer
 
-```bash
-./scripts/tools/generer-haproxy-config.sh \
-  ADRESSE_PRIVEE_1 ADRESSE_PRIVEE_2 /tmp/haproxy.cfg
-```
+- `roundrobin` distribue les requêtes entre les backends disponibles ;
+- `httpchk GET /` contrôle le service HTTP ;
+- `fall 3` évite de retirer un serveur après un seul échec transitoire ;
+- `rise 2` exige plusieurs succès avant réintégration.
 
-Pour la remise, joindre une version lisible et anonymisée de la configuration.
-Les adresses privées peuvent être partiellement masquées si la structure reste
-compréhensible.
+**Copie lisible/anonymisée de la configuration à insérer ici.**
 
-**À joindre :** copie réelle ou reproduction fidèle de `haproxy.cfg`, avec les
-paramètres `roundrobin`, `httpchk`, `fall` et `rise` visibles.
+## 6. Validation de la configuration
 
-## 3. Validation de la configuration
-
-Sur l'instance HAProxy :
+Sur l'EC2 HAProxy :
 
 ```bash
 sudo haproxy -c -f /etc/haproxy/haproxy.cfg
 sudo systemctl status haproxy --no-pager
 ```
 
-La validation doit confirmer :
+**Preuve de syntaxe/service à insérer ici.**
 
-- syntaxe HAProxy valide ;
-- service démarré ;
-- aucun backend mal référencé.
+## 7. Preuve du round-robin
 
-Le générateur peut également être validé localement dans un conteneur :
+Récupérer l'URL :
 
 ```bash
-docker run --rm \
-  --volume /tmp/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro \
-  haproxy:3.2-alpine \
-  haproxy -c -f /usr/local/etc/haproxy/haproxy.cfg
+HAPROXY_URL="$(terraform -chdir=terraform/exercice-3 \
+  output -raw haproxy_url)"
 ```
 
-**Preuve réelle à insérer.**
-
-## 4. Répartition de charge
-
-Utiliser le test reproductible du dépôt :
+Puis :
 
 ```bash
-./scripts/commands/test-haproxy-roundrobin.sh --requests 10
+bash scripts/commands/test-haproxy-roundrobin.sh \
+  --url "$HAPROXY_URL" \
+  --requests 12
 ```
 
-Le script lit par défaut la sortie Terraform `haproxy_url`, effectue plusieurs
-requêtes et extrait le champ `Server name` renvoyé par `nginxdemos/hello`.
+La sortie doit observer les deux identités de backend.
 
-Le verdict attendu est :
+**Preuve round-robin à insérer ici.**
 
-```text
-ROUND-ROBIN OPÉRATIONNEL
-```
+### Conclusion
 
-La preuve doit montrer au moins deux noms de serveur distincts. Une simple série
-de codes HTTP 200 ne suffit pas à démontrer la répartition.
+Expliquer pourquoi deux noms de serveur distincts prouvent que les deux backends participent au pool.
 
-**Preuve à insérer :** sortie du script montrant les deux backends dans la
-rotation.
+## 8. Prévisualisation de la panne
 
-## 5. Panne et continuité de service
-
-### Aperçu non destructif
-
-Commencer sans `--apply` :
+Récupérer le backend ciblé :
 
 ```bash
-./scripts/commands/test-haproxy-failover.sh
+BACKEND_1="$(terraform -chdir=terraform/exercice-3 \
+  output -raw hello_1_public_ip)"
 ```
 
-Dans ce mode, aucune connexion SSH ne provoque de panne. Le script vérifie l'état
-initial et décrit le scénario.
-
-### Panne réelle et reprise
-
-Après validation :
+Puis :
 
 ```bash
-./scripts/commands/test-haproxy-failover.sh \
-  --backend 1 \
+bash scripts/commands/test-haproxy-failover.sh \
+  --url "$HAPROXY_URL" \
+  --backend-host "$BACKEND_1"
+```
+
+Sans `--apply`, aucune panne réelle n'est exécutée.
+
+## 9. Panne réelle et reprise
+
+Après validation du scénario :
+
+```bash
+bash scripts/commands/test-haproxy-failover.sh \
+  --url "$HAPROXY_URL" \
+  --backend-host "$BACKEND_1" \
   --requests 6 \
   --apply
 ```
 
-Le scénario automatisé :
-
-1. observe les deux backends avant la panne ;
-2. arrête le conteneur `nginx-hello` du backend choisi par SSH ;
-3. attend le retrait du backend par les health checks HAProxy ;
-4. vérifie que le service continue avec un seul backend ;
-5. redémarre le conteneur ;
-6. attend sa réintégration ;
-7. vérifie le retour des deux backends dans la rotation.
-
-Un `trap` tente de redémarrer le backend si le script est interrompu après son
-arrêt.
-
-Le verdict attendu est :
+Le test doit montrer :
 
 ```text
-BASCULE ET RÉINTÉGRATION HAPROXY VALIDÉES
+AVANT
+hello-1 + hello-2
+
+PENDANT
+hello-2 uniquement
+HTTP toujours disponible
+
+APRÈS
+hello-1 + hello-2
 ```
 
-**Preuves à insérer :**
+Le script restaure le conteneur du backend après la mutation temporaire et attend sa réintégration.
 
-- avant la panne : deux backends observés ;
-- pendant la panne : un seul backend observé et service toujours accessible ;
-- après la reprise : retour des deux backends ;
-- verdict final du script.
+## 10. Preuves du failover
 
-### Conclusion à rédiger
+### Avant panne
 
-Expliquer brièvement :
+**Preuve montrant les deux backends à insérer ici.**
 
-- le rôle du `roundrobin` ;
-- le rôle des health checks ;
-- pourquoi le service reste disponible avec un backend arrêté ;
-- comment HAProxy décide de retirer puis de réintégrer le backend.
+### Pendant panne
 
-## 6. Nettoyage
+**Preuve montrant un seul backend et le maintien HTTP à insérer ici.**
 
-L'exercice 3 doit être détruit **avant l'exercice 1**, car il dépend du réseau de
-l'exercice 1.
+### Après restauration
 
-Nettoyage du seul exercice 3 :
+**Preuve montrant le retour des deux backends à insérer ici.**
+
+## 11. Conclusion à rédiger
+
+La conclusion doit expliquer :
+
+- comment HAProxy distribue le trafic ;
+- comment les health checks détectent la panne ;
+- pourquoi les requêtes continuent à fonctionner ;
+- comment le backend restauré revient dans la rotation.
+
+Exemple de structure :
+
+```text
+Le backend 1 a été arrêté volontairement.
+HAProxy l'a retiré après les échecs de health check.
+Le backend 2 a continué à répondre, donc le service public est resté disponible.
+Après redémarrage, HAProxy a validé les checks de reprise et a réintégré le backend 1.
+```
+
+## 12. Données à ne pas publier
+
+Ne pas joindre :
+
+- clé SSH ;
+- state Terraform ;
+- vrais `tfvars` ;
+- inventaire réel ;
+- token/session AWS ;
+- logs bruts non relus.
+
+Les IP peuvent être anonymisées dans la copie de `haproxy.cfg` si leur valeur exacte n'apporte rien à la preuve.
+
+## 13. Nettoyage
+
+L'exercice 3 doit être détruit **avant l'exercice 1**.
+
+La fermeture globale utilise :
 
 ```bash
-terraform -chdir=terraform/exercice-3 destroy
+bash scripts/commands/p5.sh cleanup
 ```
 
-Pour la fermeture complète du lab, utiliser ensuite la procédure globale :
-
-```bash
-./scripts/commands/destroy-aws.sh
-./scripts/commands/check-aws-cleanup.sh
-```
-
-L'ordre global est :
+Ordre :
 
 ```text
 Exercice 3 → Exercice 2 → Exercice 1 → audit AWS
 ```
 
-Le verdict final attendu après destruction de tout le lab est :
+Verdict final :
 
 ```text
 NETTOYAGE AWS COMPLET
 ```
-
-**Preuve à insérer :** destruction des ressources de l'exercice 3 et, pour la
-fin du projet, résultat de l'audit AWS global.
-
-## Données à ne pas publier
-
-Avant la remise, retirer ou anonymiser :
-
-- IP publiques complètes lorsqu'elles ne sont pas utiles ;
-- clés SSH ;
-- identifiants AWS ;
-- inventaires réels ;
-- `terraform.tfvars` et états Terraform ;
-- journaux runtime non relus.
-
-Les sorties automatisées restent localement sous
-`proofs/runtime/exercice-3/` jusqu'à leur sélection et anonymisation.
