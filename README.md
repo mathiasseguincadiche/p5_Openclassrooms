@@ -8,7 +8,7 @@ Projet réalisé dans le cadre du parcours **Expert DevOps OpenClassrooms**.
 
 Ce dépôt présente un **parcours DevOps d'infrastructure, d'observabilité et d'exploitation sur AWS** : provisionner avec Terraform, configurer avec Ansible, déployer Angular derrière NGINX, exploiter des logs dans Amazon OpenSearch puis démontrer la résilience d'un service avec HAProxy.
 
-> **Mode d'implémentation retenu dans ce dépôt : 100 % AWS.** Les variantes locales évoquées dans les consignes ne constituent pas un second parcours maintenu ici. Windows 11 et WSL2 servent uniquement de poste de contrôle.
+> **Mode d'implémentation retenu dans ce dépôt : 100 % AWS.** Les variantes locales évoquées dans les consignes ne constituent pas un second parcours maintenu ici. Le P5 s'exécute entièrement en CLI dans la VM Ubuntu Server 26.04 `ubuntu-devops`, fournie et maintenue séparément par `Ubuntu-desktops-custom`.
 
 ## Projet en 30 secondes
 
@@ -59,7 +59,7 @@ Une relance n'implique donc pas de tout recréer.
 | --- | --- |
 | `p5.sh` ou `p5.sh menu` | ouvrir le centre de commande |
 | `p5.sh inspect` | observer l'état réel sans mutation |
-| `p5.sh prepare` | préparer le runtime Ubuntu/WSL2, AWS, le budget et les `tfvars` |
+| `p5.sh prepare` | préparer le runtime P5 dans `ubuntu-devops`, AWS, le budget et les `tfvars` |
 | `p5.sh status` | revalider les prérequis sans déployer |
 | `p5.sh ex1` | converger Terraform + Ansible + Angular/NGINX |
 | `p5.sh ex2` | converger OpenSearch et les données |
@@ -70,25 +70,50 @@ Une relance n'implique donc pas de tout recréer.
 
 Référence : [Centre de commande](docs/CENTRE_DE_COMMANDE.md).
 
+## Architecture d'exécution
+
+La plateforme de travail et le projet P5 restent **deux dépôts séparés**.
+
+[`mathiasseguincadiche/Ubuntu-desktops-custom`](https://github.com/mathiasseguincadiche/Ubuntu-desktops-custom) possède :
+
+- le HOST Ubuntu ;
+- KVM/libvirt ;
+- le réseau et le stockage de virtualisation ;
+- la création, le démarrage, l'arrêt, la réparation et la sauvegarde de la VM `ubuntu-devops`.
+
+`p5_Openclassrooms` possède uniquement ce qui se passe **dans la VM pour le P5** :
+
+- qualification Ubuntu Server 26.04 ;
+- convergence des dépendances strictement nécessaires au P5 ;
+- préparation AWS ;
+- Terraform, Ansible, Angular, OpenSearch et HAProxy ;
+- preuves, diagnostics, livrables et nettoyage AWS.
+
+```text
+HOST Ubuntu
+   │
+   └── KVM/libvirt                      ← Ubuntu-desktops-custom
+        │
+        └── VM ubuntu-devops
+             │
+             ├── Ubuntu Server 26.04
+             ├── CLI uniquement
+             └── ~/labs/p5_Openclassrooms
+                         │
+                         └── runtime + labs P5     ← p5_Openclassrooms
+```
+
+Le dépôt P5 n'administre jamais KVM/libvirt et ne doit pas être exécuté sur le HOST pour contourner un problème de VM.
+
 ## Installation et environnement de contrôle
 
-Le poste de contrôle attendu est **Windows 11 + WSL2 + Ubuntu 26.04**. Sa construction et sa maintenance appartiennent au dépôt [`mathiasseguincadiche/Windows_11_Pro_Custom`](https://github.com/mathiasseguincadiche/Windows_11_Pro_Custom).
-
-Le checkout P5 doit rester dans le filesystem Linux WSL2 :
+Le checkout opérationnel du P5 doit être créé **dans la VM `ubuntu-devops`** sur son filesystem Linux :
 
 ```text
 ~/labs/p5_Openclassrooms
 ```
 
-et non sous `/mnt/c` ou `/mnt/d`.
-
-Depuis Windows :
-
-```powershell
-wsl -d Ubuntu
-```
-
-Puis :
+Depuis le HOST, utiliser le runbook de `Ubuntu-desktops-custom` pour obtenir une VM `ubuntu-devops` saine, puis se connecter en SSH. Une fois connecté dans la VM :
 
 ```bash
 mkdir -p ~/labs
@@ -100,6 +125,8 @@ bash scripts/commands/p5.sh prepare
 bash scripts/commands/p5.sh status
 ```
 
+`prepare` reste bien **la préparation d'environnement du P5**. Elle peut installer ou réaligner Terraform 1.15.8, Ansible Core 2.20.1, Node.js 22.22.0, AWS CLI, Docker et les outils nécessaires au projet **dans la VM uniquement**. Elle ne crée pas la VM et ne modifie jamais le HOST ou KVM/libvirt.
+
 Le précontrôle doit atteindre le verdict :
 
 ```text
@@ -108,7 +135,7 @@ GO TERRAFORM
 
 Ce verdict autorise à **lire le plan** ; il ne remplace jamais la vérification du delta et des coûts avant une mutation.
 
-Détails : [Installation et environnement de contrôle](docs/00-preparation-environnement.md) et [Préparation du compte AWS](docs/00b-preparation-compte-aws.md).
+Détails : [Installation et environnement de contrôle](docs/00-preparation-environnement.md), [Contrat VM DevOps](environment/vm-devops/README.md) et [Préparation du compte AWS](docs/00b-preparation-compte-aws.md).
 
 ## Exécuter les trois exercices
 
@@ -224,7 +251,7 @@ Les six schémas versionnés correspondent au même parcours et restent référe
 
 ## Ce qui n'est pas le P5
 
-Kubernetes, Helm, Prometheus, Grafana et Vault ne font pas partie des trois exercices de ce dépôt. GitHub Actions protège la qualité du dépôt mais n'est pas un quatrième exercice.
+Le HOST Ubuntu, KVM/libvirt et le cycle de vie de `ubuntu-devops` ne font pas partie du P5. Kubernetes, Helm, Prometheus, Grafana et Vault ne font pas partie des trois exercices de ce dépôt. GitHub Actions protège la qualité du dépôt mais n'est pas un quatrième exercice.
 
 Le fil directeur reste volontairement simple :
 
