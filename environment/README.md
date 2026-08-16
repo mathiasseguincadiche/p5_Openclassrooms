@@ -1,138 +1,116 @@
 # Environnement du projet P5
 
-Ce dossier définit uniquement les **prérequis et paramètres propres au P5**.
+Ce dossier contient les contrats et paramètres nécessaires à l'exécution du P5.
 
-La construction, la configuration, la virtualisation KVM/libvirt, le réseau de la VM, son stockage, son cycle de vie et sa sauvegarde appartiennent au dépôt amont :
+## Environnement d'exécution
 
-- [`mathiasseguincadiche/Ubuntu-desktops-custom`](https://github.com/mathiasseguincadiche/Ubuntu-desktops-custom)
+Le P5 s'exécute dans la VM **`ubuntu-devops`** :
 
-Le P5 consomme la VM DevOps fournie par cette plateforme ; il ne duplique pas sa gestion.
-
-## Contrat attendu par le P5
-
-L'environnement d'exécution attendu est la VM **`ubuntu-devops`** :
-
-- Ubuntu Server **26.04 LTS** ;
-- exécution en CLI, sans dépendance à un environnement graphique ;
-- VM hébergée par KVM/libvirt côté poste Ubuntu ;
-- checkout P5 dans le filesystem Linux de la VM, par exemple `~/labs/p5_Openclassrooms` ;
-- accès Internet et DNS fonctionnels ;
-- accès à AWS et aux ressources du lab ;
-- droits `sudo` pour la convergence des dépendances strictement nécessaires au P5.
-
-Le dépôt P5 ne doit pas appeler `virsh`, `virt-install`, `qemu-img` ou modifier la configuration KVM/libvirt. Ces responsabilités restent dans `Ubuntu-desktops-custom`.
-
-## Accès à la VM
-
-Depuis le HOST Ubuntu, la VM est administrée par le dépôt `Ubuntu-desktops-custom`. Une fois son adresse connue, la connexion habituelle est :
-
-```bash
-ssh <utilisateur>@<ip-ubuntu-devops>
+```text
+OS              Ubuntu Server 26.04 LTS
+codename        resolute
+mode            CLI
+virtualisation  KVM/QEMU
+checkout        ~/labs/p5_Openclassrooms
 ```
 
-Toutes les commandes P5 suivantes sont ensuite exécutées **dans la VM** :
+La VM doit disposer d'un accès Internet/DNS, d'un accès sortant vers AWS et d'un utilisateur
+non root avec `sudo`.
+
+Le contrat complet est documenté dans [`vm-devops/README.md`](vm-devops/README.md).
+
+La plateforme HOST/KVM/VM est fournie par
+[`mathiasseguincadiche/Ubuntu-desktops-custom`](https://github.com/mathiasseguincadiche/Ubuntu-desktops-custom).
+
+## Préparation du runtime P5
+
+Dans `ubuntu-devops` :
 
 ```bash
-mkdir -p ~/labs
-cd ~/labs
-git clone https://github.com/mathiasseguincadiche/p5_Openclassrooms.git
-cd p5_Openclassrooms
+cd ~/labs/p5_Openclassrooms
 bash scripts/commands/bootstrap-ubuntu-server.sh --check-only
 bash scripts/commands/p5.sh inspect
+bash scripts/commands/p5.sh prepare
+bash scripts/commands/p5.sh status
 ```
 
-Si le contrôle détecte un écart strictement nécessaire au P5 :
+`prepare` converge les dépendances nécessaires au projet dans la VM : Terraform, Ansible Core,
+Node.js, AWS CLI, Docker et les outils de validation.
 
-```bash
-bash scripts/commands/bootstrap-ubuntu-server.sh
+## `versions.env` — contrat logiciel
+
+[`versions.env`](versions.env) définit les versions ou minima utilisés par le P5.
+
+Références principales :
+
+```text
+Ubuntu Server       26.04 / resolute
+Terraform           1.15.8
+Ansible Core        2.20.1
+Node.js             22.22.0
+AWS CLI minimum     2.32.0
+OpenSearch Docker   2.19.6
 ```
 
-Le bootstrap est convergent : il inspecte d'abord puis installe ou réaligne uniquement les dépendances propres au P5. Il ne provisionne jamais la VM et ne modifie jamais l'hyperviseur.
+## `aws-readiness.env` — configuration locale AWS
 
-## `versions.env` — contrat logiciel P5
-
-[`versions.env`](versions.env) fixe les versions ou minima nécessaires à la reproductibilité du projet : Ubuntu, Terraform, Ansible, Node.js, AWS CLI et les images de validation utilisées par le dépôt.
-
-La VM `ubuntu-devops` peut fournir davantage d'outils ; ils ne deviennent pas pour autant des dépendances ni des exercices du P5.
-
-Cette séparation est volontaire :
-
-- `Ubuntu-desktops-custom` définit et maintient la **plateforme VM DevOps** ;
-- `p5_Openclassrooms` définit et maintient le **runtime nécessaire au P5 dans cette VM**.
-
-## `aws-readiness.env` — configuration locale du lab
-
-Le modèle versionné est :
+Modèle versionné :
 
 ```text
 environment/aws-readiness.env.example
 ```
 
-Le fichier réel :
+Fichier runtime :
 
 ```text
 environment/aws-readiness.env
 ```
 
-est créé ou réconcilié par le parcours de préparation et reste ignoré par Git.
-
 Il centralise notamment :
 
-- profil et région AWS ;
-- compte AWS attendu ;
-- IPv4 publique d'administration en `/32` ;
-- clé SSH du lab ;
-- types d'instances ;
-- paramètres Amazon OpenSearch ;
-- budget et e-mail d'alerte ;
-- confirmations de sécurité requises.
+- le profil et la région AWS ;
+- le compte AWS attendu ;
+- l'IPv4 publique d'administration en `/32` ;
+- la clé SSH du lab ;
+- les types d'instances ;
+- les paramètres Amazon OpenSearch ;
+- le budget et l'adresse d'alerte ;
+- les confirmations de sécurité requises.
 
-Il ne doit contenir aucune clé d'accès AWS longue durée.
+Le fichier runtime reste ignoré par Git et ne contient aucune clé d'accès AWS longue durée.
 
 ## Synchronisation Terraform
-
-La configuration locale alimente les trois `terraform.tfvars` :
 
 ```bash
 bash scripts/commands/sync-terraform-tfvars.sh --apply
 bash scripts/commands/sync-terraform-tfvars.sh --check
 ```
 
-Les vrais `terraform.tfvars` restent locaux et ignorés par Git.
+Cette configuration alimente les trois `terraform.tfvars` locaux. Les fichiers réels restent
+ignorés par Git.
 
-## Frontière de responsabilité
+## Responsabilités
 
-```text
-Ubuntu-desktops-custom
-├── configure le HOST Ubuntu
-├── possède KVM/libvirt
-├── crée et maintient la VM ubuntu-devops
-├── possède son réseau, son stockage et son cycle de vie
-└── fournit une VM Ubuntu Server 26.04 exploitable
+| Domaine | Source de vérité |
+| --- | --- |
+| HOST Ubuntu, KVM/libvirt, VM `ubuntu-devops` | `Ubuntu-desktops-custom` |
+| runtime P5 dans la VM | `p5_Openclassrooms` |
+| paramètres AWS du lab | `environment/aws-readiness.env` |
+| versions logicielles P5 | `environment/versions.env` |
+| infrastructure AWS | `terraform/exercice-{1,2,3}/` |
 
-p5_Openclassrooms
-├── s'exécute entièrement dans ubuntu-devops
-├── vérifie le contrat Ubuntu Server 26.04 nécessaire au projet
-├── converge ses dépendances P5 uniquement
-├── prépare les paramètres AWS du lab
-├── génère les tfvars
-└── exécute les trois exercices P5
-```
-
-Pour construire, réparer, démarrer, arrêter ou sauvegarder la VM, consulter directement `Ubuntu-desktops-custom`.
-
-## À ne jamais versionner
+## Fichiers à ne jamais versionner
 
 - `environment/aws-readiness.env` ;
-- `terraform.tfvars` ;
+- vrais `terraform.tfvars` ;
 - états et plans Terraform ;
 - clés SSH privées ;
 - credentials AWS ;
 - preuves runtime brutes.
 
-## Références P5
+## Références
 
-- [Contrat VM DevOps minimal](vm-devops/README.md)
-- [Installation et environnement de contrôle](../docs/00-preparation-environnement.md)
+- [Contrat VM DevOps](vm-devops/README.md)
+- [Préparation de l'environnement](../docs/00-preparation-environnement.md)
 - [Préparation du compte AWS](../docs/00b-preparation-compte-aws.md)
 - [Runbook A à Z](../docs/RUNBOOK_EXECUTION_GUIDEE.md)
