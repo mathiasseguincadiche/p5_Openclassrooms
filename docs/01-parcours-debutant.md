@@ -17,7 +17,7 @@ Pour la procédure exacte à copier/exécuter, utiliser ensuite [`RUNBOOK_EXECUT
 ## Vision d'ensemble
 
 ```text
-Préparer le poste et AWS
+Préparer la VM P5 et AWS
         ↓
 Exercice 1
 Terraform construit l'infrastructure
@@ -37,25 +37,33 @@ logs NGINX          réutilise réseau ex. 1
        nettoyage 3→2→1
 ```
 
-## Étape 0 — Comprendre le poste de contrôle
+## Étape 0 — Comprendre l'environnement d'exécution
 
-Le P5 n'est pas un projet Windows. Il est toutefois exécuté depuis une workstation Windows 11 avec WSL2.
+Le P5 n'administre pas le poste hôte ni la virtualisation. Il est exécuté **dans la VM `ubuntu-devops`**, Ubuntu Server 26.04 LTS en CLI.
 
-Depuis Windows :
+La VM est construite et maintenue séparément par [`mathiasseguincadiche/Ubuntu-desktops-custom`](https://github.com/mathiasseguincadiche/Ubuntu-desktops-custom).
 
-```powershell
-wsl -d Ubuntu
+La séparation est simple :
+
+```text
+Ubuntu-desktops-custom
+└── HOST Ubuntu + KVM/libvirt + VM ubuntu-devops
+
+p5_Openclassrooms
+└── runtime P5 + AWS + exercices + preuves dans ubuntu-devops
 ```
 
-Dans Ubuntu :
+Une fois connecté en SSH dans la VM :
 
 ```bash
 cd ~/labs/p5_Openclassrooms
 ```
 
-La distribution Ubuntu 26.04 fournit les outils Linux du lab. Le checkout actif doit rester côté Linux, pas sous `/mnt/c` ou `/mnt/d`.
+Le checkout actif doit rester sur le filesystem Linux local de la VM.
 
-Pourquoi ? Parce que le projet utilise des scripts Bash, des permissions Unix, Terraform, Ansible, Docker et beaucoup de petits fichiers. Le filesystem Linux est le contexte de référence testé par le dépôt.
+Pourquoi ? Parce que le projet utilise des scripts Bash, des permissions Unix, Terraform, Ansible, Docker et beaucoup de petits fichiers. Le guest Linux est le contexte de référence du P5.
+
+Le dépôt P5 ne doit pas appeler `virsh`, `virt-install` ou modifier la configuration KVM/libvirt. Inversement, la préparation P5 garde la responsabilité des versions logicielles nécessaires au projet **dans le guest**.
 
 ## Étape 1 — Comprendre `p5.sh`
 
@@ -105,19 +113,20 @@ bash scripts/commands/p5.sh status
 
 ### `inspect`
 
-Observe. Elle doit être préférée avant toute correction.
+Observe l'état P5 **dans la VM**. Elle doit être préférée avant toute correction.
 
 ### `prepare`
 
 Peut converger :
 
-- les outils du poste ;
+- les dépendances du runtime P5 dans `ubuntu-devops` ;
+- Terraform, Ansible, Node.js, AWS CLI, Docker et les outils de validation nécessaires au projet ;
 - la configuration locale AWS ;
 - l'authentification ;
 - les garde-fous de budget ;
 - les `terraform.tfvars`.
 
-Elle ne signifie pas « déployer les trois exercices ».
+Elle ne signifie pas « déployer les trois exercices » et ne signifie pas « administrer la VM ».
 
 ### `status`
 
@@ -125,6 +134,8 @@ Contrôle que le lab est cohérent sans créer les ressources applicatives.
 
 À ce stade, le débutant doit savoir expliquer :
 
+- pourquoi le P5 s'exécute dans `ubuntu-devops` ;
+- pourquoi KVM/libvirt reste hors du dépôt P5 ;
 - quel compte AWS sera utilisé ;
 - dans quelle région ;
 - pourquoi SSH est limité en `/32` ;
@@ -313,6 +324,7 @@ La CI peut vérifier :
 - NGINX ;
 - OpenSearch en conteneur éphémère ;
 - HAProxy en environnement de test ;
+- contrat d'intégration avec la VM `ubuntu-devops` ;
 - contrats documentaires et sécurité.
 
 Elle ne peut pas prouver à votre place :
@@ -388,6 +400,8 @@ bash scripts/commands/p5.sh cleanup
 
 ## Ce que vous devez savoir expliquer à la fin
 
+- frontière `Ubuntu-desktops-custom` / `p5_Openclassrooms` ;
+- différence plateforme VM / préparation runtime P5 ;
 - différence Terraform / Ansible ;
 - rôle d'un provider Terraform et d'un state ;
 - intérêt de `plan` avant `apply` ;
