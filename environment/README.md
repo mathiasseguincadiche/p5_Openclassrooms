@@ -2,52 +2,63 @@
 
 Ce dossier définit uniquement les **prérequis et paramètres propres au P5**.
 
-La construction, la configuration et la maintenance du poste Windows/WSL2 appartiennent au dépôt amont :
+La construction, la configuration, la virtualisation KVM/libvirt, le réseau de la VM, son stockage, son cycle de vie et sa sauvegarde appartiennent au dépôt amont :
 
-- [`mathiasseguincadiche/Windows_11_Pro_Custom`](https://github.com/mathiasseguincadiche/Windows_11_Pro_Custom)
+- [`mathiasseguincadiche/Ubuntu-desktops-custom`](https://github.com/mathiasseguincadiche/Ubuntu-desktops-custom)
 
-Le P5 consomme cette plateforme ; il ne la duplique pas.
+Le P5 consomme la VM DevOps fournie par cette plateforme ; il ne duplique pas sa gestion.
 
 ## Contrat attendu par le P5
 
-Le poste de contrôle doit fournir :
+L'environnement d'exécution attendu est la VM **`ubuntu-devops`** :
 
-- WSL2 fonctionnel ;
-- une distribution **Ubuntu 26.04** nommée `Ubuntu` ;
-- un checkout P5 dans le filesystem Linux, par exemple `~/labs/p5_Openclassrooms` ;
-- les outils compatibles avec [`versions.env`](versions.env) ;
-- Docker disponible pour les validations locales ;
-- un accès réseau permettant de joindre AWS et les ressources du lab.
+- Ubuntu Server **26.04 LTS** ;
+- exécution en CLI, sans dépendance à un environnement graphique ;
+- VM hébergée par KVM/libvirt côté poste Ubuntu ;
+- checkout P5 dans le filesystem Linux de la VM, par exemple `~/labs/p5_Openclassrooms` ;
+- accès Internet et DNS fonctionnels ;
+- accès à AWS et aux ressources du lab ;
+- droits `sudo` pour la convergence des dépendances strictement nécessaires au P5.
 
-Le checkout opérationnel ne doit pas être placé sous `/mnt/c` ou `/mnt/d`.
+Le dépôt P5 ne doit pas appeler `virsh`, `virt-install`, `qemu-img` ou modifier la configuration KVM/libvirt. Ces responsabilités restent dans `Ubuntu-desktops-custom`.
 
-Depuis Windows :
+## Accès à la VM
 
-```powershell
-wsl -d Ubuntu
-```
-
-Puis dans Ubuntu :
+Depuis le HOST Ubuntu, la VM est administrée par le dépôt `Ubuntu-desktops-custom`. Une fois son adresse connue, la connexion habituelle est :
 
 ```bash
-cd ~/labs/p5_Openclassrooms
+ssh <utilisateur>@<ip-ubuntu-devops>
+```
+
+Toutes les commandes P5 suivantes sont ensuite exécutées **dans la VM** :
+
+```bash
+mkdir -p ~/labs
+cd ~/labs
+git clone https://github.com/mathiasseguincadiche/p5_Openclassrooms.git
+cd p5_Openclassrooms
 bash scripts/commands/bootstrap-ubuntu-server.sh --check-only
 bash scripts/commands/p5.sh inspect
 ```
 
-Si le contrôle du socle détecte un écart strictement nécessaire au P5 :
+Si le contrôle détecte un écart strictement nécessaire au P5 :
 
 ```bash
 bash scripts/commands/bootstrap-ubuntu-server.sh
 ```
 
-Le bootstrap est convergent : un composant déjà conforme n'est pas réinstallé inutilement. Le contrat d'intégration Windows 11 / WSL2 / Ubuntu 26.04 est également vérifié automatiquement par la CI du dépôt.
+Le bootstrap est convergent : il inspecte d'abord puis installe ou réaligne uniquement les dépendances propres au P5. Il ne provisionne jamais la VM et ne modifie jamais l'hyperviseur.
 
-## `versions.env` — contrat logiciel
+## `versions.env` — contrat logiciel P5
 
-[`versions.env`](versions.env) fixe les versions ou minima nécessaires à la reproductibilité du projet : Ubuntu, Terraform, Ansible, Node.js, AWS CLI et outils utilisés par les scripts et la CI.
+[`versions.env`](versions.env) fixe les versions ou minima nécessaires à la reproductibilité du projet : Ubuntu, Terraform, Ansible, Node.js, AWS CLI et les images de validation utilisées par le dépôt.
 
-La workstation peut fournir davantage d'outils ; ils ne deviennent pas pour autant des dépendances ou des exercices du P5.
+La VM `ubuntu-devops` peut fournir davantage d'outils ; ils ne deviennent pas pour autant des dépendances ni des exercices du P5.
+
+Cette séparation est volontaire :
+
+- `Ubuntu-desktops-custom` définit et maintient la **plateforme VM DevOps** ;
+- `p5_Openclassrooms` définit et maintient le **runtime nécessaire au P5 dans cette VM**.
 
 ## `aws-readiness.env` — configuration locale du lab
 
@@ -92,18 +103,23 @@ Les vrais `terraform.tfvars` restent locaux et ignorés par Git.
 ## Frontière de responsabilité
 
 ```text
-Windows_11_Pro_Custom
-└── construit et maintient le poste Windows + WSL2
+Ubuntu-desktops-custom
+├── configure le HOST Ubuntu
+├── possède KVM/libvirt
+├── crée et maintient la VM ubuntu-devops
+├── possède son réseau, son stockage et son cycle de vie
+└── fournit une VM Ubuntu Server 26.04 exploitable
 
 p5_Openclassrooms
-├── vérifie le contrat Ubuntu/WSL2 nécessaire au projet
-├── fixe ses versions logicielles
+├── s'exécute entièrement dans ubuntu-devops
+├── vérifie le contrat Ubuntu Server 26.04 nécessaire au projet
+├── converge ses dépendances P5 uniquement
 ├── prépare les paramètres AWS du lab
 ├── génère les tfvars
 └── exécute les trois exercices P5
 ```
 
-Pour construire, réparer ou sauvegarder la workstation, consulter directement `Windows_11_Pro_Custom`.
+Pour construire, réparer, démarrer, arrêter ou sauvegarder la VM, consulter directement `Ubuntu-desktops-custom`.
 
 ## À ne jamais versionner
 
@@ -116,7 +132,7 @@ Pour construire, réparer ou sauvegarder la workstation, consulter directement `
 
 ## Références P5
 
-- [Contrat WSL2 minimal](wsl2/README.md)
+- [Contrat VM DevOps minimal](vm-devops/README.md)
 - [Installation et environnement de contrôle](../docs/00-preparation-environnement.md)
 - [Préparation du compte AWS](../docs/00b-preparation-compte-aws.md)
 - [Runbook A à Z](../docs/RUNBOOK_EXECUTION_GUIDEE.md)

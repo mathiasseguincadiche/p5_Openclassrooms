@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
-# Observe l'état actuel du P5 sans modifier la VM ni AWS.
+# Observe l'état actuel du P5 dans la VM Ubuntu DevOps sans modifier la VM ni AWS.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
 CONFIG_FILE="$PROJECT_ROOT/environment/aws-readiness.env"
 INVENTORY_FILE="$PROJECT_ROOT/ansible/inventories/hosts_aws"
+VERSIONS_FILE="$PROJECT_ROOT/environment/versions.env"
 TFVARS_RC=1
 AWS_RC=1
 SSH_PAIR_READY=0
+
+# shellcheck source=/dev/null
+source "$VERSIONS_FILE"
 
 unknown() {
     local label="$1" reason="$2" action="$3"
@@ -18,18 +22,20 @@ unknown() {
 }
 
 cd "$PROJECT_ROOT"
-printf 'P5 — ÉTAT ACTUEL OBSERVÉ (aucune mutation)\n'
+printf 'P5 — ÉTAT ACTUEL OBSERVÉ DANS LA VM (aucune mutation)\n'
 printf '%s\n' '============================================================'
+printf '  plateforme attendue : %s\n' "${P5_PLATFORM_REPOSITORY:-mathiasseguincadiche/Ubuntu-desktops-custom}"
+printf '  VM attendue         : %s\n' "${P5_EXPECTED_VM_NAME:-ubuntu-devops}"
 
-printf '\nVM et outils\n'
+printf '\nRuntime P5 dans la VM\n'
 set +e
 bash "$SCRIPT_DIR/bootstrap-ubuntu-server.sh" --check-only
 VM_RC=$?
 set -e
 case "$VM_RC" in
-    0) printf '  OK  VM convergée et utilisable dans ce shell.\n' ;;
-    90) printf '  --  Outils convergés ; reconnexion du shell requise pour Docker.\n' ;;
-    *) printf '  --  VM non convergée ; prepare installera/corrigera uniquement les écarts.\n' ;;
+    0) printf '  OK  runtime P5 convergé et utilisable dans ce shell de la VM.\n' ;;
+    90) printf '  --  outils convergés ; reconnexion SSH requise pour Docker.\n' ;;
+    *) printf '  --  runtime P5 non convergé ; prepare corrigera uniquement les dépendances P5.\n' ;;
 esac
 
 printf '\nConfiguration locale\n'
@@ -53,7 +59,7 @@ if [[ -r "$CONFIG_FILE" ]]; then
     PRIVATE_KEY="${PRIVATE_KEY/#\~/$HOME}"
     if [[ -f "$PRIVATE_KEY" && -f "$PUBLIC_KEY" ]]; then
         SSH_PAIR_READY=1
-        printf '  OK  paire de clés SSH locale présente.\n'
+        printf '  OK  paire de clés SSH locale présente dans la VM.\n'
     else
         unknown 'paire SSH locale' \
             "clé privée/publique incomplète autour de $PRIVATE_KEY" \
@@ -87,7 +93,7 @@ if command -v aws >/dev/null 2>&1 && [[ -r "$CONFIG_FILE" ]]; then
 else
     unknown 'état AWS' \
         'AWS CLI ou configuration locale indisponible' \
-        'bash scripts/commands/p5.sh prepare convergera d’abord les prérequis puis l’authentification.'
+        'bash scripts/commands/p5.sh prepare convergera d’abord les prérequis P5 puis l’authentification.'
 fi
 
 printf '\nTerraform — état local connu\n'
@@ -113,7 +119,7 @@ if command -v terraform >/dev/null 2>&1; then
     printf '  INFO Le prochain `terraform plan` rafraîchira les objets AWS réels et calculera le delta.\n'
 else
     unknown 'état Terraform' \
-        'Terraform est absent de cette VM' \
+        'Terraform est absent du runtime P5 dans la VM' \
         'bash scripts/commands/p5.sh prepare installera/corrigera Terraform si nécessaire.'
 fi
 
@@ -157,16 +163,16 @@ fi
 printf '\nClassification : %s\n' "$CLASSIFICATION"
 case "$CLASSIFICATION" in
     FIRST_RUN)
-        printf '  Première préparation détectée : aucun état P5 persistant exploitable n’a été trouvé.\n'
+        printf '  Première préparation P5 détectée : aucun état P5 persistant exploitable n’a été trouvé.\n'
         printf '  Prochaine action : bash scripts/commands/p5.sh prepare\n'
         ;;
     PARTIAL)
-        printf '  État partiel détecté : les éléments déjà conformes seront conservés et seuls les écarts seront convergés.\n'
+        printf '  État P5 partiel détecté : les éléments déjà conformes seront conservés et seuls les écarts seront convergés.\n'
         printf '  Prochaine action : bash scripts/commands/p5.sh prepare\n'
         ;;
     READY_CANDIDATE)
-        printf '  Socle prêt candidat : outils, configuration, SSH et identité AWS sont actuellement vérifiables.\n'
+        printf '  Runtime P5 prêt candidat : outils, configuration, SSH et identité AWS sont actuellement vérifiables.\n'
         printf '  Prochaine action : bash scripts/commands/p5.sh status pour revalider sans mutation.\n'
         ;;
 esac
-printf '\nVerdict : ÉTAT OBSERVÉ — aucune mutation, aucune valeur inventée.\n'
+printf '\nVerdict : ÉTAT P5 OBSERVÉ DANS LA VM — aucune mutation, aucune valeur inventée.\n'

@@ -77,7 +77,7 @@ Ces tags servent à l'identification, au nettoyage et à la réutilisation par l
 
 Si `ami_id` n'est pas renseigné, Terraform sélectionne automatiquement une AMI Canonical Ubuntu 24.04 LTS récente.
 
-Le poste WSL2 est en Ubuntu 26.04 ; la cible EC2 est en Ubuntu 24.04. Ce sont deux systèmes différents avec deux rôles différents.
+La VM de contrôle `ubuntu-devops` est en Ubuntu Server 26.04 ; la cible EC2 est en Ubuntu 24.04. Ce sont deux systèmes distincts avec deux rôles différents.
 
 ## 2. Comprendre le réseau
 
@@ -114,7 +114,7 @@ TCP/80  depuis 0.0.0.0/0
 198.51.100.42/32
 ```
 
-L'objectif est que seul le poste courant puisse administrer l'EC2 en SSH.
+L'objectif est que seule l'IPv4 publique d'administration utilisée par le lab puisse joindre l'EC2 en SSH.
 
 ### HTTP
 
@@ -310,7 +310,7 @@ Parce qu'il contient des valeurs runtime liées au lab actuel.
 
 `p5.sh` attend que l'EC2 réponde avec la clé privée et que `cloud-init` soit terminé.
 
-Diagnostic manuel utile :
+Diagnostic manuel utile depuis `ubuntu-devops` :
 
 ```bash
 WEB_IP="$(terraform -chdir=terraform/exercice-1 output -raw web_public_ip)"
@@ -478,7 +478,7 @@ bash scripts/commands/collect-nginx-access-log.sh \
   --output proofs/runtime/exercice-2/nginx-access-real.log
 ```
 
-Ce fichier est local et sert ensuite à l'exercice 2.
+Ce fichier est local à la VM et sert ensuite à l'exercice 2.
 
 ## 20. Preuves recommandées
 
@@ -533,8 +533,8 @@ Vérifier :
 - IP publique actuelle ;
 - route Internet ;
 - Security Group SSH ;
-- IP `/32` du poste ;
-- clé privée.
+- IPv4 `/32` d'administration ;
+- clé privée dans la VM.
 
 ### `Permission denied (publickey)`
 

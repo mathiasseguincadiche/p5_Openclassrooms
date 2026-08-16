@@ -1,80 +1,89 @@
-# 00A — Préparer l'environnement de contrôle
+# 00A — Préparer l'environnement de contrôle P5
 
 ## Objectif
 
-Ce document prépare **le poste depuis lequel le P5 sera exécuté**. Il ne décrit pas un exercice OpenClassrooms.
+Ce document prépare **le runtime dans lequel le P5 sera exécuté**. Il ne décrit ni l'installation du HOST Ubuntu, ni KVM/libvirt, ni la création de la VM.
 
-Le projet évalué reste AWS. Le poste de contrôle fournit simplement Bash, Terraform, Ansible, AWS CLI, Docker, Node.js et Git.
+Le projet évalué reste AWS. Le runtime P5 fournit Bash, Terraform, Ansible, AWS CLI, Docker, Node.js et Git **dans la VM Ubuntu Server 26.04 `ubuntu-devops`**.
 
-## Architecture du poste
+## Architecture de référence
 
 ```text
-Windows 11 Pro
+HOST Ubuntu
    │
-   └── WSL2
-        └── Ubuntu 26.04
-             ├── Bash
-             ├── Terraform
-             ├── Ansible
-             ├── AWS CLI
-             ├── Docker CLI / Compose
-             ├── Node.js / npm
-             └── checkout P5 sur filesystem Linux
+   └── KVM/libvirt
+        │
+        └── VM ubuntu-devops
+             └── Ubuntu Server 26.04 / CLI
+                  ├── Bash
+                  ├── Terraform
+                  ├── Ansible
+                  ├── AWS CLI
+                  ├── Docker / Compose
+                  ├── Node.js / npm
+                  └── ~/labs/p5_Openclassrooms
 ```
 
-La configuration générale de la workstation est maintenue dans le dépôt [`mathiasseguincadiche/Windows_11_Pro_Custom`](https://github.com/mathiasseguincadiche/Windows_11_Pro_Custom). P5 ne duplique pas `.wslconfig`, la gestion du VHDX, les sauvegardes Windows ou les scripts de cycle de vie WSL2.
+La construction et la maintenance des deux premières couches sont la responsabilité du dépôt séparé [`mathiasseguincadiche/Ubuntu-desktops-custom`](https://github.com/mathiasseguincadiche/Ubuntu-desktops-custom).
 
-## Pourquoi le checkout doit rester côté Linux
+Le P5 commence **une fois connecté dans `ubuntu-devops`**. Il ne crée pas la VM, ne modifie pas KVM/libvirt et ne gère pas son réseau ou son stockage.
 
-Le dépôt actif doit être placé dans un chemin comme :
+## Pourquoi conserver une préparation P5 distincte ?
+
+Le dépôt Ubuntu fournit une VM DevOps exploitable. Le P5 conserve néanmoins son propre contrat logiciel afin de garantir la reproductibilité de l'évaluation.
+
+Ainsi :
 
 ```text
-~/labs/p5_Openclassrooms
+Ubuntu-desktops-custom
+└── garantit une VM Ubuntu Server DevOps saine
+
+p5_Openclassrooms
+└── garantit les versions/capacités nécessaires au P5 dans cette VM
 ```
 
-et **pas** dans :
+`p5.sh prepare` peut donc installer ou réaligner **dans le guest uniquement** Terraform, Ansible, Node.js, AWS CLI, Docker et les outils strictement nécessaires au P5.
 
-```text
-/mnt/c/...
-/mnt/d/...
+Cette préparation n'est pas une installation de la VM : c'est la préparation de l'environnement du projet.
+
+## Étape 1 — Entrer dans `ubuntu-devops`
+
+Depuis le HOST, utiliser le runbook du dépôt `Ubuntu-desktops-custom` pour vérifier que la VM existe, est démarrée et joignable.
+
+La connexion habituelle est ensuite :
+
+```bash
+ssh <utilisateur>@<ip-ubuntu-devops>
 ```
 
-Le moteur vérifie ce point parce que les outils Linux, les permissions, les bits exécutables, les performances de nombreux petits fichiers et certains comportements de Docker/Git sont plus prévisibles sur le filesystem Linux WSL2.
-
-## Étape 1 — Ouvrir Ubuntu
-
-Depuis PowerShell ou Windows Terminal :
-
-```powershell
-wsl -d Ubuntu
-```
-
-### Ce que fait la commande
-
-- `wsl` appelle Windows Subsystem for Linux ;
-- `-d Ubuntu` choisit explicitement la distribution Ubuntu attendue ;
-- le shell qui s'ouvre devient l'environnement d'exécution des commandes P5.
+À partir de ce point, **toutes les commandes de ce document sont exécutées dans la VM**.
 
 ### Vérification
 
-Dans Ubuntu :
-
 ```bash
+hostname -s
 cat /etc/os-release
-uname -a
+systemd-detect-virt
 pwd
 ```
 
-Le contrat P5 attend Ubuntu 26.04. Les valeurs exactes de référence sont définies dans `environment/versions.env`.
+Le contrat P5 attend :
 
-## Étape 2 — Créer le dossier de labs
+```text
+hostname            ubuntu-devops
+VERSION_ID          26.04
+VERSION_CODENAME    resolute
+virtualisation      kvm ou qemu
+```
+
+Les valeurs de référence P5 sont définies dans `environment/versions.env`.
+
+## Étape 2 — Créer le dossier de labs dans la VM
 
 ```bash
 mkdir -p ~/labs
 cd ~/labs
 ```
-
-`mkdir -p` crée le dossier s'il n'existe pas et ne produit pas d'erreur s'il existe déjà.
 
 Vérifier le filesystem :
 
@@ -82,7 +91,7 @@ Vérifier le filesystem :
 findmnt -T ~/labs -n -o FSTYPE
 ```
 
-Le résultat attendu pour le checkout actif est `ext4`.
+Le checkout doit rester sur un filesystem Linux local du guest. Le bootstrap accepte les filesystems Linux prévus par le contrat et refuse les environnements qui ne correspondent pas à l'architecture VM.
 
 ## Étape 3 — Cloner le dépôt
 
@@ -101,18 +110,20 @@ git pull --ff-only
 
 `git pull --ff-only` refuse de créer automatiquement un commit de merge inattendu. Si la branche locale a divergé, diagnostiquer la situation avant de modifier l'historique.
 
-## Étape 4 — Vérifier le socle sans rien installer
+## Étape 4 — Vérifier le runtime P5 sans rien installer
 
 ```bash
 bash scripts/commands/bootstrap-ubuntu-server.sh --check-only
 ```
 
-Ce mode est une inspection. Il compare l'environnement réel aux versions et capacités attendues.
+Ce mode est une inspection. Il compare l'environnement réel de `ubuntu-devops` aux versions et capacités attendues par le P5.
 
 Il vérifie notamment :
 
-- distribution Ubuntu attendue ;
-- emplacement du checkout ;
+- Ubuntu Server 26.04 / Resolute ;
+- exécution dans la VM KVM/QEMU attendue ;
+- hostname `ubuntu-devops` ;
+- filesystem Linux local pour le checkout ;
 - commandes système nécessaires ;
 - Terraform ;
 - Ansible ;
@@ -123,13 +134,15 @@ Il vérifie notamment :
 
 ### Interpréter le résultat
 
-- code `0` : le socle est conforme ;
-- code `90` : les outils sont installés, mais une reconnexion est nécessaire pour rendre le groupe Docker actif ;
-- autre code : au moins un écart doit être corrigé.
+- code `0` : le runtime P5 est conforme ;
+- code `90` : les outils sont installés, mais une nouvelle session SSH est nécessaire pour rendre le groupe Docker actif ;
+- autre code : au moins un écart P5 doit être corrigé, ou le script n'est pas exécuté dans la VM attendue.
 
 Ne pas contourner un écart en installant au hasard une autre version. Le projet versionne son contrat dans `environment/versions.env`.
 
-## Étape 5 — Laisser P5 converger le socle
+Si le problème concerne la VM elle-même — VM absente, réseau KVM, disque, démarrage, cloud-init initial ou sauvegarde — sortir du périmètre P5 et utiliser `Ubuntu-desktops-custom`.
+
+## Étape 5 — Laisser P5 converger son runtime
 
 La commande normale est :
 
@@ -137,25 +150,21 @@ La commande normale est :
 bash scripts/commands/p5.sh prepare
 ```
 
-`prepare` commence par inspecter l'état. Si le bootstrap est déjà conforme, aucune installation inutile n'est exécutée. S'il manque une capacité ou qu'une version ne correspond pas, le moteur demande confirmation avant correction.
+`prepare` commence par inspecter l'état. Si le runtime est déjà conforme, aucune installation inutile n'est exécutée. S'il manque une capacité ou qu'une version requise par le P5 ne correspond pas, le moteur demande confirmation avant correction.
+
+Cette convergence reste limitée à la VM et au projet P5.
 
 ### Cas de la reconnexion Docker
 
-Après l'ajout de l'utilisateur au groupe Docker, le shell courant peut ne pas connaître encore le nouveau groupe.
+Après l'ajout de l'utilisateur au groupe Docker, le shell SSH courant peut ne pas connaître encore le nouveau groupe.
 
-Le moteur retourne alors l'état spécifique de reconnexion. La bonne action est :
+La bonne action est :
 
 ```text
-1. quitter le shell Ubuntu
-2. rouvrir Ubuntu
+1. quitter la session SSH
+2. se reconnecter à ubuntu-devops
 3. revenir dans ~/labs/p5_Openclassrooms
 4. relancer la même commande
-```
-
-Depuis Windows :
-
-```powershell
-wsl -d Ubuntu
 ```
 
 Puis :
@@ -165,9 +174,9 @@ cd ~/labs/p5_Openclassrooms
 bash scripts/commands/p5.sh prepare
 ```
 
-## Versions de référence
+## Versions de référence P5
 
-Ne recopier les versions dans des scripts personnels que si cela est indispensable. La source de vérité est :
+La source de vérité est :
 
 ```bash
 cat environment/versions.env
@@ -176,14 +185,15 @@ cat environment/versions.env
 Le dépôt référence notamment :
 
 ```text
-Ubuntu WSL2       26.04
-Node.js           22.22.0
-Ansible Core      2.20.1
-Terraform         1.15.8
-AWS CLI minimum   2.32.0
+VM logique          ubuntu-devops
+Ubuntu Server       26.04 / resolute
+Node.js             22.22.0
+Ansible Core        2.20.1
+Terraform           1.15.8
+AWS CLI minimum     2.32.0
 ```
 
-Ces versions concernent le **poste de contrôle**. Les instances EC2 des exercices 1 et 3 utilisent Ubuntu 24.04 LTS lorsque l'AMI est sélectionnée automatiquement.
+Ces versions concernent le **runtime P5 dans la VM**. Les instances EC2 des exercices 1 et 3 utilisent Ubuntu 24.04 LTS lorsque l'AMI est sélectionnée automatiquement.
 
 ## Étape 6 — Vérifier Git et les fichiers locaux
 
@@ -216,7 +226,7 @@ bash scripts/commands/p5.sh inspect
 
 Cette commande doit devenir un réflexe. Elle répond à la question :
 
-> « Dans quel état réel se trouve mon lab avant que je décide de le modifier ? »
+> « Dans quel état réel se trouve mon lab P5 dans la VM avant que je décide de le modifier ? »
 
 Elle n'est pas destinée à « faire fonctionner » le projet. Elle collecte des faits.
 
@@ -234,25 +244,28 @@ bash scripts/commands/p5.sh status
 
 Ne pas :
 
-- cloner le dépôt actif sous `/mnt/c` ou `/mnt/d` ;
-- modifier les versions de manière opportuniste parce qu'une commande échoue ;
+- exécuter le P5 sur le HOST pour contourner un problème dans `ubuntu-devops` ;
+- utiliser P5 pour créer, réparer ou reconfigurer KVM/libvirt ;
+- modifier les versions P5 de manière opportuniste parce qu'une commande échoue ;
 - stocker des clés AWS dans `aws-readiness.env` ;
 - utiliser le compte root AWS pour le lab normal ;
 - supprimer un `terraform.tfstate` pour « réinitialiser » un exercice ;
 - exécuter directement `terraform apply` sans savoir quel module et quel compte sont actifs ;
-- traiter Windows/WSL2 comme une partie du livrable P5.
+- présenter la plateforme Ubuntu/KVM comme une partie du livrable P5.
 
 ## Verdict de cette étape
 
-L'environnement de contrôle est prêt lorsque :
+L'environnement de contrôle P5 est prêt lorsque :
 
 ```text
-- Ubuntu WSL2 est conforme au contrat P5
-- le checkout actif est sur le filesystem Linux
-- les outils requis sont disponibles
-- Docker est utilisable dans le shell courant
+- ubuntu-devops est la VM d'exécution
+- Ubuntu Server 26.04 / Resolute est conforme
+- la virtualisation KVM/QEMU est détectée
+- le checkout actif est sur le filesystem Linux local de la VM
+- les outils requis par le P5 sont disponibles
+- Docker est utilisable dans la session SSH courante
 - p5.sh inspect fonctionne
-- p5.sh prepare peut terminer la préparation
+- p5.sh prepare peut terminer la préparation P5
 - p5.sh status ne signale pas de blocage non compris
 ```
 

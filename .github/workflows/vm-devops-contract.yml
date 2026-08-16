@@ -1,9 +1,9 @@
-name: Workstation integration contract
+name: VM DevOps integration contract
 
 on:
   push:
     paths:
-      - '.github/workflows/wsl2-contract.yml'
+      - '.github/workflows/vm-devops-contract.yml'
       - 'README.md'
       - 'environment/**'
       - 'docs/README.md'
@@ -15,11 +15,12 @@ on:
       - 'docs/troubleshooting.md'
       - 'docs/schemas/etape-0.svg'
       - 'docs/schemas/vue-ensemble.svg'
-      - 'scripts/windows/**'
       - 'scripts/commands/bootstrap-ubuntu-server.sh'
+      - 'scripts/commands/setup.sh'
+      - 'scripts/commands/inspect-state.sh'
   pull_request:
     paths:
-      - '.github/workflows/wsl2-contract.yml'
+      - '.github/workflows/vm-devops-contract.yml'
       - 'README.md'
       - 'environment/**'
       - 'docs/README.md'
@@ -31,21 +32,22 @@ on:
       - 'docs/troubleshooting.md'
       - 'docs/schemas/etape-0.svg'
       - 'docs/schemas/vue-ensemble.svg'
-      - 'scripts/windows/**'
       - 'scripts/commands/bootstrap-ubuntu-server.sh'
+      - 'scripts/commands/setup.sh'
+      - 'scripts/commands/inspect-state.sh'
 
 permissions:
   contents: read
 
 jobs:
-  contract:
-    name: Windows 11 / upstream WSL2 contract
+  boundary:
+    name: P5 / Ubuntu VM ownership boundary
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout P5
         uses: actions/checkout@v7
 
-      - name: Validate workstation ownership contract
+      - name: Validate P5 ownership contract
         shell: bash
         run: |
           set -euo pipefail
@@ -53,7 +55,7 @@ jobs:
           canonical_docs=(
             README.md
             environment/README.md
-            environment/wsl2/README.md
+            environment/vm-devops/README.md
             docs/README.md
             docs/00-preparation-environnement.md
             docs/01-parcours-debutant.md
@@ -70,81 +72,68 @@ jobs:
             }
           done
 
-          grep -Fq 'mathiasseguincadiche/Windows_11_Pro_Custom' README.md
-          grep -Fq 'mathiasseguincadiche/Windows_11_Pro_Custom' environment/README.md
-          grep -Fq 'mathiasseguincadiche/Windows_11_Pro_Custom' environment/wsl2/README.md
-          grep -Fq 'mathiasseguincadiche/Windows_11_Pro_Custom' docs/00-preparation-environnement.md
+          grep -Fq 'mathiasseguincadiche/Ubuntu-desktops-custom' README.md
+          grep -Fq 'mathiasseguincadiche/Ubuntu-desktops-custom' environment/README.md
+          grep -Fq 'mathiasseguincadiche/Ubuntu-desktops-custom' environment/vm-devops/README.md
+          grep -Fq 'ubuntu-devops' environment/vm-devops/README.md
+          grep -Fq 'Ubuntu Server 26.04' environment/vm-devops/README.md
 
-          grep -Fq "Mode d'implémentation retenu dans ce dépôt : 100 % AWS" README.md
-          grep -Fq 'Installation et environnement de contrôle' README.md
-          grep -Fq 'wsl -d Ubuntu' README.md
-          grep -Fq 'wsl -d Ubuntu' docs/00-preparation-environnement.md
-          grep -Fq 'wsl -d Ubuntu' docs/01-parcours-debutant.md
-          grep -Fq 'wsl -d Ubuntu' docs/RUNBOOK_EXECUTION_GUIDEE.md
+          test ! -e environment/wsl2
+          test ! -e scripts/windows
 
-          grep -Fq 'Ubuntu 26.04' environment/wsl2/README.md
-          grep -Fq '~/labs/p5_Openclassrooms' environment/wsl2/README.md
-          grep -Fq '/mnt/c' environment/wsl2/README.md
-          grep -Fq '/mnt/d' environment/wsl2/README.md
-
-          forbidden_files=(
-            environment/wsl2/.wslconfig.example
-            environment/wsl2/wsl.conf.example
-            scripts/windows/lib-wsl2-p5.ps1
-            scripts/windows/install-wsl2-p5.ps1
-            scripts/windows/configure-wsl2-p5.ps1
-            scripts/windows/check-wsl2-p5.ps1
-            scripts/windows/start-p5.ps1
-            scripts/windows/stop-p5.ps1
-            scripts/windows/status-p5.ps1
-            scripts/windows/backup-p5.ps1
-            scripts/windows/restore-p5.ps1
-          )
-
-          for path in "${forbidden_files[@]}"; do
-            if test -e "$path"; then
-              echo "KO responsabilité WSL2 dupliquée dans P5: $path"
-              exit 1
-            fi
-          done
-
-          if grep -nE \
-            'p5-devops|install-wsl2-p5\.ps1|configure-wsl2-p5\.ps1|check-wsl2-p5\.ps1|backup-p5\.ps1|restore-p5\.ps1|start-p5\.ps1|stop-p5\.ps1|status-p5\.ps1' \
-            "${canonical_docs[@]}"; then
-            echo 'KO anciennes instructions WSL2 P5 détectées.'
+          if grep -R -nE '^[[:space:]]*(sudo[[:space:]]+)?(virsh|virt-install|qemu-img)([[:space:]]|$)' \
+            scripts/commands scripts/lib 2>/dev/null; then
+            echo 'KO commande de gestion KVM/QEMU dupliquée dans le runtime P5.'
             exit 1
           fi
 
-          legacy_os_label="$(printf '%s %s' 'Fedora' '44')"
-          if grep -nF -- "$legacy_os_label" "${canonical_docs[@]}"; then
-            echo 'KO ancienne cible OS détectée.'
+          if grep -R -nE 'Windows_11_Pro_Custom|wsl -d Ubuntu|/mnt/c|/mnt/d|runtime WSL2|Ubuntu WSL2' "${canonical_docs[@]}"; then
+            echo 'KO anciennes instructions Windows/WSL2 détectées.'
             exit 1
           fi
 
-          if grep -nE 'virt-manager|virsh list|qemu-kvm|libvirt|VM Ubuntu Server|lab-heavy|nat-fallback|V3 DEVOPS READY|V6 WSL2 PLATFORM READY' \
-            "${canonical_docs[@]}"; then
-            echo 'KO anciennes instructions workstation détectées.'
-            exit 1
-          fi
+          grep -Fq 'P5_EXPECTED_VM_NAME=ubuntu-devops' environment/versions.env
+          grep -Fq 'P5_EXECUTION_MODEL=ubuntu-server-kvm-vm' environment/versions.env
+          grep -Fq 'P5_PLATFORM_REPOSITORY=mathiasseguincadiche/Ubuntu-desktops-custom' environment/versions.env
+          echo 'Frontière Ubuntu-desktops-custom / P5: OK'
 
-          echo 'Contrat workstation amont / P5: OK'
-
-      - name: Validate Linux checkout boundary
+      - name: Validate guest-only bootstrap contract
         shell: bash
         run: |
           set -euo pipefail
           bootstrap='scripts/commands/bootstrap-ubuntu-server.sh'
           bash -n "$bootstrap"
-          grep -Fq '/mnt/c' "$bootstrap"
-          grep -Fq '/mnt/d' "$bootstrap"
-          grep -Fq 'findmnt -T "$PROJECT_ROOT" -n -o FSTYPE' "$bootstrap"
-          grep -Fq 'ext4' "$bootstrap"
+          grep -Fq 'systemd-detect-virt' "$bootstrap"
+          grep -Fq 'kvm|qemu' "$bootstrap"
+          grep -Fq 'Runtime WSL détecté' "$bootstrap"
+          grep -Fq 'P5_EXPECTED_VM_NAME' "$bootstrap"
           grep -Fq 'P5_UBUNTU_VERSION_ID=26.04' environment/versions.env
           grep -Fq 'P5_UBUNTU_CODENAME=resolute' environment/versions.env
-          echo 'Frontière checkout Linux P5: OK'
+          echo 'Contrat guest Ubuntu Server P5: OK'
+
+  upstream-platform:
+    name: Ubuntu-desktops-custom / ubuntu-devops contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout platform repository read-only
+        uses: actions/checkout@v7
+        with:
+          repository: mathiasseguincadiche/Ubuntu-desktops-custom
+          path: upstream-platform
+
+      - name: Validate upstream VM identity only
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'VM_DEVOPS_NAME=ubuntu-devops' upstream-platform/config/devops-vm.conf
+          grep -Fq 'VM_DEVOPS_OS=ubuntu-server-26.04-lts' upstream-platform/config/devops-vm.conf
+          grep -Fq 'VM_DEVOPS_NETWORK=devops-nat' upstream-platform/config/devops-vm.conf
+          grep -Fq 'hostname: ubuntu-devops' upstream-platform/virtualization/cloud-init/user-data.tpl
+          grep -Fq 'devops_tooling_on_host: forbidden' upstream-platform/manifests/devops-vm/tools.yml
+          echo 'Contrat amont ubuntu-devops disponible: OK'
 
   ubuntu-2604-p5-runtime:
-    name: Ubuntu 26.04 / P5 DevOps runtime
+    name: Ubuntu 26.04 / P5 runtime compatibility
     runs-on: ubuntu-latest
     container:
       image: ubuntu:26.04
@@ -231,7 +220,7 @@ jobs:
           fi
           "$tmpdir/aws-bin/aws" --version
 
-      - name: Validate Ansible, NVM and Node requirements as WSL user
+      - name: Validate Ansible, NVM and Node requirements as P5 user
         shell: bash
         run: |
           set -euo pipefail

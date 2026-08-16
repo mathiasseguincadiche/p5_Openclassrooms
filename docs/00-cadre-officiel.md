@@ -191,19 +191,29 @@ Le dépôt applique donc la règle suivante :
 
 C'est pour cette raison que le type EC2 n'est pas considéré comme une vérité codée en dur dans la documentation : il provient de la configuration locale et des variables Terraform.
 
+## Environnement d'exécution retenu
+
+Les commandes P5 sont exécutées dans la VM `ubuntu-devops`, Ubuntu Server 26.04 LTS en CLI. Cette VM est fournie par le dépôt séparé [`mathiasseguincadiche/Ubuntu-desktops-custom`](https://github.com/mathiasseguincadiche/Ubuntu-desktops-custom).
+
+Cette décision d'environnement **n'ajoute pas un quatrième exercice**. Elle ne change pas le périmètre pédagogique : elle fournit seulement un runtime Linux isolé et reproductible pour exécuter les trois exercices AWS.
+
+La préparation logicielle strictement nécessaire au P5 reste gérée par `p5_Openclassrooms` à l'intérieur de cette VM.
+
 ## Ce que le P5 n'évalue pas
 
 Les éléments suivants ne font pas partie des trois exercices :
 
+- le HOST Ubuntu ;
+- KVM/libvirt ;
+- la création, le réseau, le stockage ou le backup de `ubuntu-devops` ;
 - Kubernetes ;
 - Helm ;
 - Prometheus ;
 - Grafana ;
 - Vault ;
-- GitHub Actions comme exercice autonome ;
-- la personnalisation Windows 11 ou WSL2.
+- GitHub Actions comme exercice autonome.
 
-GitHub Actions est utilisé pour protéger le dépôt. Windows 11 et WSL2 sont utilisés pour exécuter le lab. Ils ne deviennent pas pour autant des livrables pédagogiques du P5.
+GitHub Actions protège le dépôt. La plateforme Ubuntu/KVM héberge le runtime. Aucun de ces éléments ne devient un livrable pédagogique du P5.
 
 ## Réalisation de référence du dépôt
 

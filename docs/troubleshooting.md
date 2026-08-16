@@ -18,7 +18,7 @@ corriger la cause
 relancer la commande convergente
 ```
 
-Commencer par :
+Commencer **dans `ubuntu-devops`** par :
 
 ```bash
 bash scripts/commands/p5.sh inspect
@@ -31,44 +31,64 @@ Pour un diagnostic complet :
 bash scripts/commands/p5.sh diagnostics
 ```
 
-## 1. Le dépôt est sous `/mnt/c` ou `/mnt/d`
+Avant de diagnostiquer AWS, distinguer la frontière :
+
+```text
+HOST / KVM / VM absente ou non joignable
+→ Ubuntu-desktops-custom
+
+runtime P5 / AWS / Terraform / Ansible / preuves
+→ p5_Openclassrooms
+```
+
+## 1. Le bootstrap refuse l'environnement d'exécution
 
 ### Symptôme
 
-Le bootstrap refuse le checkout ou signale une frontière filesystem incorrecte.
+Le bootstrap signale par exemple :
+
+- runtime WSL détecté ;
+- VM KVM/QEMU attendue ;
+- hostname différent de `ubuntu-devops` ;
+- filesystem du checkout non accepté.
 
 ### Cause
 
-Le P5 attend le checkout actif sur le filesystem Linux WSL2.
+Le P5 est exécuté hors de son architecture de référence. Le runtime attendu est la VM `ubuntu-devops`, Ubuntu Server 26.04, créée et maintenue par `Ubuntu-desktops-custom`.
 
 ### Correction
 
-```bash
-mkdir -p ~/labs
-cd ~/labs
-git clone https://github.com/mathiasseguincadiche/p5_Openclassrooms.git
-cd p5_Openclassrooms
-```
+Ne pas désactiver le garde-fou dans P5.
 
-Ne pas contourner le contrôle dans le script.
+1. vérifier/réparer la VM via `Ubuntu-desktops-custom` ;
+2. se connecter à `ubuntu-devops` ;
+3. cloner ou ouvrir le P5 dans le filesystem Linux local du guest ;
+4. relancer le contrôle.
+
+Dans la VM :
+
+```bash
+hostname -s
+cat /etc/os-release
+systemd-detect-virt
+findmnt -T ~/labs -n -o FSTYPE
+cd ~/labs/p5_Openclassrooms
+bash scripts/commands/bootstrap-ubuntu-server.sh --check-only
+```
 
 ## 2. Docker est installé mais inutilisable sans sudo
 
 ### Symptôme
 
-Le bootstrap retourne l'état de reconnexion ou Docker refuse l'accès au daemon.
+Le bootstrap retourne le code `90` ou Docker refuse l'accès au daemon.
 
 ### Cause probable
 
-L'utilisateur vient d'être ajouté au groupe Docker mais le shell courant n'a pas encore rechargé ses groupes.
+L'utilisateur vient d'être ajouté au groupe Docker mais la session SSH courante n'a pas encore rechargé ses groupes.
 
 ### Correction
 
-Fermer Ubuntu, puis depuis Windows :
-
-```powershell
-wsl -d Ubuntu
-```
+Fermer la session SSH puis se reconnecter à `ubuntu-devops`.
 
 Ensuite :
 
@@ -155,7 +175,7 @@ terraform -chdir=terraform/exercice-1 init -input=false
 
 Causes possibles :
 
-- accès réseau ;
+- accès réseau depuis la VM ;
 - provider indisponible temporairement ;
 - lockfile incohérent ;
 - version Terraform non conforme.
@@ -219,13 +239,13 @@ WEB_IP="$(terraform -chdir=terraform/exercice-1 \
 echo "$WEB_IP"
 ```
 
-### Vérifier la clé
+### Vérifier la clé dans la VM
 
 ```bash
 ls -l ~/.ssh/p5-key ~/.ssh/p5-key.pub
 ```
 
-### Vérifier l'IP publique du poste
+### Vérifier l'IPv4 publique d'administration
 
 Si elle a changé :
 
@@ -260,7 +280,7 @@ ubuntu
 
 Ne modifier pas `deploy.yml` en premier.
 
-Tester SSH directement.
+Tester SSH directement depuis `ubuntu-devops`.
 
 Puis :
 
@@ -374,7 +394,7 @@ Vérifier :
 - domaine actif ;
 - endpoint Terraform ;
 - bonne région ;
-- IP publique du poste encore identique ;
+- IPv4 publique d'administration encore identique ;
 - policy SourceIp.
 
 Après changement d'IP :
@@ -524,6 +544,8 @@ Identifier la ressource restante et son exercice propriétaire.
 
 Vérifier le state correspondant avant suppression manuelle.
 
+Le nettoyage P5 ne concerne pas l'arrêt ou la destruction de `ubuntu-devops`.
+
 ## 30. State absent mais ressource AWS présente
 
 C'est une situation de récupération, pas un run normal.
@@ -542,18 +564,21 @@ Ne lancer pas un nouvel `apply` aveuglément.
 Toujours descendre par couche :
 
 ```text
-1. environnement local
+0. plateforme HOST/KVM/VM si ubuntu-devops n'est pas joignable
+1. runtime P5 dans ubuntu-devops
 2. identité AWS
 3. Terraform/state
-4. réseau
-5. SSH
+4. réseau AWS
+5. SSH vers les EC2
 6. Ansible/service
 7. application
 8. données OpenSearch
 9. dashboard
 10. HAProxy/backends
 11. preuves/livrables
-12. nettoyage
+12. nettoyage AWS
 ```
 
-Cette méthode évite de corriger une couche applicative lorsqu'en réalité la couche réseau ou identité est en panne.
+Pour la couche 0, utiliser `Ubuntu-desktops-custom`. Pour les couches 1 à 12, rester dans le dépôt P5.
+
+Cette méthode évite de corriger une couche applicative lorsqu'en réalité la plateforme, le réseau ou l'identité est en panne.

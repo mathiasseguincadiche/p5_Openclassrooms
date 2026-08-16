@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Converge le socle DevOps du runtime Ubuntu/WSL2 P5 vers l'état attendu.
+# Converge le runtime P5 dans la VM Ubuntu Server 26.04 vers l'état attendu.
+# La VM, KVM/libvirt, son réseau et son cycle de vie restent hors périmètre P5.
 # Réexécutable : inspecte d'abord, puis n'installe/corrige que ce qui est nécessaire.
 set -euo pipefail
 
@@ -18,15 +19,20 @@ show_help() {
 Usage: bash scripts/commands/bootstrap-ubuntu-server.sh [options]
 
 Options:
-  --check-only      inspecter le runtime Ubuntu/WSL2 sans aucune modification
+  --check-only      inspecter le runtime P5 dans la VM sans aucune modification
   --upgrade-system  autoriser apt full-upgrade en plus de la convergence P5
   -h, --help        afficher cette aide
 
 Principe :
   inspecter -> comparer -> corriger uniquement l'écart -> vérifier.
 
+Ce script prépare uniquement l'environnement P5 à l'intérieur de la VM
+Ubuntu Server 26.04. Il ne crée pas la VM, ne configure pas KVM/libvirt et ne
+modifie pas le HOST Ubuntu.
+
 Sans --upgrade-system, le script ne lance jamais de mise à niveau globale du
-système. Il installe uniquement les paquets/outils manquants ou non conformes.
+système. Il installe uniquement les paquets/outils manquants ou non conformes
+strictement nécessaires au P5.
 HELP
 }
 
@@ -48,32 +54,52 @@ if [[ ! -r /etc/os-release || ! -r "$VERSIONS_FILE" ]]; then
     exit 1
 fi
 
-case "$PROJECT_ROOT" in
-    /mnt/c|/mnt/c/*|/mnt/d|/mnt/d/*)
-        printf 'KO  Le checkout P5 ne doit pas vivre sous /mnt/c ou /mnt/d : %s\n' "$PROJECT_ROOT" >&2
-        printf '    Clonez le dépôt dans ~/labs/p5_Openclassrooms puis relancez.\n' >&2
-        exit 1
-        ;;
-esac
-
-if grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null; then
-    PROJECT_FS="$(findmnt -T "$PROJECT_ROOT" -n -o FSTYPE 2>/dev/null || true)"
-    if [[ "$PROJECT_FS" != ext4* ]]; then
-        printf 'KO  Le checkout P5 sous WSL2 doit être sur ext4 ; détecté : %s (%s)\n' \
-            "${PROJECT_FS:-inconnu}" "$PROJECT_ROOT" >&2
-        exit 1
-    fi
-fi
-
 # shellcheck source=/dev/null
 source /etc/os-release
 # shellcheck source=/dev/null
 source "$VERSIONS_FILE"
 
 if [[ "${ID:-}" != ubuntu ]]; then
-    printf 'KO  Système non pris en charge : Ubuntu est requis.\n' >&2
+    printf 'KO  Système non pris en charge : Ubuntu Server est requis.\n' >&2
     exit 1
 fi
+
+if grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null; then
+    printf 'KO  Runtime WSL détecté. L’architecture P5 de référence s’exécute dans la VM %s.\n' \
+        "${P5_EXPECTED_VM_NAME:-ubuntu-devops}" >&2
+    exit 1
+fi
+
+VIRT_TYPE="$(systemd-detect-virt 2>/dev/null || true)"
+case "$VIRT_TYPE" in
+    kvm|qemu)
+        ;;
+    *)
+        printf 'KO  VM KVM/QEMU attendue ; virtualisation détectée : %s\n' \
+            "${VIRT_TYPE:-aucune}" >&2
+        printf '    Construisez ou réparez la VM via %s, puis relancez P5 dans le guest.\n' \
+            "${P5_PLATFORM_REPOSITORY:-mathiasseguincadiche/Ubuntu-desktops-custom}" >&2
+        exit 1
+        ;;
+esac
+
+CURRENT_HOSTNAME="$(hostname -s 2>/dev/null || true)"
+if [[ -n "${P5_EXPECTED_VM_NAME:-}" && "$CURRENT_HOSTNAME" != "$P5_EXPECTED_VM_NAME" ]]; then
+    printf 'KO  VM attendue : %s ; hostname détecté : %s\n' \
+        "$P5_EXPECTED_VM_NAME" "${CURRENT_HOSTNAME:-inconnu}" >&2
+    exit 1
+fi
+
+PROJECT_FS="$(findmnt -T "$PROJECT_ROOT" -n -o FSTYPE 2>/dev/null || true)"
+case "$PROJECT_FS" in
+    ext4|xfs|btrfs)
+        ;;
+    *)
+        printf 'KO  Le checkout P5 doit vivre sur un filesystem Linux local de la VM ; détecté : %s (%s)\n' \
+            "${PROJECT_FS:-inconnu}" "$PROJECT_ROOT" >&2
+        exit 1
+        ;;
+esac
 
 ARCH="$(dpkg --print-architecture)"
 CODENAME="${UBUNTU_CODENAME:-${VERSION_CODENAME:-}}"
@@ -133,19 +159,23 @@ docker_group_persistent() {
     getent group docker 2>/dev/null | awk -F: '{print $4}' | tr ',' '\n' | grep -Fxq "$USER"
 }
 
-printf 'État cible P5 — Ubuntu %s, Terraform %s, Ansible %s, Node %s, AWS CLI >= %s\n' \
-    "$P5_UBUNTU_VERSION_ID" "$TERRAFORM_VERSION" "$ANSIBLE_CORE_VERSION" \
-    "$NODE_VERSION" "$AWS_CLI_MIN_VERSION"
+printf 'État cible P5 — VM %s | Ubuntu %s | Terraform %s | Ansible %s | Node %s | AWS CLI >= %s\n' \
+    "${P5_EXPECTED_VM_NAME:-ubuntu-devops}" "$P5_UBUNTU_VERSION_ID" "$TERRAFORM_VERSION" \
+    "$ANSIBLE_CORE_VERSION" "$NODE_VERSION" "$AWS_CLI_MIN_VERSION"
 
 ERRORS=0
 printf '\nSystème\n'
-if [[ "${VERSION_ID:-}" == "$P5_UBUNTU_VERSION_ID" ]]; then
-    ok "${PRETTY_NAME:-Ubuntu $P5_UBUNTU_VERSION_ID}"
+if [[ "${VERSION_ID:-}" == "$P5_UBUNTU_VERSION_ID" && "${VERSION_CODENAME:-}" == "$P5_UBUNTU_CODENAME" ]]; then
+    ok "${PRETTY_NAME:-Ubuntu $P5_UBUNTU_VERSION_ID} (${P5_UBUNTU_CODENAME})"
 else
-    printf '  KO      Ubuntu %s attendu ; %s détecté\n' \
-        "$P5_UBUNTU_VERSION_ID" "${PRETTY_NAME:-inconnu}" >&2
+    printf '  KO      Ubuntu %s/%s attendu ; %s/%s détecté\n' \
+        "$P5_UBUNTU_VERSION_ID" "$P5_UBUNTU_CODENAME" \
+        "${VERSION_ID:-inconnu}" "${VERSION_CODENAME:-inconnu}" >&2
     ERRORS=$((ERRORS + 1))
 fi
+ok "VM KVM/QEMU détectée : $VIRT_TYPE"
+ok "hostname VM : $CURRENT_HOSTNAME"
+ok "filesystem checkout : $PROJECT_FS"
 
 BASE_PACKAGES=(
     bash-completion build-essential ca-certificates curl git gnupg jq make
@@ -218,14 +248,14 @@ if [[ "$CHECK_ONLY" == true ]]; then
         || [[ "$NODE_VERSION_CURRENT" != "v${NODE_VERSION}" ]] \
         || ! command -v markdownlint-cli2 >/dev/null 2>&1 \
         || ((ERRORS > 0)); then
-        printf '\nVerdict : RUNTIME WSL2 NON CONVERGÉ — bootstrap requis.\n' >&2
+        printf '\nVerdict : RUNTIME P5 NON CONVERGÉ DANS LA VM — bootstrap requis.\n' >&2
         exit 1
     fi
     if ! docker info >/dev/null 2>&1; then
-        printf '\nVerdict : OUTILS INSTALLÉS, mais Docker n’est pas accessible dans ce shell.\n' >&2
+        printf '\nVerdict : OUTILS INSTALLÉS, mais Docker n’est pas accessible dans ce shell de la VM.\n' >&2
         exit 90
     fi
-    printf '\nVerdict : RUNTIME WSL2 CONVERGÉ — aucune installation nécessaire.\n'
+    printf '\nVerdict : RUNTIME P5 CONVERGÉ DANS LA VM — aucune installation nécessaire.\n'
     exit 0
 fi
 
@@ -322,7 +352,7 @@ if [[ -z "$AWS_VERSION" ]] || ! version_at_least "$AWS_VERSION" "$AWS_CLI_MIN_VE
     fi
     change "AWS CLI mise à niveau"
 else
-    ok "AWS CLI déjà compatible avec aws login"
+    ok "AWS CLI déjà compatible avec le P5"
 fi
 
 ANSIBLE_VERSION="$(ansible_current 2>/dev/null || true)"
@@ -380,13 +410,13 @@ AWS_VERSION="$(aws_current 2>/dev/null || true)"
 docker compose version >/dev/null 2>&1 || FINAL_ERRORS=$((FINAL_ERRORS + 1))
 
 if ((FINAL_ERRORS > 0)); then
-    printf 'KO  La convergence WSL2 a laissé %s anomalie(s).\n' "$FINAL_ERRORS" >&2
+    printf 'KO  La convergence du runtime P5 dans la VM a laissé %s anomalie(s).\n' "$FINAL_ERRORS" >&2
     exit 1
 fi
 
 printf '\nRésumé : déjà conformes=%s | modifications=%s\n' "$OK_COUNT" "$CHANGED"
 if [[ "$RECONNECT_REQUIRED" == true ]] || ! docker info >/dev/null 2>&1; then
-    printf 'Verdict : RUNTIME WSL2 CONVERGÉ — reconnexion requise pour le groupe Docker.\n'
+    printf 'Verdict : RUNTIME P5 CONVERGÉ DANS LA VM — reconnexion SSH requise pour le groupe Docker.\n'
     exit 90
 fi
-printf 'Verdict : RUNTIME WSL2 CONVERGÉ — aucune reconnexion nécessaire.\n'
+printf 'Verdict : RUNTIME P5 CONVERGÉ DANS LA VM — aucune reconnexion nécessaire.\n'

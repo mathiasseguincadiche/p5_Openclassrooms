@@ -11,24 +11,32 @@ Le schéma synthétique est :
 ## 1. Frontière du projet
 
 ```text
-HORS PÉRIMÈTRE ÉVALUÉ
-Windows 11 + WSL2 + Ubuntu 26.04
-            │
-            │ outils de contrôle
-            ▼
+PLATEFORME D'EXÉCUTION — HORS PÉRIMÈTRE ÉVALUÉ
+Ubuntu HOST
+   └── KVM/libvirt
+        └── VM ubuntu-devops / Ubuntu Server 26.04 CLI
+                    │
+                    │ héberge le runtime P5
+                    ▼
 ════════════════════════════════════
-PÉRIMÈTRE P5 AWS
-Terraform / Ansible / OpenSearch / HAProxy
+PÉRIMÈTRE P5
+préparation runtime dans la VM
++ Terraform / Ansible / OpenSearch / HAProxy sur AWS
 ════════════════════════════════════
 ```
 
-Le poste de contrôle exécute les commandes, mais les exercices sont réalisés sur AWS.
+Le dépôt [`mathiasseguincadiche/Ubuntu-desktops-custom`](https://github.com/mathiasseguincadiche/Ubuntu-desktops-custom) possède le HOST, KVM/libvirt et le cycle de vie de la VM.
+
+Le dépôt P5 s'exécute dans `ubuntu-devops`, prépare les dépendances nécessaires au projet dans ce guest, puis réalise les exercices sur AWS.
 
 ## 2. Plan de contrôle
 
 Le plan de contrôle du dépôt est :
 
 ```text
+VM ubuntu-devops
+       │
+       ▼
 scripts/commands/p5.sh
         │
         ├── scripts/lib/p5-runtime.sh
@@ -42,7 +50,7 @@ scripts/commands/p5.sh
         └── ansible/playbooks/deploy.yml
 ```
 
-`p5.sh` orchestre ; il ne remplace ni Terraform ni Ansible.
+`p5.sh` orchestre ; il ne remplace ni Terraform ni Ansible et n'administre pas KVM/libvirt.
 
 ## 3. Exercice 1 — architecture détaillée
 
@@ -91,9 +99,9 @@ La CI reconstruit Angular et compare le résultat avec `ansible/files/angular-ap
 ### Flux SSH
 
 ```text
-poste WSL2
+VM ubuntu-devops
    │
-   │ TCP/22 autorisé uniquement depuis IPv4 /32
+   │ TCP/22 autorisé uniquement depuis IPv4 publique /32
    ▼
 EC2 p5-web
    │
@@ -101,7 +109,7 @@ EC2 p5-web
    └── ansible-playbook deploy.yml
 ```
 
-L'inventaire réel est généré localement à partir des outputs Terraform.
+L'inventaire réel est généré localement **dans la VM** à partir des outputs Terraform.
 
 ### Flux HTTP
 
@@ -126,7 +134,7 @@ requêtes HTTP
 NGINX
     ↓
 /var/log/nginx/access.log
-    ↓ collecte SSH
+    ↓ collecte SSH depuis ubuntu-devops
 proofs/runtime/exercice-2/nginx-access-real.log
 ```
 
@@ -144,7 +152,7 @@ Amazon OpenSearch Domain
 ├── chiffrement node-to-node
 ├── HTTPS obligatoire
 ├── TLS >= 1.2
-└── policy SourceIp = poste /32
+└── policy SourceIp = IPv4 publique d'administration /32
 ```
 
 Le module est `terraform/exercice-2`.
@@ -289,7 +297,7 @@ Le script de failover utilise un mécanisme de restauration pour éviter de lais
 
 ## 6. Flux des informations de configuration
 
-La source locale principale est :
+La source locale principale **dans la VM** est :
 
 ```text
 environment/aws-readiness.env
@@ -358,7 +366,7 @@ SHA-256 + statut + durée dans manifest.tsv
 résumé du run
 ```
 
-Ces fichiers sont des **preuves techniques brutes**. Les livrables doivent sélectionner et expliquer les éléments pertinents.
+Ces fichiers sont des **preuves techniques brutes** stockées dans le runtime P5 de la VM. Les livrables doivent sélectionner et expliquer les éléments pertinents.
 
 ## 9. Dépendances et ordre d'exécution
 
@@ -396,16 +404,19 @@ audit global AWS
 
 Détruire l'exercice 1 en premier casserait les data sources et les dépendances de l'exercice 3.
 
+Le nettoyage AWS du P5 ne détruit jamais `ubuntu-devops`.
+
 ## 11. Frontières de responsabilité
 
 | Composant | Responsabilité | Ne doit pas devenir |
 | --- | --- | --- |
-| Windows/WSL2 | fournir le poste de contrôle | un exercice P5 |
+| `Ubuntu-desktops-custom` | HOST, KVM/libvirt, VM `ubuntu-devops` | une seconde implémentation du P5 |
+| runtime P5 dans `ubuntu-devops` | outils et configuration nécessaires au projet | un gestionnaire KVM/libvirt |
 | Terraform | gérer l'infrastructure AWS | un outil de copie de l'app Angular |
 | Ansible | converger la configuration serveur | un outil de création du VPC |
 | NGINX | servir Angular et produire les logs | le load-balancer de l'exercice 3 |
 | OpenSearch | indexer et analyser les logs | une preuve visuelle automatique |
 | HAProxy | répartir et superviser les backends | un substitut aux preuves de failover |
-| GitHub Actions | tester le dépôt | une preuve que le compte AWS a été déployé |
+| GitHub Actions | tester le dépôt et son contrat d'intégration | une preuve que le compte AWS a été déployé |
 
 Cette séparation constitue l'architecture de référence pour toute évolution du projet.

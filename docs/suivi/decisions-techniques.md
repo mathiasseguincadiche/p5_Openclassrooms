@@ -4,7 +4,7 @@
 
 ## Périmètre
 
-Le projet évalué est **AWS**. La workstation Windows 11 + WSL2 + Ubuntu 26.04 fournit seulement le plan de contrôle.
+Le projet évalué est **AWS**. Le P5 s'exécute dans la VM `ubuntu-devops`, Ubuntu Server 26.04 LTS en CLI. Le HOST Ubuntu, KVM/libvirt et le cycle de vie de cette VM sont fournis séparément par `mathiasseguincadiche/Ubuntu-desktops-custom`.
 
 Le dépôt maintient exactement trois exercices :
 
@@ -18,16 +18,36 @@ Le dépôt maintient exactement trois exercices :
 
 | Sujet | Choix actuel | Raison |
 | --- | --- | --- |
-| poste de contrôle | Windows 11 + WSL2 Ubuntu 26.04 | environnement CLI Linux reproductible |
-| emplacement checkout | `~/labs/p5_Openclassrooms` sur ext4 | compatibilité/performance des outils Linux |
+| environnement d'exécution | VM `ubuntu-devops`, Ubuntu Server 26.04 CLI | isolation du runtime P5 et cohérence avec la plateforme Ubuntu/KVM |
+| propriétaire plateforme | `Ubuntu-desktops-custom` | une seule source de vérité pour HOST, KVM/libvirt et VM |
+| propriétaire runtime P5 | `p5_Openclassrooms` | conserver une préparation logicielle reproductible propre au projet |
+| emplacement checkout | `~/labs/p5_Openclassrooms` dans la VM | filesystem Linux local et environnement CLI reproductible |
 | région modèle | `us-east-1` | région commune au lab, configurable |
-| Terraform | `>= 1.15.0, < 2.0.0` | contrat actuel du dépôt |
+| Terraform | `>= 1.15.0, < 2.0.0` avec cible P5 1.15.8 | contrat actuel du dépôt |
 | AWS provider | `~> 5.0` | plage contrôlée par les lockfiles |
 | compte | `allowed_account_ids` | refuser un déploiement dans le mauvais compte |
 | administration | IPv4 publique `/32` | limiter SSH et OpenSearch |
 | configuration locale | `environment/aws-readiness.env` | source unique, non versionnée |
 | mutation | confirmation ou `--apply` explicite selon les scripts | distinguer observation et action |
 | secrets | hors Git + audit dédié | réduire le risque de fuite |
+
+## Frontière plateforme / projet
+
+```text
+Ubuntu-desktops-custom
+├── HOST Ubuntu
+├── KVM/libvirt
+├── réseau et stockage de virtualisation
+└── cycle de vie de ubuntu-devops
+
+p5_Openclassrooms
+├── contrôle que le guest correspond au contrat P5
+├── converge les dépendances P5 dans le guest
+├── prépare AWS
+└── exécute les trois exercices
+```
+
+Le P5 ne doit donc pas contenir de logique de provisioning KVM/libvirt. La préparation P5 peut en revanche installer ou réaligner Terraform, Ansible, Node.js, AWS CLI, Docker et les outils nécessaires **à l'intérieur de la VM**.
 
 ## Application Angular
 
@@ -110,9 +130,11 @@ inspecter
 
 Un state existant est une information à conserver, pas un obstacle à supprimer.
 
+La même règle s'applique au runtime P5 : une dépendance déjà conforme dans `ubuntu-devops` n'est pas réinstallée inutilement.
+
 ## Preuves
 
-Les preuves brutes sont locales :
+Les preuves brutes sont locales à la VM :
 
 ```text
 logs/<RUN_ID>/
@@ -136,6 +158,8 @@ La destruction exige une confirmation forte et l'audit final doit produire :
 ```text
 NETTOYAGE AWS COMPLET
 ```
+
+Le nettoyage P5 ne détruit pas la VM `ubuntu-devops` : son cycle de vie appartient au dépôt plateforme.
 
 ## Documentation
 
