@@ -1,119 +1,130 @@
 # Contrat VM DevOps du P5
 
-Le P5 **ne crée pas et ne maintient pas la VM** dans laquelle il s'exécute.
+## Objet
 
-La plateforme de référence est fournie par :
+Ce document définit l'environnement d'exécution attendu par le projet P5.
 
-- [`mathiasseguincadiche/Ubuntu-desktops-custom`](https://github.com/mathiasseguincadiche/Ubuntu-desktops-custom)
+Le P5 s'exécute dans la VM **`ubuntu-devops`** fournie par le dépôt
+[`mathiasseguincadiche/Ubuntu-desktops-custom`](https://github.com/mathiasseguincadiche/Ubuntu-desktops-custom).
 
-Ce document décrit uniquement la frontière d'intégration nécessaire au projet P5.
+La plateforme de virtualisation et le runtime P5 ont des responsabilités distinctes.
 
-## Source de vérité
+## Responsabilités
 
-`Ubuntu-desktops-custom` reste la source de vérité pour :
+### Plateforme Ubuntu
+
+`Ubuntu-desktops-custom` est la source de vérité pour :
 
 - le HOST Ubuntu ;
 - KVM/libvirt ;
 - le réseau virtuel ;
-- les volumes/disques de VM ;
+- les volumes et disques de VM ;
 - cloud-init et l'identité initiale de la VM ;
-- le démarrage, l'arrêt, la réparation et la sauvegarde de `ubuntu-devops`.
+- les ressources CPU, RAM et stockage de `ubuntu-devops` ;
+- le démarrage, l'arrêt, la réparation, la sauvegarde et la restauration de la VM.
 
-`p5_Openclassrooms` reste la source de vérité pour :
+### Projet P5
 
-- les contraintes logicielles propres au P5 ;
-- la préparation de son runtime dans la VM ;
+`p5_Openclassrooms` est la source de vérité pour :
+
+- les versions et capacités logicielles requises par le P5 ;
+- la préparation du runtime P5 dans la VM ;
 - la configuration AWS du lab ;
 - Terraform, Ansible, Angular, OpenSearch et HAProxy ;
-- les preuves, diagnostics et livrables ;
-- le nettoyage AWS.
-
-Le P5 ne recopie aucune logique KVM/libvirt du dépôt Ubuntu.
+- les diagnostics, preuves et livrables ;
+- le nettoyage des ressources AWS du projet.
 
 ## VM requise
 
-Le contrat cible la VM :
+Le contrat d'exécution est :
 
 ```text
-nom logique : ubuntu-devops
-OS          : Ubuntu Server 26.04 LTS
-usage       : CLI DevOps
+nom logique        ubuntu-devops
+système            Ubuntu Server 26.04 LTS
+codename           resolute
+mode               CLI
+virtualisation     KVM/QEMU
 ```
 
-Le contrôle P5 vérifie précisément :
+La VM doit disposer :
 
-```text
-VERSION_ID=26.04
-VERSION_CODENAME=resolute
-```
-
-La VM doit disposer d'un accès Internet/DNS et permettre les connexions vers AWS.
+- d'un accès Internet et DNS fonctionnel ;
+- d'un accès sortant vers AWS ;
+- d'un utilisateur non root disposant de `sudo` ;
+- d'un filesystem Linux local pour le checkout du projet.
 
 ## Checkout opérationnel
 
-Le dépôt doit rester dans le filesystem Linux de la VM, par exemple :
+Chemin recommandé :
 
 ```text
 /home/<user>/labs/p5_Openclassrooms
 ```
 
-Commande habituelle dans `ubuntu-devops` :
+Exemple :
 
 ```bash
-cd ~/labs/p5_Openclassrooms
+mkdir -p ~/labs
+cd ~/labs
+git clone https://github.com/mathiasseguincadiche/p5_Openclassrooms.git
+cd p5_Openclassrooms
 ```
 
-Le P5 refuse les environnements Windows/WSL2 comme runtime de référence de cette architecture.
+## Qualification du runtime
 
-## Qualification côté P5
-
-Une fois connecté dans la VM :
+Dans `ubuntu-devops` :
 
 ```bash
-cd ~/labs/p5_Openclassrooms
 bash scripts/commands/bootstrap-ubuntu-server.sh --check-only
 bash scripts/commands/p5.sh inspect
 ```
 
-Le premier contrôle vérifie le runtime Ubuntu Server requis par le P5 sans modification.
+Le contrôle vérifie notamment :
 
-Si un composant strictement requis par le projet est absent ou incompatible, la préparation P5 peut converger ses propres dépendances :
+- Ubuntu Server 26.04 / Resolute ;
+- l'identité `ubuntu-devops` ;
+- la virtualisation KVM/QEMU ;
+- le filesystem du checkout ;
+- Terraform ;
+- Ansible Core ;
+- AWS CLI ;
+- Docker Engine et Compose ;
+- Node.js/npm ;
+- les outils nécessaires aux validations du dépôt.
+
+Les versions de référence sont définies dans [`../versions.env`](../versions.env).
+
+## Convergence du runtime P5
+
+La commande de préparation de référence est :
+
+```bash
+bash scripts/commands/p5.sh prepare
+```
+
+Pour converger uniquement le runtime logiciel :
 
 ```bash
 bash scripts/commands/bootstrap-ubuntu-server.sh
 ```
 
-Cette convergence peut concerner Terraform, Ansible, Node.js, AWS CLI, Docker ou des outils de validation du dépôt. Elle reste limitée au guest Ubuntu et n'administre jamais l'hyperviseur.
+La convergence est limitée aux dépendances nécessaires au P5 dans la VM.
 
-## Ce que P5 ne doit jamais faire
+## Réseau et AWS
 
-Le dépôt P5 ne doit pas :
+L'adresse privée de `ubuntu-devops` sert à l'administration de la VM depuis le HOST.
+Elle n'est pas utilisée comme valeur de sécurité AWS du projet.
 
-- appeler `virsh`, `virt-install` ou `qemu-img` pour gérer `ubuntu-devops` ;
-- créer ou modifier un réseau libvirt ;
-- gérer les pools de stockage KVM ;
-- modifier les ressources CPU/RAM/disque de la VM ;
-- gérer le backup/restore de la VM ;
-- installer sa toolchain sur le HOST pour contourner un problème du guest.
+`P5_PUBLIC_IP_CIDR` représente l'IPv4 publique d'administration vue par AWS et doit être fournie en `/32`.
 
-## Réseau AWS
+## Invariants
 
-Le P5 ne dépend d'aucune adresse privée KVM codée en dur.
+Le P5 doit être exécuté depuis `ubuntu-devops` et ne gère pas :
 
-`P5_PUBLIC_IP_CIDR` représente l'IPv4 publique d'administration vue par AWS, obligatoirement en `/32` pour les accès restreints du lab.
+- KVM/libvirt ;
+- les réseaux ou pools de stockage de l'hyperviseur ;
+- les ressources matérielles de la VM ;
+- son cycle de vie ;
+- sa sauvegarde ou sa restauration.
 
-L'adresse privée de `ubuntu-devops` sert uniquement à l'accès HOST → VM et reste une responsabilité de la plateforme Ubuntu.
-
-## Principe
-
-```text
-Plateforme Ubuntu/KVM
-        ↓ fournit
-VM ubuntu-devops
-        ↓ héberge
-runtime préparé par P5
-        ↓ exécute
-labs AWS P5
-```
-
-Cette séparation évite deux sources de vérité concurrentes tout en laissant au P5 la maîtrise de sa préparation d'environnement.
+Le contrat de plateforme est vérifié en lecture seule par la CI d'intégration du P5.
