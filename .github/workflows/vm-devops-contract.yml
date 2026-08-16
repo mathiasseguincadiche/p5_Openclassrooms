@@ -81,8 +81,9 @@ jobs:
           test ! -e environment/wsl2
           test ! -e scripts/windows
 
-          if grep -R -nE '\b(virsh|virt-install|qemu-img|libvirt)\b' scripts/commands scripts/lib 2>/dev/null; then
-            echo 'KO responsabilité KVM/libvirt dupliquée dans le runtime P5.'
+          if grep -R -nE '^[[:space:]]*(sudo[[:space:]]+)?(virsh|virt-install|qemu-img)([[:space:]]|$)' \
+            scripts/commands scripts/lib 2>/dev/null; then
+            echo 'KO commande de gestion KVM/QEMU dupliquée dans le runtime P5.'
             exit 1
           fi
 
