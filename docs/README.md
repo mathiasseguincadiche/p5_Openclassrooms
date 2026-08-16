@@ -8,7 +8,7 @@ Le `README.md` racine présente le projet. Ici, la documentation explique le fon
 
 ```text
 1. comprendre le besoin
-2. préparer l'environnement
+2. préparer l'environnement P5 dans la VM
 3. observer l'état réel
 4. exécuter les exercices
 5. vérifier les résultats
@@ -17,7 +17,7 @@ Le `README.md` racine présente le projet. Ici, la documentation explique le fon
 8. fermer le lab proprement
 ```
 
-Le **mode d'implémentation retenu dans ce dépôt est 100 % AWS**. Windows 11 et WSL2 servent uniquement d'environnement de contrôle.
+Le **mode d'implémentation retenu dans ce dépôt est 100 % AWS**. Le P5 s'exécute en CLI dans la VM Ubuntu Server 26.04 `ubuntu-devops`. Le HOST Ubuntu, KVM/libvirt et le cycle de vie de cette VM appartiennent au dépôt séparé `mathiasseguincadiche/Ubuntu-desktops-custom`.
 
 ## Niveau 1 — Comprendre le projet
 
@@ -27,7 +27,7 @@ Le **mode d'implémentation retenu dans ce dépôt est 100 % AWS**. Windows 11 e
 
 ## Niveau 2 — Préparer le lab
 
-1. [`00-preparation-environnement.md`](00-preparation-environnement.md) — Ubuntu WSL2, checkout et qualification des outils ;
+1. [`00-preparation-environnement.md`](00-preparation-environnement.md) — VM `ubuntu-devops`, checkout et qualification du runtime P5 ;
 2. [`00b-preparation-compte-aws.md`](00b-preparation-compte-aws.md) — identité, compte, réseau, budget, quotas et garde-fous ;
 3. [`contrat-informations-requises.md`](contrat-informations-requises.md) — informations réellement nécessaires au moteur P5.
 
@@ -62,8 +62,14 @@ Le **mode d'implémentation retenu dans ce dépôt est 100 % AWS**. Windows 11 e
 ## Carte technique
 
 ```text
-POSTE DE CONTRÔLE
-Windows 11 + WSL2 + Ubuntu 26.04
+PLATEFORME AMONT
+Ubuntu HOST + KVM/libvirt
+             │
+             ▼
+VM ubuntu-devops / Ubuntu Server 26.04
+             │
+             ▼
+       runtime P5 CLI
              │
              ▼
 scripts/commands/p5.sh
@@ -92,12 +98,14 @@ Schéma de référence : [`schemas/vue-ensemble.svg`](schemas/vue-ensemble.svg).
 
 En cas de doute sur ce qu'une commande fait réellement :
 
+- plateforme VM : dépôt séparé `mathiasseguincadiche/Ubuntu-desktops-custom` ;
+- contrat d'intégration P5 : `environment/vm-devops/README.md` ;
 - orchestration : `scripts/commands/p5.sh` ;
 - runtime/logs/preuves : `scripts/lib/p5-runtime.sh` ;
 - infrastructure : `terraform/exercice-{1,2,3}/` ;
 - configuration : `ansible/playbooks/deploy.yml` ;
 - application : `application/angular/` ;
-- versions : `environment/versions.env` ;
+- versions P5 : `environment/versions.env` ;
 - non-régression : `scripts/tools/audit_non_regression.py` et `.github/workflows/`.
 
 La documentation doit expliquer cette implémentation, jamais en créer une seconde.
@@ -114,7 +122,9 @@ bash scripts/commands/p5.sh inspect
 
 - exactement trois exercices ;
 - mode AWS clairement identifié ;
-- Windows/WSL2 limité au poste de contrôle ;
+- exécution P5 dans `ubuntu-devops` ;
+- HOST/KVM/cycle de vie VM hors périmètre du dépôt P5 ;
+- préparation logicielle P5 conservée dans la VM ;
 - aucune présentation de Kubernetes, Helm, Prometheus, Grafana ou Vault comme élément du P5 ;
 - distinction entre CI et preuve AWS réelle ;
 - dépendance exercice 1 → exercice 3 ;
