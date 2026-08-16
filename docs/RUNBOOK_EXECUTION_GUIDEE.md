@@ -2,13 +2,39 @@
 
 ## Objectif
 
-Ce runbook est la procédure opératoire principale du P5. Il fixe l'ordre d'exécution,
-les commandes, les résultats attendus, les points d'arrêt et les conditions de reprise.
+Ce runbook est la procédure opératoire principale du P5. Il fixe l'ordre d'exécution, les commandes,
+les résultats attendus, les points d'arrêt et les conditions de reprise.
 
 Toutes les commandes P5 sont exécutées dans la VM Ubuntu Server 26.04 **`ubuntu-devops`**.
 
-Les guides `docs/exercices/` détaillent les concepts. Le présent document décrit la procédure
-à suivre pour exécuter le projet de manière reproductible.
+Les guides `docs/exercices/` expliquent les concepts en profondeur. Le présent document décrit la
+séquence opératoire à suivre pour exécuter le projet de manière reproductible.
+
+## Parcours complet
+
+![Architecture et dépendances du P5](schemas/vue-ensemble.svg)
+
+```text
+connexion à ubuntu-devops
+        ↓
+inspect
+        ↓
+prepare
+        ↓
+status → GO TERRAFORM
+        ↓
+exercice 1
+   ├────► exercice 2 via access.log
+   └────► exercice 3 via VPC/subnets
+        ↓
+diagnostics
+        ↓
+finalize
+        ↓
+cleanup 3 → 2 → 1
+        ↓
+audit AWS
+```
 
 ## Règles opératoires
 
@@ -25,7 +51,11 @@ Les guides `docs/exercices/` détaillent les concepts. Le présent document déc
 Le cycle de vie de la VM est documenté dans
 [`mathiasseguincadiche/Ubuntu-desktops-custom`](https://github.com/mathiasseguincadiche/Ubuntu-desktops-custom).
 
-## Phase 0 — Ouvrir le plan de contrôle P5
+---
+
+## Phase 0 — Ouvrir et qualifier le plan de contrôle
+
+![Étape 0 — qualification et préparation](schemas/etape-0.svg)
 
 Se connecter à la VM :
 
@@ -55,8 +85,10 @@ checkout : /home/<utilisateur>/labs/p5_Openclassrooms
 
 ### Point d'arrêt
 
-Ne pas poursuivre si l'identité de la VM, l'OS, la virtualisation ou le filesystem du checkout
-ne correspondent pas au contrat défini dans `environment/vm-devops/README.md`.
+Ne pas poursuivre si l'identité de la VM, l'OS, la virtualisation ou le filesystem du checkout ne
+correspondent pas au contrat `environment/vm-devops/README.md`.
+
+---
 
 ## Phase 1 — Observer l'état réel
 
@@ -73,6 +105,8 @@ bash scripts/commands/p5.sh inspect
 - la classification du lab pour la reprise.
 
 Aucune valeur runtime ne doit être inventée ou remplacée par une valeur copiée sans source.
+
+---
 
 ## Phase 2 — Préparer le runtime P5 et AWS
 
@@ -107,8 +141,10 @@ Ne pas poursuivre si :
 - l'IPv4 `/32`, la clé SSH, les quotas ou les `tfvars` sont incomplets ;
 - une mutation proposée n'est pas comprise.
 
-Si l'utilisateur vient d'être ajouté au groupe Docker, fermer puis rouvrir la session SSH avant
-de relancer `prepare`.
+Si l'utilisateur vient d'être ajouté au groupe Docker, fermer puis rouvrir la session SSH avant de
+relancer `prepare`.
+
+---
 
 ## Phase 3 — Valider le lab avant Terraform
 
@@ -129,6 +165,8 @@ aveugle.
 
 ## Phase 4 — Exercice 1 : Terraform + Ansible + Angular/NGINX
 
+![Exercice 1 — infrastructure et déploiement](schemas/exercice-1.svg)
+
 Lancer :
 
 ```bash
@@ -139,24 +177,24 @@ Flux attendu :
 
 ```text
 build Angular
-→ Terraform init/plan
-→ confirmation si delta
-→ apply si nécessaire
-→ vérification post-plan
-→ outputs Terraform
-→ inventaire Ansible
-→ attente SSH
-→ Ansible ping
-→ déploiement Angular + NGINX
-→ second passage Ansible
-→ vérification HTTP
-→ trafic de preuve
-→ collecte access.log
++ Terraform init/plan/apply si delta
+        ↓
+outputs Terraform + artefact Angular
+        ↓
+inventaire Ansible
+        ↓
+attente SSH + Ansible ping
+        ↓
+déploiement NGINX + Angular
+        ↓
+second passage Ansible
+        ↓
+vérification HTTP
+        ↓
+trafic de preuve + collecte access.log
 ```
 
 ### Contrôles ciblés
-
-Récupérer les valeurs depuis Terraform :
 
 ```bash
 WEB_URL="$(terraform -chdir=terraform/exercice-1 output -raw web_url)"
@@ -167,8 +205,7 @@ printf 'WEB_URL=%s\nWEB_IP=%s\n' "$WEB_URL" "$WEB_IP"
 Vérifier l'application :
 
 ```bash
-bash scripts/commands/verify-angular-deployment.sh \
-  --url "$WEB_URL"
+bash scripts/commands/verify-angular-deployment.sh --url "$WEB_URL"
 ```
 
 Vérifier Ansible :
@@ -214,6 +251,8 @@ Guide : [`exercices/01-terraform-ansible.md`](exercices/01-terraform-ansible.md)
 ---
 
 ## Phase 5 — Exercice 2 : Amazon OpenSearch
+
+![Exercice 2 — logs vers OpenSearch](schemas/exercice-2.svg)
 
 Lancer :
 
@@ -273,6 +312,8 @@ Guide : [`exercices/02-opensearch.md`](exercices/02-opensearch.md).
 ---
 
 ## Phase 6 — Exercice 3 : HAProxy et résilience
+
+![Exercice 3 — HAProxy et résilience](schemas/exercice-3.svg)
 
 L'exercice 1 doit fournir son VPC et ses sous-réseaux.
 
@@ -363,6 +404,8 @@ Préparation de l'oral : [`05-soutenance.md`](05-soutenance.md).
 
 ## Phase 8 — Fermer le lab AWS
 
+![Finalisation et fermeture AWS](schemas/finalisation/finalisation.svg)
+
 Après validation des preuves et captures :
 
 ```bash
@@ -381,8 +424,8 @@ Verdict attendu :
 NETTOYAGE AWS COMPLET
 ```
 
-Si l'audit détecte encore une ressource gérée, identifier le module Terraform propriétaire et
-son state avant toute correction.
+Si l'audit détecte encore une ressource gérée, identifier le module Terraform propriétaire et son
+state avant toute correction.
 
 L'arrêt ou la sauvegarde de `ubuntu-devops` est indépendant du nettoyage AWS du P5.
 
