@@ -226,7 +226,7 @@ GO TERRAFORM
 ```
 
 Ce verdict indique que le lab peut passer à la lecture d'un plan Terraform. Tout plan doit être
-relis avant confirmation d'une mutation AWS.
+relu avant confirmation d'une mutation AWS.
 
 ## Garde-fous
 
@@ -234,7 +234,7 @@ Ne pas :
 
 - exécuter les commandes P5 depuis le HOST ;
 - supprimer un `terraform.tfstate` pour recommencer un exercice ;
-- stocker de credentials AWS longue durée dans les fichiers du projet ;
+- stocker des identifiants AWS longue durée dans les fichiers du projet ;
 - utiliser le compte root AWS pour l'exploitation normale du lab ;
 - modifier les versions de référence sans mettre à jour leur contrat et les validations associées ;
 - exécuter un `terraform apply` sans identifier le module, le compte et le delta attendu.
