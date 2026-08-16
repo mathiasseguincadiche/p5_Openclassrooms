@@ -10,28 +10,15 @@ Terraform, Ansible, AWS CLI, Docker, Node.js et les scripts P5 sont exécutés.
 
 ## Architecture de référence
 
-```text
-HOST Ubuntu
-   │
-   └── KVM/libvirt
-        │
-        └── VM ubuntu-devops
-             └── Ubuntu Server 26.04 / CLI
-                  ├── Bash
-                  ├── Terraform
-                  ├── Ansible
-                  ├── AWS CLI
-                  ├── Docker / Compose
-                  ├── Node.js / npm
-                  └── ~/labs/p5_Openclassrooms
-```
+![Étape 0 — préparation du plan de contrôle P5](schemas/etape-0.svg)
 
 La plateforme HOST/KVM/VM est fournie par
 [`mathiasseguincadiche/Ubuntu-desktops-custom`](https://github.com/mathiasseguincadiche/Ubuntu-desktops-custom).
 Le contrat d'intégration attendu par le P5 est défini dans
 [`../environment/vm-devops/README.md`](../environment/vm-devops/README.md).
 
-Toutes les commandes ci-dessous sont exécutées **dans `ubuntu-devops`**.
+Toutes les commandes ci-dessous sont exécutées **dans `ubuntu-devops`**. Le parcours de référence
+est `inspect → prepare → status → GO TERRAFORM`.
 
 ## 1. Ouvrir une session dans la VM
 
@@ -94,7 +81,24 @@ git pull --ff-only
 
 En cas de divergence locale, diagnostiquer l'historique avant toute réécriture de branche.
 
-## 4. Inspecter le runtime P5
+## 4. Observer l'état réel du P5
+
+```bash
+bash scripts/commands/p5.sh inspect
+```
+
+`inspect` collecte les faits utiles avant toute mutation :
+
+- configuration locale disponible ;
+- états Terraform présents ;
+- outputs existants ;
+- preuves déjà collectées ;
+- classification du lab pour une éventuelle reprise.
+
+Cette étape ne converge rien. Elle fournit le point de départ réel à partir duquel le delta sera
+calculé.
+
+## 5. Contrôler le runtime P5
 
 Contrôle sans mutation :
 
@@ -141,7 +145,7 @@ AWS CLI minimum     2.32.0
 Les instances EC2 créées par les exercices 1 et 3 utilisent leur propre contrat d'AMI et
 ne doivent pas être confondues avec le système de la VM de contrôle.
 
-## 5. Converger l'environnement P5
+## 6. Converger l'environnement P5
 
 Commande de référence :
 
@@ -151,7 +155,7 @@ bash scripts/commands/p5.sh prepare
 
 `prepare` :
 
-1. inspecte l'état réel ;
+1. réinspecte l'état réel ;
 2. converge les dépendances P5 nécessaires ;
 3. contrôle l'accès AWS ;
 4. prépare `environment/aws-readiness.env` ;
@@ -183,7 +187,7 @@ cd ~/labs/p5_Openclassrooms
 bash scripts/commands/p5.sh prepare
 ```
 
-## 6. Vérifier les fichiers locaux
+## 7. Vérifier les fichiers locaux
 
 ```bash
 git status --short
@@ -204,16 +208,7 @@ Audit supplémentaire :
 python3 scripts/tools/audit_secrets.py
 ```
 
-## 7. Observer l'état du lab
-
-```bash
-bash scripts/commands/p5.sh inspect
-```
-
-`inspect` collecte les faits utiles avant toute mutation : configuration locale, états Terraform,
-outputs, preuves déjà présentes et état observable du projet.
-
-## 8. Valider la préparation
+## 8. Revalider la préparation
 
 ```bash
 bash scripts/commands/p5.sh status
