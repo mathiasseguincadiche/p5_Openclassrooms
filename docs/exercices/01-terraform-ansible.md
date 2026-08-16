@@ -11,21 +11,11 @@ La compétence ne consiste pas seulement à « lancer deux outils ». Il faut co
 
 ## Résultat final attendu
 
-```text
-Terraform
-  └── VPC + réseau + Security Group + clé + EC2
-                                      │
-                                      │ SSH
-                                      ▼
-Ansible
-  └── NGINX + configuration + Angular
-                                      │
-                                      ▼
-                             application HTTP
-                                      │
-                                      ▼
-                              access.log NGINX
-```
+![Exercice 1 — Terraform, Angular et Ansible](../schemas/exercice-1.svg)
+
+Le schéma sépare volontairement deux flux indépendants : Terraform prépare l'infrastructure AWS tandis
+que le build Angular produit l'artefact applicatif. Ces deux flux convergent dans Ansible, qui utilise
+l'EC2 créée par Terraform et y déploie NGINX + Angular.
 
 L'exercice est terminé lorsque l'application est réellement accessible et qu'un deuxième passage Ansible ne produit plus de changement inutile.
 
