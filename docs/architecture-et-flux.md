@@ -2,34 +2,30 @@
 
 ## Objectif
 
-Ce document décrit l'architecture de référence du P5 : environnement d'exécution,
-responsabilités, composants AWS, flux de données, preuves et dépendances entre exercices.
+Ce document décrit l'architecture de référence du P5 : frontières de responsabilité, plan de
+contrôle, composants AWS, flux réseau et données, convergence, preuves et dépendances entre
+exercices.
 
-Schéma synthétique :
+![Architecture de référence du P5](schemas/vue-ensemble.svg)
 
-![Architecture P5](schemas/vue-ensemble.svg)
+Les schémas spécialisés sont regroupés dans [`schemas/README.md`](schemas/README.md). Ils portent la
+lecture rapide ; le présent document conserve les détails techniques qui justifient cette architecture.
 
 ## 1. Frontière du projet
-
-```text
-HOST Ubuntu
-   │
-   └── KVM/libvirt
-        │
-        └── VM ubuntu-devops / Ubuntu Server 26.04 CLI
-                    │
-                    ▼
-              runtime P5
-                    │
-                    ▼
-             exercices AWS
-```
 
 La plateforme HOST/KVM/VM est fournie par
 [`mathiasseguincadiche/Ubuntu-desktops-custom`](https://github.com/mathiasseguincadiche/Ubuntu-desktops-custom).
 
-Le P5 commence dans `ubuntu-devops`. Il prépare son runtime, pilote AWS et collecte les preuves
-nécessaires aux trois exercices.
+Le P5 commence dans **`ubuntu-devops`**. Il possède :
+
+- son runtime logiciel dans la VM ;
+- son plan de contrôle `p5.sh` ;
+- les modules Terraform des trois exercices ;
+- la configuration Ansible et l'application Angular ;
+- les scripts OpenSearch et HAProxy ;
+- les preuves et livrables du projet.
+
+Le P5 ne gère pas le cycle de vie KVM/libvirt de la VM.
 
 Contrat détaillé : [`../environment/vm-devops/README.md`](../environment/vm-devops/README.md).
 
@@ -52,10 +48,31 @@ scripts/commands/p5.sh
        └── ansible/playbooks/deploy.yml
 ```
 
-`p5.sh` est l'orchestrateur. Terraform conserve la propriété de l'infrastructure AWS et Ansible
-celle de la configuration serveur.
+`p5.sh` orchestre le parcours. Terraform reste propriétaire de l'infrastructure AWS et Ansible de la
+configuration serveur.
 
-## 3. Exercice 1 — Terraform + Ansible + Angular/NGINX
+Le cycle général est :
+
+```text
+inspecter → calculer le delta → corriger → vérifier → prouver
+```
+
+## 3. Exercice 1 — infrastructure et déploiement
+
+Vue spécialisée : [`schemas/exercice-1.svg`](schemas/exercice-1.svg).
+
+Le point important est la séparation des responsabilités :
+
+```text
+application/angular ── npm build ──► artefact Angular ───────┐
+                                                             │
+terraform/exercice-1 ──► VPC + SG + EC2 + outputs ───────────┤
+                                                             ▼
+                                                          Ansible
+                                                             │
+                                                             ▼
+                                                     NGINX + Angular
+```
 
 ### Infrastructure AWS
 
@@ -73,168 +90,89 @@ AWS Region
     └── EC2 p5-web
         ├── Ubuntu 24.04 LTS
         ├── IMDSv2 obligatoire
-        └── root volume gp3 chiffré
+        └── volume racine gp3 chiffré
 ```
-
-Terraform gère ces ressources dans `terraform/exercice-1`.
-
-### Flux de déploiement
-
-```text
-application/angular
-      │ npm build
-      ▼
-ansible/files/angular-app
-      │
-      │ Ansible copy
-      ▼
-EC2 /var/www/p5
-      │
-      ▼
-NGINX :80
-      │
-      ▼
-Navigateur / curl
-```
-
-La CI reconstruit Angular et compare le build avec l'artefact servi par Ansible.
 
 ### Flux SSH
 
 ```text
 VM ubuntu-devops
-   │ TCP/22 autorisé depuis l'IPv4 publique /32
+   │ TCP/22 depuis l'IPv4 publique /32
    ▼
 EC2 p5-web
    ├── Ansible ping
    └── ansible-playbook deploy.yml
 ```
 
-L'inventaire réel est généré dans la VM depuis les outputs Terraform.
-
-### Flux HTTP
+### Flux HTTP et logs
 
 ```text
-Internet
-   │ TCP/80
-   ▼
-Security Group web
-   ▼
-NGINX
-   ▼
-Angular SPA
+Internet → Security Group web → NGINX → Angular SPA
+                                      │
+                                      ▼
+                              /var/log/nginx/access.log
+                                      │ collecte SSH
+                                      ▼
+                 proofs/runtime/exercice-2/nginx-access-real.log
 ```
 
-NGINX applique le fallback SPA nécessaire aux routes Angular.
+Le log réel devient une source de données de l'exercice 2.
 
-### Flux de logs
+## 4. Exercice 2 — OpenSearch et observabilité
+
+Vue spécialisée : [`schemas/exercice-2.svg`](schemas/exercice-2.svg).
+
+### Domaine AWS
+
+Le module `terraform/exercice-2` crée un domaine Amazon OpenSearch avec :
+
+- OpenSearch 2.19 ;
+- EBS gp3 ;
+- chiffrement au repos ;
+- chiffrement node-to-node ;
+- HTTPS obligatoire ;
+- TLS >= 1.2 ;
+- accès limité à l'IPv4 publique d'administration `/32`.
+
+### Deux sources, un pipeline
 
 ```text
-requêtes HTTP
-    ↓
-NGINX
-    ↓
-/var/log/nginx/access.log
-    ↓ collecte SSH
-proofs/runtime/exercice-2/nginx-access-real.log
+sample versionné ──────────────┐
+                               ├──► convert-nginx-logs.py
+access.log réel de l'ex. 1 ────┘
+                                      │
+                                      ▼
+                              documents Bulk NDJSON
+                                      │
+                                      ▼
+                        import-opensearch-data.sh
+                                      │
+                                      ▼
+                             index nginx-access-*
+                                      │
+                                      ▼
+                        verify-opensearch-data.sh
 ```
 
-Le log réel peut être importé dans l'exercice 2.
-
-## 4. Exercice 2 — Amazon OpenSearch
-
-### Infrastructure
-
-```text
-Amazon OpenSearch Domain
-├── OpenSearch 2.19
-├── EBS gp3
-├── chiffrement au repos
-├── chiffrement node-to-node
-├── HTTPS obligatoire
-├── TLS >= 1.2
-└── policy SourceIp = IPv4 publique d'administration /32
-```
-
-Le module est `terraform/exercice-2`.
-
-### Pipeline de données
-
-Sources admises :
-
-```text
-sample versionné
-terraform/exercice-2/samples/nginx-access.log.sample
-
-et, lorsqu'il est disponible,
-
-log réel exercice 1
-proofs/runtime/exercice-2/nginx-access-real.log
-```
-
-Pipeline :
-
-```text
-logs NGINX
-   │
-   ▼
-scripts/tools/convert-nginx-logs.py
-   │
-   ▼
-documents structurés
-   │
-   ▼
-scripts/commands/import-opensearch-data.sh
-   │ Bulk API
-   ▼
-index nginx-access-*
-   │
-   ▼
-scripts/commands/verify-opensearch-data.sh
-   ├── mapping
-   ├── nombre de documents
-   └── agrégations
-```
-
-### Validation OpenSearch Dashboards
-
-```text
-OpenSearch
-    ↓
-OpenSearch Dashboards
-    ↓
-Discover
-    ↓
-3 visualisations
-    ↓
-dashboard complet
-    ↓
-4 captures de preuve
-```
-
-La création et la vérification visuelle du dashboard restent un checkpoint humain.
+La validation technique automatise mapping, nombre de documents et agrégations. La création et la
+vérification visuelle de Discover, des trois visualisations et du dashboard restent un checkpoint
+humain.
 
 ## 5. Exercice 3 — HAProxy et résilience
 
-### Dépendance vers l'exercice 1
+Vue spécialisée : [`schemas/exercice-3.svg`](schemas/exercice-3.svg).
 
 `terraform/exercice-3` réutilise le VPC et les subnets de l'exercice 1 à partir de leurs tags.
 
-```text
-Project  = p5-openclassrooms
-Exercise = 1
-```
-
-### Topologie
+### Topologie réseau
 
 ```text
 Internet
-   │ TCP/80
+   │ TCP/80 public
    ▼
 Security Group HAProxy
    ▼
 EC2 p5-haproxy
-   │
    │ HTTP privé
    ├───────────────┐
    ▼               ▼
@@ -243,9 +181,9 @@ Docker           Docker
 nginxdemos/hello nginxdemos/hello
 ```
 
-Le port HTTP des backends est autorisé depuis le Security Group HAProxy.
+Le Security Group des backends autorise HTTP depuis le Security Group HAProxy, pas depuis Internet.
 
-### Configuration HAProxy
+### Health checks
 
 ```text
 balance roundrobin
@@ -254,31 +192,25 @@ http-check expect status 200
 check inter 3s fall 3 rise 2
 ```
 
-- `roundrobin` répartit les requêtes ;
-- `fall 3` retire un backend après trois échecs consécutifs ;
-- `rise 2` le réintègre après deux contrôles réussis.
-
-### Flux de panne contrôlée
+Le scénario de preuve est :
 
 ```text
-HAProxy → hello-1 + hello-2
-           ↓
+2 backends UP
+      ↓
 arrêt contrôlé de hello-1
-           ↓
-health checks échouent
-           ↓
-HAProxy retire hello-1
-           ↓
-trafic → hello-2
-           ↓
+      ↓
+health checks → DOWN
+      ↓
+trafic maintenu vers hello-2
+      ↓
 restauration hello-1
-           ↓
-health checks réussissent
-           ↓
-HAProxy réintègre hello-1
+      ↓
+health checks → UP
+      ↓
+réintégration dans le pool
 ```
 
-Le script de failover restaure le backend à la fin du test.
+Le script de failover restaure le backend même en cas d'interruption intermédiaire.
 
 ## 6. Flux de configuration
 
@@ -310,9 +242,9 @@ sync-terraform-tfvars.sh
  terraform.tfvars locaux
 ```
 
-Les `terraform.tfvars` réels ne sont pas versionnés.
+Les vrais `terraform.tfvars` ne sont pas versionnés.
 
-## 7. Flux Terraform
+## 7. Flux Terraform et convergence
 
 Pour chaque exercice :
 
@@ -331,7 +263,10 @@ post-plan
 aucun delta attendu
 ```
 
-La réexécution repose sur le recalcul du delta, pas sur la recréation systématique.
+La réexécution repose sur le recalcul du delta et la conservation du state, pas sur une recréation
+systématique.
+
+Référence : [`convergence-et-reexecution.md`](convergence-et-reexecution.md).
 
 ## 8. Flux des preuves
 
@@ -349,8 +284,10 @@ SHA-256 + statut + durée dans manifest.tsv
 résumé du run
 ```
 
-Les preuves runtime sont des traces techniques. Les livrables sélectionnent et expliquent les
-éléments utiles à l'évaluation.
+Les traces runtime sont privées par défaut. Les livrables sélectionnent, contextualisent et
+anonymisent les éléments nécessaires à l'évaluation.
+
+Référence : [`validation-preuves-nettoyage.md`](validation-preuves-nettoyage.md).
 
 ## 9. Dépendances d'exécution
 
@@ -358,19 +295,21 @@ Les preuves runtime sont des traces techniques. Les livrables sélectionnent et 
 prepare
   ↓
 ex1
-  ├──► ex2
-  └──► ex3
+  ├──► ex2  via access.log
+  └──► ex3  via VPC/subnets
         ↓
 diagnostics
   ↓
 finalize
 ```
 
-- `ex1` fournit le log réel utilisé par `ex2` ;
-- `ex3` dépend du réseau créé par `ex1` ;
-- `ex2` peut utiliser le sample versionné pour les validations reproductibles.
+- `ex2` peut utiliser le sample versionné pour ses validations reproductibles ;
+- la preuve réelle d'observabilité utilise le log de l'exercice 1 ;
+- `ex3` dépend réellement du réseau de l'exercice 1.
 
 ## 10. Ordre de destruction
+
+Vue spécialisée : [`schemas/finalisation/finalisation.svg`](schemas/finalisation/finalisation.svg).
 
 ```text
 terraform/exercice-3 destroy
@@ -390,11 +329,13 @@ L'exercice 3 doit être détruit avant l'exercice 1 en raison de sa dépendance 
 | --- | --- |
 | plateforme Ubuntu | HOST, KVM/libvirt, VM `ubuntu-devops` |
 | runtime P5 | outils et configuration nécessaires au projet dans la VM |
-| Terraform | infrastructure AWS |
+| `p5.sh` | orchestration et garde-fous |
+| Terraform | infrastructure AWS et propriété via le state |
 | Ansible | configuration serveur et déploiement Angular/NGINX |
 | NGINX | service Angular et production des logs HTTP |
 | OpenSearch | indexation et analyse des logs |
+| OpenSearch Dashboards | validation visuelle avec checkpoint humain |
 | HAProxy | répartition, health checks et continuité de service |
 | GitHub Actions | qualité, sécurité et non-régression du dépôt |
 
-Cette répartition constitue le contrat d'architecture du projet.
+Cette répartition constitue le contrat d'architecture du P5.
