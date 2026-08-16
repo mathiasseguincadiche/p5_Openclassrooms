@@ -2,9 +2,19 @@
 
 ## Pourquoi ce document est important
 
-Un lab DevOps ne doit pas devenir inutilisable parce que le terminal a été fermé, Windows a redémarré ou une commande a échoué au milieu du parcours.
+Un lab DevOps ne doit pas devenir inutilisable parce que la session SSH a été fermée, la VM a redémarré, le HOST a redémarré ou une commande a échoué au milieu du parcours.
 
-Le P5 est conçu pour être **repris à partir de l'état réel**.
+Le P5 est conçu pour être **repris à partir de l'état réel** dans la VM `ubuntu-devops`.
+
+La plateforme et le projet ont deux cycles de vie distincts :
+
+```text
+Ubuntu-desktops-custom
+→ HOST / KVM / ubuntu-devops
+
+p5_Openclassrooms
+→ runtime P5 / AWS / states / preuves
+```
 
 ## Principe
 
@@ -96,13 +106,7 @@ ressources AWS existantes + state valide
 
 ## 3. Reprise après fermeture du terminal
 
-Depuis Windows :
-
-```powershell
-wsl -d Ubuntu
-```
-
-Puis :
+Se reconnecter à `ubuntu-devops` selon le runbook de la plateforme, puis dans la VM :
 
 ```bash
 cd ~/labs/p5_Openclassrooms
@@ -123,17 +127,18 @@ bash scripts/commands/p5.sh all
 
 pour poursuivre le parcours complet de façon convergente.
 
-## 4. Reprise après redémarrage Windows
+## 4. Reprise après redémarrage du HOST ou de la VM
 
-Le redémarrage Windows ne supprime pas les ressources AWS ni les states présents dans le filesystem WSL2.
+Le redémarrage du HOST ou de `ubuntu-devops` ne supprime pas les ressources AWS. Les states P5 restent sur le disque de la VM tant que son stockage est intact.
 
 Procédure :
 
-```powershell
-wsl -d Ubuntu
-```
+1. utiliser `Ubuntu-desktops-custom` pour vérifier/démarrer `ubuntu-devops` ;
+2. se reconnecter en SSH ;
+3. revenir dans le dépôt P5 ;
+4. inspecter avant toute mutation.
 
-Puis :
+Dans la VM :
 
 ```bash
 cd ~/labs/p5_Openclassrooms
@@ -143,14 +148,16 @@ bash scripts/commands/p5.sh status
 
 Ne recréer ni clé SSH ni configuration AWS si le moteur confirme qu'elles existent et sont conformes.
 
+Si la VM elle-même est en panne, le P5 ne doit pas essayer de réparer KVM/libvirt : corriger d'abord la plateforme amont.
+
 ## 5. Reprise après code retour 90 du bootstrap
 
-Le code `90` signifie que le socle est installé mais qu'une **reconnexion** est nécessaire pour que l'appartenance au groupe Docker soit effective.
+Le code `90` signifie que le runtime P5 est installé mais qu'une **nouvelle session SSH** est nécessaire pour que l'appartenance au groupe Docker soit effective.
 
 Procédure :
 
-1. fermer le shell Ubuntu ;
-2. rouvrir Ubuntu ;
+1. fermer la session SSH ;
+2. se reconnecter à `ubuntu-devops` ;
 3. revenir dans le dépôt ;
 4. relancer exactement la même commande P5.
 
@@ -324,8 +331,9 @@ Les states et `tfvars` sont ignorés par Git précisément parce que leur cycle 
 
 | État | Action |
 | --- | --- |
-| je ne sais pas où j'en suis | `p5.sh inspect` |
-| outils/config seulement | `p5.sh prepare` |
+| VM/HOST/KVM en panne | corriger via `Ubuntu-desktops-custom` |
+| je ne sais pas où j'en suis dans P5 | `p5.sh inspect` |
+| outils/config P5 seulement | `p5.sh prepare` |
 | je veux vérifier sans muter | `p5.sh status` |
 | ex. 1 incomplet | `p5.sh ex1` |
 | ex. 2 incomplet | `p5.sh ex2` |
@@ -347,4 +355,11 @@ La stratégie du P5 est au contraire :
 
 ```text
 observer → expliquer → converger → prouver
+```
+
+Et la frontière de plateforme reste :
+
+```text
+problème de VM/KVM → Ubuntu-desktops-custom
+problème de runtime P5/AWS → p5_Openclassrooms
 ```
