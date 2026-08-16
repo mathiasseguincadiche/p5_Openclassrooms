@@ -11,6 +11,11 @@ Une réalisation technique n'est pas terminée lorsque « ça marche une fois »
 5. détruire les ressources AWS ;
 6. auditer le nettoyage.
 
+![Finalisation — preuves, livrables et fermeture AWS](schemas/finalisation/finalisation.svg)
+
+Le principe de fermeture est simple : **prouver avant de détruire**, puis supprimer les ressources
+d'exercice dans l'ordre `3 → 2 → 1` avant l'audit global AWS.
+
 ## 1. Trois niveaux de validation
 
 ### Niveau A — validation du dépôt
@@ -276,25 +281,14 @@ Le nettoyage global reste cependant orchestré dans l'ordre `3 → 2 → 1`.
 
 ## 12. Pourquoi l'ordre de destruction est obligatoire
 
-L'exercice 3 réutilise le réseau de l'exercice 1.
-
-Donc :
-
-```text
-Exercice 3 dépend de Exercice 1
-```
-
-On détruit :
+L'exercice 3 réutilise le réseau de l'exercice 1. L'ordre de fermeture représenté dans le schéma de
+finalisation respecte donc les dépendances :
 
 ```text
-Exercice 3
-    ↓
-Exercice 2
-    ↓
-Exercice 1
+Exercice 3 → Exercice 2 → Exercice 1 → audit AWS
 ```
 
-et non l'inverse.
+Détruire l'exercice 1 avant l'exercice 3 casserait la dépendance réseau et compliquerait le nettoyage.
 
 ## 13. Lancer le nettoyage
 
@@ -358,7 +352,9 @@ Le verdict attendu est :
 NETTOYAGE AWS COMPLET
 ```
 
-Tant que ce verdict n'est pas présent, considérer qu'une ressource P5 peut encore exister.
+Tant que ce verdict n'est pas présent, considérer qu'une ressource d'exercice P5 peut encore exister.
+Le budget de surveillance peut rester actif pour aider à signaler un coût résiduel ; il n'est pas une
+ressource fonctionnelle des trois exercices.
 
 ## 17. Si une ressource reste
 

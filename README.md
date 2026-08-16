@@ -31,7 +31,41 @@ Dépendances principales :
 - l'exercice 2 conserve un checkpoint humain pour OpenSearch Dashboards ;
 - le nettoyage respecte l'ordre `3 → 2 → 1`.
 
-## Point d'entrée
+## Préparer le plan de contrôle
+
+La plateforme HOST/KVM/VM est fournie par
+[`mathiasseguincadiche/Ubuntu-desktops-custom`](https://github.com/mathiasseguincadiche/Ubuntu-desktops-custom).
+Le P5 possède son runtime logiciel dans `ubuntu-devops` et l'ensemble des exercices AWS.
+
+![Étape 0 — préparation de l'environnement](docs/schemas/etape-0.svg)
+
+Dans `ubuntu-devops` :
+
+```bash
+mkdir -p ~/labs
+cd ~/labs
+git clone https://github.com/mathiasseguincadiche/p5_Openclassrooms.git
+cd p5_Openclassrooms
+bash scripts/commands/p5.sh inspect
+bash scripts/commands/p5.sh prepare
+bash scripts/commands/p5.sh status
+```
+
+Le précontrôle doit pouvoir atteindre :
+
+```text
+GO TERRAFORM
+```
+
+Ce verdict autorise la lecture d'un plan Terraform. Le delta doit être compris avant toute mutation.
+
+Contrats :
+
+- [VM DevOps](environment/vm-devops/README.md) ;
+- [versions P5](environment/versions.env) ;
+- [préparation de l'environnement](docs/00-preparation-environnement.md).
+
+## Point d'entrée et commandes
 
 ```bash
 bash scripts/commands/p5.sh
@@ -55,8 +89,6 @@ vérifier le résultat
 journaliser et conserver les preuves
 ```
 
-### Commandes principales
-
 | Commande | Rôle |
 | --- | --- |
 | `p5.sh` ou `p5.sh menu` | ouvrir le centre de commande |
@@ -72,65 +104,12 @@ journaliser et conserver les preuves
 
 Référence : [Centre de commande](docs/CENTRE_DE_COMMANDE.md).
 
-## Environnement d'exécution
-
-```text
-HOST Ubuntu
-   │
-   └── KVM/libvirt
-        │
-        └── VM ubuntu-devops
-             ├── Ubuntu Server 26.04
-             ├── CLI
-             └── ~/labs/p5_Openclassrooms
-                         │
-                         └── runtime P5 → AWS
-```
-
-La plateforme HOST/KVM/VM est fournie par
-[`mathiasseguincadiche/Ubuntu-desktops-custom`](https://github.com/mathiasseguincadiche/Ubuntu-desktops-custom).
-Le P5 possède son runtime logiciel dans la VM et l'ensemble des exercices AWS.
-
-Contrats :
-
-- [VM DevOps](environment/vm-devops/README.md) ;
-- [versions P5](environment/versions.env) ;
-- [préparation de l'environnement](docs/00-preparation-environnement.md).
-
-## Installation du P5
-
-Dans `ubuntu-devops` :
-
-```bash
-mkdir -p ~/labs
-cd ~/labs
-git clone https://github.com/mathiasseguincadiche/p5_Openclassrooms.git
-cd p5_Openclassrooms
-bash scripts/commands/p5.sh inspect
-bash scripts/commands/p5.sh prepare
-bash scripts/commands/p5.sh status
-```
-
-Le runtime de référence comprend notamment :
-
-```text
-Ubuntu Server       26.04 / resolute
-Terraform           1.15.8
-Ansible Core        2.20.1
-Node.js             22.22.0
-AWS CLI minimum     2.32.0
-OpenSearch Docker   2.19.6
-```
-
-Le précontrôle doit pouvoir atteindre :
-
-```text
-GO TERRAFORM
-```
-
-Ce verdict autorise la lecture d'un plan Terraform. Le delta doit être compris avant toute mutation.
-
 ## Exercice 1 — Terraform + Ansible + Angular/NGINX
+
+![Exercice 1 — infrastructure et déploiement](docs/schemas/exercice-1.svg)
+
+Les flux Terraform et Angular sont indépendants : Terraform fournit l'infrastructure AWS, le build
+Angular fournit l'artefact, puis Ansible utilise les deux pour configurer l'EC2 et servir l'application.
 
 ```bash
 bash scripts/commands/p5.sh ex1
@@ -149,11 +128,15 @@ Guide : [Exercice 1](docs/exercices/01-terraform-ansible.md).
 
 ## Exercice 2 — Amazon OpenSearch
 
+![Exercice 2 — logs vers OpenSearch](docs/schemas/exercice-2.svg)
+
+Le sample versionné et le vrai `access.log` convergent vers le même pipeline de transformation et
+d'import. La validation des trois visualisations et du dashboard reste un checkpoint humain.
+
 ```bash
 bash scripts/commands/p5.sh ex2
 ```
 
-Le dépôt automatise l'infrastructure, l'import Bulk et les contrôles techniques.
 Le checkpoint OpenSearch Dashboards demande :
 
 1. un donut des méthodes HTTP ;
@@ -165,6 +148,12 @@ Guide : [Exercice 2](docs/exercices/02-opensearch.md).
 
 ## Exercice 3 — HAProxy
 
+![Exercice 3 — HAProxy et résilience](docs/schemas/exercice-3.svg)
+
+L'exercice réutilise le réseau de l'exercice 1. Le trafic public atteint HAProxy ; les backends
+acceptent le trafic HTTP depuis le Security Group HAProxy, puis les health checks pilotent le retrait
+et la réintégration d'un backend.
+
 ```bash
 bash scripts/commands/p5.sh ex3
 ```
@@ -174,7 +163,11 @@ la continuité du service et sa réintégration après restauration.
 
 Guide : [Exercice 3](docs/exercices/03-haproxy.md).
 
-## Preuves et livrables
+## Preuves, livrables et nettoyage AWS
+
+![Finalisation et nettoyage](docs/schemas/finalisation/finalisation.svg)
+
+Collecter puis contrôler les preuves avant toute destruction :
 
 ```bash
 bash scripts/commands/p5.sh diagnostics
@@ -182,20 +175,16 @@ bash scripts/commands/p5.sh finalize
 ```
 
 Une CI verte prouve la cohérence du dépôt ; elle ne remplace pas les preuves d'une exécution réelle
-sur AWS.
+sur AWS. Les traces runtime restent locales sous `proofs/runtime/` et les preuves publiées doivent
+être sélectionnées, contextualisées et anonymisées.
 
-Les traces runtime sont stockées sous `proofs/runtime/` et restent locales. Les preuves destinées
-aux livrables doivent être sélectionnées, contextualisées et anonymisées si nécessaire.
-
-## Nettoyage AWS
-
-Après les captures et la validation des livrables :
+Après validation des livrables :
 
 ```bash
 bash scripts/commands/p5.sh cleanup
 ```
 
-Ordre :
+Ordre de fermeture :
 
 ```text
 Exercice 3 → Exercice 2 → Exercice 1 → audit AWS
@@ -248,6 +237,8 @@ Portail : [`docs/README.md`](docs/README.md).
 - [Exercice 2 — OpenSearch](docs/schemas/exercice-2.svg)
 - [Exercice 3 — HAProxy](docs/schemas/exercice-3.svg)
 - [Finalisation et nettoyage](docs/schemas/finalisation/finalisation.svg)
+
+Règles graphiques : [`docs/schemas/README.md`](docs/schemas/README.md).
 
 ## Périmètre
 

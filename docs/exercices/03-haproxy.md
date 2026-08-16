@@ -16,20 +16,11 @@ Le succès ne se limite pas à « HAProxy démarre ». Il faut observer le compo
 
 ## Architecture
 
-```text
-                  client
-                    │
-                    │ HTTP :80
-                    ▼
-                HAProxy EC2
-                roundrobin
-                  /     \
-                 /       \
-                ▼         ▼
-          hello-1 EC2  hello-2 EC2
-             Docker       Docker
-          nginx hello   nginx hello
-```
+![Exercice 3 — HAProxy, réseau et résilience](../schemas/exercice-3.svg)
+
+Le schéma met volontairement en évidence trois frontières : le VPC et les subnets sont réutilisés
+depuis l'exercice 1, le trafic public atteint HAProxy, et le trafic HTTP vers les backends reste
+limité au Security Group HAProxy.
 
 ## Fichiers à connaître
 

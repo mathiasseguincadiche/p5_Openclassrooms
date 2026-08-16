@@ -6,21 +6,11 @@ Le deuxième exercice apprend à transformer des logs techniques en informations
 
 La consigne OpenClassrooms utilise le vocabulaire ELK/Kibana. Le mode Cloud choisi par ce dépôt utilise **Amazon OpenSearch** et **OpenSearch Dashboards**.
 
-Le besoin reste :
+![Exercice 2 — logs NGINX vers Amazon OpenSearch](../schemas/exercice-2.svg)
 
-```text
-logs HTTP
-   ↓
-données structurées
-   ↓
-index
-   ↓
-exploration
-   ↓
-visualisations
-   ↓
-dashboard
-```
+Le pipeline accepte deux sources complémentaires : le sample versionné garantit la reproductibilité,
+et le vrai `access.log` de l'exercice 1 relie l'observabilité à une application réellement déployée.
+La construction et la vérification visuelle du dashboard restent un **checkpoint humain**.
 
 ## Ce qui doit être démontré
 

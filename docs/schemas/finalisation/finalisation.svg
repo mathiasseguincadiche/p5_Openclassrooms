@@ -1,47 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="310" viewBox="0 0 1200 310" role="img" aria-labelledby="title desc" preserveAspectRatio="xMidYMid meet">
-<title id="title">Finalisation — preuves, livrables, destruction et audit</title>
-<desc id="desc">Chaîne de fermeture du projet, depuis les preuves réelles jusqu’au verdict de nettoyage AWS complet.</desc>
-<defs>
-  <marker id="arrow" markerWidth="10" markerHeight="10" refX="8.8" refY="5" orient="auto">
-    <path d="M0 0L10 5L0 10Z" fill="#64748b"/>
-  </marker>
-  <marker id="arrowGreen" markerWidth="10" markerHeight="10" refX="8.8" refY="5" orient="auto">
-    <path d="M0 0L10 5L0 10Z" fill="#059669"/>
-  </marker>
-</defs>
-
-<style>
-  text{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-  .h{font-size:22px;font-weight:750;fill:#0f172a}
-  .k{font-size:12px;font-weight:800;letter-spacing:1.3px;fill:#64748b}
-  .t{font-size:16px;font-weight:750;fill:#0f172a}
-  .b{font-size:14px;font-weight:600;fill:#334155}
-  .s{font-size:12.5px;font-weight:500;fill:#475569}
-  .m{font-family:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;font-size:12px;font-weight:650;fill:#334155}
-  .arrow{fill:none;stroke:#64748b;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrow)}
-  .flow{fill:none;stroke:#94a3b8;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-  .card{fill:#fff;stroke:#cbd5e1;stroke-width:1.5}
-  .chip{fill:#fff;stroke:#cbd5e1;stroke-width:1.2}
-</style>
-<rect width="1200" height="310" rx="22" fill="#f8fafc"/>
-<text x="42" y="48" class="k" text-anchor="start">FINALISATION</text>
-<text x="42" y="78" class="h" text-anchor="start">Fermer le projet sans preuve manquante ni coût résiduel.</text>
-<rect x="42" y="118" width="220" height="104" rx="16" fill="#eff6ff" stroke="#2563eb" stroke-width="1.8"/><circle cx="70" cy="146" r="16" fill="#2563eb"/><text x="70" y="151" class="b" text-anchor="middle" fill="#fff">1</text>
-<text x="96" y="149" class="t" text-anchor="start">PREUVES RÉELLES</text>
-<text x="62" y="185" class="s" text-anchor="start">sorties · journaux · captures</text>
-<text x="62" y="207" class="s" text-anchor="start">proofs/runtime/</text>
-<rect x="310" y="118" width="220" height="104" rx="16" fill="#fff7ed" stroke="#d97706" stroke-width="1.8"/><circle cx="338" cy="146" r="16" fill="#d97706"/><text x="338" y="151" class="b" text-anchor="middle" fill="#fff">2</text>
-<text x="364" y="149" class="t" text-anchor="start">LIVRABLES</text>
-<text x="330" y="185" class="s" text-anchor="start">3 dossiers contrôlés</text>
-<text x="330" y="207" class="s" text-anchor="start">secrets masqués</text>
-<rect x="578" y="118" width="220" height="104" rx="16" fill="#fef2f2" stroke="#dc2626" stroke-width="1.8"/><circle cx="606" cy="146" r="16" fill="#dc2626"/><text x="606" y="151" class="b" text-anchor="middle" fill="#fff">3</text>
-<text x="632" y="149" class="t" text-anchor="start">DESTRUCTION</text>
-<text x="598" y="185" class="s" text-anchor="start">Terraform destroy</text>
-<text x="598" y="207" class="s" text-anchor="start">EC2 · VPC · OpenSearch</text>
-<rect x="846" y="118" width="312" height="104" rx="16" fill="#ecfdf5" stroke="#059669" stroke-width="1.8"/><circle cx="874" cy="146" r="16" fill="#059669"/><text x="874" y="151" class="b" text-anchor="middle" fill="#fff">4</text>
-<text x="900" y="149" class="t" text-anchor="start">AUDIT FINAL</text>
-<text x="866" y="185" class="s" text-anchor="start">0 ressource P5 · budget actif</text>
-<text x="866" y="207" class="s" text-anchor="start" fill="#059669">NETTOYAGE AWS COMPLET</text>
-<path d="M262 170H300" class="arrow"/><path d="M530 170H568" class="arrow"/><path d="M798 170H836" class="arrow"/><rect x="846" y="246" width="312" height="42" rx="21" fill="#059669" stroke="#059669" stroke-width="0"/><text x="1002" y="273" class="t" text-anchor="middle" fill="#fff">VERDICT · LAB PROPRE</text>
-<text x="42" y="273" class="s" text-anchor="start">Le budget reste actif pour signaler toute ressource oubliée après la démonstration.</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="320" viewBox="0 0 1200 320" role="img" aria-labelledby="title desc">
+<title id="title">Finalisation — preuves, livrables, destruction ordonnée et audit AWS</title>
+<desc id="desc">Le P5 valide d'abord les preuves et les livrables, puis détruit les ressources des exercices dans l'ordre 3, 2, 1 avant un audit AWS final. Le budget de surveillance peut être conservé pour signaler une ressource d'exercice oubliée.</desc>
+<defs><marker id="a" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#64748b"/></marker></defs>
+<style>text{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}.h{font-size:22px;font-weight:750;fill:#0f172a}.k{font-size:12px;font-weight:800;letter-spacing:1px;fill:#64748b}.t{font-size:16px;font-weight:750;fill:#0f172a}.s{font-size:13px;font-weight:550;fill:#334155}.ar{fill:none;stroke:#64748b;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#a)}</style>
+<rect width="1200" height="320" rx="22" fill="#f8fafc"/>
+<text x="42" y="45" class="k">FINALISATION · PREUVES ET FERMETURE DU LAB</text><text x="42" y="76" class="h">Prouver avant de détruire, puis vérifier qu'aucune ressource d'exercice ne reste active.</text>
+<rect x="42" y="118" width="214" height="100" rx="16" fill="#eff6ff" stroke="#2563eb" stroke-width="1.7"/>
+<text x="64" y="148" class="k">1 · PREUVES</text><text x="64" y="178" class="t">diagnostics</text><text x="64" y="201" class="s">logs · captures · manifest</text>
+<rect x="302" y="118" width="214" height="100" rx="16" fill="#fff7ed" stroke="#d97706" stroke-width="1.7"/>
+<text x="324" y="148" class="k">2 · LIVRABLES</text><text x="324" y="178" class="t">finalize</text><text x="324" y="201" class="s">sélection · contexte · secrets masqués</text>
+<rect x="562" y="106" width="276" height="124" rx="16" fill="#fef2f2" stroke="#dc2626" stroke-width="1.7"/>
+<text x="584" y="136" class="k">3 · DESTRUCTION ORDONNÉE</text><text x="700" y="170" class="t" text-anchor="middle">Exercice 3 → Exercice 2 → Exercice 1</text><text x="700" y="198" class="s" text-anchor="middle">Terraform destroy par module propriétaire</text><text x="700" y="218" class="s" text-anchor="middle">le state reste la source de propriété</text>
+<rect x="884" y="106" width="274" height="124" rx="16" fill="#ecfdf5" stroke="#059669" stroke-width="1.7"/>
+<text x="906" y="136" class="k">4 · AUDIT AWS</text><text x="906" y="168" class="t">NETTOYAGE AWS COMPLET</text><text x="906" y="195" class="s">0 ressource d'exercice active</text><text x="906" y="217" class="s">budget de surveillance conservable</text>
+<path d="M256 168H292" class="ar"/><path d="M516 168H552" class="ar"/><path d="M838 168H874" class="ar"/>
+<rect x="884" y="252" width="274" height="42" rx="21" fill="#059669"/><text x="1021" y="278" class="t" text-anchor="middle" fill="#fff">VERDICT · LAB PROPRE</text>
+<text x="42" y="274" class="s">La VM ubuntu-devops est indépendante de cette fermeture : le cleanup P5 concerne les ressources AWS du lab.</text>
 </svg>
