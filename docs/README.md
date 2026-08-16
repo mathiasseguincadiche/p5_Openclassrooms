@@ -2,27 +2,29 @@
 
 Ce dossier est la documentation de référence du projet P5 OpenClassrooms.
 
-Le dépôt met en œuvre trois exercices sur AWS et s'exécute en CLI depuis la VM Ubuntu Server
-26.04 **`ubuntu-devops`**.
+Le dépôt met en œuvre trois exercices sur AWS et s'exécute en CLI depuis la VM Ubuntu Server 26.04
+**`ubuntu-devops`**.
+
+![Architecture de référence du P5](schemas/vue-ensemble.svg)
 
 ## Ordre de lecture
 
 ```text
-1. comprendre le besoin
+1. comprendre le besoin et l'architecture
 2. préparer l'environnement P5
 3. observer l'état réel
-4. exécuter les exercices
-5. vérifier les résultats
-6. conserver les preuves
-7. préparer les livrables et la soutenance
-8. fermer le lab AWS
+4. exécuter les trois exercices
+5. vérifier les résultats et conserver les preuves
+6. préparer les livrables et la soutenance
+7. fermer le lab AWS
 ```
 
 ## 1. Comprendre le projet
 
 1. [`00-cadre-officiel.md`](00-cadre-officiel.md) — consignes et périmètre ;
-2. [`architecture-et-flux.md`](architecture-et-flux.md) — architecture et dépendances ;
-3. [`01-parcours-debutant.md`](01-parcours-debutant.md) — lecture pédagogique du parcours.
+2. [`architecture-et-flux.md`](architecture-et-flux.md) — frontières, topologies et dépendances ;
+3. [`01-parcours-debutant.md`](01-parcours-debutant.md) — lecture pédagogique du parcours ;
+4. [`schemas/README.md`](schemas/README.md) — parcours visuel et conventions des six SVG.
 
 ## 2. Préparer l'environnement
 
@@ -32,6 +34,8 @@ Le dépôt met en œuvre trois exercices sur AWS et s'exécute en CLI depuis la 
 
 Contrat VM : [`../environment/vm-devops/README.md`](../environment/vm-devops/README.md).
 
+Parcours visuel : [`schemas/etape-0.svg`](schemas/etape-0.svg).
+
 ## 3. Exécuter le projet
 
 1. [`RUNBOOK_EXECUTION_GUIDEE.md`](RUNBOOK_EXECUTION_GUIDEE.md) — procédure A à Z ;
@@ -40,49 +44,35 @@ Contrat VM : [`../environment/vm-devops/README.md`](../environment/vm-devops/REA
 4. [`exercices/02-opensearch.md`](exercices/02-opensearch.md) — logs et observabilité ;
 5. [`exercices/03-haproxy.md`](exercices/03-haproxy.md) — haute disponibilité et résilience.
 
+Chaque guide d'exercice commence par son schéma de référence, puis conserve les commandes et
+explications techniques détaillées.
+
 ## 4. Reprendre, diagnostiquer et prouver
 
 1. [`convergence-et-reexecution.md`](convergence-et-reexecution.md) — reprise et idempotence ;
 2. [`troubleshooting.md`](troubleshooting.md) — diagnostic par couche ;
 3. [`contrat-preuves-automatiques.md`](contrat-preuves-automatiques.md) — génération et limites des preuves automatiques ;
-4. [`validation-preuves-nettoyage.md`](validation-preuves-nettoyage.md) — validation et fermeture du lab ;
+4. [`validation-preuves-nettoyage.md`](validation-preuves-nettoyage.md) — validation, livrables et fermeture du lab ;
 5. [`livrables/README.md`](livrables/README.md) — préparation des livrables.
+
+Parcours visuel de fermeture :
+[`schemas/finalisation/finalisation.svg`](schemas/finalisation/finalisation.svg).
 
 ## 5. Préparer la soutenance
 
 [`05-soutenance.md`](05-soutenance.md) fournit l'ordre de démonstration, les commandes utiles,
 les preuves à montrer et les points techniques à expliquer.
 
-## Architecture synthétique
+## Parcours visuel officiel
 
-```text
-Ubuntu HOST + KVM/libvirt
-             │
-             ▼
-VM ubuntu-devops / Ubuntu Server 26.04
-             │
-             ▼
-       runtime P5 CLI
-             │
-             ▼
-scripts/commands/p5.sh
-             │
-     ┌───────┴────────┐
-     ▼                │
-EXERCICE 1            │
-Terraform → AWS       │
-Ansible → NGINX       │
-Angular → EC2         │
-     │                │
-     ├── access.log ─────────► EXERCICE 2
-     │                         Amazon OpenSearch
-     │                         + Dashboards
-     │
-     └── VPC/subnets ────────► EXERCICE 3
-                               HAProxy + 2 backends
-```
-
-Schéma : [`schemas/vue-ensemble.svg`](schemas/vue-ensemble.svg).
+| Étape | Schéma | Idée à retenir |
+| --- | --- | --- |
+| architecture | [`vue-ensemble.svg`](schemas/vue-ensemble.svg) | `ubuntu-devops` pilote trois exercices AWS liés |
+| préparation | [`etape-0.svg`](schemas/etape-0.svg) | `inspect → prepare → status → GO TERRAFORM` |
+| exercice 1 | [`exercice-1.svg`](schemas/exercice-1.svg) | Terraform et Angular convergent dans Ansible sans confondre leurs responsabilités |
+| exercice 2 | [`exercice-2.svg`](schemas/exercice-2.svg) | sample + log réel → OpenSearch → checkpoint humain |
+| exercice 3 | [`exercice-3.svg`](schemas/exercice-3.svg) | VPC Ex1 → HAProxy → panne contrôlée → reprise |
+| fermeture | [`finalisation.svg`](schemas/finalisation/finalisation.svg) | preuves → livrables → destroy `3 → 2 → 1` → audit AWS |
 
 ## Sources de vérité
 
