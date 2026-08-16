@@ -10,7 +10,9 @@ bash scripts/commands/p5.sh
 
 Sans argument, cette commande ouvre un menu interactif. Toutes les actions importantes sont également disponibles directement en CLI.
 
-Le centre de commande est une **couche d'orchestration**. Terraform reste responsable de l'infrastructure, Ansible de la configuration, et les scripts spécialisés de leurs contrôles respectifs.
+Le centre de commande est une **couche d'orchestration** exécutée dans la VM Ubuntu Server 26.04 `ubuntu-devops`. Terraform reste responsable de l'infrastructure AWS, Ansible de la configuration, et les scripts spécialisés de leurs contrôles respectifs.
+
+Le HOST Ubuntu, KVM/libvirt et le cycle de vie de `ubuntu-devops` restent la responsabilité du dépôt séparé `mathiasseguincadiche/Ubuntu-desktops-custom`.
 
 ## Philosophie
 
@@ -33,11 +35,13 @@ journaliser
 Le moteur distingue autant que possible :
 
 - observation ;
-- convergence ;
-- déploiement ;
+- convergence du runtime P5 dans la VM ;
+- déploiement AWS ;
 - test temporairement mutateur ;
 - validation ;
-- destruction.
+- destruction AWS.
+
+Il ne possède aucune action de création, arrêt, destruction ou reconfiguration KVM/libvirt de la VM.
 
 ## Syntaxe
 
@@ -60,11 +64,12 @@ Il ne doit pas :
 
 - valider un dashboard OpenSearch à votre place ;
 - inventer une information AWS inconnue ;
-- contourner la confirmation forte de destruction.
+- contourner la confirmation forte de destruction ;
+- contourner le contrat d'exécution dans `ubuntu-devops`.
 
 ### `--full-validation`
 
-Ajoute les contrôles d'intégration locale plus lourds, notamment le test OpenSearch local.
+Ajoute les contrôles d'intégration locale plus lourds, notamment le test OpenSearch local dans le runtime de la VM.
 
 ## `menu`
 
@@ -90,7 +95,7 @@ bash scripts/commands/p5.sh inspect
 
 ### But
 
-Observer l'état actuel sans chercher à « réparer » immédiatement.
+Observer l'état actuel du P5 dans `ubuntu-devops` sans chercher à « réparer » immédiatement.
 
 ### Mutation
 
@@ -98,8 +103,8 @@ Non.
 
 ### Quand l'utiliser
 
-- première ouverture du projet ;
-- reprise après reboot ;
+- première ouverture du projet dans la VM ;
+- reprise après reboot de la VM ou du HOST ;
 - avant un diagnostic ;
 - avant toute correction manuelle ;
 - après un échec inattendu.
@@ -107,6 +112,8 @@ Non.
 ### Résultat utile
 
 Un inventaire factuel de ce qui est présent, absent ou non vérifiable.
+
+Si la VM elle-même n'est pas disponible, l'action correcte est de revenir au dépôt `Ubuntu-desktops-custom`, pas de contourner le contrôle P5.
 
 ## `prepare`
 
@@ -116,17 +123,26 @@ bash scripts/commands/p5.sh prepare
 
 ### But
 
-Converger les prérequis nécessaires au lab.
+Converger les prérequis nécessaires au lab **dans la VM `ubuntu-devops`**.
 
 ### Peut agir sur
 
-- outils/version du poste WSL2 ;
+- dépendances et versions du runtime P5 dans le guest ;
+- Terraform, Ansible, Node.js, AWS CLI, Docker et outils de validation requis ;
 - configuration AWS locale ;
 - authentification ;
-- clé SSH ;
+- clé SSH du lab ;
 - budget ;
 - `terraform.tfvars` locaux ;
-- garde-fous.
+- garde-fous AWS.
+
+### Ne peut pas agir sur
+
+- le HOST Ubuntu ;
+- KVM/libvirt ;
+- le réseau virtuel de `ubuntu-devops` ;
+- son disque, ses vCPU ou sa RAM ;
+- son démarrage, son arrêt ou sa sauvegarde.
 
 ### Ne déploie pas
 
@@ -134,7 +150,7 @@ Cette commande ne signifie pas « créer les trois exercices AWS ».
 
 ### Mutation
 
-Possible, avec confirmation selon la situation.
+Possible dans le guest et sur les garde-fous AWS, avec confirmation selon la situation.
 
 ## `status`
 
@@ -144,7 +160,7 @@ bash scripts/commands/p5.sh status
 
 ### But
 
-Vérifier si l'environnement est prêt **sans déployer**.
+Vérifier si l'environnement P5 est prêt **sans déployer**.
 
 ### Mutation
 
@@ -256,7 +272,7 @@ prepare
 
 ### Important
 
-`all` **ne détruit pas AWS** à la fin.
+`all` **ne détruit pas AWS** à la fin et ne gère pas le cycle de vie de la VM.
 
 Il est adapté :
 
@@ -281,7 +297,7 @@ Non.
 
 ### Mutation locale
 
-Oui : création de journaux et de preuves de diagnostic.
+Oui : création de journaux et de preuves de diagnostic dans la VM.
 
 ## `finalize`
 
@@ -313,7 +329,7 @@ Détruire les ressources P5 suivies par Terraform puis auditer les résidus AWS.
 
 ### Niveau de risque
 
-Destructif.
+Destructif pour les ressources AWS P5.
 
 ### Ordre
 
@@ -336,6 +352,8 @@ Verdict final :
 ```text
 NETTOYAGE AWS COMPLET
 ```
+
+`cleanup` ne détruit, n'arrête ni ne sauvegarde `ubuntu-devops`. Ces opérations restent hors du dépôt P5.
 
 ## `logs`
 
@@ -373,6 +391,8 @@ Aide interactive pour choisir le parcours selon la situation :
 - incident ;
 - nettoyage.
 
+Si l'incident concerne HOST/KVM/VM avant même l'accès au runtime P5, le guide de référence reste celui de `Ubuntu-desktops-custom`.
+
 ## `docs`
 
 ```bash
@@ -401,7 +421,8 @@ Affiche la syntaxe supportée.
 
 | Situation | Première commande | Suite typique |
 | --- | --- | --- |
-| je découvre le lab | `inspect` | `prepare` puis `status` |
+| VM/HOST/KVM indisponible | runbook `Ubuntu-desktops-custom` | revenir dans `ubuntu-devops` |
+| je découvre le lab P5 | `inspect` | `prepare` puis `status` |
 | je veux tout réaliser | `status` | `all` |
 | je reprends après interruption | `inspect` | `all` ou exercice ciblé |
 | je veux seulement vérifier | `status` | aucune mutation si tout est correct |
@@ -409,13 +430,14 @@ Affiche la syntaxe supportée.
 | ex. 2 uniquement | `ex2` | checkpoint dashboard |
 | ex. 3 uniquement | `ex3` | failover puis preuves |
 | je prépare la remise | `finalize` | relecture livrables |
-| j'ai un échec | `inspect` | `logs` puis `diagnostics` |
+| j'ai un échec P5 | `inspect` | `logs` puis `diagnostics` |
 | j'ai terminé | `cleanup` | vérifier `NETTOYAGE AWS COMPLET` |
 
 ## Pourquoi utiliser `p5.sh` plutôt que tout lancer à la main ?
 
 Parce que l'orchestrateur ajoute :
 
+- qualification du runtime P5 dans la VM ;
 - ordre des dépendances ;
 - lecture de l'état réel ;
 - gestion des codes `terraform plan -detailed-exitcode` ;
@@ -425,6 +447,6 @@ Parce que l'orchestrateur ajoute :
 - redaction de secrets ;
 - preuves par étape ;
 - checkpoints humains ;
-- ordre de destruction.
+- ordre de destruction AWS.
 
 Les commandes directes Terraform/Ansible restent documentées pour comprendre les outils et diagnostiquer, mais le parcours normal doit rester aligné sur le moteur du dépôt.
