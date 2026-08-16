@@ -240,6 +240,15 @@ Portail : [`docs/README.md`](docs/README.md).
 | préparer les livrables | [Livrables](docs/livrables/README.md) |
 | vérifier la conformité | [Consignes → code → preuves](docs/02-correspondance-consignes-depot.md) |
 
+## Schémas de référence
+
+- [Vue d'ensemble](docs/schemas/vue-ensemble.svg)
+- [Préparation de l'environnement](docs/schemas/etape-0.svg)
+- [Exercice 1 — Terraform, Ansible et NGINX](docs/schemas/exercice-1.svg)
+- [Exercice 2 — OpenSearch](docs/schemas/exercice-2.svg)
+- [Exercice 3 — HAProxy](docs/schemas/exercice-3.svg)
+- [Finalisation et nettoyage](docs/schemas/finalisation/finalisation.svg)
+
 ## Périmètre
 
 Le P5 couvre exactement trois exercices : Terraform/Ansible, OpenSearch et HAProxy.
