@@ -6,37 +6,48 @@ Ce runbook est la procédure opératoire principale du P5. Il donne l'ordre d'ex
 
 Les guides `docs/exercices/` expliquent les concepts en détail ; ici, l'objectif est de **réaliser le parcours sans inventer de valeur runtime**.
 
+Toutes les commandes P5 sont exécutées dans la VM Ubuntu Server 26.04 `ubuntu-devops`.
+
 ## Règles de sécurité et de reprise
 
-1. exécuter les commandes Linux depuis Ubuntu WSL2 ;
-2. travailler dans `~/labs/p5_Openclassrooms`, jamais sous `/mnt/c` ou `/mnt/d` ;
-3. commencer par observer l'état réel ;
-4. ne jamais supprimer un `terraform.tfstate` pour forcer une reprise ;
-5. lire tout plan Terraform avant de confirmer un changement ;
-6. utiliser les outputs Terraform comme source des IP et URL ;
-7. conserver les validations humaines lorsqu'une preuve visuelle est demandée ;
-8. considérer toute ressource AWS active comme potentiellement facturable.
+1. exécuter les commandes P5 depuis `ubuntu-devops`, pas depuis le HOST ;
+2. laisser `Ubuntu-desktops-custom` propriétaire du HOST, de KVM/libvirt et du cycle de vie de la VM ;
+3. travailler dans `~/labs/p5_Openclassrooms` sur le filesystem Linux local de la VM ;
+4. commencer par observer l'état réel ;
+5. ne jamais supprimer un `terraform.tfstate` pour forcer une reprise ;
+6. lire tout plan Terraform avant de confirmer un changement ;
+7. utiliser les outputs Terraform comme source des IP et URL ;
+8. conserver les validations humaines lorsqu'une preuve visuelle est demandée ;
+9. considérer toute ressource AWS active comme potentiellement facturable.
 
-## Phase 0 — Ouvrir le poste de contrôle
+## Phase 0 — Entrer dans la VM d'exécution
 
-Depuis Windows :
+La création, le démarrage, l'arrêt et la réparation de la VM sont documentés dans [`mathiasseguincadiche/Ubuntu-desktops-custom`](https://github.com/mathiasseguincadiche/Ubuntu-desktops-custom).
 
-```powershell
-wsl -d Ubuntu
+Une fois `ubuntu-devops` saine et joignable, se connecter en SSH :
+
+```bash
+ssh <utilisateur>@<ip-ubuntu-devops>
 ```
 
-Dans Ubuntu :
+Puis, **dans la VM** :
 
 ```bash
 cd ~/labs/p5_Openclassrooms
+hostname -s
+cat /etc/os-release
+systemd-detect-virt
 pwd
 git status --short
 ```
 
-Résultat attendu :
+Résultats attendus :
 
 ```text
-/home/<utilisateur>/labs/p5_Openclassrooms
+hostname : ubuntu-devops
+OS       : Ubuntu Server 26.04 / resolute
+virt     : kvm ou qemu
+checkout : /home/<utilisateur>/labs/p5_Openclassrooms
 ```
 
 `git status` ne doit pas signaler de secret, de state Terraform ou de vrai `terraform.tfvars` ajouté au suivi Git.
@@ -51,9 +62,11 @@ Cette étape permet de détecter un lab déjà commencé, des states Terraform, 
 
 ### Point d'arrêt
 
+Si le contrôle indique que l'environnement n'est pas `ubuntu-devops` sous Ubuntu Server 26.04/KVM, ne pas essayer de corriger la virtualisation avec le P5. Revenir au dépôt `Ubuntu-desktops-custom`.
+
 Si une valeur Terraform/AWS nécessaire est inconnue, ne pas la remplacer par une valeur copiée au hasard dans la console. Corriger la source indiquée par le diagnostic.
 
-## Phase 2 — Préparer Ubuntu WSL2 et AWS
+## Phase 2 — Préparer le runtime P5 et AWS
 
 ```bash
 bash scripts/commands/p5.sh prepare
@@ -61,13 +74,16 @@ bash scripts/commands/p5.sh prepare
 
 `prepare` vérifie ou réconcilie :
 
-- le runtime Ubuntu/WSL2 requis par le P5 ;
+- le runtime logiciel requis par le P5 **dans `ubuntu-devops`** ;
+- Terraform, Ansible, Node.js, AWS CLI, Docker et les outils P5 nécessaires ;
 - l'authentification AWS ;
 - `environment/aws-readiness.env` ;
 - l'IPv4 publique d'administration `/32` ;
-- la clé SSH ;
+- la clé SSH du lab ;
 - le budget et les garde-fous ;
 - les trois `terraform.tfvars` locaux.
+
+`prepare` ne crée pas la VM, ne modifie pas KVM/libvirt et ne change pas le HOST.
 
 Contrôle du runtime seul, sans modification :
 
@@ -77,7 +93,13 @@ bash scripts/commands/bootstrap-ubuntu-server.sh --check-only
 
 ### Point d'arrêt
 
-Ne pas poursuivre si l'identité AWS, le compte attendu, l'IPv4 `/32`, la clé SSH, les quotas ou les `tfvars` sont incohérents.
+Ne pas poursuivre si :
+
+- le runtime n'est pas exécuté dans la VM attendue ;
+- l'identité AWS ou le compte attendu est incohérent ;
+- l'IPv4 `/32`, la clé SSH, les quotas ou les `tfvars` sont incohérents.
+
+Si la préparation ajoute l'utilisateur au groupe Docker, quitter puis rouvrir la session SSH avant de relancer `prepare`.
 
 ## Phase 3 — Vérifier que le lab est prêt
 
@@ -333,25 +355,27 @@ Le projet respecte l'ordre de dépendance :
 Exercice 3 → Exercice 2 → Exercice 1 → audit AWS
 ```
 
-Le lab n'est considéré comme fermé qu'après :
+Le lab AWS n'est considéré comme fermé qu'après :
 
 ```text
 NETTOYAGE AWS COMPLET
 ```
 
-Si l'audit détecte encore une ressource gérée, identifier d'abord le module Terraform propriétaire et son state avant toute correction.
+Le nettoyage P5 **ne détruit pas `ubuntu-devops`**. L'arrêt ou la sauvegarde de la VM relève ensuite du dépôt `Ubuntu-desktops-custom`.
+
+Si l'audit détecte encore une ressource AWS gérée, identifier d'abord le module Terraform propriétaire et son state avant toute correction.
 
 ---
 
 # Reprendre après une interruption
 
-Après fermeture du terminal ou redémarrage Windows :
+Après fermeture du terminal, redémarrage de la VM ou redémarrage du HOST :
 
-```powershell
-wsl -d Ubuntu
-```
+1. utiliser `Ubuntu-desktops-custom` pour confirmer que `ubuntu-devops` est saine et démarrée ;
+2. se reconnecter en SSH à la VM ;
+3. reprendre le P5 sans supprimer son état.
 
-Puis :
+Dans la VM :
 
 ```bash
 cd ~/labs/p5_Openclassrooms
@@ -376,4 +400,6 @@ bash scripts/commands/p5.sh docs
 bash scripts/commands/p5.sh diagnostics
 ```
 
-En cas de blocage : [`troubleshooting.md`](troubleshooting.md).
+En cas de blocage P5 : [`troubleshooting.md`](troubleshooting.md).
+
+En cas de blocage HOST/KVM/VM : utiliser le runbook de `Ubuntu-desktops-custom`.
