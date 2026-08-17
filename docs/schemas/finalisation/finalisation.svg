@@ -15,5 +15,6 @@
 <text x="906" y="136" class="k">4 · AUDIT AWS</text><text x="906" y="168" class="t">NETTOYAGE AWS COMPLET</text><text x="906" y="195" class="s">0 ressource d'exercice active</text><text x="906" y="217" class="s">budget de surveillance conservable</text>
 <path d="M256 168H292" class="ar"/><path d="M516 168H552" class="ar"/><path d="M838 168H874" class="ar"/>
 <rect x="884" y="252" width="274" height="42" rx="21" fill="#059669"/><text x="1021" y="278" class="t" text-anchor="middle" fill="#fff">VERDICT · LAB PROPRE</text>
-<text x="42" y="274" class="s">La VM ubuntu-devops est indépendante de cette fermeture : le cleanup P5 concerne les ressources AWS du lab.</text>
+<text x="42" y="274" class="s">La distribution WSL2 Ubuntu est indépendante de cette fermeture : le cleanup P5 concerne les ressources AWS du lab.</text>
 </svg>
+

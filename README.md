@@ -12,7 +12,7 @@ Le dépôt met en œuvre un parcours DevOps **100 % AWS** autour de trois object
 2. exploiter des logs HTTP avec Amazon OpenSearch ;
 3. démontrer la haute disponibilité d'un service avec HAProxy.
 
-Le plan de contrôle P5 s'exécute en CLI dans la VM Ubuntu Server 26.04 **`ubuntu-devops`**.
+Le plan de contrôle P5 s'exécute en CLI dans la distribution WSL2 **`Ubuntu`**, Ubuntu 26.04 LTS (`resolute`).
 
 ## Projet en 30 secondes
 
@@ -33,13 +33,13 @@ Dépendances principales :
 
 ## Préparer le plan de contrôle
 
-La plateforme HOST/KVM/VM est fournie par
-[`mathiasseguincadiche/Ubuntu-desktops-custom`](https://github.com/mathiasseguincadiche/Ubuntu-desktops-custom).
-Le P5 possède son runtime logiciel dans `ubuntu-devops` et l'ensemble des exercices AWS.
+La plateforme Windows/WSL2 est fournie par
+[`mathiasseguincadiche/Windows_11_Pro_Custom`](https://github.com/mathiasseguincadiche/Windows_11_Pro_Custom).
+Le P5 possède son runtime logiciel dans `Ubuntu` sous WSL2 et l'ensemble des exercices AWS.
 
 ![Étape 0 — préparation de l'environnement](docs/schemas/etape-0.svg)
 
-Dans `ubuntu-devops` :
+Dans `Ubuntu` sous WSL2 :
 
 ```bash
 mkdir -p ~/labs
@@ -61,7 +61,7 @@ Ce verdict autorise la lecture d'un plan Terraform. Le delta doit être compris 
 
 Contrats :
 
-- [VM DevOps](environment/vm-devops/README.md) ;
+- [Contrat WSL2](environment/wsl2/README.md) ;
 - [versions P5](environment/versions.env) ;
 - [préparation de l'environnement](docs/00-preparation-environnement.md).
 

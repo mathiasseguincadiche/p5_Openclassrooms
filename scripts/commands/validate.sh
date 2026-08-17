@@ -34,6 +34,7 @@ validate_required_files() {
         docs/00b-preparation-compte-aws.md
         docs/04-audit-non-regression.md
         environment/versions.env
+        environment/wsl2/README.md
         environment/aws-readiness.env.example
         application/angular/angular.json
         application/angular/package.json
@@ -49,6 +50,9 @@ validate_required_files() {
         scripts/tools/convert-nginx-logs.py
         scripts/tools/generer-haproxy-config.sh
         scripts/commands/sync-terraform-tfvars.sh
+        scripts/commands/bootstrap-wsl2.sh
+        scripts/lib/p5-platform.sh
+        scripts/tests/test-wsl2-platform.sh
         scripts/commands/prepare-angular-artifact.sh
         scripts/commands/verify-angular-deployment.sh
         scripts/commands/generate-nginx-traffic.sh
@@ -74,6 +78,7 @@ validate_required_files() {
 
 validate_permissions() {
     local scripts=(
+        bootstrap-wsl2.sh
         bootstrap-ubuntu-server.sh
         setup.sh
         validate.sh

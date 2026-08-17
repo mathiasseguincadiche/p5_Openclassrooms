@@ -17,7 +17,7 @@ Pour la procédure exacte à copier/exécuter, utiliser ensuite [`RUNBOOK_EXECUT
 ## Vision d'ensemble
 
 ```text
-Préparer la VM P5 et AWS
+Préparer la distribution WSL2 P5 et AWS
         ↓
 Exercice 1
 Terraform construit l'infrastructure
@@ -39,31 +39,31 @@ logs NGINX          réutilise réseau ex. 1
 
 ## Étape 0 — Comprendre l'environnement d'exécution
 
-Le P5 n'administre pas le poste hôte ni la virtualisation. Il est exécuté **dans la VM `ubuntu-devops`**, Ubuntu Server 26.04 LTS en CLI.
+Le P5 n'administre pas le poste Windows ni WSL2. Il est exécuté **dans la distribution `Ubuntu`**, Ubuntu 26.04 LTS en CLI.
 
-La VM est construite et maintenue séparément par [`mathiasseguincadiche/Ubuntu-desktops-custom`](https://github.com/mathiasseguincadiche/Ubuntu-desktops-custom).
+La distribution WSL2 est construite et maintenue séparément par [`mathiasseguincadiche/Windows_11_Pro_Custom`](https://github.com/mathiasseguincadiche/Windows_11_Pro_Custom).
 
 La séparation est simple :
 
 ```text
-Ubuntu-desktops-custom
-└── HOST Ubuntu + KVM/libvirt + VM ubuntu-devops
+Windows_11_Pro_Custom
+└── Windows 11 Pro + WSL2 + distribution WSL2 Ubuntu
 
 p5_Openclassrooms
-└── runtime P5 + AWS + exercices + preuves dans ubuntu-devops
+└── runtime P5 + AWS + exercices + preuves dans la distribution Ubuntu
 ```
 
-Une fois connecté en SSH dans la VM :
+Une fois la distribution ouverte avec `wsl.exe -d Ubuntu` :
 
 ```bash
 cd ~/labs/p5_Openclassrooms
 ```
 
-Le checkout actif doit rester sur le filesystem Linux local de la VM.
+Le checkout actif doit rester sur le filesystem Linux local de la distribution WSL2.
 
-Pourquoi ? Parce que le projet utilise des scripts Bash, des permissions Unix, Terraform, Ansible, Docker et beaucoup de petits fichiers. Le guest Linux est le contexte de référence du P5.
+Pourquoi ? Parce que le projet utilise des scripts Bash, des permissions Unix, Terraform, Ansible, Docker et beaucoup de petits fichiers. La distribution Linux WSL2 est le contexte de référence du P5.
 
-Le dépôt P5 ne doit pas appeler `virsh`, `virt-install` ou modifier la configuration KVM/libvirt. Inversement, la préparation P5 garde la responsabilité des versions logicielles nécessaires au projet **dans le guest**.
+Le dépôt P5 ne crée, ne déplace et ne supprime jamais une distribution WSL. La préparation P5 garde la responsabilité de ses seules dépendances spécifiques.
 
 ## Étape 1 — Comprendre `p5.sh`
 
@@ -113,20 +113,21 @@ bash scripts/commands/p5.sh status
 
 ### `inspect`
 
-Observe l'état P5 **dans la VM**. Elle doit être préférée avant toute correction.
+Observe l'état P5 **dans WSL2**. Elle doit être préférée avant toute correction.
 
 ### `prepare`
 
 Peut converger :
 
-- les dépendances du runtime P5 dans `ubuntu-devops` ;
-- Terraform, Ansible, Node.js, AWS CLI, Docker et les outils de validation nécessaires au projet ;
+- les dépendances du runtime P5 dans `Ubuntu` sous WSL2 ;
+- Ansible, Node.js et les outils de validation propres au P5 ;
 - la configuration locale AWS ;
 - l'authentification ;
 - les garde-fous de budget ;
 - les `terraform.tfvars`.
 
-Elle ne signifie pas « déployer les trois exercices » et ne signifie pas « administrer la VM ».
+Elle ne signifie pas « déployer les trois exercices » et ne signifie pas « administrer la distribution WSL2 ».
+Terraform, AWS CLI et Docker sont vérifiés ici, mais restent installés et maintenus par `Windows_11_Pro_Custom`.
 
 ### `status`
 
@@ -134,8 +135,8 @@ Contrôle que le lab est cohérent sans créer les ressources applicatives.
 
 À ce stade, le débutant doit savoir expliquer :
 
-- pourquoi le P5 s'exécute dans `ubuntu-devops` ;
-- pourquoi KVM/libvirt reste hors du dépôt P5 ;
+- pourquoi le P5 s'exécute dans `Ubuntu` sous WSL2 ;
+- pourquoi WSL2 reste hors du dépôt P5 ;
 - quel compte AWS sera utilisé ;
 - dans quelle région ;
 - pourquoi SSH est limité en `/32` ;
@@ -324,7 +325,7 @@ La CI peut vérifier :
 - NGINX ;
 - OpenSearch en conteneur éphémère ;
 - HAProxy en environnement de test ;
-- contrat d'intégration avec la VM `ubuntu-devops` ;
+- contrat d'intégration avec la distribution WSL2 `Ubuntu` ;
 - contrats documentaires et sécurité.
 
 Elle ne peut pas prouver à votre place :
@@ -400,8 +401,8 @@ bash scripts/commands/p5.sh cleanup
 
 ## Ce que vous devez savoir expliquer à la fin
 
-- frontière `Ubuntu-desktops-custom` / `p5_Openclassrooms` ;
-- différence plateforme VM / préparation runtime P5 ;
+- frontière `Windows_11_Pro_Custom` / `p5_Openclassrooms` ;
+- différence plateforme Windows/WSL2 / préparation runtime P5 ;
 - différence Terraform / Ansible ;
 - rôle d'un provider Terraform et d'un state ;
 - intérêt de `plan` avant `apply` ;

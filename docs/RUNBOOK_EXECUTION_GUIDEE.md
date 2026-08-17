@@ -5,7 +5,7 @@
 Ce runbook est la procédure opératoire principale du P5. Il fixe l'ordre d'exécution, les commandes,
 les résultats attendus, les points d'arrêt et les conditions de reprise.
 
-Toutes les commandes P5 sont exécutées dans la VM Ubuntu Server 26.04 **`ubuntu-devops`**.
+Toutes les commandes P5 sont exécutées dans la distribution WSL2 **`Ubuntu`**, Ubuntu 26.04 LTS.
 
 Les guides `docs/exercices/` expliquent les concepts en profondeur. Le présent document décrit la
 séquence opératoire à suivre pour exécuter le projet de manière reproductible.
@@ -15,7 +15,7 @@ séquence opératoire à suivre pour exécuter le projet de manière reproductib
 ![Architecture et dépendances du P5](schemas/vue-ensemble.svg)
 
 ```text
-connexion à ubuntu-devops
+ouverture de la distribution Ubuntu
         ↓
 inspect
         ↓
@@ -38,8 +38,8 @@ audit AWS
 
 ## Règles opératoires
 
-1. travailler dans `ubuntu-devops` ;
-2. utiliser `~/labs/p5_Openclassrooms` sur le filesystem Linux local de la VM ;
+1. travailler dans `Ubuntu` sous WSL2 ;
+2. utiliser `~/labs/p5_Openclassrooms` sur le filesystem Linux local de la distribution WSL2 ;
 3. commencer par observer l'état réel ;
 4. conserver les `terraform.tfstate` comme source de propriété Terraform ;
 5. lire chaque plan Terraform avant confirmation ;
@@ -48,8 +48,8 @@ audit AWS
 8. traiter toute ressource AWS active comme potentiellement facturable ;
 9. journaliser et conserver les preuves utiles à chaque exercice.
 
-Le cycle de vie de la VM est documenté dans
-[`mathiasseguincadiche/Ubuntu-desktops-custom`](https://github.com/mathiasseguincadiche/Ubuntu-desktops-custom).
+Le cycle de vie de la distribution WSL2 est documenté dans
+[`mathiasseguincadiche/Windows_11_Pro_Custom`](https://github.com/mathiasseguincadiche/Windows_11_Pro_Custom).
 
 ---
 
@@ -57,19 +57,21 @@ Le cycle de vie de la VM est documenté dans
 
 ![Étape 0 — qualification et préparation](schemas/etape-0.svg)
 
-Se connecter à la VM :
+Depuis PowerShell, valider puis ouvrir la distribution :
 
-```bash
-ssh <utilisateur>@<ip-ubuntu-devops>
+```powershell
+.\install.ps1 -Mode Verify -ValidateWsl -ValidateDevOps
+wsl.exe -d Ubuntu
 ```
 
-Dans la VM :
+Dans WSL2 :
 
 ```bash
 cd ~/labs/p5_Openclassrooms
-hostname -s
 cat /etc/os-release
-systemd-detect-virt
+uname -r
+ps -p 1 -o comm=
+printf '%s\n' "$WSL_DISTRO_NAME"
 pwd
 git status --short
 ```
@@ -77,16 +79,17 @@ git status --short
 Résultats attendus :
 
 ```text
-hostname : ubuntu-devops
-OS       : Ubuntu Server 26.04 / resolute
-virt     : kvm ou qemu
+WSL      : Ubuntu
+OS       : Ubuntu 26.04 / resolute
+noyau    : microsoft-standard-WSL2
+PID 1    : systemd
 checkout : /home/<utilisateur>/labs/p5_Openclassrooms
 ```
 
 ### Point d'arrêt
 
-Ne pas poursuivre si l'identité de la VM, l'OS, la virtualisation ou le filesystem du checkout ne
-correspondent pas au contrat `environment/vm-devops/README.md`.
+Ne pas poursuivre si l'identité WSL2, l'OS, systemd ou le filesystem du checkout ne
+correspondent pas au contrat `environment/wsl2/README.md`.
 
 ---
 
@@ -116,7 +119,7 @@ bash scripts/commands/p5.sh prepare
 
 `prepare` vérifie ou réconcilie :
 
-- le runtime logiciel P5 dans `ubuntu-devops` ;
+- le runtime logiciel P5 dans `Ubuntu` sous WSL2 ;
 - Terraform, Ansible Core, Node.js, AWS CLI et Docker ;
 - les outils nécessaires aux validations du dépôt ;
 - l'authentification AWS ;
@@ -129,7 +132,7 @@ bash scripts/commands/p5.sh prepare
 Contrôle du runtime seul, sans mutation :
 
 ```bash
-bash scripts/commands/bootstrap-ubuntu-server.sh --check-only
+bash scripts/commands/bootstrap-wsl2.sh --check-only
 ```
 
 ### Point d'arrêt
@@ -141,8 +144,8 @@ Ne pas poursuivre si :
 - l'IPv4 `/32`, la clé SSH, les quotas ou les `tfvars` sont incomplets ;
 - une mutation proposée n'est pas comprise.
 
-Si l'utilisateur vient d'être ajouté au groupe Docker, fermer puis rouvrir la session SSH avant de
-relancer `prepare`.
+Si l'utilisateur vient d'être ajouté au groupe Docker, fermer les terminaux WSL2, exécuter
+`wsl.exe --terminate Ubuntu` dans PowerShell, rouvrir `Ubuntu`, puis relancer `prepare`.
 
 ---
 
@@ -427,7 +430,7 @@ NETTOYAGE AWS COMPLET
 Si l'audit détecte encore une ressource gérée, identifier le module Terraform propriétaire et son
 state avant toute correction.
 
-L'arrêt ou la sauvegarde de `ubuntu-devops` est indépendant du nettoyage AWS du P5.
+L'arrêt ou la sauvegarde de `Ubuntu` sous WSL2 est indépendant du nettoyage AWS du P5.
 
 ---
 
@@ -435,8 +438,8 @@ L'arrêt ou la sauvegarde de `ubuntu-devops` est indépendant du nettoyage AWS d
 
 Après une fermeture de terminal ou un redémarrage :
 
-1. confirmer que `ubuntu-devops` est démarrée et joignable ;
-2. se reconnecter en SSH ;
+1. ouvrir `Ubuntu` avec `wsl.exe -d Ubuntu` ;
+2. vérifier que systemd et Docker sont actifs ;
 3. revenir dans le checkout ;
 4. observer l'état ;
 5. reprendre uniquement l'étape nécessaire.
@@ -466,4 +469,4 @@ bash scripts/commands/p5.sh diagnostics
 
 Dépannage P5 : [`troubleshooting.md`](troubleshooting.md).
 
-Contrat de la VM : [`../environment/vm-devops/README.md`](../environment/vm-devops/README.md).
+Contrat de la distribution WSL2 : [`../environment/wsl2/README.md`](../environment/wsl2/README.md).

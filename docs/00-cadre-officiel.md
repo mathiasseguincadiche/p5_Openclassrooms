@@ -193,19 +193,19 @@ C'est pour cette raison que le type EC2 n'est pas considéré comme une vérité
 
 ## Environnement d'exécution retenu
 
-Les commandes P5 sont exécutées dans la VM `ubuntu-devops`, Ubuntu Server 26.04 LTS en CLI. Cette VM est fournie par le dépôt séparé [`mathiasseguincadiche/Ubuntu-desktops-custom`](https://github.com/mathiasseguincadiche/Ubuntu-desktops-custom).
+Les commandes P5 sont exécutées dans la distribution WSL2 `Ubuntu`, Ubuntu 26.04 LTS en CLI. Cette plateforme est fournie par le dépôt séparé [`mathiasseguincadiche/Windows_11_Pro_Custom`](https://github.com/mathiasseguincadiche/Windows_11_Pro_Custom).
 
 Cette décision d'environnement **n'ajoute pas un quatrième exercice**. Elle ne change pas le périmètre pédagogique : elle fournit seulement un runtime Linux isolé et reproductible pour exécuter les trois exercices AWS.
 
-La préparation logicielle strictement nécessaire au P5 reste gérée par `p5_Openclassrooms` à l'intérieur de cette VM.
+La préparation logicielle strictement nécessaire au P5 reste gérée par `p5_Openclassrooms` à l'intérieur de cette distribution WSL2.
 
 ## Ce que le P5 n'évalue pas
 
 Les éléments suivants ne font pas partie des trois exercices :
 
-- le HOST Ubuntu ;
-- KVM/libvirt ;
-- la création, le réseau, le stockage ou le backup de `ubuntu-devops` ;
+- le Windows 11 Pro ;
+- WSL2 ;
+- la création, le réseau, le stockage ou le backup de `Ubuntu` sous WSL2 ;
 - Kubernetes ;
 - Helm ;
 - Prometheus ;
@@ -213,7 +213,7 @@ Les éléments suivants ne font pas partie des trois exercices :
 - Vault ;
 - GitHub Actions comme exercice autonome.
 
-GitHub Actions protège le dépôt. La plateforme Ubuntu/KVM héberge le runtime. Aucun de ces éléments ne devient un livrable pédagogique du P5.
+GitHub Actions protège le dépôt. Windows 11 Pro et WSL2 hébergent le runtime. Aucun de ces éléments ne devient un livrable pédagogique du P5.
 
 ## Réalisation de référence du dépôt
 

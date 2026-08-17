@@ -2,15 +2,15 @@
 
 ## Pourquoi ce document est important
 
-Un lab DevOps ne doit pas devenir inutilisable parce que la session SSH a été fermée, la VM a redémarré, le HOST a redémarré ou une commande a échoué au milieu du parcours.
+Un lab DevOps ne doit pas devenir inutilisable parce que le terminal a été fermé, WSL2 ou Windows a redémarré, ou une commande a échoué au milieu du parcours.
 
-Le P5 est conçu pour être **repris à partir de l'état réel** dans la VM `ubuntu-devops`.
+Le P5 est conçu pour être **repris à partir de l'état réel** dans la distribution WSL2 `Ubuntu`.
 
 La plateforme et le projet ont deux cycles de vie distincts :
 
 ```text
-Ubuntu-desktops-custom
-→ HOST / KVM / ubuntu-devops
+Windows_11_Pro_Custom
+→ Windows 11 Pro / WSL2 / distribution Ubuntu
 
 p5_Openclassrooms
 → runtime P5 / AWS / states / preuves
@@ -106,7 +106,7 @@ ressources AWS existantes + state valide
 
 ## 3. Reprise après fermeture du terminal
 
-Se reconnecter à `ubuntu-devops` selon le runbook de la plateforme, puis dans la VM :
+Se reconnecter à `Ubuntu` sous WSL2 selon le runbook de la plateforme, puis dans WSL2 :
 
 ```bash
 cd ~/labs/p5_Openclassrooms
@@ -127,18 +127,18 @@ bash scripts/commands/p5.sh all
 
 pour poursuivre le parcours complet de façon convergente.
 
-## 4. Reprise après redémarrage du HOST ou de la VM
+## 4. Reprise après redémarrage de Windows ou de la distribution WSL2
 
-Le redémarrage du HOST ou de `ubuntu-devops` ne supprime pas les ressources AWS. Les states P5 restent sur le disque de la VM tant que son stockage est intact.
+Le redémarrage de Windows ou de `Ubuntu` sous WSL2 ne supprime pas les ressources AWS. Les states P5 restent sur le disque Linux de la distribution tant que son stockage est intact.
 
 Procédure :
 
-1. utiliser `Ubuntu-desktops-custom` pour vérifier/démarrer `ubuntu-devops` ;
-2. se reconnecter en SSH ;
+1. utiliser `Windows_11_Pro_Custom` pour vérifier/démarrer `Ubuntu` sous WSL2 ;
+2. rouvrir `Ubuntu` avec `wsl.exe -d Ubuntu` ;
 3. revenir dans le dépôt P5 ;
 4. inspecter avant toute mutation.
 
-Dans la VM :
+Dans WSL2 :
 
 ```bash
 cd ~/labs/p5_Openclassrooms
@@ -148,18 +148,19 @@ bash scripts/commands/p5.sh status
 
 Ne recréer ni clé SSH ni configuration AWS si le moteur confirme qu'elles existent et sont conformes.
 
-Si la VM elle-même est en panne, le P5 ne doit pas essayer de réparer KVM/libvirt : corriger d'abord la plateforme amont.
+Si la distribution WSL2 elle-même est en panne, le P5 ne doit pas essayer de réparer WSL2 : corriger d'abord la plateforme amont.
 
-## 5. Reprise après code retour 90 du bootstrap
+## 5. Reprise après un problème d'accès à Docker
 
-Le code `90` signifie que le runtime P5 est installé mais qu'une **nouvelle session SSH** est nécessaire pour que l'appartenance au groupe Docker soit effective.
+Le runtime Docker appartient à la plateforme amont. Si Docker est installé mais que l'utilisateur courant n'accède pas au daemon, redémarrer complètement la distribution afin de recharger la session et les groupes Unix.
 
 Procédure :
 
-1. fermer la session SSH ;
-2. se reconnecter à `ubuntu-devops` ;
-3. revenir dans le dépôt ;
-4. relancer exactement la même commande P5.
+1. fermer tous les terminaux WSL2 ;
+2. exécuter `wsl.exe --terminate Ubuntu` dans PowerShell ;
+3. rouvrir la distribution avec `wsl.exe -d Ubuntu` ;
+4. revenir dans le dépôt ;
+5. relancer exactement la même commande P5.
 
 Ne pas réinstaller Docker pour ce cas.
 
@@ -331,7 +332,7 @@ Les states et `tfvars` sont ignorés par Git précisément parce que leur cycle 
 
 | État | Action |
 | --- | --- |
-| VM/HOST/KVM en panne | corriger via `Ubuntu-desktops-custom` |
+| Windows/WSL2 en panne | corriger via `Windows_11_Pro_Custom` |
 | je ne sais pas où j'en suis dans P5 | `p5.sh inspect` |
 | outils/config P5 seulement | `p5.sh prepare` |
 | je veux vérifier sans muter | `p5.sh status` |
@@ -360,6 +361,6 @@ observer → expliquer → converger → prouver
 Et la frontière de plateforme reste :
 
 ```text
-problème de VM/KVM → Ubuntu-desktops-custom
+problème Windows/WSL2 → Windows_11_Pro_Custom
 problème de runtime P5/AWS → p5_Openclassrooms
 ```

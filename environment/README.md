@@ -4,38 +4,38 @@ Ce dossier contient les contrats et paramètres nécessaires à l'exécution du 
 
 ## Environnement d'exécution
 
-Le P5 s'exécute dans la VM **`ubuntu-devops`** :
+Le P5 s'exécute dans la distribution WSL2 **`Ubuntu`** :
 
 ```text
-OS              Ubuntu Server 26.04 LTS
+OS              Ubuntu 26.04 LTS sous WSL2
 codename        resolute
 mode            CLI
-virtualisation  KVM/QEMU
+virtualisation  WSL2
 checkout        ~/labs/p5_Openclassrooms
 ```
 
-La VM doit disposer d'un accès Internet/DNS, d'un accès sortant vers AWS et d'un utilisateur
+La distribution WSL2 doit disposer d'un accès Internet/DNS, d'un accès sortant vers AWS et d'un utilisateur
 non root avec `sudo`.
 
-Le contrat complet est documenté dans [`vm-devops/README.md`](vm-devops/README.md).
+Le contrat complet est documenté dans [`wsl2/README.md`](wsl2/README.md).
 
-La plateforme HOST/KVM/VM est fournie par
-[`mathiasseguincadiche/Ubuntu-desktops-custom`](https://github.com/mathiasseguincadiche/Ubuntu-desktops-custom).
+La plateforme Windows/WSL2 est fournie par
+[`mathiasseguincadiche/Windows_11_Pro_Custom`](https://github.com/mathiasseguincadiche/Windows_11_Pro_Custom).
 
 ## Préparation du runtime P5
 
-Dans `ubuntu-devops` :
+Dans `Ubuntu` sous WSL2 :
 
 ```bash
 cd ~/labs/p5_Openclassrooms
-bash scripts/commands/bootstrap-ubuntu-server.sh --check-only
+bash scripts/commands/bootstrap-wsl2.sh --check-only
 bash scripts/commands/p5.sh inspect
 bash scripts/commands/p5.sh prepare
 bash scripts/commands/p5.sh status
 ```
 
-`prepare` converge les dépendances nécessaires au projet dans la VM : Terraform, Ansible Core,
-Node.js, AWS CLI, Docker et les outils de validation.
+`prepare` vérifie la stack commune fournie par le dépôt Windows, puis converge les dépendances
+propres au P5 : Ansible Core, Node.js et les outils de validation.
 
 ## `versions.env` — contrat logiciel
 
@@ -44,7 +44,7 @@ Node.js, AWS CLI, Docker et les outils de validation.
 Références principales :
 
 ```text
-Ubuntu Server       26.04 / resolute
+Ubuntu              26.04 / resolute
 Terraform           1.15.8
 Ansible Core        2.20.1
 Node.js             22.22.0
@@ -93,8 +93,8 @@ ignorés par Git.
 
 | Domaine | Source de vérité |
 | --- | --- |
-| HOST Ubuntu, KVM/libvirt, VM `ubuntu-devops` | `Ubuntu-desktops-custom` |
-| runtime P5 dans la VM | `p5_Openclassrooms` |
+| Windows 11 Pro, WSL2, `Ubuntu`, Docker, Terraform, AWS CLI | `Windows_11_Pro_Custom` |
+| runtime P5 dans WSL2 | `p5_Openclassrooms` |
 | paramètres AWS du lab | `environment/aws-readiness.env` |
 | versions logicielles P5 | `environment/versions.env` |
 | infrastructure AWS | `terraform/exercice-{1,2,3}/` |
@@ -110,7 +110,7 @@ ignorés par Git.
 
 ## Références
 
-- [Contrat VM DevOps](vm-devops/README.md)
+- [Contrat WSL2](wsl2/README.md)
 - [Préparation de l'environnement](../docs/00-preparation-environnement.md)
 - [Préparation du compte AWS](../docs/00b-preparation-compte-aws.md)
 - [Runbook A à Z](../docs/RUNBOOK_EXECUTION_GUIDEE.md)

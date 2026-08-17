@@ -173,7 +173,7 @@ renew_known_profile() {
     fi
     if [[ -n "$sso_session" || -n "$sso_start_url" ]]; then
         p5_action "Renouvellement de la session IAM Identity Center '$profile'."
-        aws sso login --profile "$profile"
+        aws sso login --profile "$profile" --no-browser --use-device-code
         return
     fi
     return 1
@@ -202,7 +202,7 @@ console_login() {
 
     aws configure set region "$REGION" --profile "$SOURCE_PROFILE"
     p5_header 'CONNEXION AWS — navigateur externe'
-    p5_info 'La VM va afficher une URL/code AWS. Ouvrez cette URL dans votre navigateur habituel.'
+    p5_info 'WSL2 va afficher une URL et un code AWS. Ouvrez cette URL dans votre navigateur Windows.'
     p5_info 'Saisissez vos identifiants directement chez AWS ; le script ne les voit jamais.'
     p5_info 'AWS remet ensuite à la CLI des credentials temporaires renouvelables.'
 
@@ -241,7 +241,8 @@ sso_login() {
         aws configure sso --profile "$TARGET_PROFILE"
     fi
     aws configure set region "$REGION" --profile "$TARGET_PROFILE"
-    aws sso login --profile "$TARGET_PROFILE"
+    p5_info 'WSL2 : ouvrez dans Windows l’URL affichée et saisissez le code appareil.'
+    aws sso login --profile "$TARGET_PROFILE" --no-browser --use-device-code
 }
 
 source_profile_exists() {
@@ -253,7 +254,7 @@ existing_profile() {
     profiles="$(aws configure list-profiles 2>/dev/null || true)"
     [[ -n "$profiles" ]] || {
         p5_unknown 'Profil AWS temporaire existant' \
-            'AWS CLI ne retourne aucun profil configuré sur cette VM' \
+            'AWS CLI ne retourne aucun profil configuré dans WSL2' \
             'Choisissez plutôt le mode console ou SSO, ou configurez d’abord un profil temporaire.'
         p5_action 'Exemple : bash scripts/commands/aws-auth.sh --mode console'
         return 1

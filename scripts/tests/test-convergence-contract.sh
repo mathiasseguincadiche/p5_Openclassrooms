@@ -18,13 +18,15 @@ trap cleanup EXIT
 cd "$PROJECT_ROOT"
 
 printf 'Contrat statique de convergence\n'
-grep -Fq -- '--check-only' scripts/commands/bootstrap-ubuntu-server.sh
-grep -Fq 'apt full-upgrade non exécuté' scripts/commands/bootstrap-ubuntu-server.sh
-grep -Fq 'systemd-detect-virt' scripts/commands/bootstrap-ubuntu-server.sh
-grep -Fq 'P5_EXPECTED_VM_NAME' scripts/commands/bootstrap-ubuntu-server.sh
-grep -Fq 'P5_EXPECTED_VM_NAME=ubuntu-devops' environment/versions.env
-test -s environment/vm-devops/README.md
-test ! -e environment/wsl2
+grep -Fq -- '--check-only' scripts/commands/bootstrap-wsl2.sh
+grep -Fq 'P5_EXPECTED_WSL_DISTRO=Ubuntu' environment/versions.env
+grep -Fq 'P5_EXECUTION_MODEL=windows11-wsl2-ubuntu-26.04' environment/versions.env
+grep -Fq 'P5_PLATFORM_REPOSITORY=mathiasseguincadiche/Windows_11_Pro_Custom' environment/versions.env
+grep -Fq 'P5_OPENSEARCH_MAX_MAP_COUNT=262144' environment/versions.env
+test -s environment/wsl2/README.md
+test -s scripts/lib/p5-platform.sh
+test ! -e environment/vm-devops
+grep -Fq 'bootstrap-wsl2.sh' scripts/commands/bootstrap-ubuntu-server.sh
 grep -Fq -- '-detailed-exitcode' scripts/commands/p5.sh
 grep -Fq 'infrastructure déjà conforme — aucun apply' scripts/commands/p5.sh
 grep -Fq 'Déjà synchronisé' scripts/commands/sync-terraform-tfvars.sh
@@ -33,9 +35,9 @@ grep -Fq 'Artefact Angular déjà conforme' scripts/commands/prepare-angular-art
 grep -Fq 'Bulk ignoré' scripts/commands/import-opensearch-data.sh
 grep -Fq 'GARDE-FOU AWS DÉJÀ CONFORME' scripts/commands/setup-aws-guardrails.sh
 grep -Fq 'état déjà vide — destroy ignoré' scripts/commands/destroy-aws.sh
-grep -Fq 'ÉTAT P5 OBSERVÉ DANS LA VM' scripts/commands/inspect-state.sh
+grep -Fq 'ÉTAT P5 OBSERVÉ DANS WSL2' scripts/commands/inspect-state.sh
 grep -Fq '.p5/' .gitignore
-printf '  OK  branches de non-mutation et frontière VM/P5 présentes.\n'
+printf '  OK  branches de non-mutation et frontière WSL2/P5 présentes.\n'
 
 printf '\nRéexécution réelle de la convergence tfvars\n'
 cp environment/aws-readiness.env.example "$CONFIG_FILE"

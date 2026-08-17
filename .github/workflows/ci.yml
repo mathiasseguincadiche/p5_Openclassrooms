@@ -47,6 +47,7 @@ jobs:
             docs/04-audit-non-regression.md
             docs/livrables/README.md
             environment/versions.env
+            environment/wsl2/README.md
             environment/aws-readiness.env.example
             aws/README.md
             aws/iam/p5-lab-policy.json
@@ -63,9 +64,11 @@ jobs:
             terraform/exercice-2/samples/nginx-access.log.sample
             proofs/README.md
             scripts/lib/p5-runtime.sh
+            scripts/lib/p5-platform.sh
             scripts/tools/convert-nginx-logs.py
             scripts/tools/generer-haproxy-config.sh
             scripts/commands/p5.sh
+            scripts/commands/bootstrap-wsl2.sh
             scripts/commands/configure-lab.sh
             scripts/commands/generate-ansible-inventory.sh
             scripts/commands/sync-terraform-tfvars.sh
@@ -79,6 +82,7 @@ jobs:
             scripts/commands/test-haproxy-failover.sh
             scripts/commands/prepare-livrables.sh
             scripts/tests/test-p5-orchestrator.sh
+            scripts/tests/test-wsl2-platform.sh
             scripts/tests/test-nginx-angular.sh
             scripts/tests/test-haproxy-containers.sh
             scripts/tests/test-opensearch-local.sh
@@ -105,6 +109,7 @@ jobs:
         run: |
           set -euo pipefail
           scripts=(
+            scripts/commands/bootstrap-wsl2.sh
             scripts/commands/bootstrap-ubuntu-server.sh
             scripts/commands/setup.sh
             scripts/commands/validate.sh

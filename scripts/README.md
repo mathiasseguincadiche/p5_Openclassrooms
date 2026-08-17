@@ -8,14 +8,16 @@ bash scripts/commands/p5.sh
 
 Le centre de commande orchestre les scripts spécialisés, Terraform et Ansible. Il ne crée pas une seconde implémentation du projet.
 
-Toutes les commandes P5 sont exécutées **dans la VM Ubuntu Server 26.04 `ubuntu-devops`**. La création et l'administration de cette VM restent dans le dépôt séparé `mathiasseguincadiche/Ubuntu-desktops-custom`.
+Toutes les commandes P5 sont exécutées dans la distribution WSL2 **`Ubuntu`**, Ubuntu 26.04 LTS.
+La création et l'administration de cette distribution restent dans le dépôt
+`mathiasseguincadiche/Windows_11_Pro_Custom`.
 
 ## Menu principal
 
 ```text
 DÉMARRER / REPRENDRE
  1  Inspecter ma situation actuelle
- 2  Préparer / configurer le lab P5 dans la VM
+ 2  Préparer / configurer le lab P5 dans WSL2
  3  Vérifier si je suis prêt à déployer
 
 EXERCICES
@@ -49,8 +51,8 @@ Documentation détaillée : [Centre de commande](../docs/CENTRE_DE_COMMANDE.md).
 
 | Commande | Rôle |
 | --- | --- |
-| `p5.sh inspect` | observer l'état réel P5 dans la VM sans mutation |
-| `p5.sh prepare` | aligner le runtime P5 dans `ubuntu-devops`, AWS, les `tfvars` et les garde-fous |
+| `p5.sh inspect` | observer l'état réel P5 dans WSL2 sans mutation |
+| `p5.sh prepare` | aligner le runtime P5 dans WSL2, AWS, les `tfvars` et les garde-fous |
 | `p5.sh status` | vérifier la préparation |
 | `p5.sh ex1` | Terraform + Ansible + Angular/NGINX |
 | `p5.sh ex2` | Amazon OpenSearch + données |
@@ -88,23 +90,24 @@ bash scripts/commands/p5.sh all
 
 Ne jamais supprimer un `terraform.tfstate` pour forcer une reprise.
 
-## Runtime P5 dans la VM Ubuntu
+## Runtime P5 dans WSL2 Ubuntu
 
 Contrôle du runtime :
 
 ```bash
-bash scripts/commands/bootstrap-ubuntu-server.sh --check-only
+bash scripts/commands/bootstrap-wsl2.sh --check-only
 ```
 
 Alignement des seuls écarts nécessaires au P5 :
 
 ```bash
-bash scripts/commands/bootstrap-ubuntu-server.sh
+bash scripts/commands/bootstrap-wsl2.sh
 ```
 
-Le bootstrap peut installer ou réaligner les dépendances nécessaires **dans `ubuntu-devops` uniquement**. Il ne gère ni le HOST, ni KVM/libvirt, ni le cycle de vie de la VM.
+Le bootstrap vérifie la plateforme commune et ne converge que les dépendances propres au P5.
+Il ne crée, ne déplace et ne supprime jamais la distribution ou son VHDX.
 
-Le checkout opérationnel doit rester sur le filesystem Linux local de la VM, par exemple `~/labs/p5_Openclassrooms`.
+Le checkout opérationnel doit rester sur le filesystem Linux local de la distribution WSL2, par exemple `~/labs/p5_Openclassrooms`.
 
 ## Scripts centraux
 
@@ -112,8 +115,10 @@ Le checkout opérationnel doit rester sur le filesystem Linux local de la VM, pa
 | --- | --- |
 | `scripts/commands/p5.sh` | orchestration et menu opérateur |
 | `scripts/lib/p5-runtime.sh` | confirmations, logs et runtime commun |
+| `scripts/lib/p5-platform.sh` | détection et garde-fous WSL2/filesystem |
 | `scripts/commands/inspect-state.sh` | observation P5 sans mutation |
-| `scripts/commands/bootstrap-ubuntu-server.sh` | contrat logiciel P5 dans Ubuntu Server 26.04 |
+| `scripts/commands/bootstrap-wsl2.sh` | contrat logiciel P5 dans Ubuntu 26.04 sous WSL2 |
+| `scripts/commands/bootstrap-ubuntu-server.sh` | wrapper de compatibilité vers le bootstrap WSL2 |
 | `scripts/commands/aws-auth.sh` | authentification AWS du lab |
 | `scripts/commands/configure-lab.sh` | configuration locale du lab |
 | `scripts/commands/generate-ansible-inventory.sh` | inventaire depuis Terraform |
@@ -125,9 +130,9 @@ Le checkout opérationnel doit rester sur le filesystem Linux local de la VM, pa
 
 ## Frontière de responsabilité
 
-Le répertoire `scripts/` ne doit contenir aucune logique de provisioning KVM/libvirt pour `ubuntu-devops`.
+Le répertoire `scripts/` ne doit contenir aucune logique destructive de provisioning WSL2.
 
-La frontière d'intégration est décrite dans [`environment/vm-devops/README.md`](../environment/vm-devops/README.md).
+La frontière d'intégration est décrite dans [`environment/wsl2/README.md`](../environment/wsl2/README.md).
 
 ## Logs et preuves
 
