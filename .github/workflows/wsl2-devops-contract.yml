@@ -63,7 +63,7 @@ jobs:
           grep -Fq "P5_FORBIDDEN_MOUNT_PREFIXES='/mnt/c /mnt/d'" environment/versions.env
           test ! -e environment/vm-devops
 
-          if grep -RniE 'Ubuntu-desktops-custom|ubuntu-devops|KVM/libvirt|VM KVM' \
+          if grep -RnE 'Ubuntu-desktops-custom|ubuntu-devops|KVM/libvirt|VM KVM' \
             "${canonical_docs[@]}" scripts/commands scripts/lib; then
             echo 'KO ancien contrat VM/KVM détecté dans le runtime canonique.' >&2
             exit 1
@@ -91,6 +91,9 @@ jobs:
     name: Windows_11_Pro_Custom / Ubuntu WSL2 contract
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout P5
+        uses: actions/checkout@v7
+
       - name: Checkout Windows platform repository read-only
         uses: actions/checkout@v7
         with:
