@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Vérifie le lab P5 dans la VM Ubuntu DevOps sans créer de ressource AWS.
+# Vérifie le lab P5 dans Ubuntu WSL2 sans créer de ressource AWS.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -12,14 +12,14 @@ show_help() {
     cat <<'HELP'
 Usage: ./scripts/commands/setup.sh [--check-only]
 
-Contrôle non destructif du runtime P5 dans la VM Ubuntu Server 26.04,
+Contrôle non destructif du runtime P5 dans Ubuntu 26.04 sous WSL2,
 des outils et de l'arborescence du projet.
 
-La VM, KVM/libvirt, son réseau et son cycle de vie restent gérés par
-mathiasseguincadiche/Ubuntu-desktops-custom.
+Windows, WSL2, son stockage et son réseau restent gérés par
+mathiasseguincadiche/Windows_11_Pro_Custom.
 
-Pour aligner uniquement le socle logiciel requis par le P5 dans la VM :
-  ./scripts/commands/bootstrap-ubuntu-server.sh
+Pour aligner uniquement les dépendances propres au P5 dans WSL2 :
+  ./scripts/commands/bootstrap-wsl2.sh
 
 Ce contrôle valide l'étape 0A. Pour le compte AWS, utilisez ensuite :
   ./scripts/commands/pre-deployment-check.sh --stage initial
@@ -50,15 +50,14 @@ missing=0
 ok() { printf '  OK  %s\n' "$1"; }
 ko() { printf '  KO  %s\n' "$1" >&2; missing=$((missing + 1)); }
 
-printf 'Runtime VM P5\n'
+printf 'Runtime WSL2 P5\n'
 set +e
-bash "$SCRIPT_DIR/bootstrap-ubuntu-server.sh" --check-only
+bash "$SCRIPT_DIR/bootstrap-wsl2.sh" --check-only
 RUNTIME_RC=$?
 set -e
 case "$RUNTIME_RC" in
-    0) ok "runtime P5 conforme dans ${P5_EXPECTED_VM_NAME:-ubuntu-devops}" ;;
-    90) ko "runtime installé mais reconnexion SSH requise pour Docker" ;;
-    *) ko "runtime P5 non conforme dans la VM" ;;
+    0) ok "runtime P5 conforme dans ${P5_EXPECTED_WSL_DISTRO:-Ubuntu} sous WSL2" ;;
+    *) ko "runtime P5 non conforme dans WSL2" ;;
 esac
 
 printf '\nOutils obligatoires\n'
@@ -80,9 +79,9 @@ fi
 
 if command -v docker >/dev/null 2>&1; then
     if docker info >/dev/null 2>&1; then
-        ok "moteur Docker accessible dans la VM"
+        ok "moteur Docker accessible dans WSL2"
     else
-        ko "moteur Docker inaccessible ; reconnectez la session SSH après ajout au groupe docker"
+        ko "moteur Docker inaccessible ; terminez puis rouvrez la distribution après ajout au groupe docker"
     fi
 fi
 
@@ -94,7 +93,7 @@ required=(
     docs/05-soutenance.md
     environment/aws-readiness.env.example
     environment/versions.env
-    environment/vm-devops/README.md
+    environment/wsl2/README.md
     aws/README.md
     aws/iam/p5-lab-policy.json
     aws/budgets/p5-monthly-budget.json.example
@@ -156,4 +155,4 @@ if ((missing > 0)); then
     printf '\n%s anomalie(s) obligatoire(s) détectée(s).\n' "$missing" >&2
     exit 1
 fi
-printf '\nÉtape 0A validée dans la VM. Poursuivez avec le contrôle AWS Ready.\n'
+printf '\nÉtape 0A validée dans WSL2. Poursuivez avec le contrôle AWS Ready.\n'

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Orchestrateur convergent du projet P5 OpenClassrooms.
-# Toutes les opérations P5 s'exécutent dans la VM ubuntu-devops ; la plateforme
-# HOST/KVM/libvirt reste la responsabilité de Ubuntu-desktops-custom.
+# Toutes les opérations P5 s'exécutent dans Ubuntu 26.04 sous WSL2 ; Windows,
+# le VHDX et la stack DevOps commune restent gérés par Windows_11_Pro_Custom.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -27,7 +27,7 @@ Usage:
 Commandes:
   menu         afficher le centre de commande interactif (défaut)
   inspect      observer l'état réel sans aucune mutation
-  prepare      inspecter puis converger le runtime P5 dans la VM, AWS, tfvars et garde-fous
+  prepare      inspecter puis converger le runtime P5 dans WSL2, AWS, tfvars et garde-fous
   status       lancer les contrôles de préparation sans mutation
   ex1          converger Terraform + Ansible + NGINX + Angular puis vérifier
   ex2          converger OpenSearch, données et vérifier les agrégations
@@ -50,8 +50,8 @@ Principe :
   inspecter -> comparer -> corriger uniquement le delta -> vérifier -> journaliser.
 
 Un `terraform plan` vide n'est jamais appliqué. Un runtime P5 déjà conforme dans
-la VM `ubuntu-devops` n'est pas modifié inutilement. Le P5 ne crée ni ne configure
-la VM, KVM/libvirt ou le HOST. Les tests fonctionnels restent rejoués afin de
+la distribution WSL2 `Ubuntu` n'est pas modifié inutilement. Le P5 ne crée, ne
+déplace et ne supprime jamais la distribution ou son VHDX. Les tests fonctionnels restent rejoués afin de
 vérifier l'état réel. Une valeur d'infrastructure nécessaire à `all` doit provenir
 de Terraform ; si elle n'est pas vérifiable, l'orchestrateur s'arrête et indique
 la source à réparer.
@@ -131,7 +131,7 @@ load_nvm_if_present() {
 }
 
 toolchain_state() {
-    bash "$SCRIPT_DIR/bootstrap-ubuntu-server.sh" --check-only
+    bash "$SCRIPT_DIR/bootstrap-wsl2.sh" --check-only
 }
 
 ensure_toolchain() {
@@ -143,37 +143,23 @@ ensure_toolchain() {
     case "$rc" in
         0)
             load_nvm_if_present
-            p5_ok 'Runtime P5 déjà convergé dans ubuntu-devops : aucune installation nécessaire.'
+            p5_ok 'Runtime P5 déjà convergé dans WSL2 : aucune installation nécessaire.'
             return 0
             ;;
-        90)
-            p5_header 'RECONNEXION REQUISE'
-            p5_action 'Les outils sont déjà installés ; seul le groupe Docker n’est pas actif dans cette session.'
-            p5_action 'Fermez puis rouvrez la session SSH vers ubuntu-devops, puis relancez exactement la même commande P5.'
-            return 90
-            ;;
         *)
-            p5_warn 'Le runtime P5 dans ubuntu-devops présente un ou plusieurs écarts par rapport à l’état cible.'
+            p5_warn 'Le runtime P5 dans WSL2 présente un ou plusieurs écarts par rapport à l’état cible.'
             ;;
     esac
 
-    if ! p5_confirm 'Converger uniquement les dépendances P5 manquantes ou incorrectes dans la VM ?'; then
-        p5_error 'Le runtime P5 dans ubuntu-devops doit être convergé avant de poursuivre.'
+    if ! p5_confirm 'Converger uniquement les dépendances P5 manquantes ou incorrectes dans WSL2 ?'; then
+        p5_error 'Le runtime P5 dans WSL2 doit être convergé avant de poursuivre.'
         return 1
     fi
 
-    p5_run_step_allow '0 90' 'bootstrap' 'Converger le runtime P5 dans ubuntu-devops' \
-        bash "$SCRIPT_DIR/bootstrap-ubuntu-server.sh"
-    rc="$P5_LAST_STEP_RC"
+    p5_run_step 'bootstrap' 'Converger le runtime P5 dans WSL2' \
+        bash "$SCRIPT_DIR/bootstrap-wsl2.sh"
     load_nvm_if_present
-    if [[ "$rc" == 90 ]]; then
-        p5_header 'RECONNEXION REQUISE'
-        p5_action 'La convergence P5 a ajouté votre utilisateur au groupe Docker.'
-        p5_action 'Reconnectez la session SSH vers ubuntu-devops puis relancez exactement la même commande P5.'
-        p5_latest_log_hint
-        return 90
-    fi
-    p5_ok 'Runtime P5 convergé et utilisable dans ubuntu-devops.'
+    p5_ok 'Runtime P5 convergé et utilisable dans WSL2.'
 }
 
 terraform_state_has_resources() {
@@ -325,7 +311,7 @@ verify_ansible_idempotence() {
 }
 
 run_prepare() {
-    p5_header 'PHASE 0 — INSPECTER PUIS CONVERGER LE LAB P5 DANS LA VM'
+    p5_header 'PHASE 0 — INSPECTER PUIS CONVERGER LE LAB P5 DANS WSL2'
     run_inspect
     ensure_toolchain
 
@@ -365,7 +351,7 @@ run_prepare() {
     fi
 
     P5_PREPARED_THIS_RUN=true
-    p5_ok 'Phase 0 terminée : runtime VM observé et prérequis P5 convergés.'
+    p5_ok 'Phase 0 terminée : runtime WSL2 observé et prérequis P5 convergés.'
 }
 
 run_status() {
@@ -377,12 +363,8 @@ run_status() {
     toolchain_state >/dev/null 2>&1
     rc=$?
     set -e
-    if [[ "$rc" == 90 ]]; then
-        p5_warn 'Runtime P5 installé dans ubuntu-devops mais reconnexion SSH requise pour Docker.'
-        return 90
-    fi
     if [[ "$rc" != 0 ]]; then
-        p5_warn 'Runtime P5 non convergé dans ubuntu-devops ; `prepare` pourra corriger uniquement les écarts P5.'
+        p5_warn 'Runtime P5 non convergé dans WSL2 ; `prepare` pourra corriger uniquement les écarts P5.'
         return 1
     fi
     load_nvm_if_present
@@ -655,7 +637,7 @@ GUIDE
             1)
                 cat <<'TXT'
 
-Parcours recommandé dans ubuntu-devops :
+Parcours recommandé dans la distribution Ubuntu sous WSL2 :
   1. bash scripts/commands/p5.sh inspect
   2. bash scripts/commands/p5.sh prepare
   3. bash scripts/commands/p5.sh status
@@ -769,7 +751,7 @@ run_menu() {
  DÉMARRER / REPRENDRE
  ------------------------------------------------------------
   1  Inspecter ma situation actuelle
-  2  Préparer / configurer le lab P5 dans la VM
+  2  Préparer / configurer le lab P5 dans WSL2
   3  Vérifier si je suis prêt à déployer
 
  EXERCICES

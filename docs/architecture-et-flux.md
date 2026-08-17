@@ -13,26 +13,26 @@ lecture rapide ; le présent document conserve les détails techniques qui justi
 
 ## 1. Frontière du projet
 
-La plateforme HOST/KVM/VM est fournie par
-[`mathiasseguincadiche/Ubuntu-desktops-custom`](https://github.com/mathiasseguincadiche/Ubuntu-desktops-custom).
+La plateforme Windows/WSL2 est fournie par
+[`mathiasseguincadiche/Windows_11_Pro_Custom`](https://github.com/mathiasseguincadiche/Windows_11_Pro_Custom).
 
-Le P5 commence dans **`ubuntu-devops`**. Il possède :
+Le P5 commence dans **`Ubuntu` sous WSL2**. Il possède :
 
-- son runtime logiciel dans la VM ;
+- son runtime logiciel dans WSL2 ;
 - son plan de contrôle `p5.sh` ;
 - les modules Terraform des trois exercices ;
 - la configuration Ansible et l'application Angular ;
 - les scripts OpenSearch et HAProxy ;
 - les preuves et livrables du projet.
 
-Le P5 ne gère pas le cycle de vie KVM/libvirt de la VM.
+Le P5 ne gère pas le cycle de vie WSL2 de la distribution WSL2.
 
-Contrat détaillé : [`../environment/vm-devops/README.md`](../environment/vm-devops/README.md).
+Contrat détaillé : [`../environment/wsl2/README.md`](../environment/wsl2/README.md).
 
 ## 2. Plan de contrôle
 
 ```text
-VM ubuntu-devops
+distribution WSL2 Ubuntu
        │
        ▼
 scripts/commands/p5.sh
@@ -96,7 +96,7 @@ AWS Region
 ### Flux SSH
 
 ```text
-VM ubuntu-devops
+distribution WSL2 Ubuntu
    │ TCP/22 depuis l'IPv4 publique /32
    ▼
 EC2 p5-web
@@ -327,8 +327,8 @@ L'exercice 3 doit être détruit avant l'exercice 1 en raison de sa dépendance 
 
 | Composant | Responsabilité |
 | --- | --- |
-| plateforme Ubuntu | HOST, KVM/libvirt, VM `ubuntu-devops` |
-| runtime P5 | outils et configuration nécessaires au projet dans la VM |
+| plateforme Windows | Windows 11 Pro, WSL2 et distribution `Ubuntu` |
+| runtime P5 | outils et configuration nécessaires au projet dans WSL2 |
 | `p5.sh` | orchestration et garde-fous |
 | Terraform | infrastructure AWS et propriété via le state |
 | Ansible | configuration serveur et déploiement Angular/NGINX |

@@ -10,9 +10,9 @@ bash scripts/commands/p5.sh
 
 Sans argument, cette commande ouvre un menu interactif. Toutes les actions importantes sont également disponibles directement en CLI.
 
-Le centre de commande est une **couche d'orchestration** exécutée dans la VM Ubuntu Server 26.04 `ubuntu-devops`. Terraform reste responsable de l'infrastructure AWS, Ansible de la configuration, et les scripts spécialisés de leurs contrôles respectifs.
+Le centre de commande est une **couche d'orchestration** exécutée dans la distribution WSL2 `Ubuntu`, sous Ubuntu 26.04. Terraform reste responsable de l'infrastructure AWS, Ansible de la configuration, et les scripts spécialisés de leurs contrôles respectifs.
 
-Le HOST Ubuntu, KVM/libvirt et le cycle de vie de `ubuntu-devops` restent la responsabilité du dépôt séparé `mathiasseguincadiche/Ubuntu-desktops-custom`.
+Windows 11 Pro, WSL2 et le cycle de vie de la distribution `Ubuntu` restent la responsabilité du dépôt séparé `mathiasseguincadiche/Windows_11_Pro_Custom`.
 
 ## Philosophie
 
@@ -35,13 +35,13 @@ journaliser
 Le moteur distingue autant que possible :
 
 - observation ;
-- convergence du runtime P5 dans la VM ;
+- convergence du runtime P5 dans WSL2 ;
 - déploiement AWS ;
 - test temporairement mutateur ;
 - validation ;
 - destruction AWS.
 
-Il ne possède aucune action de création, arrêt, destruction ou reconfiguration KVM/libvirt de la VM.
+Il ne possède aucune action de création, arrêt, destruction ou reconfiguration de la distribution WSL2.
 
 ## Syntaxe
 
@@ -65,11 +65,11 @@ Il ne doit pas :
 - valider un dashboard OpenSearch à votre place ;
 - inventer une information AWS inconnue ;
 - contourner la confirmation forte de destruction ;
-- contourner le contrat d'exécution dans `ubuntu-devops`.
+- contourner le contrat d'exécution dans `Ubuntu` sous WSL2.
 
 ### `--full-validation`
 
-Ajoute les contrôles d'intégration locale plus lourds, notamment le test OpenSearch local dans le runtime de la VM.
+Ajoute les contrôles d'intégration locale plus lourds, notamment le test OpenSearch local dans le runtime de la distribution WSL2.
 
 ## `menu`
 
@@ -95,7 +95,7 @@ bash scripts/commands/p5.sh inspect
 
 ### But
 
-Observer l'état actuel du P5 dans `ubuntu-devops` sans chercher à « réparer » immédiatement.
+Observer l'état actuel du P5 dans `Ubuntu` sous WSL2 sans chercher à « réparer » immédiatement.
 
 ### Mutation
 
@@ -103,8 +103,8 @@ Non.
 
 ### Quand l'utiliser
 
-- première ouverture du projet dans la VM ;
-- reprise après reboot de la VM ou du HOST ;
+- première ouverture du projet dans WSL2 ;
+- reprise après redémarrage de la distribution WSL2 ou de Windows ;
 - avant un diagnostic ;
 - avant toute correction manuelle ;
 - après un échec inattendu.
@@ -113,7 +113,7 @@ Non.
 
 Un inventaire factuel de ce qui est présent, absent ou non vérifiable.
 
-Si la VM elle-même n'est pas disponible, l'action correcte est de revenir au dépôt `Ubuntu-desktops-custom`, pas de contourner le contrôle P5.
+Si la distribution WSL2 elle-même n'est pas disponible, l'action correcte est de revenir au dépôt `Windows_11_Pro_Custom`, pas de contourner le contrôle P5.
 
 ## `prepare`
 
@@ -123,12 +123,12 @@ bash scripts/commands/p5.sh prepare
 
 ### But
 
-Converger les prérequis nécessaires au lab **dans la VM `ubuntu-devops`**.
+Converger les prérequis nécessaires au lab **dans la distribution WSL2 `Ubuntu`**.
 
 ### Peut agir sur
 
-- dépendances et versions du runtime P5 dans le guest ;
-- Terraform, Ansible, Node.js, AWS CLI, Docker et outils de validation requis ;
+- dépendances et versions du runtime P5 dans la distribution WSL2 ;
+- Ansible, Node.js et outils de validation propres au P5 ;
 - configuration AWS locale ;
 - authentification ;
 - clé SSH du lab ;
@@ -136,11 +136,13 @@ Converger les prérequis nécessaires au lab **dans la VM `ubuntu-devops`**.
 - `terraform.tfvars` locaux ;
 - garde-fous AWS.
 
+Terraform, AWS CLI et Docker sont contrôlés par `prepare`, mais leur installation et leur maintenance restent la responsabilité de `Windows_11_Pro_Custom`.
+
 ### Ne peut pas agir sur
 
-- le HOST Ubuntu ;
-- KVM/libvirt ;
-- le réseau virtuel de `ubuntu-devops` ;
+- le Windows 11 Pro ;
+- WSL2 ;
+- le réseau virtuel de `Ubuntu` sous WSL2 ;
 - son disque, ses vCPU ou sa RAM ;
 - son démarrage, son arrêt ou sa sauvegarde.
 
@@ -150,7 +152,7 @@ Cette commande ne signifie pas « créer les trois exercices AWS ».
 
 ### Mutation
 
-Possible dans le guest et sur les garde-fous AWS, avec confirmation selon la situation.
+Possible dans la distribution WSL2 et sur les garde-fous AWS, avec confirmation selon la situation.
 
 ## `status`
 
@@ -272,7 +274,7 @@ prepare
 
 ### Important
 
-`all` **ne détruit pas AWS** à la fin et ne gère pas le cycle de vie de la VM.
+`all` **ne détruit pas AWS** à la fin et ne gère pas le cycle de vie de la distribution WSL2.
 
 Il est adapté :
 
@@ -297,7 +299,7 @@ Non.
 
 ### Mutation locale
 
-Oui : création de journaux et de preuves de diagnostic dans la VM.
+Oui : création de journaux et de preuves de diagnostic dans WSL2.
 
 ## `finalize`
 
@@ -353,7 +355,7 @@ Verdict final :
 NETTOYAGE AWS COMPLET
 ```
 
-`cleanup` ne détruit, n'arrête ni ne sauvegarde `ubuntu-devops`. Ces opérations restent hors du dépôt P5.
+`cleanup` ne détruit, n'arrête ni ne sauvegarde `Ubuntu` sous WSL2. Ces opérations restent hors du dépôt P5.
 
 ## `logs`
 
@@ -391,7 +393,7 @@ Aide interactive pour choisir le parcours selon la situation :
 - incident ;
 - nettoyage.
 
-Si l'incident concerne HOST/KVM/VM avant même l'accès au runtime P5, le guide de référence reste celui de `Ubuntu-desktops-custom`.
+Si l'incident concerne Windows/WSL2 avant même l'accès au runtime P5, le guide de référence reste celui de `Windows_11_Pro_Custom`.
 
 ## `docs`
 
@@ -421,7 +423,7 @@ Affiche la syntaxe supportée.
 
 | Situation | Première commande | Suite typique |
 | --- | --- | --- |
-| VM/HOST/KVM indisponible | runbook `Ubuntu-desktops-custom` | revenir dans `ubuntu-devops` |
+| Windows/WSL2 indisponible | runbook `Windows_11_Pro_Custom` | revenir dans `Ubuntu` sous WSL2 |
 | je découvre le lab P5 | `inspect` | `prepare` puis `status` |
 | je veux tout réaliser | `status` | `all` |
 | je reprends après interruption | `inspect` | `all` ou exercice ciblé |
@@ -437,7 +439,7 @@ Affiche la syntaxe supportée.
 
 Parce que l'orchestrateur ajoute :
 
-- qualification du runtime P5 dans la VM ;
+- qualification du runtime P5 dans WSL2 ;
 - ordre des dépendances ;
 - lecture de l'état réel ;
 - gestion des codes `terraform plan -detailed-exitcode` ;

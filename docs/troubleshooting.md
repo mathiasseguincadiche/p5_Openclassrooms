@@ -18,7 +18,7 @@ corriger la cause
 relancer la commande convergente
 ```
 
-Commencer **dans `ubuntu-devops`** par :
+Commencer **dans `Ubuntu` sous WSL2** par :
 
 ```bash
 bash scripts/commands/p5.sh inspect
@@ -34,8 +34,8 @@ bash scripts/commands/p5.sh diagnostics
 Avant de diagnostiquer AWS, distinguer la frontière :
 
 ```text
-HOST / KVM / VM absente ou non joignable
-→ Ubuntu-desktops-custom
+Windows / WSL2 absente ou non joignable
+→ Windows_11_Pro_Custom
 
 runtime P5 / AWS / Terraform / Ansible / preuves
 → p5_Openclassrooms
@@ -48,47 +48,48 @@ runtime P5 / AWS / Terraform / Ansible / preuves
 Le bootstrap signale par exemple :
 
 - runtime WSL détecté ;
-- VM KVM/QEMU attendue ;
-- hostname différent de `ubuntu-devops` ;
+- distribution WSL2 `Ubuntu` attendue ;
+- systemd absent de PID 1 ;
 - filesystem du checkout non accepté.
 
 ### Cause
 
-Le P5 est exécuté hors de son architecture de référence. Le runtime attendu est la VM `ubuntu-devops`, Ubuntu Server 26.04, créée et maintenue par `Ubuntu-desktops-custom`.
+Le P5 est exécuté hors de son architecture de référence. Le runtime attendu est la distribution WSL2 `Ubuntu`, Ubuntu 26.04, créée et maintenue par `Windows_11_Pro_Custom`.
 
 ### Correction
 
 Ne pas désactiver le garde-fou dans P5.
 
-1. vérifier/réparer la VM via `Ubuntu-desktops-custom` ;
-2. se connecter à `ubuntu-devops` ;
-3. cloner ou ouvrir le P5 dans le filesystem Linux local du guest ;
+1. vérifier/réparer la distribution via `Windows_11_Pro_Custom` ;
+2. ouvrir `Ubuntu` avec `wsl.exe -d Ubuntu` ;
+3. cloner ou ouvrir le P5 dans le système de fichiers Linux local de la distribution ;
 4. relancer le contrôle.
 
-Dans la VM :
+Dans WSL2 :
 
 ```bash
-hostname -s
 cat /etc/os-release
-systemd-detect-virt
+uname -r
+ps -p 1 -o comm=
+printf '%s\n' "$WSL_DISTRO_NAME"
 findmnt -T ~/labs -n -o FSTYPE
 cd ~/labs/p5_Openclassrooms
-bash scripts/commands/bootstrap-ubuntu-server.sh --check-only
+bash scripts/commands/bootstrap-wsl2.sh --check-only
 ```
 
 ## 2. Docker est installé mais inutilisable sans sudo
 
 ### Symptôme
 
-Le bootstrap retourne le code `90` ou Docker refuse l'accès au daemon.
+Docker refuse l'accès au daemon pour l'utilisateur courant.
 
 ### Cause probable
 
-L'utilisateur vient d'être ajouté au groupe Docker mais la session SSH courante n'a pas encore rechargé ses groupes.
+La session WSL2 courante n'a pas encore rechargé les groupes Unix de l'utilisateur.
 
 ### Correction
 
-Fermer la session SSH puis se reconnecter à `ubuntu-devops`.
+Fermer tous les terminaux WSL2, exécuter `wsl.exe --terminate Ubuntu` dans PowerShell, puis rouvrir la distribution avec `wsl.exe -d Ubuntu`.
 
 Ensuite :
 
@@ -175,7 +176,7 @@ terraform -chdir=terraform/exercice-1 init -input=false
 
 Causes possibles :
 
-- accès réseau depuis la VM ;
+- accès réseau depuis la distribution WSL2 ;
 - provider indisponible temporairement ;
 - lockfile incohérent ;
 - version Terraform non conforme.
@@ -239,7 +240,7 @@ WEB_IP="$(terraform -chdir=terraform/exercice-1 \
 echo "$WEB_IP"
 ```
 
-### Vérifier la clé dans la VM
+### Vérifier la clé dans WSL2
 
 ```bash
 ls -l ~/.ssh/p5-key ~/.ssh/p5-key.pub
@@ -280,7 +281,7 @@ ubuntu
 
 Ne modifier pas `deploy.yml` en premier.
 
-Tester SSH directement depuis `ubuntu-devops`.
+Tester SSH directement depuis `Ubuntu` sous WSL2.
 
 Puis :
 
@@ -544,7 +545,7 @@ Identifier la ressource restante et son exercice propriétaire.
 
 Vérifier le state correspondant avant suppression manuelle.
 
-Le nettoyage P5 ne concerne pas l'arrêt ou la destruction de `ubuntu-devops`.
+Le nettoyage P5 ne concerne pas l'arrêt ou la destruction de `Ubuntu` sous WSL2.
 
 ## 30. State absent mais ressource AWS présente
 
@@ -564,8 +565,8 @@ Ne lancer pas un nouvel `apply` aveuglément.
 Toujours descendre par couche :
 
 ```text
-0. plateforme HOST/KVM/VM si ubuntu-devops n'est pas joignable
-1. runtime P5 dans ubuntu-devops
+0. plateforme Windows/WSL2 si la distribution `Ubuntu` ne démarre pas
+1. runtime P5 dans la distribution WSL2 `Ubuntu`
 2. identité AWS
 3. Terraform/state
 4. réseau AWS
@@ -579,6 +580,6 @@ Toujours descendre par couche :
 12. nettoyage AWS
 ```
 
-Pour la couche 0, utiliser `Ubuntu-desktops-custom`. Pour les couches 1 à 12, rester dans le dépôt P5.
+Pour la couche 0, utiliser `Windows_11_Pro_Custom`. Pour les couches 1 à 12, rester dans le dépôt P5.
 
 Cette méthode évite de corriger une couche applicative lorsqu'en réalité la plateforme, le réseau ou l'identité est en panne.

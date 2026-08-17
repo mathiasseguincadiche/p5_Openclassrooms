@@ -17,9 +17,6 @@ gettext-base
 
 # Administration distante et diagnostic
 openssh-client
-openssh-server
-qemu-guest-agent
-ufw
 dnsutils
 netcat-openbsd
 traceroute

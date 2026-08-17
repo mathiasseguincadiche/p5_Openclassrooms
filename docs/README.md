@@ -2,8 +2,8 @@
 
 Ce dossier est la documentation de référence du projet P5 OpenClassrooms.
 
-Le dépôt met en œuvre trois exercices sur AWS et s'exécute en CLI depuis la VM Ubuntu Server 26.04
-**`ubuntu-devops`**.
+Le dépôt met en œuvre trois exercices sur AWS et s'exécute en CLI depuis la distribution WSL2 Ubuntu 26.04
+**`Ubuntu` sous WSL2**.
 
 ![Architecture de référence du P5](schemas/vue-ensemble.svg)
 
@@ -28,11 +28,11 @@ Le dépôt met en œuvre trois exercices sur AWS et s'exécute en CLI depuis la 
 
 ## 2. Préparer l'environnement
 
-1. [`00-preparation-environnement.md`](00-preparation-environnement.md) — VM, checkout et runtime P5 ;
+1. [`00-preparation-environnement.md`](00-preparation-environnement.md) — WSL2, checkout et runtime P5 ;
 2. [`00b-preparation-compte-aws.md`](00b-preparation-compte-aws.md) — identité, compte, réseau, budget et quotas ;
 3. [`contrat-informations-requises.md`](contrat-informations-requises.md) — données nécessaires au moteur P5.
 
-Contrat VM : [`../environment/vm-devops/README.md`](../environment/vm-devops/README.md).
+Contrat WSL2 : [`../environment/wsl2/README.md`](../environment/wsl2/README.md).
 
 Parcours visuel : [`schemas/etape-0.svg`](schemas/etape-0.svg).
 
@@ -67,7 +67,7 @@ les preuves à montrer et les points techniques à expliquer.
 
 | Étape | Schéma | Idée à retenir |
 | --- | --- | --- |
-| architecture | [`vue-ensemble.svg`](schemas/vue-ensemble.svg) | `ubuntu-devops` pilote trois exercices AWS liés |
+| architecture | [`vue-ensemble.svg`](schemas/vue-ensemble.svg) | `Ubuntu` sous WSL2 pilote trois exercices AWS liés |
 | préparation | [`etape-0.svg`](schemas/etape-0.svg) | `inspect → prepare → status → GO TERRAFORM` |
 | exercice 1 | [`exercice-1.svg`](schemas/exercice-1.svg) | Terraform et Angular convergent dans Ansible sans confondre leurs responsabilités |
 | exercice 2 | [`exercice-2.svg`](schemas/exercice-2.svg) | sample + log réel → OpenSearch → checkpoint humain |
@@ -78,8 +78,8 @@ les preuves à montrer et les points techniques à expliquer.
 
 | Domaine | Source |
 | --- | --- |
-| plateforme HOST/KVM/VM | `mathiasseguincadiche/Ubuntu-desktops-custom` |
-| contrat VM utilisé par P5 | `environment/vm-devops/README.md` |
+| plateforme Windows/WSL2 | `mathiasseguincadiche/Windows_11_Pro_Custom` |
+| contrat WSL2 utilisé par P5 | `environment/wsl2/README.md` |
 | versions du runtime P5 | `environment/versions.env` |
 | orchestration | `scripts/commands/p5.sh` |
 | logs et preuves runtime | `scripts/lib/p5-runtime.sh` |
@@ -100,8 +100,8 @@ les preuves à montrer et les points techniques à expliquer.
 
 - exactement trois exercices ;
 - mode d'implémentation AWS ;
-- exécution P5 dans `ubuntu-devops` ;
-- préparation logicielle P5 dans la VM ;
+- exécution P5 dans `Ubuntu` sous WSL2 ;
+- préparation logicielle P5 dans WSL2 ;
 - distinction entre CI et preuve AWS réelle ;
 - dépendance exercice 1 → exercice 3 ;
 - flux de logs exercice 1 → exercice 2 ;

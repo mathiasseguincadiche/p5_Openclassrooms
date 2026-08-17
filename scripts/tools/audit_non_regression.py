@@ -32,10 +32,13 @@ CAPABILITIES: dict[str, tuple[str, ...]] = {
     ),
     "préparation et garde-fous AWS": (
         "environment/versions.env",
+        "environment/wsl2/README.md",
         "environment/aws-readiness.env.example",
         "aws/README.md",
         "aws/iam/p5-lab-policy.json",
         "aws/budgets/p5-monthly-budget.json.example",
+        "scripts/lib/p5-platform.sh",
+        "scripts/commands/bootstrap-wsl2.sh",
         "scripts/commands/bootstrap-ubuntu-server.sh",
         "scripts/commands/setup.sh",
         "scripts/commands/setup-aws-guardrails.sh",
@@ -80,12 +83,15 @@ CAPABILITIES: dict[str, tuple[str, ...]] = {
     "validation continue": (
         ".github/workflows/ci.yml",
         ".github/workflows/non-regression.yml",
+        ".github/workflows/wsl2-devops-contract.yml",
         "scripts/commands/validate.sh",
         "scripts/tools/audit_non_regression.py",
     ),
 }
 
 SHELL_SCRIPTS = (
+    "scripts/lib/p5-platform.sh",
+    "scripts/commands/bootstrap-wsl2.sh",
     "scripts/commands/bootstrap-ubuntu-server.sh",
     "scripts/commands/setup.sh",
     "scripts/commands/setup-aws-guardrails.sh",

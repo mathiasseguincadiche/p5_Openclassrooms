@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Observe l'état actuel du P5 dans la VM Ubuntu DevOps sans modifier la VM ni AWS.
+# Observe l'état actuel du P5 dans WSL2 sans modifier la plateforme ni AWS.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -22,19 +22,18 @@ unknown() {
 }
 
 cd "$PROJECT_ROOT"
-printf 'P5 — ÉTAT ACTUEL OBSERVÉ DANS LA VM (aucune mutation)\n'
+printf 'P5 — ÉTAT ACTUEL OBSERVÉ DANS WSL2 (aucune mutation)\n'
 printf '%s\n' '============================================================'
-printf '  plateforme attendue : %s\n' "${P5_PLATFORM_REPOSITORY:-mathiasseguincadiche/Ubuntu-desktops-custom}"
-printf '  VM attendue         : %s\n' "${P5_EXPECTED_VM_NAME:-ubuntu-devops}"
+printf '  plateforme attendue : %s\n' "${P5_PLATFORM_REPOSITORY:-mathiasseguincadiche/Windows_11_Pro_Custom}"
+printf '  distribution WSL    : %s\n' "${P5_EXPECTED_WSL_DISTRO:-Ubuntu}"
 
-printf '\nRuntime P5 dans la VM\n'
+printf '\nRuntime P5 dans WSL2\n'
 set +e
-bash "$SCRIPT_DIR/bootstrap-ubuntu-server.sh" --check-only
-VM_RC=$?
+bash "$SCRIPT_DIR/bootstrap-wsl2.sh" --check-only
+RUNTIME_RC=$?
 set -e
-case "$VM_RC" in
-    0) printf '  OK  runtime P5 convergé et utilisable dans ce shell de la VM.\n' ;;
-    90) printf '  --  outils convergés ; reconnexion SSH requise pour Docker.\n' ;;
+case "$RUNTIME_RC" in
+    0) printf '  OK  runtime P5 convergé et utilisable dans ce shell WSL.\n' ;;
     *) printf '  --  runtime P5 non convergé ; prepare corrigera uniquement les dépendances P5.\n' ;;
 esac
 
@@ -59,7 +58,7 @@ if [[ -r "$CONFIG_FILE" ]]; then
     PRIVATE_KEY="${PRIVATE_KEY/#\~/$HOME}"
     if [[ -f "$PRIVATE_KEY" && -f "$PUBLIC_KEY" ]]; then
         SSH_PAIR_READY=1
-        printf '  OK  paire de clés SSH locale présente dans la VM.\n'
+        printf '  OK  paire de clés SSH locale présente dans le filesystem WSL.\n'
     else
         unknown 'paire SSH locale' \
             "clé privée/publique incomplète autour de $PRIVATE_KEY" \
@@ -119,8 +118,8 @@ if command -v terraform >/dev/null 2>&1; then
     printf '  INFO Le prochain `terraform plan` rafraîchira les objets AWS réels et calculera le delta.\n'
 else
     unknown 'état Terraform' \
-        'Terraform est absent du runtime P5 dans la VM' \
-        'bash scripts/commands/p5.sh prepare installera/corrigera Terraform si nécessaire.'
+        'Terraform est absent de la plateforme WSL2' \
+        'Validez Windows_11_Pro_Custom puis relancez bash scripts/commands/p5.sh inspect.'
 fi
 
 printf '\nAnsible / artefact\n'
@@ -153,9 +152,9 @@ RUNTIME_PROOFS=0
 if [[ -d "$PROJECT_ROOT/proofs/runtime" ]]; then
     RUNTIME_PROOFS="$(find "$PROJECT_ROOT/proofs/runtime" -type f 2>/dev/null | wc -l)"
 fi
-if ((VM_RC == 0 && TFVARS_RC == 0 && AWS_RC == 0 && SSH_PAIR_READY == 1)); then
+if ((RUNTIME_RC == 0 && TFVARS_RC == 0 && AWS_RC == 0 && SSH_PAIR_READY == 1)); then
     CLASSIFICATION='READY_CANDIDATE'
-elif ((VM_RC != 0 && STATE_FILES == 0 && RUNTIME_PROOFS == 0)) && [[ ! -r "$CONFIG_FILE" ]]; then
+elif ((RUNTIME_RC != 0 && STATE_FILES == 0 && RUNTIME_PROOFS == 0)) && [[ ! -r "$CONFIG_FILE" ]]; then
     CLASSIFICATION='FIRST_RUN'
 else
     CLASSIFICATION='PARTIAL'
@@ -175,4 +174,4 @@ case "$CLASSIFICATION" in
         printf '  Prochaine action : bash scripts/commands/p5.sh status pour revalider sans mutation.\n'
         ;;
 esac
-printf '\nVerdict : ÉTAT P5 OBSERVÉ DANS LA VM — aucune mutation, aucune valeur inventée.\n'
+printf '\nVerdict : ÉTAT P5 OBSERVÉ DANS WSL2 — aucune mutation, aucune valeur inventée.\n'

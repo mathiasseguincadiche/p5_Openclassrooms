@@ -6,6 +6,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
 CONFIG_FILE="$PROJECT_ROOT/environment/aws-readiness.env"
 VERSIONS_FILE="$PROJECT_ROOT/environment/versions.env"
+PLATFORM_LIB="$PROJECT_ROOT/scripts/lib/p5-platform.sh"
 STAGE="initial"
 ERRORS=0
 WARNINGS=0
@@ -69,6 +70,8 @@ fi
 # shellcheck source=/dev/null
 source "$VERSIONS_FILE"
 # shellcheck source=/dev/null
+source "$PLATFORM_LIB"
+# shellcheck source=/dev/null
 source "$CONFIG_FILE"
 
 printf 'Contrôle pré-déploiement P5 — %s\n\n' "$STAGE"
@@ -78,12 +81,17 @@ if [[ -r /etc/os-release ]]; then
     # shellcheck source=/dev/null
     source /etc/os-release
     if [[ "${ID:-}" == "ubuntu" && "${VERSION_ID:-}" == "$P5_UBUNTU_VERSION_ID" ]]; then
-        ok "Ubuntu Server $P5_UBUNTU_VERSION_ID"
+        ok "Ubuntu WSL2 $P5_UBUNTU_VERSION_ID"
     else
-        ko "Ubuntu Server $P5_UBUNTU_VERSION_ID attendu ; ${PRETTY_NAME:-inconnu} détecté"
+        ko "Ubuntu WSL2 $P5_UBUNTU_VERSION_ID attendu ; ${PRETTY_NAME:-inconnu} détecté"
     fi
 else
     ko "/etc/os-release absent"
+fi
+if p5_platform_validate "$PROJECT_ROOT"; then
+    ok "plateforme WSL2 et filesystem Linux conformes"
+else
+    ko "plateforme WSL2 non conforme"
 fi
 
 for command in git python3 terraform ansible-playbook aws curl jq ssh docker node npm shellcheck yamllint; do
@@ -113,8 +121,12 @@ fi
 if command -v docker >/dev/null 2>&1; then
     docker info >/dev/null 2>&1 \
         && ok "moteur Docker accessible" \
-        || ko "Docker inaccessible ; reconnectez-vous après ajout au groupe docker"
+        || ko "Docker inaccessible ; terminez puis rouvrez la distribution après ajout au groupe docker"
 fi
+MAP_COUNT="$(sysctl -n vm.max_map_count 2>/dev/null || printf 0)"
+[[ "$MAP_COUNT" -ge "$P5_OPENSEARCH_MAX_MAP_COUNT" ]] \
+    && ok "vm.max_map_count=$MAP_COUNT" \
+    || ko "vm.max_map_count >= $P5_OPENSEARCH_MAX_MAP_COUNT requis"
 
 printf '\nClé SSH du lab\n'
 KEY_PATH="${P5_SSH_KEY_PATH:-}"

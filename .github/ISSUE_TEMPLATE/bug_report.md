@@ -11,7 +11,7 @@ assignees: ''
 
 **Décrivez clairement le bug que vous avez rencontré.**
 
-- **Où le bug se produit-il ?** (ex. : préparation dans `ubuntu-devops`, exercice 1, module Terraform, playbook Ansible, documentation)
+- **Où le bug se produit-il ?** (ex. : préparation dans `Ubuntu` sous WSL2, exercice 1, module Terraform, playbook Ansible, documentation)
 - **Quelle est l'erreur exacte ?** (copiez-collez le message d'erreur après avoir retiré les secrets)
 - **Quelles étapes reproduisent le bug ?**
 
@@ -19,7 +19,7 @@ assignees: ''
 
 ## 🔍 Étapes pour reproduire
 
-1. Dans la VM `ubuntu-devops`, allez dans...
+1. Dans la distribution WSL2 `Ubuntu`, allez dans...
 2. Exécutez la commande...
 3. Observez que...
 
@@ -28,13 +28,13 @@ assignees: ''
 ## 📋 Informations complémentaires
 
 - **Version de l'outil concerné** (ex. : Terraform, Ansible, AWS CLI, Node.js, Docker, HAProxy) :
-- **Runtime P5** : Ubuntu Server 26.04 dans `ubuntu-devops`
-- **Résultat de `hostname -s`** :
-- **Résultat de `systemd-detect-virt`** :
+- **Runtime P5** : Ubuntu 26.04 dans la distribution WSL2 `Ubuntu`
+- **Résultat de `printf '%s\\n' "$WSL_DISTRO_NAME"`** :
+- **Résultat de `uname -r` et `ps -p 1 -o comm=`** :
 - **Fichier concerné** (si applicable) :
 - **Lien vers le fichier** (si applicable) :
 
-Si le problème concerne le HOST Ubuntu, KVM/libvirt, le réseau virtuel ou le cycle de vie de `ubuntu-devops`, il relève du dépôt `mathiasseguincadiche/Ubuntu-desktops-custom` et non du P5.
+Si le problème concerne le Windows 11 Pro, WSL2, le réseau virtuel ou le cycle de vie de `Ubuntu` sous WSL2, il relève du dépôt `mathiasseguincadiche/Windows_11_Pro_Custom` et non du P5.
 
 ---
 

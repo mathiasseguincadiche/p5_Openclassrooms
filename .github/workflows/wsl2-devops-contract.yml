@@ -1,0 +1,195 @@
+name: WSL2 DevOps integration contract
+
+on:
+  push:
+    paths:
+      - '.github/workflows/wsl2-devops-contract.yml'
+      - 'README.md'
+      - 'environment/**'
+      - 'docs/**'
+      - 'scripts/commands/bootstrap-wsl2.sh'
+      - 'scripts/commands/bootstrap-ubuntu-server.sh'
+      - 'scripts/commands/inspect-state.sh'
+      - 'scripts/commands/setup.sh'
+      - 'scripts/lib/p5-platform.sh'
+      - 'scripts/tests/test-wsl2-platform.sh'
+  pull_request:
+    paths:
+      - '.github/workflows/wsl2-devops-contract.yml'
+      - 'README.md'
+      - 'environment/**'
+      - 'docs/**'
+      - 'scripts/commands/bootstrap-wsl2.sh'
+      - 'scripts/commands/bootstrap-ubuntu-server.sh'
+      - 'scripts/commands/inspect-state.sh'
+      - 'scripts/commands/setup.sh'
+      - 'scripts/lib/p5-platform.sh'
+      - 'scripts/tests/test-wsl2-platform.sh'
+
+permissions:
+  contents: read
+
+jobs:
+  boundary:
+    name: P5 / Windows 11 WSL2 ownership boundary
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout P5
+        uses: actions/checkout@v7
+
+      - name: Validate WSL2 ownership contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          canonical_docs=(
+            README.md
+            environment/README.md
+            environment/wsl2/README.md
+            docs/README.md
+            docs/00-preparation-environnement.md
+            docs/01-parcours-debutant.md
+            docs/RUNBOOK_EXECUTION_GUIDEE.md
+            docs/architecture-et-flux.md
+            docs/convergence-et-reexecution.md
+            docs/troubleshooting.md
+          )
+          for path in "${canonical_docs[@]}"; do test -s "$path"; done
+
+          grep -Fq 'mathiasseguincadiche/Windows_11_Pro_Custom' README.md
+          grep -Fq 'mathiasseguincadiche/Windows_11_Pro_Custom' environment/wsl2/README.md
+          grep -Fq 'P5_EXPECTED_WSL_DISTRO=Ubuntu' environment/versions.env
+          grep -Fq 'P5_EXECUTION_MODEL=windows11-wsl2-ubuntu-26.04' environment/versions.env
+          grep -Fq "P5_ALLOWED_WORK_ROOTS='projects labs repositories'" environment/versions.env
+          grep -Fq "P5_FORBIDDEN_MOUNT_PREFIXES='/mnt/c /mnt/d'" environment/versions.env
+          test ! -e environment/vm-devops
+
+          if grep -RnE 'Ubuntu-desktops-custom|ubuntu-devops|KVM/libvirt|VM KVM' \
+            "${canonical_docs[@]}" scripts/commands scripts/lib; then
+            echo 'KO ancien contrat VM/KVM détecté dans le runtime canonique.' >&2
+            exit 1
+          fi
+          if grep -RniE '(^|[[:space:]`])/(mnt/c|mnt/d)(/|[[:space:]`]|$)' \
+            scripts/commands scripts/lib | grep -v 'p5-platform.sh'; then
+            echo 'KO chemin de travail Windows détecté dans les scripts P5.' >&2
+            exit 1
+          fi
+
+      - name: Validate WSL2 detector and bootstrap
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/lib/p5-platform.sh
+          bash -n scripts/commands/bootstrap-wsl2.sh
+          bash -n scripts/commands/bootstrap-ubuntu-server.sh
+          bash scripts/tests/test-wsl2-platform.sh
+          grep -Fq 'microsoft-standard-WSL2' scripts/tests/test-wsl2-platform.sh
+          grep -Fq 'vm.max_map_count' scripts/commands/bootstrap-wsl2.sh
+          grep -Fq 'Windows_11_Pro_Custom possède WSL2, Docker, Terraform et AWS CLI' \
+            scripts/commands/bootstrap-wsl2.sh
+
+  upstream-platform:
+    name: Windows_11_Pro_Custom / Ubuntu WSL2 contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout P5
+        uses: actions/checkout@v7
+
+      - name: Checkout Windows platform repository read-only
+        uses: actions/checkout@v7
+        with:
+          repository: mathiasseguincadiche/Windows_11_Pro_Custom
+          path: upstream-platform
+
+      - name: Validate upstream WSL identity and tool compatibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          contract='upstream-platform/config/wsl/runtime-contract.json'
+          jq -e '
+            (.distribution == "Ubuntu") and
+            (.sourceDistribution == "Ubuntu-26.04") and
+            (.expectedVersionId == "26.04") and
+            (.expectedCodename == "resolute") and
+            (.installLocation == "D:\\WSL\\Ubuntu-DevOps") and
+            (.workingRoots == ["~/projects", "~/labs", "~/repositories"]) and
+            (.forbiddenRoots == ["/mnt/c", "/mnt/d"])
+          ' "$contract" >/dev/null
+          grep -Fq 'systemd=true' upstream-platform/config/wsl/wsl.conf
+          grep -Fq 'networkingMode=mirrored' upstream-platform/config/wsl/standard.wslconfig
+
+          # shellcheck source=/dev/null
+          source environment/versions.env
+          p5_terraform_version="$TERRAFORM_VERSION"
+          p5_aws_cli_min_version="$AWS_CLI_MIN_VERSION"
+          # shellcheck source=/dev/null
+          source upstream-platform/config/devops/tool-versions.env
+          test "$TERRAFORM_VERSION" = "$p5_terraform_version"
+          test "$(printf '%s\n%s\n' "$p5_aws_cli_min_version" "$AWS_CLI_VERSION" \
+            | sort -V | head -n 1)" = "$p5_aws_cli_min_version"
+
+  ubuntu-2604-runtime:
+    name: Ubuntu 26.04 / P5 dependencies
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:26.04
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Validate Resolute packages and Docker repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          # shellcheck source=/dev/null
+          source environment/versions.env
+          # shellcheck source=/dev/null
+          source /etc/os-release
+          test "$ID" = ubuntu
+          test "$VERSION_ID" = "$P5_UBUNTU_VERSION_ID"
+          test "$VERSION_CODENAME" = "$P5_UBUNTU_CODENAME"
+
+          apt-get update
+          xargs -r apt-get install -y --no-install-recommends < <(grep -vE '^($|#)' environment/apt-packages.txt)
+          test ! -e /usr/sbin/qemu-ga
+
+          install -m 0755 -d /etc/apt/keyrings
+          curl --retry 5 --retry-all-errors -fsSL https://download.docker.com/linux/ubuntu/gpg \
+            -o /etc/apt/keyrings/docker.asc
+          chmod a+r /etc/apt/keyrings/docker.asc
+          cat >/etc/apt/sources.list.d/docker.sources <<EOF
+          Types: deb
+          URIs: https://download.docker.com/linux/ubuntu
+          Suites: ${P5_UBUNTU_CODENAME}
+          Components: stable
+          Architectures: amd64
+          Signed-By: /etc/apt/keyrings/docker.asc
+          EOF
+          apt-get update
+          apt-cache policy docker-ce-cli | grep -F 'Candidate:' | grep -v '(none)'
+          apt-get install -y --no-install-recommends docker-ce-cli docker-buildx-plugin docker-compose-plugin
+          docker --version
+          docker buildx version
+          docker compose version
+
+      - name: Validate pinned P5 portable tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          # shellcheck source=/dev/null
+          source environment/versions.env
+          tmpdir="$(mktemp -d)"
+          trap 'rm -rf "$tmpdir"' EXIT
+
+          archive="terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
+          base="https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}"
+          curl --retry 5 --retry-all-errors -fsSL "$base/$archive" -o "$tmpdir/$archive"
+          curl --retry 5 --retry-all-errors -fsSL "$base/terraform_${TERRAFORM_VERSION}_SHA256SUMS" -o "$tmpdir/SHA256SUMS"
+          (cd "$tmpdir"; grep " ${archive}$" SHA256SUMS | sha256sum -c -; unzip -qo "$archive")
+          "$tmpdir/terraform" version -json | jq -e --arg expected "$TERRAFORM_VERSION" '.terraform_version == $expected' >/dev/null
+
+          curl --retry 5 --retry-all-errors -fsSL https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o "$tmpdir/aws.zip"
+          unzip -q "$tmpdir/aws.zip" -d "$tmpdir/aws-cli"
+          "$tmpdir/aws-cli/aws/install" --install-dir "$tmpdir/aws-install" --bin-dir "$tmpdir/aws-bin"
+          "$tmpdir/aws-bin/aws" --version

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Collecte un diagnostic horodaté et partageable de la VM Ubuntu du projet P5.
+# Collecte un diagnostic horodaté et partageable du runtime WSL2 du projet P5.
 set -uo pipefail
 
 umask 077
@@ -158,6 +158,10 @@ collect_system_snapshot() {
     printf 'Mode           : %s\n' "$MODE"
     printf 'Utilisateur    : %s\n' "$(id -un)"
     printf 'Noyau          : %s\n' "$(uname -srmo)"
+    printf 'WSL distro     : %s\n' "${WSL_DISTRO_NAME:-inconnue}"
+    printf 'PID 1          : %s\n' "$(ps -p 1 -o comm= 2>/dev/null | xargs)"
+    printf 'Filesystem     : %s\n' "$(findmnt -T "$PROJECT_ROOT" -n -o FSTYPE 2>/dev/null || printf inconnu)"
+    printf 'max_map_count  : %s\n' "$(sysctl -n vm.max_map_count 2>/dev/null || printf inconnu)"
 
     if [[ -r /etc/os-release ]]; then
         # shellcheck source=/dev/null
@@ -259,11 +263,11 @@ TXT
     chmod 600 "$ARCHIVE"
 }
 
-append_summary "P5 - DIAGNOSTIC VM"
+append_summary "P5 - DIAGNOSTIC WSL2"
 append_summary "UTC | $(date -u --iso-8601=seconds)"
 append_summary "MODE | $MODE"
 
-run_logged required "État de la VM et versions" collect_system_snapshot
+run_logged required "État WSL2 et versions" collect_system_snapshot
 run_logged required "Contrôle du socle et du dépôt" "$SCRIPT_DIR/setup.sh" --check-only
 
 CONFIG_FILE="$PROJECT_ROOT/environment/aws-readiness.env"
@@ -293,11 +297,11 @@ sanitize_log
     if [[ "$KO_COUNT" -gt 0 ]]; then
         printf 'Verdict : CORRECTIONS NÉCESSAIRES\n'
     elif [[ "$AWS_READY" -eq 1 ]]; then
-        printf 'Verdict : VM VALIDÉE ET PRÉCONTRÔLE AWS RÉUSSI\n'
+        printf 'Verdict : WSL2 VALIDÉ ET PRÉCONTRÔLE AWS RÉUSSI\n'
     elif [[ "$WARNING_COUNT" -gt 0 ]]; then
         printf 'Verdict : DIAGNOSTIC EXPLOITABLE AVEC AVERTISSEMENTS\n'
     else
-        printf 'Verdict : VM VALIDÉE\n'
+        printf 'Verdict : WSL2 VALIDÉ\n'
     fi
 } | tee -a "$SUMMARY_LOG" "$FULL_LOG"
 

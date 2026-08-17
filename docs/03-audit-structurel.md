@@ -35,16 +35,16 @@ Les variantes locales proposées par OpenClassrooms sont expliquées comme conte
 La documentation doit conserver cette séparation :
 
 ```text
-Ubuntu-desktops-custom
-= HOST Ubuntu + KVM/libvirt + VM ubuntu-devops
+Windows_11_Pro_Custom
+= Windows 11 Pro + WSL2 + distribution WSL2 Ubuntu
 
 p5_Openclassrooms
-= runtime P5 dans ubuntu-devops + exercices AWS + preuves
+= runtime P5 dans la distribution WSL2 Ubuntu + exercices AWS + preuves
 ```
 
-Le dépôt P5 ne doit pas réimplémenter le provisioning, le réseau, le stockage, le démarrage, l'arrêt ou la sauvegarde de la VM.
+Le dépôt P5 ne doit pas réimplémenter le provisioning, le réseau, le stockage, le démarrage, l'arrêt ou la sauvegarde de la distribution WSL2.
 
-En revanche, la **préparation d'environnement du P5 reste dans ce dépôt** : elle peut installer ou réaligner les dépendances strictement nécessaires au projet dans le guest Ubuntu Server 26.04.
+En revanche, la **préparation d'environnement du P5 reste dans ce dépôt** : elle peut installer ou réaligner les dépendances strictement propres au projet dans Ubuntu 26.04 sous WSL2.
 
 ## 4. Structure technique
 
@@ -60,7 +60,7 @@ ansible/
 environment/
   ├── versions.env
   ├── aws-readiness.env.example
-  └── vm-devops/README.md
+  └── wsl2/README.md
 
 terraform/
   ├── exercice-1
@@ -83,8 +83,8 @@ Cette séparation doit rester compréhensible sans avoir besoin de connaître l'
 
 | Élément | Responsabilité |
 | --- | --- |
-| `Ubuntu-desktops-custom` | HOST, KVM/libvirt et cycle de vie de `ubuntu-devops` |
-| bootstrap P5 | dépendances P5 dans la VM uniquement |
+| `Windows_11_Pro_Custom` | Windows 11 Pro, WSL2 et cycle de vie de `Ubuntu` |
+| bootstrap P5 | dépendances P5 dans WSL2 uniquement |
 | Terraform ex. 1 | réseau et EC2 Angular |
 | Ansible | NGINX + Angular sur l'EC2 |
 | Terraform ex. 2 | Amazon OpenSearch |
@@ -93,7 +93,7 @@ Cette séparation doit rester compréhensible sans avoir besoin de connaître l'
 | scripts de tests HAProxy | round-robin et failover |
 | `p5.sh` | orchestration et convergence du P5 |
 | runtime | logs, preuves, confirmations et validation d'outputs |
-| CI | qualité du dépôt et contrat d'intégration de la VM |
+| CI | qualité du dépôt et contrat d'intégration de la distribution WSL2 |
 
 ## 6. Dépendances autorisées
 
@@ -110,7 +110,7 @@ La seconde impose l'ordre de destruction :
 3 → 2 → 1
 ```
 
-La dépendance vers `Ubuntu-desktops-custom` est uniquement une **dépendance de plateforme** : le P5 vérifie le contrat amont mais ne copie pas son implémentation.
+La dépendance vers `Windows_11_Pro_Custom` est uniquement une **dépendance de plateforme** : le P5 vérifie le contrat amont mais ne copie pas son implémentation.
 
 ## 7. Documentation officielle
 
@@ -154,7 +154,7 @@ Ils doivent rester :
 - sans dépendance externe ;
 - sans Mermaid.
 
-Les schémas d'environnement doivent représenter `ubuntu-devops` comme runtime P5 sans transformer KVM/libvirt en composant du projet évalué.
+Les schémas d'environnement doivent représenter `Ubuntu` sous WSL2 comme runtime P5 sans transformer WSL2 en composant du projet évalué.
 
 ## 9. Données runtime hors Git
 
@@ -195,8 +195,8 @@ L'audit doit continuer à protéger :
 - OpenSearch chiffré et HTTPS ;
 - secrets hors Git ;
 - confirmation forte de destruction ;
-- refus d'exécuter le runtime P5 hors de la VM attendue ;
-- absence de logique KVM/libvirt dans les scripts P5.
+- refus d'exécuter le runtime P5 hors de la distribution WSL2 attendue ;
+- absence de logique WSL2 dans les scripts P5.
 
 ## 12. Architecture de preuve
 
@@ -221,7 +221,7 @@ Une évolution est structurellement acceptable si elle :
 1. rend le parcours plus clair ou plus sûr ;
 2. conserve les trois capacités pédagogiques ;
 3. ne duplique pas une responsabilité existante ;
-4. respecte la frontière `Ubuntu-desktops-custom` / P5 ;
+4. respecte la frontière `Windows_11_Pro_Custom` / P5 ;
 5. ne casse pas les dépendances AWS ;
 6. ne réduit pas la capacité de produire les preuves ;
 7. passe l'audit de non-régression.
