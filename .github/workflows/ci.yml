@@ -68,6 +68,7 @@ jobs:
             scripts/tools/convert-nginx-logs.py
             scripts/tools/generer-haproxy-config.sh
             scripts/commands/p5.sh
+            scripts/commands/snapshot-terraform-state.sh
             scripts/commands/bootstrap-wsl2.sh
             scripts/commands/configure-lab.sh
             scripts/commands/generate-ansible-inventory.sh
@@ -109,6 +110,7 @@ jobs:
         run: |
           set -euo pipefail
           scripts=(
+            scripts/commands/snapshot-terraform-state.sh
             scripts/commands/bootstrap-wsl2.sh
             scripts/commands/bootstrap-ubuntu-server.sh
             scripts/commands/setup.sh
@@ -187,6 +189,10 @@ jobs:
       - name: Tester le contrat de l'orchestrateur P5
         shell: bash
         run: bash scripts/tests/test-p5-orchestrator.sh
+
+      - name: Tester la sauvegarde locale des states Terraform
+        shell: bash
+        run: bash scripts/tests/test-terraform-state-snapshot.sh
 
       - name: Valider JSON et livrables
         shell: bash

@@ -208,6 +208,7 @@ Le projet applique notamment :
 - HTTPS et chiffrement OpenSearch ;
 - un budget AWS contrôlé avant déploiement ;
 - l'exclusion Git des states, vrais `tfvars`, clés, inventaires et preuves runtime ;
+- une sauvegarde locale confidentielle du state avant chaque `apply` et `destroy` ;
 - des confirmations humaines avant les mutations sensibles.
 
 Une CI verte ne signifie ni coût nul ni déploiement AWS effectif.

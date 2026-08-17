@@ -217,9 +217,19 @@ terraform_apply_exercise() {
         return 130
     fi
 
+    p5_run_step "tf-ex${exercise}-state-backup-before" \
+        "Terraform exercice $exercise — sauvegarder le state avant mutation" \
+        bash "$SCRIPT_DIR/snapshot-terraform-state.sh" \
+        --exercise "$exercise" --label before-apply
+
     p5_run_step "tf-ex${exercise}-apply" "Terraform exercice $exercise — appliquer le delta sauvegardé" \
         terraform -chdir="$module_dir" apply -input=false -auto-approve tfplan
     rm -f "$plan_file"
+
+    p5_run_step "tf-ex${exercise}-state-backup-after" \
+        "Terraform exercice $exercise — sauvegarder le state convergé" \
+        bash "$SCRIPT_DIR/snapshot-terraform-state.sh" \
+        --exercise "$exercise" --label after-apply
 
     p5_run_step "tf-ex${exercise}-post-plan" \
         "Terraform exercice $exercise — prouver l’absence de delta après apply" \
