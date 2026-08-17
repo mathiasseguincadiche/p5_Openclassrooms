@@ -104,6 +104,24 @@ ressources AWS existantes + state valide
 → calculer le delta
 ```
 
+### Sauvegardes locales automatiques
+
+Avant chaque `apply` et avant un `destroy`, le plan de contrôle copie le state
+courant sous :
+
+```text
+.p5/terraform-state-backups/<run-id>/
+```
+
+Chaque copie est créée avec des permissions `0600`, accompagnée d'une empreinte
+SHA-256 et exclue de Git. Le contenu d'un state peut être sensible : il ne doit
+pas être publié dans une issue, une pull request ou un livrable.
+
+Ces copies protègent contre une mauvaise manipulation dans le dépôt. Elles ne
+remplacent pas la sauvegarde du VHDX WSL2 gérée par `Windows_11_Pro_Custom` et
+ne survivront pas à la perte complète de la distribution si son stockage n'est
+pas sauvegardé.
+
 ## 3. Reprise après fermeture du terminal
 
 Se reconnecter à `Ubuntu` sous WSL2 selon le runbook de la plateforme, puis dans WSL2 :

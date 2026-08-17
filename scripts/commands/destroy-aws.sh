@@ -52,6 +52,9 @@ for second in 3 2 1; do
     sleep 1
 done
 
+printf '\nSauvegarde locale confidentielle des states avant destruction.\n'
+bash "$SCRIPT_DIR/snapshot-terraform-state.sh" --label before-destroy
+
 for exercise in 3 2 1; do
     module="terraform/exercice-${exercise}"
     if [[ ! -f "$module/terraform.tfstate" ]]; then

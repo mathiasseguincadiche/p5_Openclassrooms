@@ -13,3 +13,24 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
+
+  - package-ecosystem: terraform
+    directory: /terraform/exercice-1
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: terraform
+    directory: /terraform/exercice-2
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: terraform
+    directory: /terraform/exercice-3
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
