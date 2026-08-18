@@ -7,9 +7,19 @@ on:
     paths:
       - '.github/workflows/tmp-sync-angular-artifact.yml'
       - 'application/angular/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/tmp-sync-angular-artifact.yml'
+      - 'application/angular/**'
+      - 'scripts/lib/p5-runtime.sh'
 
 permissions:
   contents: write
+
+concurrency:
+  group: temp-angular-sync-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   sync:
