@@ -26,21 +26,29 @@ export P5_TERRAFORM_STATE_BACKUP_DIR="$TMP_DIR/backups"
 export P5_RUN_ID='state-snapshot-test'
 
 bash "$PROJECT_ROOT/scripts/commands/snapshot-terraform-state.sh" \
-    --exercise 1 --label before-apply > "$TMP_DIR/snapshot.log"
+    --exercise 1 --label before-apply > "$TMP_DIR/snapshot-1.log"
+bash "$PROJECT_ROOT/scripts/commands/snapshot-terraform-state.sh" \
+    --exercise 1 --label before-apply > "$TMP_DIR/snapshot-2.log"
 
 backup_dir="$TMP_DIR/backups/$P5_RUN_ID"
-backup_file="$backup_dir/exercice-1-before-apply.tfstate"
 manifest="$backup_dir/manifest.tsv"
-test -s "$backup_file"
+mapfile -t backup_files < <(
+    find "$backup_dir" -maxdepth 1 -type f \
+        -name 'exercice-1-before-apply-*.tfstate' | sort
+)
+[[ "${#backup_files[@]}" -eq 2 ]]
+[[ "${backup_files[0]}" != "${backup_files[1]}" ]]
 test -s "$manifest"
 [[ "$(stat -c '%a' "$backup_dir")" == 700 ]]
-[[ "$(stat -c '%a' "$backup_file")" == 600 ]]
 [[ "$(stat -c '%a' "$manifest")" == 600 ]]
+for backup_file in "${backup_files[@]}"; do
+    [[ "$(stat -c '%a' "$backup_file")" == 600 ]]
+    grep -Fq "$(sha256sum "$backup_file" | awk '{print $1}')" "$manifest"
+done
 grep -Fq $'utc\texercise\tlabel\tsha256\tstate_file' "$manifest"
-grep -Fq $'\t1\tbefore-apply\t' "$manifest"
-grep -Fq "$(sha256sum "$backup_file" | awk '{print $1}')" "$manifest"
+[[ "$(grep -Fc $'\t1\tbefore-apply\t' "$manifest")" -eq 2 ]]
 grep -Fq 'Attention : ces fichiers peuvent contenir des données sensibles.' \
-    "$TMP_DIR/snapshot.log"
+    "$TMP_DIR/snapshot-1.log"
 
 bash "$PROJECT_ROOT/scripts/commands/snapshot-terraform-state.sh" \
     --exercise 2 --label before-apply > "$TMP_DIR/no-state.log"
