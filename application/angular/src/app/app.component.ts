@@ -24,8 +24,8 @@ export class AppComponent {
   protected readonly stages: readonly ProjectStage[] = [
     {
       step: '0A',
-      title: 'VM de lab',
-      detail: 'Ubuntu Server 26.04 et socle DevOps en ligne de commande.',
+      title: 'Runtime WSL2',
+      detail: 'Ubuntu 26.04 sous WSL2, systemd actif et workspace sur filesystem Linux local.',
       status: 'Prêt',
     },
     {
