@@ -19,6 +19,8 @@ Options:
 
 Sans --exercise, les trois states présents sont sauvegardés. Les copies restent
 locales sous .p5/, avec des permissions 0600, et ne sont jamais versionnées.
+Chaque capture reçoit un identifiant temporel unique afin qu'une réexécution dans
+le même run ne puisse jamais écraser une sauvegarde précédente.
 HELP
 }
 
@@ -86,7 +88,8 @@ for exercise in "${exercises[@]}"; do
         continue
     fi
 
-    backup_file="$destination/exercice-${exercise}-${LABEL}.tfstate"
+    capture_id="$(date -u +%Y%m%dT%H%M%S%N)-$$-$RANDOM"
+    backup_file="$destination/exercice-${exercise}-${LABEL}-${capture_id}.tfstate"
     temporary_file="$(mktemp "$destination/.exercice-${exercise}-${LABEL}.XXXXXX")"
     if ! terraform -chdir="$module_dir" state pull > "$temporary_file"; then
         rm -f "$temporary_file"
@@ -100,7 +103,7 @@ for exercise in "${exercises[@]}"; do
     fi
 
     chmod 600 "$temporary_file"
-    mv -f -- "$temporary_file" "$backup_file"
+    mv -- "$temporary_file" "$backup_file"
     sha="$(sha256sum "$backup_file" | awk '{print $1}')"
     printf '%s\t%s\t%s\t%s\t%s\n' \
         "$(date -u --iso-8601=seconds)" "$exercise" "$LABEL" "$sha" \
