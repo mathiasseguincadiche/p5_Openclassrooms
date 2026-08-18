@@ -1,20 +1,25 @@
-name: TEMP - Générer la configuration qualité Angular
+name: TEMP - Intégrer la qualité Angular générée
 
 on:
   pull_request:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  generate:
-    if: github.head_ref == 'chore/angular-quality-gates'
-    name: Générer ESLint, Vitest et lockfile
+  integrate:
+    if: >-
+      github.actor == 'mathiasseguincadiche' &&
+      github.head_ref == 'chore/angular-quality-gates' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    name: Générer, valider et intégrer le tooling
     runs-on: ubuntu-latest
     steps:
-      - name: Récupérer le dépôt
+      - name: Récupérer strictement la branche de travail
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: chore/angular-quality-gates
 
       - name: Configurer Node.js
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
@@ -23,45 +28,90 @@ jobs:
           cache: npm
           cache-dependency-path: application/angular/package-lock.json
 
-      - name: Utiliser npm 11 pour la génération du lockfile
+      - name: Générer avec npm 11 stable
         run: |
           npm install --global npm@11.17.0
           test "$(npm --version)" = "11.17.0"
-
-      - name: Installer les dépendances verrouillées
-        run: npm ci --prefix application/angular --no-audit --no-fund
-
-      - name: Ajouter ESLint avec le schematic officiel
-        working-directory: application/angular
-        run: npx ng add angular-eslint@21.0.1 --skip-confirmation --defaults
-
-      - name: Ajouter les dépendances de tests au manifeste
-        working-directory: application/angular
-        run: |
+          npm ci --prefix application/angular --no-audit --no-fund
+          cd application/angular
+          npx ng add angular-eslint@21.0.1 --skip-confirmation --defaults
           npm pkg set devDependencies.vitest=4.1.7
           npm pkg set devDependencies.jsdom=29.1.1
-
-      - name: Régénérer le lockfile depuis un arbre propre
-        working-directory: application/angular
-        run: |
           rm -rf node_modules
           npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-          npm ci --no-audit --no-fund
 
-      - name: Vérifier la configuration générée
+      - name: Finaliser les scripts et le target de tests
         working-directory: application/angular
         run: |
-          npx ng lint
-          test -f eslint.config.js
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
 
-      - name: Exporter uniquement les fichiers générés
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: angular-quality-generated
-          path: |
-            application/angular/package.json
-            application/angular/package-lock.json
-            application/angular/angular.json
+          package_path = Path('package.json')
+          package = json.loads(package_path.read_text())
+          package['scripts'] = {
+              'ng': 'ng',
+              'start': 'ng serve',
+              'build': 'ng build',
+              'build:production': 'ng build --configuration production',
+              'typecheck': 'tsc -p tsconfig.app.json --noEmit',
+              'lint': 'ng lint',
+              'test:contract': 'node --test tests/*.test.mjs',
+              'test:unit': 'ng test --watch=false',
+              'test': 'npm run test:contract && npm run test:unit',
+              'security:dependencies': 'npm audit --audit-level=high',
+          }
+          package_path.write_text(json.dumps(package, indent=2, ensure_ascii=False) + '\n')
+
+          angular_path = Path('angular.json')
+          angular = json.loads(angular_path.read_text())
+          architect = angular['projects']['p5-infrastructure-dashboard']['architect']
+          ordered = {}
+          for name, target in architect.items():
+              ordered[name] = target
+              if name == 'serve':
+                  ordered['test'] = {
+                      'builder': '@angular/build:unit-test',
+                      'options': {
+                          'tsConfig': 'tsconfig.spec.json',
+                          'runner': 'vitest',
+                          'buildTarget': '::development',
+                      },
+                  }
+          angular['projects']['p5-infrastructure-dashboard']['architect'] = ordered
+          angular_path.write_text(json.dumps(angular, indent=2, ensure_ascii=False) + '\n')
+          PY
+
+      - name: Prouver la reproductibilité avec npm 10.9.4
+        run: |
+          npm install --global npm@10.9.4
+          test "$(npm --version)" = "10.9.4"
+          rm -rf application/angular/node_modules
+          npm ci --prefix application/angular --no-audit --no-fund
+
+      - name: Valider tous les garde-fous Angular
+        run: |
+          npm run typecheck --prefix application/angular
+          npm run lint --prefix application/angular
+          npm run test:contract --prefix application/angular
+          npm run test:unit --prefix application/angular
+          npm test --prefix application/angular
+          npm run security:dependencies --prefix application/angular
+          npm run build --prefix application/angular
+
+      - name: Commit borné aux quatre fichiers générés
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            application/angular/package.json \
+            application/angular/package-lock.json \
+            application/angular/angular.json \
             application/angular/eslint.config.js
-          if-no-files-found: error
-          retention-days: 1
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "chore: add Angular lint and unit test tooling"
+          git push origin HEAD:chore/angular-quality-gates
