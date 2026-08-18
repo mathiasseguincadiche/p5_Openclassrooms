@@ -1,0 +1,50 @@
+name: TEMP - Générer la configuration qualité Angular
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    if: github.head_ref == 'chore/angular-quality-gates'
+    name: Générer ESLint et lockfile
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Configurer Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.22.0
+          cache: npm
+          cache-dependency-path: application/angular/package-lock.json
+
+      - name: Installer les dépendances verrouillées
+        run: npm ci --prefix application/angular --no-audit --no-fund
+
+      - name: Ajouter angular-eslint 21 avec le schematic officiel
+        working-directory: application/angular
+        run: npx ng add angular-eslint@21.0.1 --skip-confirmation --defaults
+
+      - name: Vérifier la configuration générée
+        working-directory: application/angular
+        run: |
+          npx ng lint
+          test -f eslint.config.js
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Exporter uniquement les fichiers générés
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: angular-eslint-generated
+          path: |
+            application/angular/package.json
+            application/angular/package-lock.json
+            application/angular/angular.json
+            application/angular/eslint.config.js
+          if-no-files-found: error
+          retention-days: 1
