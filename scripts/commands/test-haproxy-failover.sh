@@ -11,11 +11,12 @@ SSH_KEY=""
 SSH_USER="ubuntu"
 BACKEND=1
 REQUESTS=6
-WAIT_DOWN=12
-WAIT_UP=10
+WAIT_DOWN=30
+WAIT_UP=30
 APPLY=false
 HAPROXY_URL=""
 BACKEND_IP=""
+OBSERVED_UNIQUE_COUNT=0
 
 # shellcheck source=../lib/p5-runtime.sh
 source "$LIB_FILE"
@@ -32,15 +33,16 @@ Options:
   --requests N         requêtes par phase (défaut : 6)
   --ssh-key CHEMIN     clé SSH privée ; sinon configuration locale du lab
   --ssh-user NOM       utilisateur SSH (défaut : ubuntu)
-  --wait-down SEC      attente après l'arrêt (défaut : 12)
-  --wait-up SEC        attente après la reprise (défaut : 10)
+  --wait-down SEC      délai maximal pour observer le retrait (défaut : 30)
+  --wait-up SEC        délai maximal pour observer la reprise (défaut : 30)
   --proof-dir CHEMIN   dossier local des preuves techniques
   --apply              exécuter réellement l'arrêt et le redémarrage
   -h, --help           afficher cette aide
 
 Par défaut, HAProxy et le backend sont lus depuis Terraform. Si une valeur est
 indisponible en usage manuel, le script explique son rôle et le format attendu.
-Sans --apply, aucune connexion SSH n'est effectuée.
+Sans --apply, aucune connexion SSH n'est effectuée. Les délais --wait-* sont des
+bornes maximales : le test continue dès que l'état HAProxy attendu est observé.
 HELP
 }
 
@@ -216,33 +218,69 @@ restore_backend() {
 }
 trap restore_backend EXIT INT TERM
 
+observe_backends() {
+    local verbose="$1"
+    local response server_name
+    local -A servers=()
+
+    for ((request_number = 1; request_number <= REQUESTS; request_number++)); do
+        response="$(curl -fsS --max-time 10 "$HAPROXY_URL/")" || return 1
+        server_name="$(awk -F': ' '/^Server name:/ {print $2; exit}' <<< "$response")"
+        [[ -n "$server_name" ]] || return 1
+        servers["$server_name"]=1
+        if [[ "$verbose" == true ]]; then
+            printf '  %02d  %s\n' "$request_number" "$server_name"
+        fi
+        sleep 0.3
+    done
+
+    OBSERVED_UNIQUE_COUNT="${#servers[@]}"
+}
+
+phase_matches() {
+    local expected_min="$1"
+    local expected_max="$2"
+    observe_backends false || return 1
+    ((OBSERVED_UNIQUE_COUNT >= expected_min && OBSERVED_UNIQUE_COUNT <= expected_max))
+}
+
 probe_phase() {
     local phase="$1"
     local expected_min="$2"
     local expected_max="$3"
-    local response server_name
-    local -A servers=()
 
     printf '\nPhase : %s\n' "$phase"
-    for ((request_number = 1; request_number <= REQUESTS; request_number++)); do
-        response="$(curl -fsS --max-time 10 "$HAPROXY_URL/")"
-        server_name="$(awk -F': ' '/^Server name:/ {print $2; exit}' <<< "$response")"
-        [[ -n "$server_name" ]] || {
-            printf '  KO  réponse sans Server name\n' >&2
-            return 1
-        }
-        servers["$server_name"]=1
-        printf '  %02d  %s\n' "$request_number" "$server_name"
-        sleep 0.3
-    done
-
-    local unique_count="${#servers[@]}"
-    if ((unique_count < expected_min || unique_count > expected_max)); then
+    observe_backends true || {
+        printf '  KO  impossible d’obtenir une série de réponses HAProxy valide\n' >&2
+        return 1
+    }
+    if ((OBSERVED_UNIQUE_COUNT < expected_min || OBSERVED_UNIQUE_COUNT > expected_max)); then
         printf '  KO  %s backend(s) observé(s), attendu entre %s et %s\n' \
-            "$unique_count" "$expected_min" "$expected_max" >&2
+            "$OBSERVED_UNIQUE_COUNT" "$expected_min" "$expected_max" >&2
         return 1
     fi
-    printf '  OK  %s backend(s) distinct(s)\n' "$unique_count"
+    printf '  OK  %s backend(s) distinct(s)\n' "$OBSERVED_UNIQUE_COUNT"
+}
+
+wait_for_phase() {
+    local phase="$1"
+    local expected_min="$2"
+    local expected_max="$3"
+    local timeout="$4"
+    local deadline=$((SECONDS + timeout))
+
+    printf '\nAttente bornée : %s (maximum %s s)\n' "$phase" "$timeout"
+    while ((SECONDS <= deadline)); do
+        if phase_matches "$expected_min" "$expected_max"; then
+            if probe_phase "$phase" "$expected_min" "$expected_max"; then
+                return 0
+            fi
+        fi
+        sleep 2
+    done
+    printf '  KO  état HAProxy attendu non observé avant expiration du délai de %s s\n' \
+        "$timeout" >&2
+    return 1
 }
 
 {
@@ -262,17 +300,15 @@ probe_phase() {
     ssh "${SSH_OPTIONS[@]}" "$SSH_USER@$BACKEND_IP" \
         'sudo docker stop nginx-hello >/dev/null'
     BACKEND_STOPPED=true
-    sleep "$WAIT_DOWN"
 
-    probe_phase 'pendant la panne' 1 1
+    wait_for_phase 'pendant la panne' 1 1 "$WAIT_DOWN"
 
     printf '\nRedémarrage du conteneur sur le backend %s\n' "$BACKEND"
     ssh "${SSH_OPTIONS[@]}" "$SSH_USER@$BACKEND_IP" \
         'sudo docker start nginx-hello >/dev/null'
     BACKEND_STOPPED=false
-    sleep "$WAIT_UP"
 
-    probe_phase 'après la reprise' 2 2
+    wait_for_phase 'après la reprise' 2 2 "$WAIT_UP"
 
     printf '\nVerdict : BASCULE ET RÉINTÉGRATION HAPROXY VALIDÉES\n'
     printf 'Preuve locale : %s\n' "$SUMMARY_LOG"
