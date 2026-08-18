@@ -13,7 +13,7 @@ jobs:
       github.actor == 'mathiasseguincadiche' &&
       github.head_ref == 'chore/angular-quality-gates' &&
       github.event.pull_request.head.repo.full_name == github.repository
-    name: Câbler la CI et retirer le workflow temporaire
+    name: Câbler la CI puis retirer le tooling temporaire
     runs-on: ubuntu-latest
     steps:
       - name: Récupérer strictement la branche de travail
@@ -21,138 +21,13 @@ jobs:
         with:
           ref: chore/angular-quality-gates
 
-      - name: Renforcer le job Angular et son contrat de fichiers
+      - name: Appliquer la finalisation déterministe
+        run: python3 .github/scripts/finalize-angular_quality.py
+
+      - name: Retirer les deux fichiers temporaires
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          path = Path('.github/workflows/ci.yml')
-          text = path.read_text()
-
-          old_required = '''            application/angular/package-lock.json
-            application/angular/src/main.ts
-            application/angular/tests/app-contract.test.mjs
-'''
-          new_required = '''            application/angular/package-lock.json
-            application/angular/eslint.config.js
-            application/angular/tsconfig.spec.json
-            application/angular/src/main.ts
-            application/angular/src/app/app.component.spec.ts
-            application/angular/tests/app-contract.test.mjs
-'''
-          if old_required not in text:
-              raise SystemExit('Bloc de fichiers Angular attendu introuvable dans ci.yml')
-          text = text.replace(old_required, new_required, 1)
-
-          old_step = '''      - name: Vérifier TypeScript et le contrat applicatif
-        run: |
-          npm run lint --prefix application/angular
-          npm test --prefix application/angular
-'''
-          new_step = '''      - name: Vérifier TypeScript, ESLint et les tests
-        run: |
-          npm run typecheck --prefix application/angular
-          npm run lint --prefix application/angular
-          npm test --prefix application/angular
-'''
-          if old_step not in text:
-              raise SystemExit('Étape Angular attendue introuvable dans ci.yml')
-          path.write_text(text.replace(old_step, new_step, 1))
-          PY
-
-      - name: Mettre à jour la documentation Angular ciblée
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          path = Path('application/angular/README.md')
-          text = path.read_text()
-
-          old_structure = '''application/angular/
-├── angular.json
-├── package.json
-├── package-lock.json
-├── tsconfig.json
-├── tsconfig.app.json
-├── public/
-│   └── favicon.svg
-├── tests/
-│   └── app-contract.test.mjs
-└── src/
-    ├── index.html
-    ├── main.ts
-    ├── styles.css
-    └── app/
-        ├── app.component.ts
-        ├── app.component.html
-        └── app.component.css
-'''
-          new_structure = '''application/angular/
-├── angular.json
-├── eslint.config.js
-├── package.json
-├── package-lock.json
-├── tsconfig.json
-├── tsconfig.app.json
-├── tsconfig.spec.json
-├── public/
-│   └── favicon.svg
-├── tests/
-│   └── app-contract.test.mjs
-└── src/
-    ├── index.html
-    ├── main.ts
-    ├── styles.css
-    └── app/
-        ├── app.component.ts
-        ├── app.component.html
-        ├── app.component.css
-        └── app.component.spec.ts
-'''
-          if old_structure not in text:
-              raise SystemExit('Arborescence Angular attendue introuvable')
-          text = text.replace(old_structure, new_structure, 1)
-
-          old_commands = '''npm ci --prefix application/angular --no-audit --no-fund
-npm run lint --prefix application/angular
-npm test --prefix application/angular
-npm run security:dependencies --prefix application/angular
-npm run build --prefix application/angular
-'''
-          new_commands = '''npm ci --prefix application/angular --no-audit --no-fund
-npm run typecheck --prefix application/angular
-npm run lint --prefix application/angular
-npm run test:contract --prefix application/angular
-npm run test:unit --prefix application/angular
-npm test --prefix application/angular
-npm run security:dependencies --prefix application/angular
-npm run build --prefix application/angular
-'''
-          if old_commands not in text:
-              raise SystemExit('Bloc de commandes Angular attendu introuvable')
-          text = text.replace(old_commands, new_commands, 1)
-
-          old_controls = '''- la compilation TypeScript ;
-- le contrat fonctionnel minimal de l'application ;
-- les dépendances de production avec `npm audit` ;
-- le build de production ;
-- la synchronisation du build avec Ansible.
-'''
-          new_controls = '''- la vérification des types TypeScript ;
-- le lint TypeScript et templates Angular avec ESLint ;
-- le contrat fonctionnel minimal du dépôt ;
-- le rendu réel du composant racine avec Vitest et jsdom ;
-- les dépendances de production avec `npm audit` ;
-- le build de production ;
-- la synchronisation du build avec Ansible.
-'''
-          if old_controls not in text:
-              raise SystemExit('Liste de contrôles Angular attendue introuvable')
-          path.write_text(text.replace(old_controls, new_controls, 1))
-          PY
-
-      - name: Retirer le mécanisme temporaire
-        run: rm .github/workflows/temp-angular-quality-generator.yml
+          rm .github/scripts/finalize-angular_quality.py
+          rm .github/workflows/temp-angular-quality-generator.yml
 
       - name: Vérifier et commiter uniquement la finalisation
         run: |
@@ -160,12 +35,14 @@ npm run build --prefix application/angular
           grep -q 'npm run typecheck --prefix application/angular' .github/workflows/ci.yml
           grep -q 'application/angular/eslint.config.js' .github/workflows/ci.yml
           grep -q 'npm run test:unit --prefix application/angular' application/angular/README.md
+          test ! -e .github/scripts/finalize-angular_quality.py
           test ! -e .github/workflows/temp-angular-quality-generator.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
             .github/workflows/ci.yml \
             application/angular/README.md \
+            .github/scripts/finalize-angular_quality.py \
             .github/workflows/temp-angular-quality-generator.yml
           git diff --cached --check
           git commit -m "ci: enforce Angular quality gates"
