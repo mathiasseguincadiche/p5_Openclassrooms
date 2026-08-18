@@ -27,10 +27,13 @@ limité au Security Group HAProxy.
 | Élément | Emplacement |
 | --- | --- |
 | Terraform | `terraform/exercice-3/` |
+| template HAProxy canonique | `terraform/exercice-3/haproxy.cfg.tpl` |
 | générateur de configuration | `scripts/tools/generer-haproxy-config.sh` |
 | test round-robin | `scripts/commands/test-haproxy-roundrobin.sh` |
 | test panne/reprise | `scripts/commands/test-haproxy-failover.sh` |
 | orchestration | `scripts/commands/p5.sh` |
+
+Le template HAProxy est partagé entre le déploiement Terraform et les tests locaux. Cela évite qu'une configuration de test diverge silencieusement de celle réellement déployée sur AWS.
 
 ## 1. Dépendance avec l'exercice 1
 
@@ -107,10 +110,10 @@ Leur `user_data` :
 1. met à jour les paquets ;
 2. installe Docker ;
 3. active Docker ;
-4. démarre un conteneur `nginxdemos/hello:plain-text` ;
+4. démarre un conteneur `nginxdemos/hello:0.4-plain-text` ;
 5. expose le port 80.
 
-Chaque conteneur possède un hostname distinct :
+Le tag versionné évite qu'une réexécution récupère implicitement une autre variante du backend. Chaque conteneur possède un hostname distinct :
 
 ```text
 p5-hello-1
@@ -121,7 +124,7 @@ Cette différence permet au test de voir quel backend a répondu.
 
 ## 4. HAProxy
 
-L'EC2 HAProxy installe le paquet système `haproxy`, écrit `/etc/haproxy/haproxy.cfg`, valide sa syntaxe puis active le service.
+L'EC2 HAProxy installe le paquet système `haproxy`, rend `terraform/exercice-3/haproxy.cfg.tpl` avec les IP privées réelles, écrit `/etc/haproxy/haproxy.cfg`, valide sa syntaxe puis active le service.
 
 La partie centrale est :
 
@@ -274,7 +277,7 @@ Répéter :
 for i in $(seq 1 10); do
   curl -fsS "$HAPROXY_URL/"
   echo
- done
+done
 ```
 
 Pour la preuve reproductible, utiliser toutefois le script fourni.
@@ -338,7 +341,7 @@ Le conteneur `nginx-hello` du backend 1 est arrêté via SSH.
 
 ### Phase C — détection
 
-Les health checks HAProxy échouent assez de fois pour atteindre `fall 3`.
+Les health checks HAProxy échouent assez de fois pour atteindre `fall 3`. Le script sonde HAProxy jusqu'à observer l'état attendu, dans un délai maximal borné, au lieu de supposer qu'un nombre fixe de secondes est toujours suffisant.
 
 ### Phase D — continuité
 
@@ -352,7 +355,7 @@ Le conteneur est redémarré.
 
 ### Phase F — réintégration
 
-Après `rise 2`, les deux backends doivent de nouveau apparaître dans les réponses.
+Après `rise 2`, le script sonde à nouveau HAProxy jusqu'au retour des deux backends, avec un délai maximal borné.
 
 ## 14. Pourquoi le script utilise une restauration
 
@@ -366,7 +369,13 @@ Cela ne dispense pas de vérifier l'état final.
 
 ## 15. Vérifier `haproxy.cfg`
 
-Le fichier de configuration utilisé sur l'EC2 est créé à partir des IP privées réelles des backends.
+Le fichier de configuration utilisé sur l'EC2 est rendu depuis :
+
+```text
+terraform/exercice-3/haproxy.cfg.tpl
+```
+
+avec les IP privées réelles des backends.
 
 Sur HAProxy, un contrôle utile est :
 
@@ -382,7 +391,7 @@ Le dépôt fournit également :
 scripts/tools/generer-haproxy-config.sh
 ```
 
-pour générer une configuration à partir des informations attendues selon le contexte du lab.
+Ce générateur utilise **le même template canonique** et remplace uniquement les deux cibles. Il ne maintient donc pas une deuxième configuration HAProxy indépendante.
 
 ## 16. Ce que doivent montrer les preuves
 
@@ -470,7 +479,7 @@ Vérifier :
 
 ### Le backend restauré ne revient pas
 
-Attendre le nombre de checks nécessaires à `rise 2`, puis vérifier que le conteneur répond réellement.
+Le script attend déjà la réintégration dans une fenêtre bornée. Si elle échoue, vérifier que le conteneur répond réellement puis consulter les health checks HAProxy.
 
 ## 18. Definition of Done
 
