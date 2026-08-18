@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Récupérer le dépôt
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Vérifier le périmètre officiel
         shell: bash
@@ -62,6 +62,7 @@ jobs:
             ansible/playbooks/deploy.yml
             terraform/exercice-2/opensearch/index-template.json
             terraform/exercice-2/samples/nginx-access.log.sample
+            terraform/exercice-3/haproxy.cfg.tpl
             proofs/README.md
             scripts/lib/p5-runtime.sh
             scripts/lib/p5-platform.sh
@@ -84,6 +85,8 @@ jobs:
             scripts/commands/prepare-livrables.sh
             scripts/tests/test-p5-orchestrator.sh
             scripts/tests/test-wsl2-platform.sh
+            scripts/tests/test-local-sensitive-files.sh
+            scripts/tests/test-diagnostics-contract.sh
             scripts/tests/test-nginx-angular.sh
             scripts/tests/test-haproxy-containers.sh
             scripts/tests/test-opensearch-local.sh
@@ -96,9 +99,17 @@ jobs:
           grep -q 'NODE_VERSION=22.22.0' environment/versions.env
           grep -q 'ANSIBLE_CORE_VERSION=2.20.1' environment/versions.env
           grep -q 'TERRAFORM_VERSION=1.15.8' environment/versions.env
+          grep -q '^NVM_COMMIT=62387b8f92aa012d48202747fd75c40850e5e261$' environment/versions.env
+          grep -Fq 'git -C "$NVM_DIR" fetch --depth 1 origin "$NVM_COMMIT"' scripts/commands/bootstrap-wsl2.sh
+          if grep -Fq 'install.sh" | bash' scripts/commands/bootstrap-wsl2.sh; then
+            echo 'Le bootstrap NVM utilise encore curl | bash.' >&2
+            exit 1
+          fi
           grep -q 'verify_ansible_idempotence' scripts/commands/p5.sh
           grep -q 'opensearch-real-import' scripts/commands/p5.sh
           grep -q 'p5_manual_checkpoint' scripts/commands/p5.sh
+          grep -Fq 'haproxy.cfg.tpl' terraform/exercice-3/main.tf
+          grep -Fq 'nginxdemos/hello:0.4-plain-text' terraform/exercice-3/main.tf
           if grep -q 'Interface web pour l.Exercice 1' \
             ansible/files/angular-app/index.html; then
             echo 'La page HTML témoin a été réintroduite.' >&2
@@ -183,6 +194,7 @@ jobs:
           set -euo pipefail
           find scripts -type f -name '*.sh' -print0 \
             | xargs -0 -r -n1 bash -n
+
           find scripts -type f -name '*.sh' -print0 \
             | xargs -0 -r shellcheck --severity=error
 
@@ -193,6 +205,14 @@ jobs:
       - name: Tester la sauvegarde locale des states Terraform
         shell: bash
         run: bash scripts/tests/test-terraform-state-snapshot.sh
+
+      - name: Tester la séparation fichiers locaux / fichiers suivis
+        shell: bash
+        run: bash scripts/tests/test-local-sensitive-files.sh
+
+      - name: Tester le diagnostic adaptatif
+        shell: bash
+        run: bash scripts/tests/test-diagnostics-contract.sh
 
       - name: Valider JSON et livrables
         shell: bash
@@ -214,8 +234,8 @@ jobs:
     name: Angular, TypeScript et NGINX réel
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: 22.22.0
           cache: npm
@@ -248,8 +268,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
-      - uses: actions/checkout@v7
-      - uses: hashicorp/setup-terraform@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
           terraform_version: 1.15.8
       - name: Préparer le noyau pour OpenSearch
@@ -262,7 +282,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Tester la haute disponibilité en conteneurs
         run: bash scripts/tests/test-haproxy-containers.sh
 
@@ -270,7 +290,7 @@ jobs:
     name: YAML
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: python -m pip install --disable-pip-version-check yamllint==1.37.1
       - run: yamllint --config-file .yamllint.yml .
 
@@ -278,8 +298,8 @@ jobs:
     name: Terraform
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: hashicorp/setup-terraform@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
           terraform_version: 1.15.8
       - run: terraform fmt -check -recursive terraform
@@ -297,13 +317,13 @@ jobs:
     name: Markdown et liens
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: DavidAnson/markdownlint-cli2-action@v24
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: DavidAnson/markdownlint-cli2-action@21c1be1b93ad9ed58fa840aacc3f279cde2a72ff # v24.2.0
         with:
           globs: |
             **/*.md
             #node_modules
-      - uses: lycheeverse/lychee-action@v2
+      - uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2
         with:
           args: --offline --no-progress './**/*.md'
           fail: true
@@ -312,7 +332,7 @@ jobs:
     name: Ansible 2.20.1 et NGINX
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Vérifier les Dockerfiles présents
         shell: bash
         run: |

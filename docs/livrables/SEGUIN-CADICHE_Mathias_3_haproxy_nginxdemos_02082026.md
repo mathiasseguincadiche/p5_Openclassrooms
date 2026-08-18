@@ -19,11 +19,12 @@ Démontrer qu'un load-balancer HAProxy répartit les requêtes entre deux backen
 - réseau : VPC et subnets de l'exercice 1 ;
 - load-balancer : une EC2 HAProxy ;
 - backends : deux EC2 ;
-- service backend : `nginxdemos/hello:plain-text` dans Docker ;
+- service backend : `nginxdemos/hello:0.4-plain-text` dans Docker ;
+- configuration HAProxy canonique : `terraform/exercice-3/haproxy.cfg.tpl` ;
 - algorithme : `roundrobin` ;
 - santé : `GET /`, `fall 3`, `rise 2`.
 
-L'exercice ne crée pas un second VPC.
+L'exercice ne crée pas un second VPC. Le template HAProxy versionné est utilisé à la fois par Terraform et par le générateur de test local afin de conserver une seule source de configuration.
 
 ## 3. Exécution de référence
 
@@ -81,7 +82,8 @@ backend hello-servers
 - `roundrobin` distribue les requêtes entre les backends disponibles ;
 - `httpchk GET /` contrôle le service HTTP ;
 - `fall 3` évite de retirer un serveur après un seul échec transitoire ;
-- `rise 2` exige plusieurs succès avant réintégration.
+- `rise 2` exige plusieurs succès avant réintégration ;
+- le fichier effectif est rendu depuis le template canonique avec les IP privées réelles.
 
 **Copie lisible/anonymisée de la configuration à insérer ici.**
 
@@ -166,7 +168,7 @@ APRÈS
 hello-1 + hello-2
 ```
 
-Le script restaure le conteneur du backend après la mutation temporaire et attend sa réintégration.
+Le script restaure le conteneur du backend après la mutation temporaire. Le retrait et la réintégration sont observés par polling dans des délais maximaux bornés, plutôt que supposés après un `sleep` fixe.
 
 ## 10. Preuves du failover
 

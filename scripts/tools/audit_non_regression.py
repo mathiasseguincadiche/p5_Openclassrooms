@@ -7,10 +7,11 @@ import argparse
 import json
 import re
 import stat
+import subprocess
 import sys
 import xml.etree.ElementTree as ET
 from collections import Counter
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 BASELINE_COMMIT = "2e0600fbf573815077cf541e30a0d9d01591a180"
 MAX_SVG_BYTES = 8 * 1024
@@ -69,6 +70,7 @@ CAPABILITIES: dict[str, tuple[str, ...]] = {
         "scripts/commands/verify-opensearch-data.sh",
     ),
     "HAProxy et reprise": (
+        "terraform/exercice-3/haproxy.cfg.tpl",
         "scripts/tools/generer-haproxy-config.sh",
         "scripts/commands/test-haproxy-roundrobin.sh",
         "scripts/commands/test-haproxy-failover.sh",
@@ -175,6 +177,22 @@ class Audit:
         else:
             self.ok(f"sémantique vérifiée : {relative}")
 
+    def tracked_files(self) -> tuple[str, ...]:
+        try:
+            result = subprocess.run(
+                ["git", "-C", str(self.root), "ls-files", "-z"],
+                check=True,
+                capture_output=True,
+            )
+        except (FileNotFoundError, subprocess.CalledProcessError) as exc:
+            self.fail(f"impossible de lire les fichiers suivis par Git : {exc}")
+            return ()
+        return tuple(
+            item.decode("utf-8", errors="surrogateescape")
+            for item in result.stdout.split(b"\0")
+            if item
+        )
+
     def audit_scope(self) -> None:
         if self.path("TEMPLATES").exists():
             self.fail("le dossier générique TEMPLATES a été réintroduit")
@@ -234,16 +252,16 @@ class Audit:
         if not failed:
             self.ok("permissions exécutables des scripts critiques")
 
-    def audit_no_sensitive_files(self) -> None:
+    def audit_no_tracked_sensitive_files(self) -> None:
         found: list[str] = []
-        for pattern in FORBIDDEN_TRACKED_PATTERNS:
-            for path in self.root.glob(pattern):
-                if path.is_file():
-                    found.append(str(path.relative_to(self.root)))
+        for relative in self.tracked_files():
+            posix_path = PurePosixPath(relative)
+            if any(posix_path.match(pattern) for pattern in FORBIDDEN_TRACKED_PATTERNS):
+                found.append(relative)
         if found:
-            self.fail("fichiers locaux ou sensibles présents : " + ", ".join(sorted(set(found))))
+            self.fail("fichiers locaux ou sensibles suivis par Git : " + ", ".join(sorted(set(found))))
         else:
-            self.ok("aucun état, tfvars réel, inventaire réel ou configuration AWS locale")
+            self.ok("aucun state, tfvars réel, inventaire réel ou configuration AWS locale suivi par Git")
 
     def audit_angular(self) -> None:
         package_file = self.path("application/angular/package.json")
@@ -261,6 +279,24 @@ class Audit:
             self.fail("script npm build absent du projet Angular")
         else:
             self.ok("sources Angular compilables présentes")
+
+        component_files = (
+            "application/angular/src/app/app.component.ts",
+            "application/angular/src/app/app.component.html",
+        )
+        stale_runtime_labels = ("vm de lab", "construite sur la vm de lab", "ubuntu server 26.04")
+        stale_locations: list[str] = []
+        for relative in component_files:
+            if not self.require_file(relative):
+                continue
+            text = self.path(relative).read_text(encoding="utf-8").lower()
+            for label in stale_runtime_labels:
+                if label in text:
+                    stale_locations.append(f"{relative} : {label}")
+        if stale_locations:
+            self.fail("ancienne identité VM encore visible dans Angular : " + " | ".join(stale_locations))
+        else:
+            self.ok("application Angular alignée sur le runtime Windows 11 + WSL2")
 
         artifact_dir = self.path("ansible/files/angular-app")
         index = artifact_dir / "index.html"
@@ -292,7 +328,11 @@ class Audit:
         )
         self.require_text(
             "terraform/exercice-3/main.tf",
-            ("balance roundrobin", "count                       = 2", 'data "aws_vpc"'),
+            ("count                       = 2", 'data "aws_vpc"', "haproxy.cfg.tpl"),
+        )
+        self.require_text(
+            "terraform/exercice-3/haproxy.cfg.tpl",
+            ("balance roundrobin", "option httpchk get /", "fall 3 rise 2"),
         )
 
     def audit_destructive_controls(self) -> None:
@@ -427,7 +467,7 @@ class Audit:
             self.audit_scope()
             self.audit_capabilities()
             self.audit_shell_permissions()
-            self.audit_no_sensitive_files()
+            self.audit_no_tracked_sensitive_files()
             self.audit_angular()
             self.audit_terraform()
             self.audit_destructive_controls()

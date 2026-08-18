@@ -15,11 +15,14 @@ concurrency:
 
 jobs:
   secrets:
-    name: Secrets et fichiers sensibles
+    name: Secrets, fichiers sensibles et supply-chain CI
     runs-on: ubuntu-24.04
     steps:
       - name: Récupérer le dépôt
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Auditer les fichiers suivis par Git
         run: python3 scripts/tools/audit_secrets.py
+
+      - name: Auditer le SHA-pinning des GitHub Actions
+        run: python3 scripts/tools/audit_github_actions_pins.py

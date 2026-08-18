@@ -8,6 +8,9 @@
     application_user: appuser
     application_group: appgroup
     web_root: /var/www/p5
+    artifact_file_names: >-
+      {{ query('ansible.builtin.fileglob', playbook_dir + '/../files/angular-app/*')
+         | map('basename') | list }}
 
   tasks:
     - name: Installer NGINX et les utilitaires requis
@@ -41,6 +44,23 @@
         owner: "{{ application_user }}"
         group: "{{ application_group }}"
         mode: "0755"
+
+    - name: Inventorier les fichiers Angular déjà déployés
+      ansible.builtin.find:
+        paths: "{{ web_root }}"
+        file_type: file
+        recurse: false
+      register: deployed_angular_files
+      changed_when: false
+
+    - name: Supprimer les anciens bundles Angular absents de l'artefact courant
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ deployed_angular_files.files }}"
+      loop_control:
+        label: "{{ item.path | basename }}"
+      when: (item.path | basename) not in artifact_file_names
 
     - name: Déployer l'artefact Angular
       ansible.builtin.copy:

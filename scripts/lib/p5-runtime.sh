@@ -115,6 +115,7 @@ p5_sensitive_name() {
 p5_redact_stream() {
     sed -E \
         -e 's/(AWS_SECRET_ACCESS_KEY|AWS_SESSION_TOKEN|OPENROUTER_API_KEY|GITHUB_TOKEN|GH_TOKEN)=([^[:space:]]+)/\1=<REDACTED>/g' \
+        -e 's/(AKIA|ASIA)[0-9A-Z]{16}/<REDACTED>/g' \
         -e 's/(sk-or-[A-Za-z0-9_-]{12,}|github_pat_[A-Za-z0-9_]{12,}|glpat-[A-Za-z0-9_-]{12,})/<REDACTED>/g' \
         -e 's/([Bb]earer[[:space:]]+)[A-Za-z0-9._~+\/-]{12,}/\1<REDACTED>/g'
 }
