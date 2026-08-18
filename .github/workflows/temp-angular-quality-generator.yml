@@ -30,16 +30,24 @@ jobs:
         working-directory: application/angular
         run: npx ng add angular-eslint@21.0.1 --skip-confirmation --defaults
 
-      - name: Ajouter le runner de tests Angular
+      - name: Ajouter les dépendances de tests au manifeste
         working-directory: application/angular
-        run: npm install --save-dev --save-exact vitest@4.1.7 jsdom@29.1.1 --no-audit --no-fund
+        run: |
+          npm pkg set devDependencies.vitest=4.1.7
+          npm pkg set devDependencies.jsdom=29.1.1
 
-      - name: Vérifier les fichiers générés
+      - name: Régénérer et vérifier le lockfile depuis un arbre propre
+        working-directory: application/angular
+        run: |
+          rm -rf node_modules
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          npm ci --no-audit --no-fund
+
+      - name: Vérifier la configuration générée
         working-directory: application/angular
         run: |
           npx ng lint
           test -f eslint.config.js
-          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
 
       - name: Exporter uniquement les fichiers générés
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
