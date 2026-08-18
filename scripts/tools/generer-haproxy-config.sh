@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
-# Génère la configuration HAProxy minimale demandée dans l'exercice 3.
+# Rend la configuration HAProxy canonique de l'exercice 3 avec deux backends.
 set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
+TEMPLATE_FILE="$PROJECT_ROOT/terraform/exercice-3/haproxy.cfg.tpl"
 
 show_help() {
     cat <<'HELP'
@@ -15,8 +19,9 @@ Format   : IPv4 (ex. 10.0.1.10) ou nom DNS sans http:// et sans :80.
 Exemple  :
   bash scripts/tools/generer-haproxy-config.sh 10.0.1.10 10.0.2.10 haproxy.cfg
 
-Dans le parcours automatisé, ces valeurs sont générées depuis l'infrastructure
-Terraform. Ce script est surtout un outil manuel de compréhension/diagnostic.
+Le fichier terraform/exercice-3/haproxy.cfg.tpl est la source canonique commune
+au déploiement Terraform et aux tests locaux. Ce script ne duplique pas la
+configuration HAProxy : il remplace uniquement les deux cibles.
 HELP
 }
 
@@ -30,6 +35,11 @@ if [[ $# -lt 2 || $# -gt 3 ]]; then
     show_help >&2
     exit 2
 fi
+
+[[ -f "$TEMPLATE_FILE" ]] || {
+    printf 'Template HAProxy canonique absent : %s\n' "$TEMPLATE_FILE" >&2
+    exit 1
+}
 
 valid_backend() {
     [[ "$1" =~ ^([A-Za-z0-9][A-Za-z0-9.-]*|[0-9]{1,3}(\.[0-9]{1,3}){3})$ ]]
@@ -47,32 +57,15 @@ for backend in "$backend_1" "$backend_2"; do
     }
 done
 
-cat > "$output_file" <<EOF_CONFIG
-global
-    log /dev/log local0
-    user haproxy
-    group haproxy
-    daemon
+sed \
+    -e "s|@@BACKEND_1@@|$backend_1|g" \
+    -e "s|@@BACKEND_2@@|$backend_2|g" \
+    "$TEMPLATE_FILE" > "$output_file"
 
-defaults
-    log global
-    mode http
-    option httplog
-    timeout connect 5s
-    timeout client 50s
-    timeout server 50s
+if grep -q '@@BACKEND_[12]@@' "$output_file"; then
+    printf 'Le rendu HAProxy contient encore un placeholder non résolu.\n' >&2
+    exit 1
+fi
 
-frontend http-in
-    bind *:80
-    default_backend hello-servers
-
-backend hello-servers
-    balance roundrobin
-    option httpchk GET /
-    http-check expect status 200
-    server hello-1 ${backend_1}:80 check inter 3s fall 3 rise 2
-    server hello-2 ${backend_2}:80 check inter 3s fall 3 rise 2
-EOF_CONFIG
-
-printf 'Configuration créée : %s\n' "$output_file"
+printf 'Configuration créée depuis le template canonique : %s\n' "$output_file"
 printf 'Validez-la sur le serveur avec : haproxy -c -f %s\n' "$output_file"
