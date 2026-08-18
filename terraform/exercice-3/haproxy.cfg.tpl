@@ -1,6 +1,5 @@
 global
     log /dev/log local0
-    chroot /var/lib/haproxy
     user haproxy
     group haproxy
     daemon
