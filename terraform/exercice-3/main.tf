@@ -192,14 +192,26 @@ resource "aws_instance" "p5_hello" {
       --hostname p5-hello-${count.index + 1} \
       --restart unless-stopped \
       -p 80:80 \
-      nginxdemos/hello:plain-text
+      nginxdemos/hello:0.4-plain-text
   EOF
 
   tags = {
     Name = "p5-hello-${count.index + 1}"
     Role = "web-server"
-    App  = "nginxdemos/hello"
+    App  = "nginxdemos/hello:0.4-plain-text"
   }
+}
+
+locals {
+  haproxy_config = replace(
+    replace(
+      file("${path.module}/haproxy.cfg.tpl"),
+      "@@BACKEND_1@@",
+      aws_instance.p5_hello[0].private_ip,
+    ),
+    "@@BACKEND_2@@",
+    aws_instance.p5_hello[1].private_ip,
+  )
 }
 
 # ----------------------------------------------------------------------------
@@ -233,32 +245,7 @@ resource "aws_instance" "p5_haproxy" {
     apt-get install -y haproxy
 
     cat > /etc/haproxy/haproxy.cfg <<'HAPROXY'
-    global
-        log /dev/log local0
-        chroot /var/lib/haproxy
-        user haproxy
-        group haproxy
-        daemon
-
-    defaults
-        log global
-        mode http
-        option httplog
-        option dontlognull
-        timeout connect 5s
-        timeout client 50s
-        timeout server 50s
-
-    frontend http-in
-        bind *:80
-        default_backend hello-servers
-
-    backend hello-servers
-        balance roundrobin
-        option httpchk GET /
-        http-check expect status 200
-        server hello-1 ${aws_instance.p5_hello[0].private_ip}:80 check inter 3s fall 3 rise 2
-        server hello-2 ${aws_instance.p5_hello[1].private_ip}:80 check inter 3s fall 3 rise 2
+${local.haproxy_config}
     HAPROXY
 
     haproxy -c -f /etc/haproxy/haproxy.cfg
