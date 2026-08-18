@@ -30,6 +30,8 @@ Le dépôt maintient exactement trois exercices :
 | configuration locale | `environment/aws-readiness.env` | source unique, non versionnée |
 | mutation | confirmation ou `--apply` explicite selon les scripts | distinguer observation et action |
 | secrets | hors Git + audit dédié | réduire le risque de fuite |
+| NVM | release + commit Git exact | éviter l'exécution directe d'un installateur distant |
+| GitHub Actions | SHA de commit + commentaire de version | réduire la dépendance aux tags mutables |
 
 ## Frontière plateforme / projet
 
@@ -47,7 +49,7 @@ p5_Openclassrooms
 └── exécute les trois exercices
 ```
 
-Le P5 ne doit donc pas contenir de logique de provisioning WSL2. La préparation P5 peut en revanche installer ou réaligner Terraform, Ansible, Node.js, AWS CLI, Docker et les outils nécessaires **à l'intérieur de la distribution WSL2**.
+Le P5 ne doit donc pas contenir de logique de provisioning WSL2. La préparation P5 peut en revanche converger les dépendances propres au projet **à l'intérieur de la distribution WSL2** et vérifier les outils communs fournis par la plateforme.
 
 ## Application Angular
 
@@ -109,11 +111,13 @@ Le sample reproductible contient le volume de données nécessaire aux tests aut
 | --- | --- | --- |
 | réseau | VPC/subnets de l'exercice 1 | éviter une architecture AWS dupliquée |
 | instances | 1 HAProxy + 2 backends | topologie demandée |
-| backend | `nginxdemos/hello:plain-text` dans Docker | identifier facilement le serveur répondant |
+| backend | `nginxdemos/hello:0.4-plain-text` dans Docker | version déterministe et serveur répondant identifiable |
+| configuration HAProxy | `terraform/exercice-3/haproxy.cfg.tpl` | une source canonique partagée entre AWS et les tests locaux |
 | algorithme | `roundrobin` | répartition simple et observable |
 | santé | check HTTP, `fall 3`, `rise 2` | panne et réintégration démontrables |
 | HTTP backend | autorisé depuis SG HAProxy uniquement | éviter le contournement public du répartiteur |
 | test réel | `--apply` après prévisualisation | mutation volontaire explicite |
+| attente failover | polling borné | observer l'état réel sans dépendre d'un `sleep` fixe |
 | restauration | mécanisme `trap` dans le script | réduire le risque de backend laissé arrêté |
 
 ## Convergence
@@ -131,6 +135,8 @@ inspecter
 Un state existant est une information à conserver, pas un obstacle à supprimer.
 
 La même règle s'applique au runtime P5 : une dépendance déjà conforme dans `Ubuntu` sous WSL2 n'est pas réinstallée inutilement.
+
+Les snapshots Terraform avant/après mutation utilisent des noms uniques dans un même run afin qu'une nouvelle capture ne puisse pas écraser une preuve précédente.
 
 ## Preuves
 
