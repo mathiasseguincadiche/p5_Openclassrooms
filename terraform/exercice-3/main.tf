@@ -245,7 +245,7 @@ resource "aws_instance" "p5_haproxy" {
     apt-get install -y haproxy
 
     cat > /etc/haproxy/haproxy.cfg <<'HAPROXY'
-${local.haproxy_config}
+    ${indent(4, local.haproxy_config)}
     HAPROXY
 
     haproxy -c -f /etc/haproxy/haproxy.cfg
