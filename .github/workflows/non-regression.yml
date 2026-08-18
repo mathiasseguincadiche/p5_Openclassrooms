@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Récupérer le dépôt
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Vérifier le contrat de non-régression
         run: python3 scripts/tools/audit_non_regression.py
@@ -49,6 +49,12 @@ jobs:
 
       - name: Vérifier le contrat de plateforme WSL2
         run: bash scripts/tests/test-wsl2-platform.sh
+
+      - name: Vérifier les fichiers sensibles locaux
+        run: bash scripts/tests/test-local-sensitive-files.sh
+
+      - name: Vérifier le diagnostic adaptatif
+        run: bash scripts/tests/test-diagnostics-contract.sh
 
       - name: Vérifier le contrat des informations requises
         run: bash scripts/tests/test-operator-input-contract.sh
