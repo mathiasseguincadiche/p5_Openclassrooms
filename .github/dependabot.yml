@@ -13,6 +13,29 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
+    groups:
+      angular-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "@angular*"
+          - "angular-eslint"
+          - "@angular-eslint/*"
+        update-types:
+          - minor
+          - patch
+    ignore:
+      - dependency-name: "@angular*"
+        update-types:
+          - "version-update:semver-major"
+      - dependency-name: "angular-eslint"
+        update-types:
+          - "version-update:semver-major"
+      - dependency-name: "@angular-eslint/*"
+        update-types:
+          - "version-update:semver-major"
+      - dependency-name: typescript
+        update-types:
+          - "version-update:semver-major"
 
   - package-ecosystem: terraform
     directory: /terraform/exercice-1
@@ -20,6 +43,10 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 3
+    ignore:
+      - dependency-name: hashicorp/aws
+        update-types:
+          - "version-update:semver-major"
 
   - package-ecosystem: terraform
     directory: /terraform/exercice-2
@@ -27,6 +54,10 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 3
+    ignore:
+      - dependency-name: hashicorp/aws
+        update-types:
+          - "version-update:semver-major"
 
   - package-ecosystem: terraform
     directory: /terraform/exercice-3
@@ -34,3 +65,7 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 3
+    ignore:
+      - dependency-name: hashicorp/aws
+        update-types:
+          - "version-update:semver-major"

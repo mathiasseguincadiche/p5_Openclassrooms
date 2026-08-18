@@ -7,8 +7,12 @@
     "start": "ng serve",
     "build": "ng build",
     "build:production": "ng build --configuration production",
-    "test": "node --test tests/*.test.mjs",
-    "lint": "tsc -p tsconfig.app.json --noEmit",
+    "typecheck": "tsc -p tsconfig.app.json --noEmit",
+    "lint": "ng lint",
+    "test:contract": "node --test tests/*.test.mjs",
+    "test:unit": "ng test --watch=false",
+    "pretest": "npm run typecheck",
+    "test": "npm run test:contract && npm run test:unit",
     "security:dependencies": "npm audit --audit-level=high"
   },
   "dependencies": {
@@ -24,7 +28,12 @@
     "@angular/build": "^21.2.0",
     "@angular/cli": "^21.2.0",
     "@angular/compiler-cli": "^21.2.0",
-    "typescript": "~5.9.2"
+    "angular-eslint": "21.0.1",
+    "eslint": "^9.39.1",
+    "jsdom": "29.1.1",
+    "typescript": "~5.9.2",
+    "typescript-eslint": "8.46.4",
+    "vitest": "4.1.7"
   },
   "overrides": {
     "nanoid": "3.3.18",

@@ -9,10 +9,12 @@ démontrer l'infrastructure et le déploiement, pas de développer un backend m�
 ```text
 application/angular/
 ├── angular.json
+├── eslint.config.js
 ├── package.json
 ├── package-lock.json
 ├── tsconfig.json
 ├── tsconfig.app.json
+├── tsconfig.spec.json
 ├── public/
 │   └── favicon.svg
 ├── tests/
@@ -24,7 +26,8 @@ application/angular/
     └── app/
         ├── app.component.ts
         ├── app.component.html
-        └── app.component.css
+        ├── app.component.css
+        └── app.component.spec.ts
 ```
 
 ## Commandes locales
@@ -33,11 +36,18 @@ Depuis la racine du dépôt :
 
 ```bash
 npm ci --prefix application/angular --no-audit --no-fund
+npm run typecheck --prefix application/angular
 npm run lint --prefix application/angular
+npm run test:contract --prefix application/angular
+npm run test:unit --prefix application/angular
 npm test --prefix application/angular
 npm run security:dependencies --prefix application/angular
 npm run build --prefix application/angular
 ```
+
+`npm test` conserve les deux couches de tests et déclenche automatiquement le
+`typecheck` via le hook npm `pretest`. La CI existante exécute donc le vrai lint
+ESLint puis l'ensemble typecheck + tests sans confondre les scripts entre eux.
 
 Pour lancer le serveur de développement :
 
@@ -55,8 +65,10 @@ reproduire exactement l'arbre des dépendances validé.
 
 Le dépôt contrôle :
 
-- la compilation TypeScript ;
-- le contrat fonctionnel minimal de l'application ;
+- la vérification des types TypeScript ;
+- le lint TypeScript et templates Angular avec ESLint ;
+- le contrat fonctionnel minimal du dépôt ;
+- le rendu réel du composant racine avec Vitest et jsdom ;
 - les dépendances de production avec `npm audit` ;
 - le build de production ;
 - la synchronisation du build avec Ansible.
