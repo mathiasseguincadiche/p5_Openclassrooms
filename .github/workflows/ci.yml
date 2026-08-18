@@ -348,6 +348,8 @@ jobs:
           source environment/versions.env
           python -m pip install --disable-pip-version-check "$ANSIBLE_CORE_SPEC"
           ansible-playbook --version | head -n 1 | grep -F "core ${ANSIBLE_CORE_VERSION}"
+      - name: Installer les collections Ansible requises
+        run: ansible-galaxy collection install -r ansible/requirements.yml
       - run: >-
           ansible-playbook --syntax-check
           --inventory ansible/inventories/hosts_aws.example
