@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout P5
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Validate WSL2 ownership contract
         shell: bash
@@ -61,6 +61,7 @@ jobs:
           grep -Fq 'P5_EXECUTION_MODEL=windows11-wsl2-ubuntu-26.04' environment/versions.env
           grep -Fq "P5_ALLOWED_WORK_ROOTS='projects labs repositories'" environment/versions.env
           grep -Fq "P5_FORBIDDEN_MOUNT_PREFIXES='/mnt/c /mnt/d'" environment/versions.env
+          grep -Fq 'NVM_COMMIT=62387b8f92aa012d48202747fd75c40850e5e261' environment/versions.env
           test ! -e environment/vm-devops
 
           if grep -RnE 'Ubuntu-desktops-custom|ubuntu-devops|KVM/libvirt|VM KVM' \
@@ -86,16 +87,21 @@ jobs:
           grep -Fq 'vm.max_map_count' scripts/commands/bootstrap-wsl2.sh
           grep -Fq 'Windows_11_Pro_Custom possède WSL2, Docker, Terraform et AWS CLI' \
             scripts/commands/bootstrap-wsl2.sh
+          grep -Fq 'fetch --depth 1 origin "$NVM_COMMIT"' scripts/commands/bootstrap-wsl2.sh
+          if grep -Fq 'install.sh" | bash' scripts/commands/bootstrap-wsl2.sh; then
+            echo 'KO installation NVM distante exécutée directement.' >&2
+            exit 1
+          fi
 
   upstream-platform:
     name: Windows_11_Pro_Custom / Ubuntu WSL2 contract
     runs-on: ubuntu-latest
     steps:
       - name: Checkout P5
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Checkout Windows platform repository read-only
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: mathiasseguincadiche/Windows_11_Pro_Custom
           path: upstream-platform
@@ -136,7 +142,7 @@ jobs:
       DEBIAN_FRONTEND: noninteractive
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Validate Resolute packages and Docker repository
         shell: bash
@@ -188,6 +194,14 @@ jobs:
           curl --retry 5 --retry-all-errors -fsSL "$base/terraform_${TERRAFORM_VERSION}_SHA256SUMS" -o "$tmpdir/SHA256SUMS"
           (cd "$tmpdir"; grep " ${archive}$" SHA256SUMS | sha256sum -c -; unzip -qo "$archive")
           "$tmpdir/terraform" version -json | jq -e --arg expected "$TERRAFORM_VERSION" '.terraform_version == $expected' >/dev/null
+
+          mkdir -p "$tmpdir/nvm"
+          git -C "$tmpdir/nvm" init -q
+          git -C "$tmpdir/nvm" remote add origin https://github.com/nvm-sh/nvm.git
+          git -C "$tmpdir/nvm" fetch --depth 1 origin "$NVM_COMMIT"
+          git -C "$tmpdir/nvm" checkout --detach --force FETCH_HEAD >/dev/null
+          test "$(git -C "$tmpdir/nvm" rev-parse HEAD)" = "$NVM_COMMIT"
+          test -s "$tmpdir/nvm/nvm.sh"
 
           curl --retry 5 --retry-all-errors -fsSL https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o "$tmpdir/aws.zip"
           unzip -q "$tmpdir/aws.zip" -d "$tmpdir/aws-cli"
