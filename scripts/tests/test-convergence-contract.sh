@@ -98,7 +98,7 @@ printf '  OK  journal persistant et résumé factuel du run présents.\n'
 PREVIEW="$(p5_command_preview command --api-token supersecret-value)"
 ! grep -Fq 'supersecret-value' <<<"$PREVIEW"
 grep -Fq 'REDACTED' <<<"$PREVIEW"
-AWS_ACCESS_KEY_CANARY='ASIA1234567890ABCDEF'
+AWS_ACCESS_KEY_CANARY="$(printf '%s%s' 'ASIA' '1234567890ABCDEF')"
 p5_run_step 'secret-output' 'sortie sensible' \
     bash -c 'printf "AWS_SECRET_ACCESS_KEY=supersecret-value\nAWS_ACCESS_KEY_ID=%s\n" "$1"' \
     bash "$AWS_ACCESS_KEY_CANARY" >/dev/null
