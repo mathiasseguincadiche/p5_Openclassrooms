@@ -23,6 +23,7 @@ grep -Fq 'P5_EXPECTED_WSL_DISTRO=Ubuntu' environment/versions.env
 grep -Fq 'P5_EXECUTION_MODEL=windows11-wsl2-ubuntu-26.04' environment/versions.env
 grep -Fq 'P5_PLATFORM_REPOSITORY=mathiasseguincadiche/Windows_11_Pro_Custom' environment/versions.env
 grep -Fq 'P5_OPENSEARCH_MAX_MAP_COUNT=262144' environment/versions.env
+grep -Fq 'NVM_COMMIT=62387b8f92aa012d48202747fd75c40850e5e261' environment/versions.env
 test -s environment/wsl2/README.md
 test -s scripts/lib/p5-platform.sh
 test ! -e environment/vm-devops
@@ -97,11 +98,14 @@ printf '  OK  journal persistant et résumé factuel du run présents.\n'
 PREVIEW="$(p5_command_preview command --api-token supersecret-value)"
 ! grep -Fq 'supersecret-value' <<<"$PREVIEW"
 grep -Fq 'REDACTED' <<<"$PREVIEW"
+AWS_ACCESS_KEY_CANARY='ASIA1234567890ABCDEF'
 p5_run_step 'secret-output' 'sortie sensible' \
-    bash -c 'printf "AWS_SECRET_ACCESS_KEY=supersecret-value\\n"' >/dev/null
+    bash -c 'printf "AWS_SECRET_ACCESS_KEY=supersecret-value\nAWS_ACCESS_KEY_ID=%s\n" "$1"' \
+    bash "$AWS_ACCESS_KEY_CANARY" >/dev/null
 ! grep -Fq 'supersecret-value' "$P5_LAST_STEP_LOG"
+! grep -Fq "$AWS_ACCESS_KEY_CANARY" "$P5_LAST_STEP_LOG"
 grep -Fq '<REDACTED>' "$P5_LAST_STEP_LOG"
-printf '  OK  aperçu de commande et sorties sensibles nettoyés avant journalisation.\n'
+printf '  OK  aperçu de commande, secret et identifiant AWS nettoyés avant journalisation.\n'
 
 grep -Fq "CLASSIFICATION='FIRST_RUN'" scripts/commands/inspect-state.sh
 grep -Fq "CLASSIFICATION='PARTIAL'" scripts/commands/inspect-state.sh
