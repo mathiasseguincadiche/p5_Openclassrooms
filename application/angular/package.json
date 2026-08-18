@@ -11,6 +11,7 @@
     "lint": "ng lint",
     "test:contract": "node --test tests/*.test.mjs",
     "test:unit": "ng test --watch=false",
+    "pretest": "npm run typecheck",
     "test": "npm run test:contract && npm run test:unit",
     "security:dependencies": "npm audit --audit-level=high"
   },
