@@ -25,7 +25,9 @@ Options:
 Windows_11_Pro_Custom possède WSL2, Docker, Terraform et AWS CLI.
 Ce bootstrap qualifie cette plateforme et converge uniquement les dépendances
 propres au P5 : paquets CLI, Ansible, Node.js, markdownlint et le réglage
-OpenSearch local.
+OpenSearch local. NVM est récupéré par Git puis verrouillé sur le commit de
+release défini dans environment/versions.env ; aucun script distant n'est pipé
+directement vers Bash.
 HELP
 }
 
@@ -91,6 +93,59 @@ load_nvm() {
     # shellcheck source=/dev/null
     source "$NVM_DIR/nvm.sh"
 }
+nvm_current_commit() {
+    export NVM_DIR="$HOME/.nvm"
+    [[ -d "$NVM_DIR/.git" ]] || return 1
+    git -C "$NVM_DIR" rev-parse HEAD 2>/dev/null
+}
+nvm_is_pinned() {
+    local current_commit current_version
+    load_nvm || return 1
+    current_version="$(nvm --version 2>/dev/null || true)"
+    current_commit="$(nvm_current_commit 2>/dev/null || true)"
+    [[ "$current_version" == "${NVM_VERSION#v}" && "$current_commit" == "$NVM_COMMIT" ]]
+}
+install_pinned_nvm() {
+    export NVM_DIR="$HOME/.nvm"
+    local expected_origin='https://github.com/nvm-sh/nvm.git'
+    local current_origin=''
+
+    if [[ -e "$NVM_DIR" && ! -d "$NVM_DIR/.git" ]]; then
+        printf 'KO  %s existe mais n’est pas un dépôt Git NVM vérifiable.\n' "$NVM_DIR" >&2
+        printf 'ACTION  Déplacez ce dossier après inspection ; le bootstrap ne le supprimera pas automatiquement.\n' >&2
+        return 1
+    fi
+
+    if [[ ! -d "$NVM_DIR/.git" ]]; then
+        mkdir -p "$NVM_DIR"
+        git -C "$NVM_DIR" init -q
+        git -C "$NVM_DIR" remote add origin "$expected_origin"
+    else
+        current_origin="$(git -C "$NVM_DIR" remote get-url origin 2>/dev/null || true)"
+        if [[ -z "$current_origin" ]]; then
+            git -C "$NVM_DIR" remote add origin "$expected_origin"
+        elif [[ "$current_origin" != "$expected_origin" \
+            && "$current_origin" != 'https://github.com/nvm-sh/nvm' \
+            && "$current_origin" != 'git@github.com:nvm-sh/nvm.git' ]]; then
+            printf 'KO  origine NVM inattendue : %s\n' "$current_origin" >&2
+            printf 'ACTION  Vérifiez manuellement %s avant toute modification.\n' "$NVM_DIR" >&2
+            return 1
+        fi
+    fi
+
+    git -C "$NVM_DIR" fetch --depth 1 origin "$NVM_COMMIT"
+    git -C "$NVM_DIR" checkout --detach --force FETCH_HEAD >/dev/null
+    [[ "$(git -C "$NVM_DIR" rev-parse HEAD)" == "$NVM_COMMIT" ]] || {
+        printf 'KO  le commit NVM vérifié n’a pas été obtenu.\n' >&2
+        return 1
+    }
+    [[ -s "$NVM_DIR/nvm.sh" ]] || {
+        printf 'KO  nvm.sh absent après checkout du commit NVM.\n' >&2
+        return 1
+    }
+    # shellcheck source=/dev/null
+    source "$NVM_DIR/nvm.sh"
+}
 
 p5_platform_print_summary "$PROJECT_ROOT"
 printf 'Ubuntu             : %s (%s)\n' "$VERSION_ID" "$VERSION_CODENAME"
@@ -138,6 +193,13 @@ done
 
 ANSIBLE_VERSION="$(ansible_current 2>/dev/null || true)"
 [[ "$ANSIBLE_VERSION" == "$ANSIBLE_CORE_VERSION" ]] && ok "Ansible Core $ANSIBLE_VERSION" || need "Ansible Core $ANSIBLE_CORE_VERSION"
+NVM_READY=false
+if nvm_is_pinned; then
+    NVM_READY=true
+    ok "NVM $NVM_VERSION @ ${NVM_COMMIT:0:12}"
+else
+    need "NVM $NVM_VERSION @ ${NVM_COMMIT:0:12}"
+fi
 NODE_CURRENT=''
 if load_nvm; then NODE_CURRENT="$(node --version 2>/dev/null || true)"; fi
 [[ "$NODE_CURRENT" == "v$NODE_VERSION" ]] && ok "Node.js $NODE_VERSION" || need "Node.js $NODE_VERSION via NVM"
@@ -147,7 +209,8 @@ MAP_COUNT="$(sysctl -n vm.max_map_count 2>/dev/null || printf 0)"
 
 if [[ "$CHECK_ONLY" == true ]]; then
     if ((${#MISSING_PACKAGES[@]} > 0)) || [[ "$ANSIBLE_VERSION" != "$ANSIBLE_CORE_VERSION" ]] \
-        || [[ "$NODE_CURRENT" != "v$NODE_VERSION" ]] || ! command -v markdownlint-cli2 >/dev/null 2>&1 \
+        || [[ "$NVM_READY" != true ]] || [[ "$NODE_CURRENT" != "v$NODE_VERSION" ]] \
+        || ! command -v markdownlint-cli2 >/dev/null 2>&1 \
         || [[ "$MAP_COUNT" -lt "$P5_OPENSEARCH_MAX_MAP_COUNT" ]]; then
         printf '\nVerdict : RUNTIME P5 NON CONVERGÉ DANS WSL2 — bootstrap requis.\n' >&2
         exit 1
@@ -169,12 +232,12 @@ if [[ "$ANSIBLE_VERSION" != "$ANSIBLE_CORE_VERSION" ]]; then
     change "Ansible Core $ANSIBLE_CORE_VERSION installé via pipx"
 fi
 export NVM_DIR="$HOME/.nvm"
-if ! load_nvm || [[ "$(nvm --version 2>/dev/null || true)" != "${NVM_VERSION#v}" ]]; then
-    curl -fsSL "https://raw.githubusercontent.com/nvm-sh/nvm/$NVM_VERSION/install.sh" | bash
-    # shellcheck source=/dev/null
-    source "$NVM_DIR/nvm.sh"
-    change "NVM $NVM_VERSION installé"
+if ! nvm_is_pinned; then
+    install_pinned_nvm
+    change "NVM $NVM_VERSION verrouillé sur ${NVM_COMMIT:0:12}"
 fi
+# shellcheck source=/dev/null
+source "$NVM_DIR/nvm.sh"
 if [[ "$(nvm version "$NODE_VERSION" 2>/dev/null || true)" != "v$NODE_VERSION" ]]; then
     nvm install "$NODE_VERSION"
     change "Node.js $NODE_VERSION installé"
