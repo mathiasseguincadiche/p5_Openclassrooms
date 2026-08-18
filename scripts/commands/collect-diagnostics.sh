@@ -152,6 +152,24 @@ print_version() {
     esac
 }
 
+terraform_state_has_resources() {
+    local exercise="$1"
+    local module="$PROJECT_ROOT/terraform/exercice-$exercise"
+    [[ -s "$module/terraform.tfstate" ]] || return 1
+    command -v terraform >/dev/null 2>&1 || return 1
+    terraform -chdir="$module" state list 2>/dev/null | grep -q .
+}
+
+detect_aws_check_stage() {
+    # Dès que l'exercice 1 existe, le VPC et la key pair ne sont plus des
+    # conflits : le contrôle exercice-3 sait les considérer comme attendus.
+    if terraform_state_has_resources 1; then
+        printf 'exercice-3\n'
+    else
+        printf 'initial\n'
+    fi
+}
+
 collect_system_snapshot() {
     printf 'Diagnostic UTC : %s\n' "$(date -u --iso-8601=seconds)"
     printf 'Projet         : %s\n' "$PROJECT_ROOT"
@@ -216,7 +234,7 @@ from pathlib import Path
 
 source = Path(sys.argv[1]).read_text(encoding="utf-8", errors="replace")
 patterns = [
-    (r"AKIA[0-9A-Z]{16}", "[AWS_ACCESS_KEY_REDACTED]"),
+    (r"(?:AKIA|ASIA)[0-9A-Z]{16}", "[AWS_ACCESS_KEY_REDACTED]"),
     (r"(?im)^(\s*aws_secret_access_key\s*[=:]\s*).+$", r"\1[REDACTED]"),
     (r"(?im)^(\s*aws_session_token\s*[=:]\s*).+$", r"\1[REDACTED]"),
     (r"(?im)^(\s*authorization\s*:\s*).+$", r"\1[REDACTED]"),
@@ -272,9 +290,11 @@ run_logged required "Contrôle du socle et du dépôt" "$SCRIPT_DIR/setup.sh" --
 
 CONFIG_FILE="$PROJECT_ROOT/environment/aws-readiness.env"
 if [[ -r "$CONFIG_FILE" ]]; then
+    AWS_CHECK_STAGE="$(detect_aws_check_stage)"
+    append_summary "AWS_STAGE | $AWS_CHECK_STAGE"
     BEFORE_WARNINGS="$WARNING_COUNT"
-    run_logged optional "Précontrôle AWS non destructif" \
-        "$SCRIPT_DIR/pre-deployment-check.sh" --stage initial
+    run_logged optional "Précontrôle AWS non destructif — $AWS_CHECK_STAGE" \
+        "$SCRIPT_DIR/pre-deployment-check.sh" --stage "$AWS_CHECK_STAGE"
     if [[ "$WARNING_COUNT" -eq "$BEFORE_WARNINGS" ]]; then
         AWS_READY=1
     fi
