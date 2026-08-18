@@ -76,7 +76,7 @@ data "aws_ami" "ubuntu" {
 
   filter {
     name   = "name"
-    values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"]
+    values = ["ubuntu/images/hvm-ssd*/ubuntu-noble-24.04-amd64-server-*"]
   }
 
   filter {
@@ -238,19 +238,19 @@ resource "aws_instance" "p5_haproxy" {
     delete_on_termination = true
   }
 
-  user_data = <<-EOF
-    #!/usr/bin/env bash
-    set -euo pipefail
-    apt-get update -y
-    apt-get install -y haproxy
+  user_data = <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+apt-get update -y
+apt-get install -y haproxy
 
-    cat > /etc/haproxy/haproxy.cfg <<'HAPROXY'
-    ${indent(4, local.haproxy_config)}
-    HAPROXY
+cat > /etc/haproxy/haproxy.cfg <<'HAPROXY'
+${local.haproxy_config}
+HAPROXY
 
-    haproxy -c -f /etc/haproxy/haproxy.cfg
-    systemctl enable --now haproxy
-  EOF
+haproxy -c -f /etc/haproxy/haproxy.cfg
+systemctl enable --now haproxy
+EOF
 
   tags = {
     Name = "p5-haproxy"
