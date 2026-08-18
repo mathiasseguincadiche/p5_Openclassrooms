@@ -10,7 +10,7 @@ permissions:
 jobs:
   generate:
     if: github.head_ref == 'chore/angular-quality-gates'
-    name: Générer ESLint et lockfile
+    name: Générer ESLint, Vitest et lockfile
     runs-on: ubuntu-latest
     steps:
       - name: Récupérer le dépôt
@@ -26,11 +26,15 @@ jobs:
       - name: Installer les dépendances verrouillées
         run: npm ci --prefix application/angular --no-audit --no-fund
 
-      - name: Ajouter angular-eslint 21 avec le schematic officiel
+      - name: Ajouter ESLint avec le schematic officiel
         working-directory: application/angular
         run: npx ng add angular-eslint@21.0.1 --skip-confirmation --defaults
 
-      - name: Vérifier la configuration générée
+      - name: Ajouter le runner de tests Angular
+        working-directory: application/angular
+        run: npm install --save-dev --save-exact vitest@4.1.7 jsdom@29.1.1 --no-audit --no-fund
+
+      - name: Vérifier les fichiers générés
         working-directory: application/angular
         run: |
           npx ng lint
@@ -40,7 +44,7 @@ jobs:
       - name: Exporter uniquement les fichiers générés
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: angular-eslint-generated
+          name: angular-quality-generated
           path: |
             application/angular/package.json
             application/angular/package-lock.json
