@@ -23,6 +23,11 @@ jobs:
           cache: npm
           cache-dependency-path: application/angular/package-lock.json
 
+      - name: Utiliser npm 11 pour la génération du lockfile
+        run: |
+          npm install --global npm@11.17.0
+          test "$(npm --version)" = "11.17.0"
+
       - name: Installer les dépendances verrouillées
         run: npm ci --prefix application/angular --no-audit --no-fund
 
@@ -36,7 +41,7 @@ jobs:
           npm pkg set devDependencies.vitest=4.1.7
           npm pkg set devDependencies.jsdom=29.1.1
 
-      - name: Régénérer et vérifier le lockfile depuis un arbre propre
+      - name: Régénérer le lockfile depuis un arbre propre
         working-directory: application/angular
         run: |
           rm -rf node_modules
