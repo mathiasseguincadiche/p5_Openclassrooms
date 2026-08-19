@@ -43,7 +43,7 @@ p5_platform_checkout_root_allowed() {
 p5_platform_checkout_on_windows_mount() {
     local project_root="$1" prefix
     project_root="$(realpath -m "$project_root")"
-    for prefix in ${P5_FORBIDDEN_MOUNT_PREFIXES:-/mnt/c /mnt/d}; do
+    for prefix in ${P5_FORBIDDEN_MOUNT_PREFIXES:-/mnt/c /mnt/e}; do
         [[ "$project_root" == "$prefix" || "$project_root" == "$prefix/"* ]] && return 0
     done
     return 1
