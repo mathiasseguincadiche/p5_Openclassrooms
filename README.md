@@ -68,7 +68,7 @@ Le checkout P5 doit vivre sur le filesystem Linux de WSL2, par exemple :
 ~/labs/p5_Openclassrooms
 ```
 
-Les racines `/mnt/c` et `/mnt/d` ne sont pas utilisées comme workspace DevOps de référence.
+Les racines `/mnt/c` et `/mnt/e` ne sont pas utilisées comme workspace DevOps de référence.
 
 Référence : [`environment/wsl2/README.md`](environment/wsl2/README.md).
 
