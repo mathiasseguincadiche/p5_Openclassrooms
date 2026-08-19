@@ -60,7 +60,7 @@ jobs:
           grep -Fq 'P5_EXPECTED_WSL_DISTRO=Ubuntu' environment/versions.env
           grep -Fq 'P5_EXECUTION_MODEL=windows11-wsl2-ubuntu-26.04' environment/versions.env
           grep -Fq "P5_ALLOWED_WORK_ROOTS='projects labs repositories'" environment/versions.env
-          grep -Fq "P5_FORBIDDEN_MOUNT_PREFIXES='/mnt/c /mnt/d'" environment/versions.env
+          grep -Fq "P5_FORBIDDEN_MOUNT_PREFIXES='/mnt/c /mnt/e'" environment/versions.env
           grep -Fq 'NVM_COMMIT=62387b8f92aa012d48202747fd75c40850e5e261' environment/versions.env
           test ! -e environment/vm-devops
 
@@ -69,7 +69,7 @@ jobs:
             echo 'KO ancien contrat VM/KVM détecté dans le runtime canonique.' >&2
             exit 1
           fi
-          if grep -RniE '(^|[[:space:]`])/(mnt/c|mnt/d)(/|[[:space:]`]|$)' \
+          if grep -RniE '(^|[[:space:]`])/(mnt/c|mnt/e)(/|[[:space:]`]|$)' \
             scripts/commands scripts/lib | grep -v 'p5-platform.sh'; then
             echo 'KO chemin de travail Windows détecté dans les scripts P5.' >&2
             exit 1
@@ -116,9 +116,9 @@ jobs:
             (.sourceDistribution == "Ubuntu-26.04") and
             (.expectedVersionId == "26.04") and
             (.expectedCodename == "resolute") and
-            (.installLocation == "D:\\WSL\\Ubuntu-DevOps") and
+            (.installLocation == "E:\\WSL\\Ubuntu-DevOps") and
             (.workingRoots == ["~/projects", "~/labs", "~/repositories"]) and
-            (.forbiddenRoots == ["/mnt/c", "/mnt/d"])
+            (.forbiddenRoots == ["/mnt/c", "/mnt/e"])
           ' "$contract" >/dev/null
           grep -Fq 'systemd=true' upstream-platform/config/wsl/wsl.conf
           grep -Fq 'networkingMode=mirrored' upstream-platform/config/wsl/standard.wslconfig

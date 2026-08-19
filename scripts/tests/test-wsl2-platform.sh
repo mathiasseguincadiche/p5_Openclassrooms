@@ -40,6 +40,6 @@ P5_TEST_FS_TYPE=ext4
 
 ! p5_platform_validate "$TMP_DIR/home/Downloads/p5_Openclassrooms" >/dev/null 2>&1
 p5_platform_checkout_on_windows_mount /mnt/c/Users/test/p5_Openclassrooms
-p5_platform_checkout_on_windows_mount /mnt/d/labs/p5_Openclassrooms
+p5_platform_checkout_on_windows_mount /mnt/e/labs/p5_Openclassrooms
 
 printf 'Verdict : CONTRAT WSL2 P5 RESPECTÉ.\n'

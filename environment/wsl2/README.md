@@ -9,7 +9,7 @@ Le plan de contrôle P5 s'exécute dans la distribution WSL2 **`Ubuntu`**, Ubunt
 Le dépôt Windows possède :
 
 - Windows 11 Pro, WSL2 et la distribution `Ubuntu` ;
-- le VHDX sous `D:\WSL\Ubuntu-DevOps` et le swap WSL ;
+- le VHDX sous `E:\WSL\Ubuntu-DevOps` et le swap WSL ;
 - `.wslconfig`, `/etc/wsl.conf`, systemd, le réseau et le DNS ;
 - Docker Engine, Terraform et AWS CLI.
 
@@ -30,7 +30,7 @@ source             Ubuntu-26.04
 release            Ubuntu 26.04 LTS / resolute
 architecture       amd64
 init               systemd
-stockage VHDX      D:\WSL\Ubuntu-DevOps
+stockage VHDX      E:\WSL\Ubuntu-DevOps
 réseau             mirrored, avec repli NAT géré par la plateforme
 ```
 
@@ -45,8 +45,8 @@ racines :
 ~/repositories
 ```
 
-`/mnt/c` et `/mnt/d` sont interdits comme racines de travail. Le fait que le
-VHDX soit physiquement stocké sur `D:` ne transforme pas le filesystem Ubuntu
+`/mnt/c` et `/mnt/e` sont interdits comme racines de travail. Le fait que le
+VHDX soit physiquement stocké sur `E:` ne transforme pas le filesystem Ubuntu
 en DrvFS : le projet reste en EXT4 dans `/home/<utilisateur>`.
 
 ## Contrôle initial
