@@ -126,12 +126,12 @@ et non :
 
 ```text
 /mnt/c/...
-/mnt/d/...
+/mnt/e/...
 ```
 
 Le projet utilise Bash, permissions Unix, Terraform, Ansible, Docker et de nombreux petits fichiers. Le filesystem Linux du VHDX est donc le contexte de référence.
 
-Le fait que le VHDX soit physiquement stocké sur `D:` ne signifie pas que le projet travaille sous `/mnt/d`.
+Le fait que le VHDX soit physiquement stocké sur `E:` ne signifie pas que le projet travaille sous `/mnt/e`.
 
 Référence : [`../environment/wsl2/README.md`](../environment/wsl2/README.md).
 
