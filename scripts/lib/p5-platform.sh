@@ -33,7 +33,7 @@ p5_platform_checkout_root_allowed() {
     local project_root="$1" home_root="${P5_TEST_HOME:-$HOME}" item allowed_root
     project_root="$(realpath -m "$project_root")"
     home_root="$(realpath -m "$home_root")"
-    for item in ${P5_ALLOWED_WORK_ROOTS:-projects labs repositories}; do
+    for item in ${P5_ALLOWED_WORK_ROOTS:-}; do
         allowed_root="$home_root/$item"
         [[ "$project_root" == "$allowed_root" || "$project_root" == "$allowed_root/"* ]] && return 0
     done
@@ -43,7 +43,7 @@ p5_platform_checkout_root_allowed() {
 p5_platform_checkout_on_windows_mount() {
     local project_root="$1" prefix
     project_root="$(realpath -m "$project_root")"
-    for prefix in ${P5_FORBIDDEN_MOUNT_PREFIXES:-/mnt/c /mnt/e}; do
+    for prefix in ${P5_FORBIDDEN_MOUNT_PREFIXES:-}; do
         [[ "$project_root" == "$prefix" || "$project_root" == "$prefix/"* ]] && return 0
     done
     return 1
@@ -51,6 +51,14 @@ p5_platform_checkout_on_windows_mount() {
 
 p5_platform_validate() {
     local project_root="${1:-$(p5_platform_project_root)}" failures=0 fs_type distro pid1
+
+    if [[ -z "${P5_ALLOWED_WORK_ROOTS:-}" \
+        || -z "${P5_FORBIDDEN_MOUNT_PREFIXES:-}" \
+        || -z "${P5_EXPECTED_HOME_FILESYSTEM:-}" ]]; then
+        printf 'KO  Contrat WSL2 incomplet : chargez environment/versions.env avant validation.\n' >&2
+        return 1
+    fi
+
     p5_platform_is_wsl2 || { printf 'KO  WSL2 microsoft-standard-WSL2 est requis.\n' >&2; failures=$((failures + 1)); }
     distro="${P5_TEST_WSL_DISTRO_NAME:-${WSL_DISTRO_NAME:-}}"
     if [[ -n "${P5_EXPECTED_WSL_DISTRO:-}" && "$distro" != "$P5_EXPECTED_WSL_DISTRO" ]]; then
@@ -71,19 +79,21 @@ p5_platform_validate() {
         failures=$((failures + 1))
     fi
     fs_type="$(p5_platform_fs_type "$project_root")"
-    case "$fs_type" in ext4|xfs|btrfs) ;; *)
-        printf 'KO  Filesystem Linux local attendu ; détecté=%s pour %s.\n' "${fs_type:-inconnu}" "$project_root" >&2
-        failures=$((failures + 1)) ;;
-    esac
+    if [[ "$fs_type" != "$P5_EXPECTED_HOME_FILESYSTEM" ]]; then
+        printf 'KO  Filesystem %s attendu ; détecté=%s pour %s.\n' \
+            "$P5_EXPECTED_HOME_FILESYSTEM" "${fs_type:-inconnu}" "$project_root" >&2
+        failures=$((failures + 1))
+    fi
     ((failures == 0))
 }
 
 p5_platform_print_summary() {
     local project_root="${1:-$(p5_platform_project_root)}"
-    printf 'Plateforme        : %s\n' "${P5_EXECUTION_MODEL:-windows11-wsl2-ubuntu-26.04}"
+    printf 'Plateforme        : %s\n' "${P5_EXECUTION_MODEL:-inconnue}"
     printf 'Distribution WSL : %s\n' "${WSL_DISTRO_NAME:-inconnue}"
     printf 'Noyau             : %s\n' "$(uname -r 2>/dev/null || printf inconnu)"
     printf 'PID 1             : %s\n' "$(p5_platform_pid1)"
     printf 'Checkout          : %s\n' "$project_root"
-    printf 'Filesystem        : %s\n' "$(p5_platform_fs_type "$project_root")"
+    printf 'Filesystem        : %s (attendu: %s)\n' \
+        "$(p5_platform_fs_type "$project_root")" "${P5_EXPECTED_HOME_FILESYSTEM:-inconnu}"
 }
