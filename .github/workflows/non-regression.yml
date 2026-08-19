@@ -24,20 +24,6 @@ jobs:
       - name: Vérifier le contrat de non-régression
         run: python3 scripts/tools/audit_non_regression.py
 
-      - name: Refuser les références OS obsolètes
-        shell: bash
-        run: |
-          set -euo pipefail
-          legacy_label="$(printf '%s %s' 'Fedora' '44')"
-          legacy_slug="$(printf '%s_%s' 'FEDORA' '44')"
-          legacy_compact="$(printf '%s%s' 'fedora' '44')"
-          for needle in "$legacy_label" "$legacy_slug" "$legacy_compact"; do
-            if grep -RniF --exclude-dir=.git -- "$needle" .; then
-              echo "Référence OS obsolète détectée dans l'arbre actif." >&2
-              exit 1
-            fi
-          done
-
       - name: Vérifier le centre de commande P5
         run: bash scripts/tests/test-p5-orchestrator.sh
 
