@@ -1,9 +1,9 @@
 name: Export Angular bundle (temporary)
 
 on:
-  pull_request:
+  push:
     branches:
-      - main
+      - maintenance/angular-group-sync
 
 permissions:
   contents: read
