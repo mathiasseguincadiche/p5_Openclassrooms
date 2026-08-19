@@ -6,48 +6,102 @@
 
 Projet réalisé dans le cadre du parcours **Expert DevOps OpenClassrooms**.
 
-Le dépôt met en œuvre un parcours DevOps **100 % AWS** autour de trois objectifs :
+Ce dépôt constitue un lab DevOps AWS reproductible. Il ne se limite pas à stocker des fichiers Terraform : il fournit un **plan de contrôle**, des garde-fous, des procédures de vérification et une documentation permettant de comprendre **quoi faire, comment le faire et pourquoi**.
 
-1. provisionner une infrastructure avec Terraform et déployer Angular/NGINX avec Ansible ;
-2. exploiter des logs HTTP avec Amazon OpenSearch ;
-3. démontrer la haute disponibilité d'un service avec HAProxy.
+Le projet couvre exactement trois exercices :
 
-Le plan de contrôle P5 s'exécute en CLI dans la distribution WSL2 **`Ubuntu`**, Ubuntu 26.04 LTS (`resolute`).
+1. **Terraform + Ansible + Angular/NGINX** — créer une infrastructure AWS puis configurer une EC2 de manière idempotente ;
+2. **Amazon OpenSearch** — transformer des logs NGINX en données exploitables puis construire les visualisations demandées ;
+3. **HAProxy** — démontrer la répartition de charge et la continuité de service pendant la panne contrôlée d'un backend.
 
-## Projet en 30 secondes
-
-| Exercice | Objectif | Réalisation | Preuve principale |
-| --- | --- | --- | --- |
-| **1 — Infrastructure et déploiement** | créer une infrastructure reproductible et y déployer une application | Terraform crée le socle AWS ; Ansible déploie Angular derrière NGINX sur EC2 | aucun delta Terraform après convergence, application accessible, second passage Ansible `changed=0` |
-| **2 — Logs et observabilité** | transformer des logs HTTP en informations exploitables | Amazon OpenSearch reçoit un jeu reproductible et le vrai `access.log` NGINX | données indexées, agrégations valides, trois visualisations et dashboard capturés |
-| **3 — Haute disponibilité** | continuer à servir du trafic lorsqu'un backend tombe | HAProxy répartit les requêtes vers deux `nginxdemos/hello` | round-robin, retrait du backend défaillant, continuité du service, réintégration |
+> **Important — coûts AWS**  
+> Une CI verte ne signifie ni déploiement AWS effectué ni coût nul. Toute ressource AWS active doit être considérée comme potentiellement facturable jusqu'au verdict final `NETTOYAGE AWS COMPLET`.
 
 ![Architecture et dépendances du P5](docs/schemas/vue-ensemble.svg)
 
-Dépendances principales :
+## À qui s'adresse ce dépôt ?
 
-- l'exercice 1 fournit le VPC et les sous-réseaux réutilisés par l'exercice 3 ;
-- l'exercice 1 produit le log NGINX réel exploitable par l'exercice 2 ;
-- l'exercice 2 conserve un checkpoint humain pour OpenSearch Dashboards ;
-- le nettoyage respecte l'ordre `3 → 2 → 1`.
+| Profil | Commencer par | Objectif |
+| --- | --- | --- |
+| je découvre Terraform, Ansible ou AWS | [`docs/01-parcours-debutant.md`](docs/01-parcours-debutant.md) | construire le modèle mental avant d'exécuter |
+| je veux réaliser le projet de A à Z | [`docs/RUNBOOK_EXECUTION_GUIDEE.md`](docs/RUNBOOK_EXECUTION_GUIDEE.md) | suivre une procédure opératoire vérifiable |
+| je veux comprendre l'architecture | [`docs/architecture-et-flux.md`](docs/architecture-et-flux.md) | comprendre responsabilités, réseau, données et dépendances |
+| je reprends un lab existant | [`docs/convergence-et-reexecution.md`](docs/convergence-et-reexecution.md) | réutiliser l'état existant sans recréer inutilement |
+| j'ai une erreur | [`docs/troubleshooting.md`](docs/troubleshooting.md) | diagnostiquer par couche avant de modifier |
+| je prépare les preuves ou la soutenance | [`docs/livrables/README.md`](docs/livrables/README.md) | transformer les résultats réels en preuves exploitables |
+| je ne connais pas un terme | [`docs/GLOSSAIRE.md`](docs/GLOSSAIRE.md) | retrouver une définition appliquée au P5 |
 
-## Préparer le plan de contrôle
+Le portail complet se trouve dans [`docs/README.md`](docs/README.md).
 
-La plateforme Windows/WSL2 est fournie par
-[`mathiasseguincadiche/Windows_11_Pro_Custom`](https://github.com/mathiasseguincadiche/Windows_11_Pro_Custom).
-Le P5 possède son runtime logiciel dans `Ubuntu` sous WSL2 et l'ensemble des exercices AWS.
+## Le projet en 30 secondes
 
-![Étape 0 — préparation de l'environnement](docs/schemas/etape-0.svg)
+| Exercice | Question à laquelle il répond | Réalisation | Preuve principale |
+| --- | --- | --- | --- |
+| **1 — Infrastructure et déploiement** | peut-on créer puis configurer une cible de manière reproductible ? | Terraform crée le socle AWS ; Ansible déploie Angular derrière NGINX sur EC2 | plan Terraform convergé, application accessible, second passage Ansible `changed=0` |
+| **2 — Logs et observabilité** | peut-on transformer des logs HTTP en informations utiles ? | Amazon OpenSearch reçoit un sample reproductible et le vrai `access.log` NGINX | données indexées, agrégations valides, trois visualisations et un dashboard |
+| **3 — Haute disponibilité** | le service continue-t-il lorsque l'un des backends tombe ? | HAProxy répartit les requêtes vers deux backends `nginxdemos/hello` | round-robin, retrait du backend défaillant, continuité puis réintégration |
 
-Dans `Ubuntu` sous WSL2 :
+Dépendances importantes :
+
+```text
+Exercice 1
+├── fournit le log NGINX réel ─────────► Exercice 2
+└── fournit le VPC et les subnets ─────► Exercice 3
+
+Nettoyage : Exercice 3 → Exercice 2 → Exercice 1 → audit AWS
+```
+
+## Deux Ubuntu différents : ne pas les confondre
+
+Le projet utilise deux contextes Linux distincts.
+
+| Contexte | Version | Rôle |
+| --- | --- | --- |
+| **plan de contrôle local** | Ubuntu 26.04 LTS `resolute` sous WSL2 | exécuter `p5.sh`, Terraform, Ansible, AWS CLI, Node.js et les validations |
+| **instances EC2 des exercices 1 et 3** | Ubuntu 24.04 LTS `noble` par défaut | héberger la cible Ansible, HAProxy et les backends de démonstration |
+
+La plateforme Windows/WSL2 est fournie par [`mathiasseguincadiche/Windows_11_Pro_Custom`](https://github.com/mathiasseguincadiche/Windows_11_Pro_Custom). Le dépôt P5 **ne crée, ne déplace et ne détruit pas** la distribution WSL2 ni son VHDX.
+
+Le checkout P5 doit vivre sur le filesystem Linux de WSL2, par exemple :
+
+```text
+~/labs/p5_Openclassrooms
+```
+
+Les racines `/mnt/c` et `/mnt/d` ne sont pas utilisées comme workspace DevOps de référence.
+
+Référence : [`environment/wsl2/README.md`](environment/wsl2/README.md).
+
+## Première prise en main
+
+Dans la distribution WSL2 `Ubuntu` :
 
 ```bash
 mkdir -p ~/labs
 cd ~/labs
 git clone https://github.com/mathiasseguincadiche/p5_Openclassrooms.git
 cd p5_Openclassrooms
+```
+
+### 1. Observer avant de modifier
+
+```bash
 bash scripts/commands/p5.sh inspect
+```
+
+`inspect` collecte l'état disponible sans chercher à corriger immédiatement.
+
+### 2. Préparer le runtime et le lab
+
+```bash
 bash scripts/commands/p5.sh prepare
+```
+
+`prepare` peut converger les dépendances propres au P5, la configuration locale AWS, la clé SSH, le budget et les `terraform.tfvars`. Cette commande **ne signifie pas** « déployer les trois exercices ».
+
+### 3. Revalider avant Terraform
+
+```bash
 bash scripts/commands/p5.sh status
 ```
 
@@ -57,24 +111,42 @@ Le précontrôle doit pouvoir atteindre :
 GO TERRAFORM
 ```
 
-Ce verdict autorise la lecture d'un plan Terraform. Le delta doit être compris avant toute mutation.
+Ce verdict signifie : **le lab est suffisamment qualifié pour lire un plan Terraform**. Il ne signifie pas qu'un `apply` doit être accepté automatiquement.
 
-Contrats :
+Guide détaillé : [`docs/00-preparation-environnement.md`](docs/00-preparation-environnement.md).
 
-- [Contrat WSL2](environment/wsl2/README.md) ;
-- [versions P5](environment/versions.env) ;
-- [préparation de l'environnement](docs/00-preparation-environnement.md).
+## Le centre de commande `p5.sh`
 
-## Point d'entrée et commandes
+Point d'entrée principal :
 
 ```bash
 bash scripts/commands/p5.sh
 ```
 
-Principe d'exécution :
+Sans argument, un menu s'ouvre. Les mêmes actions sont disponibles directement en CLI.
+
+| Commande | Mutation possible ? | Rôle |
+| --- | --- | --- |
+| `p5.sh inspect` | non | observer l'état réel |
+| `p5.sh prepare` | oui, préparation contrôlée | converger runtime P5, configuration AWS et garde-fous |
+| `p5.sh status` | non sur les exercices | vérifier que le lab est prêt |
+| `p5.sh ex1` | oui | converger Terraform + Ansible + Angular/NGINX |
+| `p5.sh ex2` | oui | converger OpenSearch, importer et vérifier les données |
+| `p5.sh ex3` | oui | converger HAProxy et tester panne/reprise |
+| `p5.sh all` | oui | exécuter `prepare → ex1 → ex2 → ex3 → diagnostics` |
+| `p5.sh diagnostics` | localement | collecter l'état technique et les preuves |
+| `p5.sh finalize` | localement | contrôler les livrables et preuves attendus |
+| `p5.sh cleanup` | **destructif AWS** | détruire `3 → 2 → 1` puis auditer AWS |
+| `p5.sh logs` | non sur AWS | afficher les journaux disponibles |
+| `p5.sh guide` | non | choisir le parcours adapté à la situation |
+| `p5.sh docs` | non | afficher la carte documentaire |
+
+Référence exhaustive : [`docs/CENTRE_DE_COMMANDE.md`](docs/CENTRE_DE_COMMANDE.md).
+
+### Le principe de convergence
 
 ```text
-inspecter l'état réel
+observer l'état réel
         ↓
 calculer le delta
         ↓
@@ -82,38 +154,47 @@ aucun delta ? ── oui ──► ne rien modifier
         │
         non
         ↓
-corriger uniquement ce qui diffère
+présenter le changement
+        ↓
+confirmer la mutation
+        ↓
+appliquer uniquement le delta
         ↓
 vérifier le résultat
         ↓
-journaliser et conserver les preuves
+journaliser et conserver les preuves utiles
 ```
 
-| Commande | Rôle |
-| --- | --- |
-| `p5.sh` ou `p5.sh menu` | ouvrir le centre de commande |
-| `p5.sh inspect` | observer l'état réel sans mutation |
-| `p5.sh prepare` | préparer le runtime P5, AWS, le budget et les `tfvars` |
-| `p5.sh status` | revalider les prérequis sans déployer |
-| `p5.sh ex1` | converger Terraform + Ansible + Angular/NGINX |
-| `p5.sh ex2` | converger OpenSearch et les données |
-| `p5.sh ex3` | converger HAProxy et rejouer les tests de résilience |
-| `p5.sh all` | exécuter `prepare → ex1 → ex2 → ex3 → diagnostics` |
-| `p5.sh finalize` | contrôler les preuves et les livrables |
-| `p5.sh cleanup` | nettoyer les ressources P5 puis auditer AWS |
+Une automatisation sûre doit pouvoir être relancée sans supposer que « tout est vide ».
 
-Référence : [Centre de commande](docs/CENTRE_DE_COMMANDE.md).
-
-## Exercice 1 — Terraform + Ansible + Angular/NGINX
+## Exercice 1 — Terraform, Ansible et Angular/NGINX
 
 ![Exercice 1 — infrastructure et déploiement](docs/schemas/exercice-1.svg)
-
-Les flux Terraform et Angular sont indépendants : Terraform fournit l'infrastructure AWS, le build
-Angular fournit l'artefact, puis Ansible utilise les deux pour configurer l'EC2 et servir l'application.
 
 ```bash
 bash scripts/commands/p5.sh ex1
 ```
+
+### Responsabilités
+
+```text
+application/angular/
+      │ npm build
+      ▼
+artefact Angular
+      │
+      ├──────────────────────────────┐
+      │                              │
+terraform/exercice-1/                │
+      │ VPC + réseau + SG + EC2      │
+      ▼                              ▼
+outputs Terraform ───────────────► Ansible
+                                     │
+                                     ▼
+                             NGINX + Angular
+```
+
+**Terraform** crée l'infrastructure. **Ansible** configure l'EC2 et déploie l'application. Cette frontière est volontaire : Terraform n'est pas utilisé pour copier les fichiers Angular sur le serveur.
 
 Résultats attendus :
 
@@ -124,61 +205,81 @@ HTTP      : application Angular servie par NGINX
 Logs      : access.log réel collecté pour l'exercice 2
 ```
 
-Guide : [Exercice 1](docs/exercices/01-terraform-ansible.md).
+Guide : [`docs/exercices/01-terraform-ansible.md`](docs/exercices/01-terraform-ansible.md).
 
 ## Exercice 2 — Amazon OpenSearch
 
 ![Exercice 2 — logs vers OpenSearch](docs/schemas/exercice-2.svg)
 
-Le sample versionné et le vrai `access.log` convergent vers le même pipeline de transformation et
-d'import. La validation des trois visualisations et du dashboard reste un checkpoint humain.
-
 ```bash
 bash scripts/commands/p5.sh ex2
 ```
 
-Le checkpoint OpenSearch Dashboards demande :
+Le pipeline est :
 
-1. un donut des méthodes HTTP ;
-2. la somme de `bytes_sent` par tranches de 12 h ;
-3. le top 5 de `url_path` par tranches de 12 h ;
-4. le dashboard complet.
+```text
+sample versionné ──────────────┐
+                               ├──► parsing / typage → Bulk API → Amazon OpenSearch
+access.log réel de l'ex. 1 ────┘                              │
+                                                             ▼
+                                                   OpenSearch Dashboards
+```
 
-Guide : [Exercice 2](docs/exercices/02-opensearch.md).
+Le dépôt automatise la préparation des données, l'import et les contrôles techniques. La construction et la vérification visuelle des trois visualisations et du dashboard restent un **checkpoint humain** : `--yes` ne crée pas une preuve à la place de l'opérateur.
 
-## Exercice 3 — HAProxy
+Guide : [`docs/exercices/02-opensearch.md`](docs/exercices/02-opensearch.md).
+
+## Exercice 3 — HAProxy et résilience
 
 ![Exercice 3 — HAProxy et résilience](docs/schemas/exercice-3.svg)
-
-L'exercice réutilise le réseau de l'exercice 1. Le trafic public atteint HAProxy ; les backends
-acceptent le trafic HTTP depuis le Security Group HAProxy, puis les health checks pilotent le retrait
-et la réintégration d'un backend.
 
 ```bash
 bash scripts/commands/p5.sh ex3
 ```
 
-La preuve doit montrer les deux backends, le round-robin, la panne contrôlée d'un backend,
-la continuité du service et sa réintégration après restauration.
+L'exercice 3 réutilise le réseau de l'exercice 1.
 
-Guide : [Exercice 3](docs/exercices/03-haproxy.md).
+```text
+Internet
+   │
+   ▼
+HAProxy EC2
+   │ round-robin + health checks
+   ├───────────────┐
+   ▼               ▼
+backend 1       backend 2
+Docker          Docker
+nginxdemos      nginxdemos
+```
 
-## Preuves, livrables et nettoyage AWS
+La preuve doit montrer l'état sain, la panne contrôlée d'un backend, le maintien du service et la réintégration après restauration.
 
-![Finalisation et nettoyage](docs/schemas/finalisation/finalisation.svg)
+Guide : [`docs/exercices/03-haproxy.md`](docs/exercices/03-haproxy.md).
 
-Collecter puis contrôler les preuves avant toute destruction :
+## Preuves, CI et réalité AWS
+
+Trois niveaux ne doivent pas être confondus :
+
+| Élément | Ce qu'il prouve | Ce qu'il ne prouve pas |
+| --- | --- | --- |
+| code Terraform/Ansible | l'intention d'automatisation | que les ressources ont réellement convergé sur AWS |
+| CI verte | cohérence, syntaxe, tests et contrats du dépôt | qu'un lab AWS réel a été exécuté |
+| preuve runtime AWS | résultat réellement observé | qu'elle est automatiquement prête à être publiée |
+
+Les traces runtime restent locales sous `logs/` et `proofs/runtime/`. Avant publication, sélectionner les éléments utiles, les contextualiser et retirer les informations sensibles inutiles.
+
+Référence : [`docs/contrat-preuves-automatiques.md`](docs/contrat-preuves-automatiques.md).
+
+## Finaliser puis fermer le lab AWS
+
+Avant toute destruction :
 
 ```bash
 bash scripts/commands/p5.sh diagnostics
 bash scripts/commands/p5.sh finalize
 ```
 
-Une CI verte prouve la cohérence du dépôt ; elle ne remplace pas les preuves d'une exécution réelle
-sur AWS. Les traces runtime restent locales sous `proofs/runtime/` et les preuves publiées doivent
-être sélectionnées, contextualisées et anonymisées.
-
-Après validation des livrables :
+Une fois les preuves relues et les livrables validés :
 
 ```bash
 bash scripts/commands/p5.sh cleanup
@@ -190,28 +291,32 @@ Ordre de fermeture :
 Exercice 3 → Exercice 2 → Exercice 1 → audit AWS
 ```
 
-Verdict attendu :
+Verdict final attendu :
 
 ```text
 NETTOYAGE AWS COMPLET
 ```
 
-## Sécurité et coûts
+Tant que ce verdict n'est pas obtenu, ne pas conclure que les ressources facturables ont toutes disparu.
 
-Le projet applique notamment :
+## Sources de vérité techniques
 
-- `allowed_account_ids` pour verrouiller le compte AWS attendu ;
-- une identité non root pour le lab ;
-- une restriction SSH/OpenSearch à l'IPv4 publique `/32` ;
-- IMDSv2 sur les EC2 ;
-- des volumes racine chiffrés ;
-- HTTPS et chiffrement OpenSearch ;
-- un budget AWS contrôlé avant déploiement ;
-- l'exclusion Git des states, vrais `tfvars`, clés, inventaires et preuves runtime ;
-- une sauvegarde locale confidentielle du state avant chaque `apply` et `destroy` ;
-- des confirmations humaines avant les mutations sensibles.
+La documentation explique le projet ; les fichiers ci-dessous définissent son comportement réel.
 
-Une CI verte ne signifie ni coût nul ni déploiement AWS effectif.
+| Sujet | Source de vérité |
+| --- | --- |
+| environnement WSL2 attendu | `environment/wsl2/README.md` + contrôles de `bootstrap-wsl2.sh` |
+| versions du runtime P5 | `environment/versions.env` |
+| orchestration et commandes | `scripts/commands/p5.sh` |
+| infrastructure exercice 1 | `terraform/exercice-1/` |
+| configuration NGINX/Angular | `ansible/playbooks/deploy.yml` + `ansible/files/` |
+| sources applicatives | `application/angular/` |
+| infrastructure OpenSearch | `terraform/exercice-2/` |
+| pipeline de logs | `convert-nginx-logs.py`, `import-opensearch-data.sh`, `verify-opensearch-data.sh` |
+| infrastructure HAProxy | `terraform/exercice-3/` + `haproxy.cfg.tpl` |
+| non-régression | `scripts/tools/audit_non_regression.py` + `.github/workflows/` |
+
+La matrice détaillée documentation ↔ code est maintenue dans [`docs/MATRICE_TRACABILITE.md`](docs/MATRICE_TRACABILITE.md).
 
 ## Documentation
 
@@ -219,31 +324,38 @@ Portail : [`docs/README.md`](docs/README.md).
 
 | Besoin | Document |
 | --- | --- |
-| comprendre le projet | [Parcours pédagogique](docs/01-parcours-debutant.md) |
-| exécuter de A à Z | [Runbook guidé](docs/RUNBOOK_EXECUTION_GUIDEE.md) |
-| préparer l'environnement | [Préparation](docs/00-preparation-environnement.md) |
+| comprendre le projet sans prérequis implicite | [Parcours débutant](docs/01-parcours-debutant.md) |
+| exécuter de A à Z | [Runbook d'exécution](docs/RUNBOOK_EXECUTION_GUIDEE.md) |
+| choisir le bon runbook | [Catalogue des runbooks](docs/runbooks/README.md) |
 | comprendre l'architecture | [Architecture et flux](docs/architecture-et-flux.md) |
 | comprendre une commande | [Centre de commande](docs/CENTRE_DE_COMMANDE.md) |
 | reprendre après interruption | [Convergence et réexécution](docs/convergence-et-reexecution.md) |
-| résoudre un blocage | [Troubleshooting](docs/troubleshooting.md) |
-| préparer la soutenance | [Guide de soutenance](docs/05-soutenance.md) |
-| préparer les livrables | [Livrables](docs/livrables/README.md) |
-| vérifier la conformité | [Consignes → code → preuves](docs/02-correspondance-consignes-depot.md) |
+| diagnostiquer | [Troubleshooting](docs/troubleshooting.md) |
+| comprendre le vocabulaire | [Glossaire](docs/GLOSSAIRE.md) |
+| préparer les preuves | [Livrables](docs/livrables/README.md) |
+| préparer la soutenance | [Soutenance](docs/05-soutenance.md) |
+| vérifier la fidélité documentation/code | [Matrice de traçabilité](docs/MATRICE_TRACABILITE.md) |
+| connaître les règles éditoriales | [Conventions documentaires](docs/CONVENTIONS_DOCUMENTAIRES.md) |
 
-## Schémas de référence
+## Sécurité
 
-- [Vue d'ensemble](docs/schemas/vue-ensemble.svg)
-- [Préparation de l'environnement](docs/schemas/etape-0.svg)
-- [Exercice 1 — Terraform, Ansible et NGINX](docs/schemas/exercice-1.svg)
-- [Exercice 2 — OpenSearch](docs/schemas/exercice-2.svg)
-- [Exercice 3 — HAProxy](docs/schemas/exercice-3.svg)
-- [Finalisation et nettoyage](docs/schemas/finalisation/finalisation.svg)
+Le projet applique notamment :
 
-Règles graphiques : [`docs/schemas/README.md`](docs/schemas/README.md).
+- `allowed_account_ids` pour verrouiller le compte AWS attendu ;
+- une identité AWS non root pour le lab ;
+- SSH et OpenSearch limités à l'IPv4 publique d'administration `/32` ;
+- IMDSv2 obligatoire sur les EC2 ;
+- volumes racine chiffrés ;
+- HTTPS, TLS et chiffrement OpenSearch ;
+- budget AWS contrôlé avant déploiement ;
+- exclusion Git des states, vrais `tfvars`, clés, inventaires et preuves runtime ;
+- sauvegarde locale confidentielle du state avant les mutations Terraform orchestrées ;
+- confirmations humaines pour les changements sensibles.
+
+Voir [`SECURITY.md`](SECURITY.md).
 
 ## Périmètre
 
-Le P5 couvre exactement trois exercices : Terraform/Ansible, OpenSearch et HAProxy.
+Le P5 couvre **exactement trois exercices** : Terraform/Ansible, OpenSearch et HAProxy.
 
-Kubernetes, Helm, Prometheus, Grafana et Vault ne font pas partie du projet. GitHub Actions est
-un mécanisme de qualité et de non-régression, pas un quatrième exercice.
+Kubernetes, Helm, Prometheus, Grafana et Vault ne font pas partie du projet. GitHub Actions est un mécanisme de qualité et de non-régression, pas un quatrième exercice.
