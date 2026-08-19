@@ -175,10 +175,10 @@ Les racines suivantes ne sont pas le workspace DevOps de référence :
 
 ```text
 /mnt/c
-/mnt/d
+/mnt/e
 ```
 
-Le stockage physique du VHDX sous `D:\WSL\Ubuntu-DevOps` ne change pas cette règle : le projet reste dans le filesystem Linux de la distribution.
+Le stockage physique du VHDX sous `E:\WSL\Ubuntu-DevOps` ne change pas cette règle : le projet reste dans le filesystem Linux de la distribution.
 
 ## Fichiers à ne jamais versionner
 
