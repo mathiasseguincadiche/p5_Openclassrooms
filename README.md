@@ -74,6 +74,8 @@ Référence : [`environment/wsl2/README.md`](environment/wsl2/README.md).
 
 ## Première prise en main
 
+![Étape 0 — préparation du plan de contrôle P5](docs/schemas/etape-0.svg)
+
 Dans la distribution WSL2 `Ubuntu` :
 
 ```bash
@@ -271,6 +273,8 @@ Les traces runtime restent locales sous `logs/` et `proofs/runtime/`. Avant publ
 Référence : [`docs/contrat-preuves-automatiques.md`](docs/contrat-preuves-automatiques.md).
 
 ## Finaliser puis fermer le lab AWS
+
+![Finalisation, preuves et nettoyage AWS](docs/schemas/finalisation/finalisation.svg)
 
 Avant toute destruction :
 
