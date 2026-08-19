@@ -229,7 +229,7 @@ relu avant confirmation d'une mutation AWS.
 
 Ne pas :
 
-- exécuter les commandes Linux P5 depuis PowerShell ou un checkout `/mnt/c`/`/mnt/d` ;
+- exécuter les commandes Linux P5 depuis PowerShell ou un checkout `/mnt/c`/`/mnt/e` ;
 - supprimer un `terraform.tfstate` pour recommencer un exercice ;
 - stocker des identifiants AWS longue durée dans les fichiers du projet ;
 - utiliser le compte root AWS pour l'exploitation normale du lab ;
