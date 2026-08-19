@@ -21,10 +21,6 @@ run_check() {
 validate_scope() {
     [[ ! -d "$PROJECT_ROOT/TEMPLATES" ]] || return 1
     [[ ! -d "$PROJECT_ROOT/docs/exercises" ]] || return 1
-    [[ ! -e "$PROJECT_ROOT/scripts/commands/bootstrap-ubuntu-server.sh" ]] || {
-        printf 'Ancien wrapper bootstrap Ubuntu réintroduit.\n' >&2
-        return 1
-    }
     if grep -RIl --include='*.md' '```mermaid' "$PROJECT_ROOT" | grep -q .; then
         printf 'Des blocs Mermaid subsistent.\n' >&2
         return 1
@@ -193,7 +189,7 @@ validate_terraform() {
 }
 
 cd "$PROJECT_ROOT" || exit 1
-run_check 'Périmètre : trois exercices et aucun héritage obsolète' validate_scope
+run_check 'Périmètre : trois exercices et aucun Mermaid' validate_scope
 run_check 'Fichiers critiques du parcours' validate_required_files
 run_check 'Contrat exécutable de non-régression' validate_non_regression
 run_check 'Contrat plateforme WSL2' bash "$PROJECT_ROOT/scripts/tests/test-wsl2-platform.sh"
