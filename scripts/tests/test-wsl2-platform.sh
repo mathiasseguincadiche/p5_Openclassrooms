@@ -34,12 +34,20 @@ P5_TEST_PID1=init
 ! p5_platform_validate "$ALLOWED" >/dev/null 2>&1
 P5_TEST_PID1=systemd
 
-P5_TEST_FS_TYPE=9p
-! p5_platform_validate "$ALLOWED" >/dev/null 2>&1
+for invalid_fs in xfs btrfs 9p; do
+    P5_TEST_FS_TYPE="$invalid_fs"
+    ! p5_platform_validate "$ALLOWED" >/dev/null 2>&1
+    printf 'OK  filesystem non contractuel refusé : %s.\n' "$invalid_fs"
+done
 P5_TEST_FS_TYPE=ext4
 
 ! p5_platform_validate "$TMP_DIR/home/Downloads/p5_Openclassrooms" >/dev/null 2>&1
 p5_platform_checkout_on_windows_mount /mnt/c/Users/test/p5_Openclassrooms
 p5_platform_checkout_on_windows_mount /mnt/e/labs/p5_Openclassrooms
+
+saved_roots="$P5_ALLOWED_WORK_ROOTS"
+unset P5_ALLOWED_WORK_ROOTS
+! p5_platform_validate "$ALLOWED" >/dev/null 2>&1
+P5_ALLOWED_WORK_ROOTS="$saved_roots"
 
 printf 'Verdict : CONTRAT WSL2 P5 RESPECTÉ.\n'
