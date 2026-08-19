@@ -1,0 +1,37 @@
+name: Export Angular bundle (temporary)
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  export-angular-bundle:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Node.js 22.22.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22.22.0
+          cache: npm
+          cache-dependency-path: application/angular/package-lock.json
+
+      - name: Installer
+        run: npm ci --prefix application/angular --no-audit --no-fund
+
+      - name: Construire
+        run: npm run build --prefix application/angular
+
+      - name: Publier le bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: angular-bundle-sync
+          path: application/angular/dist/p5-infrastructure-dashboard/browser/
+          if-no-files-found: error
+          retention-days: 1
