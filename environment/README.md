@@ -22,6 +22,7 @@ OS              Ubuntu 26.04 LTS
 codename        resolute
 mode            CLI
 virtualisation  WSL2
+filesystem      EXT4
 checkout        ~/labs/p5_Openclassrooms
 ```
 
@@ -31,7 +32,7 @@ La distribution doit disposer :
 - d'un accès sortant vers AWS ;
 - d'un utilisateur non root avec `sudo` ;
 - de systemd ;
-- d'un workspace sur le filesystem Linux local.
+- d'un workspace sur le filesystem Linux EXT4 de la distribution.
 
 Le contrat complet est documenté dans [`wsl2/README.md`](wsl2/README.md).
 
@@ -82,12 +83,13 @@ status
 
 ## `versions.env` — contrat logiciel versionné
 
-[`versions.env`](versions.env) définit les versions ou minima utilisés par le P5.
+[`versions.env`](versions.env) définit les versions, chemins, racines de travail et invariants utilisés par le P5.
 
 Références principales actuelles :
 
 ```text
 Ubuntu WSL2         26.04 / resolute
+Filesystem HOME     ext4
 Terraform           1.15.8
 Ansible Core        2.20.1
 Node.js             22.22.0
@@ -95,7 +97,7 @@ AWS CLI minimum     2.32.0
 OpenSearch Docker   2.19.6
 ```
 
-Ces valeurs doivent être lues depuis `versions.env` lorsqu'une documentation ou un script a besoin d'une version précise.
+Les scripts et workflows doivent lire ces valeurs depuis `versions.env` au lieu de maintenir une seconde copie manuelle du contrat.
 
 ## `aws-readiness.env.example` — modèle versionné
 
@@ -171,14 +173,9 @@ Le checkout actif doit vivre sous une racine Linux autorisée :
 ~/repositories
 ```
 
-Les racines suivantes ne sont pas le workspace DevOps de référence :
+`/mnt/c` et `/mnt/e` restent accessibles pour les échanges ponctuels avec Windows, mais sont **interdits comme racines de projet ou de workspace P5/DevOps**.
 
-```text
-/mnt/c
-/mnt/e
-```
-
-Le stockage physique du VHDX sous `E:\WSL\Ubuntu-DevOps` ne change pas cette règle : le projet reste dans le filesystem Linux de la distribution.
+Le stockage physique du VHDX sous `E:\WSL\Ubuntu-DevOps` ne change pas cette règle : le projet reste dans le filesystem Linux EXT4 de la distribution, sous `~/projects`, `~/labs` ou `~/repositories`.
 
 ## Fichiers à ne jamais versionner
 
@@ -212,20 +209,9 @@ ce qui est local et spécifique au lab réel
 
 | Sujet | Source |
 | --- | --- |
-| contrat WSL2 | `wsl2/README.md` + scripts de bootstrap |
+| contrat WSL2 | `versions.env` + `wsl2/README.md` + scripts de bootstrap |
 | versions logicielles | `versions.env` |
 | modèle de configuration AWS | `aws-readiness.env.example` |
 | configuration AWS réelle | `aws-readiness.env` local |
 | infrastructure AWS | `../terraform/exercice-{1,2,3}/` |
 | orchestration | `../scripts/commands/p5.sh` |
-
-La relation entre documentation et sources techniques est détaillée dans [`../docs/MATRICE_TRACABILITE.md`](../docs/MATRICE_TRACABILITE.md).
-
-## Références
-
-- [Contrat WSL2](wsl2/README.md)
-- [Préparation de l'environnement](../docs/00-preparation-environnement.md)
-- [Préparation du compte AWS](../docs/00b-preparation-compte-aws.md)
-- [Parcours débutant](../docs/01-parcours-debutant.md)
-- [Runbook A à Z](../docs/RUNBOOK_EXECUTION_GUIDEE.md)
-- [Glossaire](../docs/GLOSSAIRE.md)
