@@ -215,3 +215,14 @@ ce qui est local et spécifique au lab réel
 | configuration AWS réelle | `aws-readiness.env` local |
 | infrastructure AWS | `../terraform/exercice-{1,2,3}/` |
 | orchestration | `../scripts/commands/p5.sh` |
+
+La relation entre documentation et sources techniques est détaillée dans [`../docs/MATRICE_TRACABILITE.md`](../docs/MATRICE_TRACABILITE.md).
+
+## Références
+
+- [Contrat WSL2](wsl2/README.md)
+- [Préparation de l'environnement](../docs/00-preparation-environnement.md)
+- [Préparation du compte AWS](../docs/00b-preparation-compte-aws.md)
+- [Parcours débutant](../docs/01-parcours-debutant.md)
+- [Runbook A à Z](../docs/RUNBOOK_EXECUTION_GUIDEE.md)
+- [Glossaire](../docs/GLOSSAIRE.md)
