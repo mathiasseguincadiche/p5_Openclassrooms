@@ -123,7 +123,7 @@ Ne pas poursuivre si :
 - `WSL_DISTRO_NAME` n'est pas `Ubuntu` ;
 - `/etc/os-release` ne correspond pas au contrat attendu ;
 - systemd n'est pas PID 1 ;
-- le checkout est utilisé comme workspace sous `/mnt/c` ou `/mnt/d` ;
+- le checkout est utilisé comme workspace sous `/mnt/c` ou `/mnt/e` ;
 - les outils communs fournis par la plateforme Windows/WSL2 sont absents ou incohérents.
 
 Référence : [`../environment/wsl2/README.md`](../environment/wsl2/README.md).
