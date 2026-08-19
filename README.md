@@ -68,7 +68,7 @@ Le checkout P5 doit vivre sur le filesystem Linux de WSL2, par exemple :
 ~/labs/p5_Openclassrooms
 ```
 
-Les racines `/mnt/c` et `/mnt/e` ne sont pas utilisées comme workspace DevOps de référence.
+`/mnt/c` et `/mnt/e` sont des racines Windows accessibles depuis WSL2, mais **interdites comme racines de travail pour les projets DevOps**. Le stockage physique du VHDX sous `E:\WSL\Ubuntu-DevOps` ne change pas cette règle : le projet reste dans le filesystem Linux de la distribution.
 
 Référence : [`environment/wsl2/README.md`](environment/wsl2/README.md).
 
