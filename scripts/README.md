@@ -118,7 +118,6 @@ Le checkout opérationnel doit rester sur le filesystem Linux local de la distri
 | `scripts/lib/p5-platform.sh` | détection et garde-fous WSL2/filesystem |
 | `scripts/commands/inspect-state.sh` | observation P5 sans mutation |
 | `scripts/commands/bootstrap-wsl2.sh` | contrat logiciel P5 dans Ubuntu 26.04 sous WSL2 |
-| `scripts/commands/bootstrap-ubuntu-server.sh` | wrapper de compatibilité vers le bootstrap WSL2 |
 | `scripts/commands/aws-auth.sh` | authentification AWS du lab |
 | `scripts/commands/configure-lab.sh` | configuration locale du lab |
 | `scripts/commands/generate-ansible-inventory.sh` | inventaire depuis Terraform |

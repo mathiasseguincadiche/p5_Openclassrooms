@@ -8,7 +8,6 @@ on:
       - 'environment/**'
       - 'docs/**'
       - 'scripts/commands/bootstrap-wsl2.sh'
-      - 'scripts/commands/bootstrap-ubuntu-server.sh'
       - 'scripts/commands/inspect-state.sh'
       - 'scripts/commands/setup.sh'
       - 'scripts/lib/p5-platform.sh'
@@ -20,11 +19,13 @@ on:
       - 'environment/**'
       - 'docs/**'
       - 'scripts/commands/bootstrap-wsl2.sh'
-      - 'scripts/commands/bootstrap-ubuntu-server.sh'
       - 'scripts/commands/inspect-state.sh'
       - 'scripts/commands/setup.sh'
       - 'scripts/lib/p5-platform.sh'
       - 'scripts/tests/test-wsl2-platform.sh'
+  workflow_dispatch:
+  schedule:
+    - cron: '17 6 * * 1'
 
 permissions:
   contents: read
@@ -41,6 +42,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # shellcheck source=/dev/null
+          source environment/versions.env
+
           canonical_docs=(
             README.md
             environment/README.md
@@ -55,20 +59,17 @@ jobs:
           )
           for path in "${canonical_docs[@]}"; do test -s "$path"; done
 
-          grep -Fq 'mathiasseguincadiche/Windows_11_Pro_Custom' README.md
-          grep -Fq 'mathiasseguincadiche/Windows_11_Pro_Custom' environment/wsl2/README.md
-          grep -Fq 'P5_EXPECTED_WSL_DISTRO=Ubuntu' environment/versions.env
-          grep -Fq 'P5_EXECUTION_MODEL=windows11-wsl2-ubuntu-26.04' environment/versions.env
-          grep -Fq "P5_ALLOWED_WORK_ROOTS='projects labs repositories'" environment/versions.env
-          grep -Fq "P5_FORBIDDEN_MOUNT_PREFIXES='/mnt/c /mnt/e'" environment/versions.env
-          grep -Fq 'NVM_COMMIT=62387b8f92aa012d48202747fd75c40850e5e261' environment/versions.env
+          grep -Fq "$P5_PLATFORM_REPOSITORY" README.md
+          grep -Fq "$P5_PLATFORM_REPOSITORY" environment/wsl2/README.md
+          test -n "$P5_EXPECTED_WSL_DISTRO"
+          test -n "$P5_UBUNTU_VERSION_ID"
+          test -n "$P5_UBUNTU_CODENAME"
+          test -n "$P5_ALLOWED_WORK_ROOTS"
+          test -n "$P5_FORBIDDEN_MOUNT_PREFIXES"
+          test -n "$P5_EXPECTED_HOME_FILESYSTEM"
+          test -n "$NVM_COMMIT"
           test ! -e environment/vm-devops
 
-          if grep -RnE 'Ubuntu-desktops-custom|ubuntu-devops|KVM/libvirt|VM KVM' \
-            "${canonical_docs[@]}" scripts/commands scripts/lib; then
-            echo 'KO ancien contrat VM/KVM détecté dans le runtime canonique.' >&2
-            exit 1
-          fi
           if grep -RniE '(^|[[:space:]`])/(mnt/c|mnt/e)(/|[[:space:]`]|$)' \
             scripts/commands scripts/lib | grep -v 'p5-platform.sh'; then
             echo 'KO chemin de travail Windows détecté dans les scripts P5.' >&2
@@ -81,7 +82,6 @@ jobs:
           set -euo pipefail
           bash -n scripts/lib/p5-platform.sh
           bash -n scripts/commands/bootstrap-wsl2.sh
-          bash -n scripts/commands/bootstrap-ubuntu-server.sh
           bash scripts/tests/test-wsl2-platform.sh
           grep -Fq 'microsoft-standard-WSL2' scripts/tests/test-wsl2-platform.sh
           grep -Fq 'vm.max_map_count' scripts/commands/bootstrap-wsl2.sh
@@ -111,20 +111,40 @@ jobs:
         run: |
           set -euo pipefail
           contract='upstream-platform/config/wsl/runtime-contract.json'
-          jq -e '
-            (.distribution == "Ubuntu") and
-            (.sourceDistribution == "Ubuntu-26.04") and
-            (.expectedVersionId == "26.04") and
-            (.expectedCodename == "resolute") and
-            (.installLocation == "E:\\WSL\\Ubuntu-DevOps") and
-            (.workingRoots == ["~/projects", "~/labs", "~/repositories"]) and
-            (.forbiddenRoots == ["/mnt/c", "/mnt/e"])
-          ' "$contract" >/dev/null
-          grep -Fq 'systemd=true' upstream-platform/config/wsl/wsl.conf
-          grep -Fq 'networkingMode=mirrored' upstream-platform/config/wsl/standard.wslconfig
+          test -s "$contract"
 
           # shellcheck source=/dev/null
           source environment/versions.env
+
+          working_roots_json="$({
+            for root in $P5_ALLOWED_WORK_ROOTS; do
+              printf '~/%s\n' "$root"
+            done
+          } | jq -R . | jq -s .)"
+          forbidden_roots_json="$(printf '%s\n' $P5_FORBIDDEN_MOUNT_PREFIXES | jq -R . | jq -s .)"
+
+          jq -e \
+            --arg distribution "$P5_EXPECTED_WSL_DISTRO" \
+            --arg source_distribution "$P5_WSL_SOURCE_DISTRIBUTION" \
+            --arg version_id "$P5_UBUNTU_VERSION_ID" \
+            --arg codename "$P5_UBUNTU_CODENAME" \
+            --arg install_location "$P5_WINDOWS_WSL_INSTALL_LOCATION" \
+            --arg filesystem "$P5_EXPECTED_HOME_FILESYSTEM" \
+            --argjson working_roots "$working_roots_json" \
+            --argjson forbidden_roots "$forbidden_roots_json" \
+            '(.distribution == $distribution) and
+             (.sourceDistribution == $source_distribution) and
+             (.expectedVersionId == $version_id) and
+             (.expectedCodename == $codename) and
+             (.installLocation == $install_location) and
+             (.homeFilesystem == $filesystem) and
+             (.workingRoots == $working_roots) and
+             (.forbiddenRoots == $forbidden_roots)' \
+            "$contract" >/dev/null
+
+          grep -Fq 'systemd=true' upstream-platform/config/wsl/wsl.conf
+          grep -Fq 'networkingMode=mirrored' upstream-platform/config/wsl/standard.wslconfig
+
           p5_terraform_version="$TERRAFORM_VERSION"
           p5_aws_cli_min_version="$AWS_CLI_MIN_VERSION"
           # shellcheck source=/dev/null

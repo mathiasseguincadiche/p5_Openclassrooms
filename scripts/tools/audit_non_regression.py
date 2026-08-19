@@ -40,7 +40,6 @@ CAPABILITIES: dict[str, tuple[str, ...]] = {
         "aws/budgets/p5-monthly-budget.json.example",
         "scripts/lib/p5-platform.sh",
         "scripts/commands/bootstrap-wsl2.sh",
-        "scripts/commands/bootstrap-ubuntu-server.sh",
         "scripts/commands/setup.sh",
         "scripts/commands/setup-aws-guardrails.sh",
         "scripts/commands/check-aws-readiness.sh",
@@ -94,7 +93,6 @@ CAPABILITIES: dict[str, tuple[str, ...]] = {
 SHELL_SCRIPTS = (
     "scripts/lib/p5-platform.sh",
     "scripts/commands/bootstrap-wsl2.sh",
-    "scripts/commands/bootstrap-ubuntu-server.sh",
     "scripts/commands/setup.sh",
     "scripts/commands/setup-aws-guardrails.sh",
     "scripts/commands/check-aws-readiness.sh",
@@ -137,6 +135,38 @@ FORBIDDEN_TRACKED_PATTERNS = (
     "environment/aws-readiness.env",
     "ansible/inventories/hosts_aws",
 )
+
+TEXT_SUFFIXES = {
+    "",
+    ".css",
+    ".env",
+    ".html",
+    ".json",
+    ".md",
+    ".mjs",
+    ".py",
+    ".sh",
+    ".tf",
+    ".tpl",
+    ".ts",
+    ".txt",
+    ".yml",
+    ".yaml",
+}
+
+
+def stale_architecture_markers() -> tuple[str, ...]:
+    return (
+        "".join(("Fedora", " 44")),
+        "".join(("FEDORA", "_44")),
+        "".join(("fedora", "44")),
+        "".join(("Ubuntu", "-desktops-custom")),
+        "".join(("KVM", "/libvirt")),
+        "".join(("VM ", "KVM")),
+        "".join(("/mnt/", "d")),
+        "".join(("D:", "\\WSL\\Ubuntu-DevOps")),
+        "".join(("bootstrap-", "ubuntu-server.sh")),
+    )
 
 
 class Audit:
@@ -262,6 +292,47 @@ class Audit:
             self.fail("fichiers locaux ou sensibles suivis par Git : " + ", ".join(sorted(set(found))))
         else:
             self.ok("aucun state, tfvars réel, inventaire réel ou configuration AWS locale suivi par Git")
+
+    def audit_architecture_contract(self) -> None:
+        legacy_bootstrap = self.path("scripts/commands") / "".join(("bootstrap-", "ubuntu-server.sh"))
+        if legacy_bootstrap.exists():
+            self.fail("ancien wrapper de bootstrap Ubuntu encore présent")
+        else:
+            self.ok("un seul bootstrap WSL2 actif")
+
+        stale_locations: list[str] = []
+        markers = stale_architecture_markers()
+        for relative in self.tracked_files():
+            file = self.path(relative)
+            if file.suffix.lower() not in TEXT_SUFFIXES or not file.is_file():
+                continue
+            try:
+                text = file.read_text(encoding="utf-8")
+            except (UnicodeDecodeError, OSError):
+                continue
+            for marker in markers:
+                if marker in text:
+                    stale_locations.append(f"{relative} : {marker}")
+        if stale_locations:
+            self.fail("références d'architecture obsolètes : " + " | ".join(stale_locations))
+        else:
+            self.ok("aucune référence active à l'ancienne architecture")
+
+        self.require_text(
+            "environment/versions.env",
+            (
+                "P5_EXPECTED_WSL_DISTRO=Ubuntu",
+                "P5_UBUNTU_VERSION_ID=26.04",
+                "P5_UBUNTU_CODENAME=resolute",
+                "P5_EXPECTED_HOME_FILESYSTEM=ext4",
+                "P5_ALLOWED_WORK_ROOTS='projects labs repositories'",
+                "P5_FORBIDDEN_MOUNT_PREFIXES='/mnt/c /mnt/e'",
+            ),
+        )
+        self.require_text(
+            "scripts/lib/p5-platform.sh",
+            ("P5_EXPECTED_HOME_FILESYSTEM", "P5_ALLOWED_WORK_ROOTS", "P5_FORBIDDEN_MOUNT_PREFIXES"),
+        )
 
     def audit_angular(self) -> None:
         package_file = self.path("application/angular/package.json")
@@ -468,6 +539,7 @@ class Audit:
             self.audit_capabilities()
             self.audit_shell_permissions()
             self.audit_no_tracked_sensitive_files()
+            self.audit_architecture_contract()
             self.audit_angular()
             self.audit_terraform()
             self.audit_destructive_controls()

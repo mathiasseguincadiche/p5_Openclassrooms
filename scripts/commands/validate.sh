@@ -79,7 +79,6 @@ validate_required_files() {
 validate_permissions() {
     local scripts=(
         bootstrap-wsl2.sh
-        bootstrap-ubuntu-server.sh
         setup.sh
         validate.sh
         pre-deployment-check.sh
@@ -193,7 +192,8 @@ cd "$PROJECT_ROOT" || exit 1
 run_check 'Périmètre : trois exercices et aucun Mermaid' validate_scope
 run_check 'Fichiers critiques du parcours' validate_required_files
 run_check 'Contrat exécutable de non-régression' validate_non_regression
-run_check 'Permissions exécutables des scripts historiques' validate_permissions
+run_check 'Contrat plateforme WSL2' bash "$PROJECT_ROOT/scripts/tests/test-wsl2-platform.sh"
+run_check 'Permissions exécutables des scripts actifs' validate_permissions
 run_check 'Chemins Ansible' validate_paths
 run_check 'JSON du projet' validate_json
 run_check 'Six schémas SVG adaptés au README' validate_schemas

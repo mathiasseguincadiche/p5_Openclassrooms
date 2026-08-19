@@ -19,15 +19,19 @@ cd "$PROJECT_ROOT"
 
 printf 'Contrat statique de convergence\n'
 grep -Fq -- '--check-only' scripts/commands/bootstrap-wsl2.sh
-grep -Fq 'P5_EXPECTED_WSL_DISTRO=Ubuntu' environment/versions.env
-grep -Fq 'P5_EXECUTION_MODEL=windows11-wsl2-ubuntu-26.04' environment/versions.env
-grep -Fq 'P5_PLATFORM_REPOSITORY=mathiasseguincadiche/Windows_11_Pro_Custom' environment/versions.env
-grep -Fq 'P5_OPENSEARCH_MAX_MAP_COUNT=262144' environment/versions.env
-grep -Fq 'NVM_COMMIT=62387b8f92aa012d48202747fd75c40850e5e261' environment/versions.env
+# shellcheck source=/dev/null
+source environment/versions.env
+[[ "$P5_EXPECTED_WSL_DISTRO" == Ubuntu ]]
+[[ "$P5_EXECUTION_MODEL" == windows11-wsl2-ubuntu-26.04 ]]
+[[ "$P5_PLATFORM_REPOSITORY" == mathiasseguincadiche/Windows_11_Pro_Custom ]]
+[[ "$P5_EXPECTED_HOME_FILESYSTEM" == ext4 ]]
+[[ "$P5_OPENSEARCH_MAX_MAP_COUNT" == 262144 ]]
+[[ -n "$NVM_COMMIT" ]]
 test -s environment/wsl2/README.md
 test -s scripts/lib/p5-platform.sh
 test ! -e environment/vm-devops
-grep -Fq 'bootstrap-wsl2.sh' scripts/commands/bootstrap-ubuntu-server.sh
+legacy_bootstrap="scripts/commands/bootstrap-"'ubuntu-server.sh'
+test ! -e "$legacy_bootstrap"
 grep -Fq -- '-detailed-exitcode' scripts/commands/p5.sh
 grep -Fq 'infrastructure déjà conforme — aucun apply' scripts/commands/p5.sh
 grep -Fq 'Déjà synchronisé' scripts/commands/sync-terraform-tfvars.sh
