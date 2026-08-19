@@ -1,19 +1,25 @@
-name: Export Angular bundle (temporary)
+name: Synchronize Angular bundle (temporary)
 
 on:
   push:
     branches:
       - maintenance/angular-group-sync
+    paths:
+      - application/angular/package.json
+      - application/angular/package-lock.json
+      - .github/workflows/export-angular-bundle.yml
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  export-angular-bundle:
+  synchronize-angular-bundle:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: maintenance/angular-group-sync
 
       - name: Node.js 22.22.0
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -22,16 +28,33 @@ jobs:
           cache: npm
           cache-dependency-path: application/angular/package-lock.json
 
-      - name: Installer
+      - name: Installer les dépendances verrouillées
         run: npm ci --prefix application/angular --no-audit --no-fund
 
-      - name: Construire
+      - name: Construire Angular
         run: npm run build --prefix application/angular
 
-      - name: Publier le bundle
-        uses: actions/upload-artifact@v4
-        with:
-          name: angular-bundle-sync
-          path: application/angular/dist/p5-infrastructure-dashboard/browser/
-          if-no-files-found: error
-          retention-days: 1
+      - name: Synchroniser le bundle Ansible
+        shell: bash
+        run: |
+          set -euo pipefail
+          build_dir='application/angular/dist/p5-infrastructure-dashboard/browser'
+          target_dir='ansible/files/angular-app'
+          test -f "$build_dir/index.html"
+          rm -rf "$target_dir"
+          mkdir -p "$target_dir"
+          cp -a "$build_dir"/. "$target_dir"/
+
+      - name: Committer le bundle généré
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add ansible/files/angular-app
+          if git diff --cached --quiet; then
+            echo 'Bundle Ansible déjà synchronisé.'
+            exit 0
+          fi
+          git commit -m 'chore: synchroniser le bundle Angular avec Ansible'
+          git push origin HEAD:maintenance/angular-group-sync
