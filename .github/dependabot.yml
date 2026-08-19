@@ -1,3 +1,6 @@
+# Politique P5 : limiter le bruit et conserver des mises à jour cohérentes.
+# Les dépendances Angular susceptibles de modifier le bundle sont groupées afin
+# d'être validées ensemble avec la copie déployée par Ansible.
 version: 2
 updates:
   - package-ecosystem: github-actions
