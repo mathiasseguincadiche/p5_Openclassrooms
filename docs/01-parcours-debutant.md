@@ -2,28 +2,45 @@
 
 ## À qui s'adresse ce guide ?
 
-Ce document est destiné à quelqu'un qui arrive sur le dépôt et veut comprendre **ce qu'il va faire avant de lancer des commandes AWS**.
+Ce document est destiné à une personne qui découvre le dépôt et veut comprendre **ce qu'elle va faire avant de lancer des commandes AWS**.
 
-Il répond à cinq questions :
+Aucune maîtrise préalable de Terraform, Ansible, OpenSearch ou HAProxy n'est supposée. En revanche, ce guide n'essaie pas de remplacer un cours complet sur chacun de ces outils : il explique les concepts nécessaires **dans le contexte exact du P5**.
+
+Si un terme reste inconnu, utiliser le [`GLOSSAIRE.md`](GLOSSAIRE.md).
+
+Ce guide répond à six questions :
 
 1. quel problème chaque exercice résout-il ?
 2. quel outil est responsable de quoi ?
-3. comment les exercices s'enchaînent-ils ?
-4. que doit-on observer pour considérer une étape réussie ?
-5. quelles actions sont potentiellement coûteuses ou destructives ?
+3. dans quelle machine une commande est-elle exécutée ?
+4. comment les exercices s'enchaînent-ils ?
+5. que doit-on observer pour considérer une étape réussie ?
+6. quelles actions peuvent créer un coût, modifier AWS ou détruire des ressources ?
 
-Pour la procédure exacte à copier/exécuter, utiliser ensuite [`RUNBOOK_EXECUTION_GUIDEE.md`](RUNBOOK_EXECUTION_GUIDEE.md).
+Pour la procédure exacte à exécuter de A à Z, utiliser ensuite [`RUNBOOK_EXECUTION_GUIDEE.md`](RUNBOOK_EXECUTION_GUIDEE.md).
+
+> **Ce document explique ; le runbook fait exécuter.**  
+> Si vous cherchez uniquement la prochaine commande, vous êtes probablement dans le mauvais document.
+
+## Le P5 en une phrase
+
+Le projet apprend à **créer une infrastructure AWS avec du code, configurer une application de manière reproductible, exploiter ses logs, puis démontrer qu'un service peut continuer à répondre lorsqu'un backend tombe**.
 
 ## Vision d'ensemble
 
 ```text
-Préparer la distribution WSL2 P5 et AWS
-        ↓
+Windows 11 Pro
+    ↓
+WSL2 — Ubuntu 26.04
+plan de contrôle du P5
+    ↓
+inspect → prepare → status
+    ↓
 Exercice 1
 Terraform construit l'infrastructure
 Ansible configure et déploie Angular/NGINX
-        ↓
-   ┌────┴───────────────┐
+    ↓
+   ┌────────────────────┐
    │                    │
    ▼                    ▼
 Exercice 2          Exercice 3
@@ -34,56 +51,124 @@ logs NGINX          réutilise réseau ex. 1
               ▼
       preuves et livrables
               ↓
-       nettoyage 3→2→1
+       nettoyage 3 → 2 → 1
 ```
 
-## Étape 0 — Comprendre l'environnement d'exécution
+## Avant toute chose : comprendre qu'il existe plusieurs machines
 
-Le P5 n'administre pas le poste Windows ni WSL2. Il est exécuté **dans la distribution `Ubuntu`**, Ubuntu 26.04 LTS en CLI.
+Le mot « Ubuntu » apparaît à plusieurs endroits dans le projet, mais il ne désigne pas toujours la même machine.
 
-La distribution WSL2 est construite et maintenue séparément par [`mathiasseguincadiche/Windows_11_Pro_Custom`](https://github.com/mathiasseguincadiche/Windows_11_Pro_Custom).
+| Machine | Version | Rôle |
+| --- | --- | --- |
+| **distribution WSL2 locale** | Ubuntu 26.04 LTS `resolute` | plan de contrôle : Bash, Terraform, Ansible, AWS CLI, Node.js, scripts P5 |
+| **EC2 exercice 1** | Ubuntu 24.04 LTS `noble` par défaut | cible Ansible qui héberge NGINX et Angular |
+| **EC2 exercice 3** | Ubuntu 24.04 LTS `noble` par défaut | HAProxy et deux backends de démonstration |
 
-La séparation est simple :
+Cette différence est normale.
+
+Quand une documentation dit :
+
+```text
+« Dans Ubuntu sous WSL2 »
+```
+
+elle parle de votre environnement Linux local.
+
+Quand elle dit :
+
+```text
+« Sur l'EC2 p5-web »
+```
+
+elle parle d'une machine créée dans AWS.
+
+## Étape 0 — Comprendre la frontière Windows / WSL2 / P5
+
+Le P5 ne construit pas lui-même votre poste Windows ni la distribution WSL2.
+
+La plateforme est fournie par [`mathiasseguincadiche/Windows_11_Pro_Custom`](https://github.com/mathiasseguincadiche/Windows_11_Pro_Custom).
+
+La séparation est :
 
 ```text
 Windows_11_Pro_Custom
-└── Windows 11 Pro + WSL2 + distribution WSL2 Ubuntu
+└── Windows 11 Pro
+    └── WSL2
+        └── distribution Ubuntu
+            ├── Docker Engine
+            ├── Terraform
+            └── AWS CLI
 
 p5_Openclassrooms
-└── runtime P5 + AWS + exercices + preuves dans la distribution Ubuntu
+└── dans cette distribution Ubuntu
+    ├── runtime spécifique P5
+    ├── Node.js / Ansible propres au projet
+    ├── configuration AWS du lab
+    ├── Terraform des exercices
+    ├── Ansible
+    ├── application Angular
+    ├── scripts
+    ├── logs
+    └── preuves
 ```
 
-Une fois la distribution ouverte avec `wsl.exe -d Ubuntu` :
+Le P5 ne crée, ne déplace, n'exporte et ne supprime jamais la distribution WSL2 ou son VHDX.
 
-```bash
-cd ~/labs/p5_Openclassrooms
+### Pourquoi le checkout reste-t-il dans le filesystem Linux ?
+
+Le workspace attendu est par exemple :
+
+```text
+~/labs/p5_Openclassrooms
 ```
 
-Le checkout actif doit rester sur le filesystem Linux local de la distribution WSL2.
+et non :
 
-Pourquoi ? Parce que le projet utilise des scripts Bash, des permissions Unix, Terraform, Ansible, Docker et beaucoup de petits fichiers. La distribution Linux WSL2 est le contexte de référence du P5.
+```text
+/mnt/c/...
+/mnt/d/...
+```
 
-Le dépôt P5 ne crée, ne déplace et ne supprime jamais une distribution WSL. La préparation P5 garde la responsabilité de ses seules dépendances spécifiques.
+Le projet utilise Bash, permissions Unix, Terraform, Ansible, Docker et de nombreux petits fichiers. Le filesystem Linux du VHDX est donc le contexte de référence.
 
-## Étape 1 — Comprendre `p5.sh`
+Le fait que le VHDX soit physiquement stocké sur `D:` ne signifie pas que le projet travaille sous `/mnt/d`.
 
-La commande centrale est :
+Référence : [`../environment/wsl2/README.md`](../environment/wsl2/README.md).
+
+## Étape 1 — Comprendre le centre de commande `p5.sh`
+
+Le point d'entrée principal est :
 
 ```bash
 bash scripts/commands/p5.sh
 ```
 
-Elle ouvre un menu. On peut aussi appeler directement une commande :
+Sans argument, un menu s'ouvre. Une commande peut aussi être appelée directement :
 
 ```bash
 bash scripts/commands/p5.sh inspect
 ```
 
+### Pourquoi existe-t-il un orchestrateur ?
+
+On pourrait lancer Terraform, Ansible et tous les scripts à la main. `p5.sh` ajoute cependant un contrat commun :
+
+- ordre d'exécution ;
+- contrôles de prérequis ;
+- lecture de l'état réel ;
+- gestion des deltas Terraform ;
+- confirmations ;
+- vérification des outputs ;
+- journalisation ;
+- collecte des preuves ;
+- checkpoints humains ;
+- nettoyage ordonné.
+
 ### Le principe de convergence
 
-Le moteur ne part pas du principe que « rien n'existe ».
+Le moteur ne part pas du principe que rien n'existe.
 
-Il cherche d'abord à savoir :
+Il compare :
 
 ```text
 état attendu
@@ -94,102 +179,151 @@ Il cherche d'abord à savoir :
 Puis :
 
 ```text
-si aucun écart → ne rien modifier
-si écart       → corriger cet écart
-si inconnu     → s'arrêter et demander une information fiable
+aucun écart → ne rien modifier
+écart connu  → corriger cet écart
+état inconnu → s'arrêter et chercher une source fiable
 ```
 
-C'est une idée importante en DevOps : une automatisation sûre doit pouvoir être relancée.
+C'est essentiel pour pouvoir reprendre le projet après une fermeture de terminal ou un redémarrage.
 
-## Étape 2 — Préparer le lab sans créer les exercices
+## Étape 2 — Comprendre `inspect`, `prepare` et `status`
 
-Trois commandes structurent la préparation :
+Ces trois commandes ne font pas la même chose.
+
+### `inspect` — observer
 
 ```bash
 bash scripts/commands/p5.sh inspect
+```
+
+`inspect` cherche à savoir ce qui existe déjà :
+
+- configuration ;
+- states Terraform ;
+- outputs ;
+- preuves ;
+- état de reprise.
+
+**Idée à retenir :** avant de réparer, observer.
+
+### `prepare` — converger les prérequis
+
+```bash
 bash scripts/commands/p5.sh prepare
+```
+
+`prepare` ne veut pas dire « créer les trois exercices ».
+
+Le P5 vérifie les outils communs fournis par la plateforme Windows/WSL2, notamment Terraform, AWS CLI et Docker, puis converge ses propres besoins lorsqu'ils présentent un écart :
+
+- Node.js ;
+- Ansible Core ;
+- dépendances/outils de validation du projet ;
+- configuration locale AWS ;
+- clé SSH du lab ;
+- IPv4 publique `/32` ;
+- budget ;
+- `terraform.tfvars` locaux.
+
+### `status` — vérifier sans déployer
+
+```bash
 bash scripts/commands/p5.sh status
 ```
 
-### `inspect`
+Le verdict attendu avant le passage à Terraform est :
 
-Observe l'état P5 **dans WSL2**. Elle doit être préférée avant toute correction.
+```text
+GO TERRAFORM
+```
 
-### `prepare`
+Cela veut dire :
 
-Peut converger :
+> le lab est suffisamment qualifié pour lire un plan Terraform.
 
-- les dépendances du runtime P5 dans `Ubuntu` sous WSL2 ;
-- Ansible, Node.js et les outils de validation propres au P5 ;
-- la configuration locale AWS ;
-- l'authentification ;
-- les garde-fous de budget ;
-- les `terraform.tfvars`.
+Cela ne veut pas dire :
 
-Elle ne signifie pas « déployer les trois exercices » et ne signifie pas « administrer la distribution WSL2 ».
-Terraform, AWS CLI et Docker sont vérifiés ici, mais restent installés et maintenus par `Windows_11_Pro_Custom`.
+> appliquer tout ce que Terraform propose sans le lire.
 
-### `status`
+## Avant la première mutation AWS : les cinq questions à savoir répondre
 
-Contrôle que le lab est cohérent sans créer les ressources applicatives.
+Avant d'accepter un changement Terraform, vous devez pouvoir dire :
 
-À ce stade, le débutant doit savoir expliquer :
+1. **quel compte AWS** est utilisé ?
+2. **quelle région** est utilisée ?
+3. **quelles ressources** le plan veut créer/modifier/détruire ?
+4. **pourquoi** ces ressources sont nécessaires à l'exercice ?
+5. **quel coût ou risque** peut subsister tant qu'elles existent ?
 
-- pourquoi le P5 s'exécute dans `Ubuntu` sous WSL2 ;
-- pourquoi WSL2 reste hors du dépôt P5 ;
-- quel compte AWS sera utilisé ;
-- dans quelle région ;
-- pourquoi SSH est limité en `/32` ;
-- où se trouve sa clé SSH ;
-- à quoi sert le budget ;
-- pourquoi les vrais `tfvars` ne sont pas dans Git.
+Si l'une de ces réponses est inconnue, ne confirmez pas encore la mutation.
 
 ## Étape 3 — Exercice 1 : Terraform construit, Ansible configure
 
 C'est la séparation la plus importante du premier exercice.
 
-### Terraform
+### Terraform : l'infrastructure
 
-Terraform décrit l'infrastructure souhaitée :
+Terraform décrit notamment :
 
 ```text
-VPC
+VPC 10.0.0.0/16
 ├── subnet public 1
 ├── subnet public 2
 ├── Internet Gateway
-├── table de routage
-├── Security Group
-├── paire de clés
-└── EC2 Ubuntu
+├── table de routage publique
+├── Security Group web
+├── paire de clés EC2
+└── EC2 Ubuntu 24.04
 ```
 
-Terraform n'est pas utilisé ici pour installer NGINX ou copier le build Angular.
+Il fixe aussi des garde-fous comme :
 
-### Ansible
+- SSH limité à votre IPv4 publique `/32` ;
+- HTTP public sur le port 80 pour la démonstration ;
+- IMDSv2 obligatoire ;
+- volume racine gp3 chiffré.
 
-Une fois l'EC2 disponible, Ansible :
+### Ce que Terraform ne fait pas ici
+
+Terraform ne copie pas le build Angular dans `/var/www/p5` et n'installe pas la configuration NGINX du projet.
+
+Cette responsabilité appartient à Ansible.
+
+### Ansible : la configuration
+
+Une fois l'EC2 disponible :
 
 ```text
-inventaire
-   ↓
-ping
-   ↓
+outputs Terraform
+       ↓
+inventaire Ansible
+       ↓
+SSH / Ansible ping
+       ↓
 deploy.yml
-   ↓
+       ↓
 NGINX + Angular
 ```
 
-Il installe les paquets, crée les droits, copie l'application, installe la configuration NGINX et s'assure que le service est démarré.
+Le playbook :
+
+- installe NGINX et `curl` ;
+- crée `appuser` et `appgroup` ;
+- crée `/var/www/p5` ;
+- copie l'artefact Angular ;
+- installe la configuration NGINX ;
+- vérifie `nginx -t` ;
+- active et démarre le service.
 
 ### Pourquoi rejouer Ansible ?
 
-Un premier passage peut légitimement modifier le serveur.
+Le premier passage doit modifier une machine neuve.
 
-Le second passage sert à répondre à :
+Le second répond à :
 
-> « Si l'état demandé est déjà présent, est-ce que l'automatisation sait ne rien refaire inutilement ? »
+> « Si la cible est déjà conforme, Ansible sait-il ne rien refaire inutilement ? »
 
-Le résultat attendu est :
+Résultat attendu :
 
 ```text
 changed=0
@@ -197,22 +331,60 @@ unreachable=0
 failed=0
 ```
 
-### Pourquoi générer du trafic ensuite ?
+C'est la preuve d'idempotence demandée par le projet.
 
-Le projet a besoin de **vrais logs NGINX**. L'orchestrateur envoie donc des requêtes vers l'application et collecte `access.log`.
+### Pourquoi Angular existe-t-il dans un projet orienté infrastructure ?
 
-Ces logs pourront être utilisés dans l'exercice 2.
+L'application n'est pas le but métier du P5. Elle fournit une **charge applicative réelle et compilable** permettant de démontrer :
 
-## Étape 4 — Exercice 2 : passer du log à l'information
+```text
+sources Angular
+→ build
+→ artefact
+→ Ansible
+→ EC2
+→ NGINX
+→ HTTP
+```
 
-Un log brut n'est pas encore une information opérationnelle.
+Il n'y a ni backend métier ni base de données dans cette application.
+
+### Pourquoi générer du trafic ?
+
+L'exercice 2 a besoin de logs HTTP réels.
+
+Après le déploiement, le moteur génère donc du trafic puis collecte :
+
+```text
+/var/log/nginx/access.log
+```
+
+Ce fichier devient une source de données pour OpenSearch.
+
+## Avant de considérer l'exercice 1 terminé
+
+Vous devez pouvoir expliquer :
+
+- ce que Terraform a créé ;
+- ce qu'Ansible a configuré ;
+- pourquoi le second passage doit être à `changed=0` ;
+- comment le navigateur atteint NGINX ;
+- pourquoi le `access.log` est utile à l'exercice 2.
+
+Guide détaillé : [`exercices/01-terraform-ansible.md`](exercices/01-terraform-ansible.md).
+
+## Étape 4 — Exercice 2 : passer du log brut à l'information
+
+Un log NGINX brut ressemble à une suite de lignes techniques. Pour construire un dashboard, il faut transformer ces lignes en champs exploitables.
 
 Le parcours est :
 
 ```text
 ligne NGINX
     ↓
-parsing / typage
+parsing
+    ↓
+typage des champs
     ↓
 Bulk API
     ↓
@@ -223,25 +395,80 @@ agrégations
 visualisations
 ```
 
-### Pourquoi un sample et un log réel ?
+### Pourquoi Amazon OpenSearch ?
 
-Le sample versionné permet de reproduire les tests.
+La consigne pédagogique peut utiliser le vocabulaire ELK/Kibana. Le mode Cloud choisi dans ce dépôt utilise :
 
-Le log réel de l'exercice 1 montre que le même pipeline sait traiter l'activité de l'application réellement déployée.
+```text
+Amazon OpenSearch
++ OpenSearch Dashboards
+```
 
-### Pourquoi le dashboard reste manuel ?
+Le projet ne prétend donc pas déployer un cluster Elasticsearch/Kibana qu'il ne contient pas réellement.
 
-Parce que l'objectif pédagogique n'est pas seulement d'avoir un JSON qui décrit des visualisations. Il faut comprendre ce que chaque métrique représente.
+### Pourquoi un sample ET un log réel ?
 
-Les trois visualisations demandées sont :
+Le **sample versionné** permet :
 
-1. répartition des méthodes HTTP ;
-2. somme des octets envoyés par période de 12 heures ;
-3. top 5 des URL/requêtes par période de 12 heures.
+- des tests reproductibles ;
+- une CI qui n'a pas besoin d'une EC2 réelle ;
+- un format connu pour vérifier le parser.
 
-Le dépôt vérifie les données ; l'opérateur vérifie visuellement le dashboard.
+Le **log réel de l'exercice 1** permet de démontrer :
 
-## Étape 5 — Exercice 3 : rendre un service tolérant à une panne de backend
+- que le pipeline traite aussi l'activité de l'application réellement déployée.
+
+Les deux sources ont donc des rôles différents.
+
+### Pourquoi le mapping est-il important ?
+
+Une visualisation ne travaille pas seulement avec du texte.
+
+Exemple :
+
+```text
+bytes_sent
+```
+
+doit être numérique pour calculer une somme.
+
+Un champ mal typé peut exister dans l'index tout en restant inutilisable pour la métrique demandée.
+
+### Les trois visualisations attendues
+
+1. donut des méthodes HTTP ;
+2. somme de `bytes_sent` par tranches de 12 heures ;
+3. top 5 de `url_path` par tranches de 12 heures.
+
+Puis les trois sont regroupées dans un dashboard.
+
+### Pourquoi le dashboard reste-t-il manuel ?
+
+Le dépôt peut vérifier les données et les agrégations automatiquement. Mais l'objectif pédagogique demande également de construire et de lire une représentation visuelle réelle.
+
+Le checkpoint humain garantit qu'une automatisation ne déclare pas :
+
+```text
+« dashboard validé »
+```
+
+alors que personne ne l'a réellement vérifié.
+
+Même `--yes` ne remplace pas cette étape.
+
+## Avant de considérer l'exercice 2 terminé
+
+Vous devez pouvoir expliquer :
+
+- la différence entre sample et log réel ;
+- comment une ligne NGINX devient un document ;
+- pourquoi le mapping influence les graphiques ;
+- ce que mesure chaque visualisation ;
+- pourquoi quatre captures sont nécessaires.
+
+Guide détaillé : [`exercices/02-opensearch.md`](exercices/02-opensearch.md).
+
+## Étape 5 — Exercice 3 : continuer à servir pendant une panne
 
 L'architecture est :
 
@@ -253,96 +480,162 @@ L'architecture est :
            /     \
           /       \
      backend 1  backend 2
+     Docker     Docker
      nginx hello nginx hello
 ```
 
-HAProxy utilise le mode `roundrobin` pour alterner les requêtes.
+### Quelle infrastructure est réutilisée ?
 
-Les health checks permettent d'écarter un backend qui ne répond plus.
+L'exercice 3 ne crée pas un nouveau VPC isolé.
 
-Le comportement recherché est :
+Terraform recherche le VPC et les subnets publics de l'exercice 1 grâce à leurs tags.
+
+Cela explique une dépendance importante :
+
+```text
+Exercice 1 ──► Exercice 3
+```
+
+### Round-robin
+
+HAProxy utilise :
+
+```text
+balance roundrobin
+```
+
+Les requêtes sont réparties entre les backends disponibles.
+
+### Health checks
+
+HAProxy vérifie régulièrement que chaque backend répond correctement.
+
+Comportement recherché :
 
 ```text
 AVANT PANNE
 backend 1 + backend 2
 
 PENDANT PANNE
-backend 2 uniquement
-service toujours disponible
+backend défaillant retiré
+service toujours disponible via l'autre backend
 
 APRÈS RESTAURATION
-backend 1 + backend 2
+backend restauré réintégré
 ```
 
-L'exercice n'est donc pas terminé simplement parce que `haproxy.cfg` est syntaxiquement valide. Il faut démontrer le comportement.
+### Pourquoi une vraie panne contrôlée ?
 
-## Étape 6 — Comprendre les dépendances
+Une configuration syntaxiquement valide ne prouve pas la résilience.
 
-### Dépendance exercice 1 → exercice 2
+L'exercice cherche à observer un comportement :
 
-Les logs NGINX réels de l'exercice 1 sont une source de données de l'exercice 2.
+> le service reste-t-il disponible lorsqu'un backend n'est plus sain ?
 
-### Dépendance exercice 1 → exercice 3
+Le script de failover doit ensuite restaurer le backend afin de ne pas laisser volontairement le lab dans un état dégradé.
 
-L'exercice 3 cherche le VPC et les subnets de l'exercice 1 par tags Terraform/AWS.
+## Avant de considérer l'exercice 3 terminé
 
-Cela implique :
+Vous devez pouvoir expliquer :
 
-> Ne pas détruire l'exercice 1 tant que l'exercice 3 doit encore être créé ou testé.
+- pourquoi HAProxy existe ;
+- comment le round-robin répartit le trafic ;
+- comment un health check retire un backend ;
+- pourquoi le service continue pendant la panne ;
+- comment le backend revient dans le pool.
+
+Guide détaillé : [`exercices/03-haproxy.md`](exercices/03-haproxy.md).
+
+## Étape 6 — Comprendre les dépendances entre exercices
+
+### Exercice 1 → Exercice 2
+
+```text
+NGINX access.log réel
+→ pipeline de parsing
+→ OpenSearch
+```
+
+L'exercice 2 possède un sample reproductible, mais la preuve réelle d'observabilité peut utiliser le log collecté sur l'EC2 de l'exercice 1.
+
+### Exercice 1 → Exercice 3
+
+```text
+VPC + subnets de l'exercice 1
+→ retrouvés par tags
+→ infrastructure de l'exercice 3
+```
+
+Conséquence :
+
+> ne pas détruire l'exercice 1 tant que l'exercice 3 doit encore être créé ou testé.
 
 ## Étape 7 — Comprendre les preuves
 
-Un fichier `.tf` prouve que du code Terraform existe. Il ne prouve pas qu'AWS a réellement créé l'infrastructure.
+Un fichier `.tf` prouve que du code Terraform existe. Il ne prouve pas qu'AWS a réellement créé la ressource.
 
 Même logique pour Ansible, OpenSearch et HAProxy.
 
-Une preuve utile répond à trois questions :
+Une preuve utile répond à :
 
 ```text
-Quelle commande a été exécutée ?
+Quelle action a été exécutée ?
 Quel résultat a été observé ?
 Pourquoi ce résultat valide-t-il le besoin ?
 ```
 
-Le moteur conserve ses journaux sous :
+Le moteur conserve notamment des éléments sous :
 
 ```text
 logs/<UTC>/
 proofs/runtime/
 ```
 
-Ces éléments sont privés par défaut. On sélectionne ensuite les extraits nécessaires pour les livrables.
+Ces traces sont privées par défaut. Les livrables sélectionnent ensuite les éléments nécessaires.
 
-## Étape 8 — Comprendre la différence entre CI et lab AWS
+## Étape 8 — Comprendre la différence entre code, CI et preuve AWS
 
-La CI peut vérifier :
+Trois niveaux existent :
+
+```text
+CODE
+= décrit l'état et les opérations voulues
+
+CI
+= vérifie le dépôt dans un environnement de test
+
+PREUVE AWS
+= montre le comportement réellement observé dans le lab
+```
+
+La CI peut vérifier notamment :
 
 - syntaxe Bash ;
 - ShellCheck ;
 - Terraform `fmt` et `validate` ;
 - Ansible syntax-check ;
-- build Angular ;
+- lint, typecheck, tests et build Angular ;
 - NGINX ;
-- OpenSearch en conteneur éphémère ;
-- HAProxy en environnement de test ;
-- contrat d'intégration avec la distribution WSL2 `Ubuntu` ;
-- contrats documentaires et sécurité.
+- OpenSearch local éphémère ;
+- HAProxy dans un environnement de test ;
+- contrat WSL2 ;
+- non-régression et sécurité.
 
 Elle ne peut pas prouver à votre place :
 
-- que votre compte AWS a réellement créé l'EC2 ;
-- que votre dashboard existe ;
+- qu'une EC2 a réellement été créée dans votre compte AWS ;
+- que votre dashboard OpenSearch Dashboards existe ;
 - que votre panne réelle a été observée ;
 - que vos captures sont prêtes pour l'évaluation.
 
-Il faut donc toujours distinguer :
+À retenir :
 
 ```text
-CI VERTE = dépôt cohérent
-PREUVES AWS = exercice réellement réalisé
+CI VERTE   = dépôt cohérent
+PREUVE AWS = exercice réellement observé
 ```
 
-## Étape 9 — Finaliser
+## Étape 9 — Finaliser les preuves et livrables
 
 Quand les trois exercices sont terminés :
 
@@ -351,19 +644,17 @@ bash scripts/commands/p5.sh diagnostics
 bash scripts/commands/p5.sh finalize
 ```
 
-`diagnostics` collecte l'état technique.
-
-`finalize` applique le contrôle strict des livrables et doit finir par :
+Le verdict strict attendu lorsque les éléments requis sont présents est :
 
 ```text
 LIVRABLES PRÊTS POUR RELECTURE FINALE
 ```
 
-## Étape 10 — Nettoyer
+Une capture doit ensuite être relue : une preuve technique peut contenir une IP, un identifiant ou une information inutile qu'il ne faut pas forcément publier.
 
-Le nettoyage est une étape du projet, pas une formalité après le projet.
+## Étape 10 — Nettoyer AWS
 
-Commande :
+Le nettoyage fait partie du projet.
 
 ```bash
 bash scripts/commands/p5.sh cleanup
@@ -372,20 +663,22 @@ bash scripts/commands/p5.sh cleanup
 Ordre :
 
 ```text
-3 → 2 → 1
+Exercice 3 → Exercice 2 → Exercice 1 → audit AWS
 ```
 
-Puis audit AWS.
+Pourquoi cet ordre ?
 
-Verdict attendu :
+Parce que l'exercice 3 dépend du réseau de l'exercice 1. Il doit donc disparaître avant son socle.
+
+Verdict final attendu :
 
 ```text
 NETTOYAGE AWS COMPLET
 ```
 
-Tant que ce verdict n'est pas obtenu, ne pas supposer que les coûts ont cessé.
+Tant que ce verdict n'est pas obtenu, ne supposez pas que les coûts sont terminés.
 
-## Les commandes à connaître avant le runbook
+## Les commandes essentielles à reconnaître
 
 ```bash
 bash scripts/commands/p5.sh inspect
@@ -399,22 +692,56 @@ bash scripts/commands/p5.sh finalize
 bash scripts/commands/p5.sh cleanup
 ```
 
+Vous n'avez pas besoin de les mémoriser toutes avant de commencer. Vous devez surtout comprendre leur **intention** et leur **niveau de mutation**.
+
+Référence : [`CENTRE_DE_COMMANDE.md`](CENTRE_DE_COMMANDE.md).
+
 ## Ce que vous devez savoir expliquer à la fin
 
+### Environnement
+
 - frontière `Windows_11_Pro_Custom` / `p5_Openclassrooms` ;
-- différence plateforme Windows/WSL2 / préparation runtime P5 ;
-- différence Terraform / Ansible ;
-- rôle d'un provider Terraform et d'un state ;
+- différence WSL2 Ubuntu 26.04 / EC2 Ubuntu 24.04 ;
+- pourquoi le workspace reste sur le filesystem Linux ;
+- différence plateforme commune / runtime spécifique P5.
+
+### Terraform
+
+- rôle d'un provider ;
+- rôle du state ;
 - intérêt de `plan` avant `apply` ;
-- rôle d'un inventaire Ansible ;
+- notion de delta et de convergence ;
+- pourquoi les outputs sont préférés aux valeurs recopiées à la main.
+
+### Ansible et application
+
+- différence Terraform / Ansible ;
+- rôle d'un inventaire ;
+- rôle d'un playbook ;
 - notion d'idempotence ;
-- rôle de NGINX dans l'exercice 1 ;
+- rôle de NGINX ;
+- chaîne source Angular → build → Ansible → NGINX.
+
+### Observabilité
+
 - chemin d'un log NGINX jusqu'à OpenSearch ;
+- différence sample / log réel ;
+- rôle du mapping ;
 - signification des trois visualisations ;
-- rôle d'un load-balancer ;
+- pourquoi le checkpoint dashboard reste humain.
+
+### Haute disponibilité
+
+- rôle d'un load balancer ;
 - différence round-robin / health check ;
 - pourquoi le service continue pendant la panne ;
-- pourquoi l'exercice 3 doit être détruit avant l'exercice 1 ;
-- différence entre une CI verte et une preuve réelle.
+- pourquoi l'exercice 3 dépend du réseau de l'exercice 1.
+
+### Exploitation
+
+- différence CI verte / preuve réelle ;
+- importance du state pour la reprise ;
+- pourquoi le nettoyage suit `3 → 2 → 1` ;
+- pourquoi `NETTOYAGE AWS COMPLET` est un vrai critère de fin.
 
 Lorsque ces notions sont claires, passer au [`RUNBOOK_EXECUTION_GUIDEE.md`](RUNBOOK_EXECUTION_GUIDEE.md).
