@@ -45,7 +45,7 @@ Dans ce projet, WSL2 fournit le contexte Linux local de référence. Le checkout
 ~/labs/p5_Openclassrooms
 ```
 
-Les racines `/mnt/c` et `/mnt/d` ne sont pas les workspaces DevOps de référence.
+Les racines `/mnt/c` et `/mnt/e` ne sont pas les workspaces DevOps de référence.
 
 Voir [`../environment/wsl2/README.md`](../environment/wsl2/README.md).
 
