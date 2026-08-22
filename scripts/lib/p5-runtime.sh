@@ -113,7 +113,10 @@ p5_sensitive_name() {
 }
 
 p5_redact_stream() {
-    sed -E \
+    # GNU sed est explicitement non-bufferisé ici : les étapes interactives
+    # (AWS login, confirmations, saisies opérateur) doivent rester visibles en
+    # temps réel même lorsque leur sortie traverse le filtre de redaction.
+    sed -u -E \
         -e 's/(AWS_SECRET_ACCESS_KEY|AWS_SESSION_TOKEN|OPENROUTER_API_KEY|GITHUB_TOKEN|GH_TOKEN)=([^[:space:]]+)/\1=<REDACTED>/g' \
         -e 's/(AKIA|ASIA)[0-9A-Z]{16}/<REDACTED>/g' \
         -e 's/(sk-or-[A-Za-z0-9_-]{12,}|github_pat_[A-Za-z0-9_]{12,}|glpat-[A-Za-z0-9_-]{12,})/<REDACTED>/g' \
@@ -405,9 +408,9 @@ p5_prompt_value() {
 
     while true; do
         if [[ -n "$default_value" ]]; then
-            printf '%s [%s] : ' "$label" "$default_value"
+            printf '%s [%s] :\n' "$label" "$default_value"
         else
-            printf '%s : ' "$label"
+            printf '%s :\n' "$label"
         fi
         read -r value
         value="${value:-$default_value}"
@@ -453,7 +456,7 @@ p5_confirm() {
     fi
 
     local answer
-    printf '%s [o/N] : ' "$message"
+    printf '%s [o/N] :\n' "$message"
     read -r answer
     case "${answer,,}" in
         o|oui|y|yes) return 0 ;;
@@ -472,7 +475,7 @@ p5_require_exact() {
 
     local answer
     printf '%s\n' "$message"
-    printf 'Tapez exactement %s : ' "$expected"
+    printf 'Tapez exactement %s :\n' "$expected"
     read -r answer
     [[ "$answer" == "$expected" ]]
 }

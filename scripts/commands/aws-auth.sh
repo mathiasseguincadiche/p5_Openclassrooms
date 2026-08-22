@@ -364,7 +364,7 @@ Méthode d'authentification AWS :
   3  Réutiliser un profil temporaire existant
   4  Repli cross-device — aws login --remote
 MENU
-    printf 'Votre choix [1] : '
+    printf 'Votre choix [1] :\n'
     local choice
     read -r choice
     case "${choice:-1}" in
