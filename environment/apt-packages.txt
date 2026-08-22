@@ -17,7 +17,7 @@ gettext-base
 
 # Administration distante et diagnostic
 openssh-client
-dnsutils
+bind9-dnsutils
 netcat-openbsd
 traceroute
 lsof
