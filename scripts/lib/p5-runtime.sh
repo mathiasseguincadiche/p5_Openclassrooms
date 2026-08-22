@@ -113,7 +113,10 @@ p5_sensitive_name() {
 }
 
 p5_redact_stream() {
-    sed -E \
+    # GNU sed est explicitement non-bufferisé ici : les étapes interactives
+    # (AWS login, confirmations, saisies opérateur) doivent rester visibles en
+    # temps réel même lorsque leur sortie traverse le filtre de redaction.
+    sed -u -E \
         -e 's/(AWS_SECRET_ACCESS_KEY|AWS_SESSION_TOKEN|OPENROUTER_API_KEY|GITHUB_TOKEN|GH_TOKEN)=([^[:space:]]+)/\1=<REDACTED>/g' \
         -e 's/(AKIA|ASIA)[0-9A-Z]{16}/<REDACTED>/g' \
         -e 's/(sk-or-[A-Za-z0-9_-]{12,}|github_pat_[A-Za-z0-9_]{12,}|glpat-[A-Za-z0-9_-]{12,})/<REDACTED>/g' \
@@ -165,7 +168,7 @@ p5_stable_log_for_command() {
                 rel="${rel#scripts/}"
                 rel="${rel%.*}"
                 mkdir -p "$P5_STABLE_LOG_ROOT/$(dirname -- "$rel")"
-                printf '%s/%s.log\n' "$P5_STABLE_LOG_ROOT" "$rel"
+                printf '%s/%s.log\n' "$P5_STABLE_LOG_ROOT/$rel"
                 return 0
                 ;;
         esac
