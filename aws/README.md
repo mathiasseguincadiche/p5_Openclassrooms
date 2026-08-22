@@ -32,6 +32,8 @@ Le dépôt ne versionne aucun credential AWS.
 
 La politique [`iam/p5-lab-policy.json`](iam/p5-lab-policy.json) couvre les services réellement utilisés par le projet : EC2/VPC, Amazon OpenSearch Service, Service Quotas, AWS Budgets et lectures d'identité nécessaires aux contrôles.
 
+Cette politique utilise les actions OpenSearch actuelles (`es:CreateDomain`, `es:DescribeDomain`, `es:ListInstanceTypeDetails`, etc.) tout en conservant les alias historiques utiles à la compatibilité. Si une ancienne version de `P5LabPolicy` a déjà été créée dans IAM, elle doit être mise à jour depuis le JSON versionné avant l'exercice 2. Modifier le fichier Git ne modifie pas automatiquement la politique déjà créée dans le compte AWS.
+
 ## Configuration locale
 
 La source locale de configuration est :
@@ -75,7 +77,11 @@ Les contrôles de préparation vérifient notamment :
 - présence du budget ;
 - cohérence des `terraform.tfvars`.
 
-Un contrôle en échec doit être résolu avant le déploiement.
+Le précontrôle est **dépendant de l'étape**. Le stage `initial` ne bloque pas l'exercice 1 à cause d'une capacité nécessaire uniquement plus tard. Avec les valeurs de référence, une `t3.micro` suffit à l'exercice 1, tandis que l'exercice 3 peut porter le besoin simultané global à 8 vCPU. Un quota inférieur à 8 est donc signalé à l'avance au stage initial, puis devient bloquant lorsqu'il empêche réellement l'étape demandée.
+
+De même, une permission OpenSearch manquante est signalée comme préparation à faire avant l'exercice 2 ; elle ne doit pas empêcher l'exercice 1 lorsqu'aucune ressource OpenSearch n'est encore créée.
+
+Un contrôle **KO pour l'étape courante** doit être résolu avant le déploiement correspondant. Un avertissement peut signaler une exigence d'une étape future sans bloquer le travail actuellement réalisable.
 
 ## Amazon OpenSearch
 
@@ -84,6 +90,14 @@ L'exercice 2 utilise **Amazon OpenSearch Service** créé par Terraform.
 Le conteneur OpenSearch de la CI sert uniquement à vérifier localement le mapping, l'import Bulk et les agrégations. Il ne remplace pas la réalisation AWS de l'exercice.
 
 Le domaine AWS applique les garde-fous documentés par le projet, notamment HTTPS, chiffrement et restriction d'accès à l'IPv4 publique `/32` du lab.
+
+Le précontrôle distingue désormais :
+
+- un type/version réellement indisponible ;
+- une permission IAM manquante telle que `es:ListInstanceTypeDetails` ;
+- un état de domaine non vérifiable faute de `es:DescribeDomain`.
+
+Il ne transforme plus silencieusement un `AccessDenied` en « ressource absente ».
 
 ## Garde-fou de compte Terraform
 
