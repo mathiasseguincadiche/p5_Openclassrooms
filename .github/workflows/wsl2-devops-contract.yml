@@ -178,6 +178,12 @@ jobs:
 
           apt-get update
           xargs -r apt-get install -y --no-install-recommends < <(grep -vE '^($|#)' environment/apt-packages.txt)
+          while read -r package; do
+            dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -Fq 'install ok installed' || {
+              echo "KO paquet contractuel non détectable via dpkg-query : $package" >&2
+              exit 1
+            }
+          done < <(grep -vE '^($|#)' environment/apt-packages.txt)
           test ! -e /usr/sbin/qemu-ga
 
           install -m 0755 -d /etc/apt/keyrings
