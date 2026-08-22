@@ -7,6 +7,7 @@ PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
 CONFIG_FILE="$PROJECT_ROOT/environment/aws-readiness.env"
 VERSIONS_FILE="$PROJECT_ROOT/environment/versions.env"
 PLATFORM_LIB="$PROJECT_ROOT/scripts/lib/p5-platform.sh"
+NODE_RUNTIME_LIB="$PROJECT_ROOT/scripts/lib/p5-node-runtime.sh"
 STAGE="initial"
 ERRORS=0
 WARNINGS=0
@@ -67,12 +68,22 @@ if [[ ! -r "$CONFIG_FILE" ]]; then
     printf 'Copiez environment/aws-readiness.env.example puis complétez-la.\n' >&2
     exit 1
 fi
+if [[ ! -r "$NODE_RUNTIME_LIB" ]]; then
+    printf 'Runtime Node P5 absent : %s\n' "$NODE_RUNTIME_LIB" >&2
+    exit 1
+fi
 # shellcheck source=/dev/null
 source "$VERSIONS_FILE"
 # shellcheck source=/dev/null
 source "$PLATFORM_LIB"
 # shellcheck source=/dev/null
+source "$NODE_RUNTIME_LIB"
+# shellcheck source=/dev/null
 source "$CONFIG_FILE"
+
+# Node est installé via NVM : un script non interactif ne doit jamais dépendre
+# du fait que le shell parent ait déjà chargé ~/.nvm/nvm.sh.
+p5_node_runtime_activate "$NODE_VERSION" || true
 
 printf 'Contrôle pré-déploiement P5 — %s\n\n' "$STAGE"
 
