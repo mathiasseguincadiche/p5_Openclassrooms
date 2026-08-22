@@ -14,7 +14,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-mkdir -p "$FAKE_BIN" "$TMP_DIR/logs-console" "$TMP_DIR/logs-root"
+mkdir -p "$FAKE_BIN" "$TMP_DIR/logs-console" "$TMP_DIR/logs-login-fail" "$TMP_DIR/logs-root"
 
 cat > "$FAKE_BIN/aws" <<'EOF'
 #!/usr/bin/bash
@@ -46,6 +46,9 @@ if [[ "$args" == *'configure set '* ]]; then
 fi
 
 if [[ "$args" == *' login '* || "$args" == login* ]]; then
+    if [[ "${P5_FAKE_LOGIN_FAIL:-0}" == 1 ]]; then
+        exit 1
+    fi
     exit 0
 fi
 
@@ -87,9 +90,32 @@ OUTPUT="$(/usr/bin/bash "$AUTH_SCRIPT" \
 
 grep -Fq 'AWS PRÊT' <<<"$OUTPUT"
 grep -Fq 'aws login --remote' <<<"$OUTPUT" || grep -Fq 'navigateur externe' <<<"$OUTPUT"
+grep -Fq 'code d’autorisation à usage unique' <<<"$OUTPUT"
+grep -Fq 'collez ce code' <<<"$OUTPUT"
 grep -Fq 'login --remote --profile p5-signin' "$TRACE_FILE"
 grep -Fq 'configure set credential_process' "$TRACE_FILE"
 grep -Fq 'configure export-credentials --profile p5-signin --format process' "$TRACE_FILE"
+
+export P5_LOG_DIR="$TMP_DIR/logs-login-fail"
+export P5_FAKE_LOGIN_FAIL=1
+set +e
+LOGIN_FAIL_OUTPUT="$(/usr/bin/bash "$AUTH_SCRIPT" \
+    --mode console \
+    --profile p5-lab \
+    --source-profile p5-signin \
+    --region us-east-1 \
+    --yes 2>&1)"
+LOGIN_FAIL_RC=$?
+set -e
+unset P5_FAKE_LOGIN_FAIL
+
+if ((LOGIN_FAIL_RC == 0)); then
+    printf 'KO  un échec aws login a été accepté.\n' >&2
+    exit 1
+fi
+grep -Fq 'aucun code n’a été collé dans le terminal' <<<"$LOGIN_FAIL_OUTPUT"
+grep -Fq 'code a expiré ou a déjà été utilisé' <<<"$LOGIN_FAIL_OUTPUT"
+grep -Fq 'SignInLocalDevelopmentAccess' <<<"$LOGIN_FAIL_OUTPUT"
 
 export P5_LOG_DIR="$TMP_DIR/logs-root"
 export P5_FAKE_ROOT=1
@@ -110,4 +136,4 @@ if ((ROOT_RC == 0)); then
 fi
 grep -Fq 'refuse volontairement une session AWS root' <<<"$ROOT_OUTPUT"
 
-printf 'OK  authentification AWS temporaire et refus root validés sans contacter AWS.\n'
+printf 'OK  authentification AWS temporaire, guidage remote et refus root validés sans contacter AWS.\n'

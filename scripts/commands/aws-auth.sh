@@ -202,13 +202,17 @@ console_login() {
 
     aws configure set region "$REGION" --profile "$SOURCE_PROFILE"
     p5_header 'CONNEXION AWS — navigateur externe'
-    p5_info 'WSL2 va afficher une URL et un code AWS. Ouvrez cette URL dans votre navigateur Windows.'
+    p5_info 'WSL2 va afficher une URL AWS. Ouvrez cette URL dans votre navigateur Windows.'
+    p5_info 'Après la connexion, le navigateur AWS affiche un code d’autorisation à usage unique.'
+    p5_info 'Revenez ensuite dans ce terminal et collez ce code à l’invite « Enter the authorization code displayed in your browser ».'
     p5_info 'Saisissez vos identifiants directement chez AWS ; le script ne les voit jamais.'
     p5_info 'AWS remet ensuite à la CLI des credentials temporaires renouvelables.'
 
     if ! aws login --remote --profile "$SOURCE_PROFILE" --region "$REGION"; then
         p5_error 'La connexion AWS via aws login a échoué.'
-        p5_action 'Vérifiez que votre identité possède la politique AWS gérée SignInLocalDevelopmentAccess.'
+        p5_action 'Si aucun code n’a été collé dans le terminal, relancez la commande et recopiez le code affiché par le navigateur AWS.'
+        p5_action 'Si le code a expiré ou a déjà été utilisé, relancez la connexion pour générer un nouveau code.'
+        p5_action 'Vérifiez aussi que votre identité possède la politique AWS gérée SignInLocalDevelopmentAccess.'
         p5_action 'La politique métier P5 doit également être attachée à votre identité/rôle.'
         return 1
     fi
