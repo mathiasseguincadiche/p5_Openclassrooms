@@ -77,6 +77,33 @@ auto
 
 Le projet privilégie les sessions temporaires plutôt que les clés statiques longue durée.
 
+Sous WSL2, le contrat d'authentification console est :
+
+```text
+console            → aws login --remote, recommandé
+console-remote     → alias explicite du flux cross-device
+console-localhost  → callback localhost same-device, mode avancé
+auto               → réutilise/renouvelle puis choisit le flux adapté
+sso                → IAM Identity Center
+existing           → profil temporaire existant
+```
+
+Le flux cross-device est privilégié sous WSL2 car il ne dépend pas de l'existence d'un listener OAuth sur `127.0.0.1` côté Linux. Le code d'autorisation affiché par AWS est à usage unique et ne doit jamais être stocké dans la configuration, la documentation ou les preuves.
+
+Si le profil source est encore associé à root, le moteur doit avertir l'opérateur avant `aws login`. Le remplacement n'est validé que si AWS propose explicitement une identité IAM/rôle non-root attendue.
+
+### `P5_AWS_LOGIN_PROFILE`
+
+Rôle : profil source géré par `aws login`.
+
+Référence :
+
+```text
+p5-signin
+```
+
+Le profil final `p5-lab` consomme ensuite les credentials temporaires de ce profil via `credential_process`.
+
 ## Identité et compte
 
 ### `P5_EXPECTED_ACCOUNT_ID`
@@ -330,6 +357,7 @@ Ne jamais stocker dans `aws-readiness.env` ou dans la documentation :
 
 - AWS secret access key ;
 - session token ;
+- code d'autorisation `aws login --remote` ;
 - clé SSH privée ;
 - token GitHub ;
 - bearer token ;
