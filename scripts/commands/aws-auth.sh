@@ -23,26 +23,26 @@ Options:
   --profile NOM         profil final utilisé par le P5 (défaut : p5-lab)
   --source-profile NOM  profil source pour console/existant (défaut : p5-signin)
   --region REGION       région AWS (défaut : us-east-1)
-  --mode MODE           auto, console, console-remote, sso ou existing
-  --yes                 choisit console si auto doit initialiser un nouveau profil
+  --mode MODE           auto, console, console-remote, console-localhost, sso ou existing
+  --yes                 choisit le mode console recommandé si auto doit initialiser un profil
   -h, --help            afficher cette aide
 
 Modes :
-  auto            réutilise/renouvelle le profil si possible, sinon propose un mode
-  console         utilise `aws login` et le callback localhost Windows/WSL2
-  console-remote  repli cross-device avec `aws login --remote` et code manuel
-  sso             utilise IAM Identity Center (`aws configure sso` + `aws sso login`)
-  existing        encapsule un profil temporaire existant via credential_process
+  auto               réutilise/renouvelle le profil si possible, sinon propose un mode
+  console            mode console recommandé : cross-device sous WSL2, same-device hors WSL2
+  console-remote     alias explicite du flux cross-device `aws login --remote`
+  console-localhost  flux same-device avec callback localhost ; mode avancé sous WSL2
+  sso                utilise IAM Identity Center (`aws configure sso` + `aws sso login`)
+  existing           encapsule un profil temporaire existant via credential_process
 
-Sous Windows 11 + WSL2, `console` est le mode recommandé : le navigateur Windows
-peut joindre le callback localhost exposé par WSL2. P5 définit temporairement la
-variable `BROWSER` vers un helper Windows explicite afin d'éviter le bug `gio`
-connu de l'AWS CLI sous WSL. Le helper est lancé en arrière-plan pour rendre
-immédiatement la main à l'AWS CLI, qui peut alors écouter son callback localhost.
-Il utilise `wslview` si disponible, puis `rundll32.exe` ou `explorer.exe`.
-Aucune modification permanente n'est appliquée.
+Sous Windows 11 + WSL2, le P5 privilégie désormais le flux cross-device : il ne
+dépend pas d'un listener callback sur 127.0.0.1 dans WSL2. AWS CLI affiche une
+URL, puis un code d'autorisation à usage unique à recopier dans le terminal.
+Le mode `console-localhost` reste disponible explicitement pour tester le flux
+same-device ; il utilise alors un helper navigateur Windows non bloquant.
 
 Le script ne demande, ne lit et ne stocke jamais votre mot de passe AWS.
+Le code d'autorisation cross-device est temporaire et ne doit pas être partagé.
 Lorsqu'un nom de profil ne peut pas être déduit, les profils disponibles sont
 affichés et le format exact attendu est expliqué.
 HELP
@@ -87,8 +87,12 @@ while (($# > 0)); do
 done
 
 case "$MODE" in
-    auto|console|console-remote|sso|existing) ;;
-    *) p5_error "Mode AWS inconnu : $MODE"; p5_action 'Valeurs autorisées : auto, console, console-remote, sso, existing.'; exit 2 ;;
+    auto|console|console-remote|console-localhost|sso|existing) ;;
+    *)
+        p5_error "Mode AWS inconnu : $MODE"
+        p5_action 'Valeurs autorisées : auto, console, console-remote, console-localhost, sso, existing.'
+        exit 2
+        ;;
 esac
 
 for command_name in aws jq python3; do
@@ -183,6 +187,15 @@ is_wsl_runtime() {
     grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null
 }
 
+warn_login_session_replacement() {
+    local profile="$1" login_session
+    login_session="$(profile_get "$profile" login_session)"
+    if [[ "$login_session" == *":root" ]]; then
+        p5_warn "Le profil '$profile' est encore associé à une ancienne session AWS root."
+        p5_action "Après la connexion IAM, AWS peut demander de remplacer cette association. Répondez 'y' uniquement si l'ARN proposé correspond à l'utilisateur/rôle IAM non-root attendu."
+    fi
+}
+
 create_wsl_browser_helper() {
     local helper_dir="$1"
     cat > "$helper_dir/p5-windows-browser" <<'HELPER'
@@ -234,8 +247,8 @@ aws_login_same_device() {
     create_wsl_browser_helper "$helper_dir"
 
     # Python webbrowser traite un BROWSER simple comme GenericBrowser et attend
-    # la fin du processus. `%s &` force BackgroundBrowser : l'AWS CLI récupère
-    # immédiatement la main et peut démarrer/maintenir son serveur de callback.
+    # la fin du processus. `%s &` force BackgroundBrowser afin que le helper
+    # Windows ne bloque pas l'AWS CLI.
     browser_command="$browser_helper %s &"
     if BROWSER="$browser_command" aws login --profile "$profile" --region "$REGION"; then
         rc=0
@@ -247,6 +260,12 @@ aws_login_same_device() {
     return "$rc"
 }
 
+aws_login_cross_device() {
+    local profile="$1"
+    warn_login_session_replacement "$profile"
+    aws login --remote --profile "$profile" --region "$REGION"
+}
+
 renew_known_profile() {
     local profile="$1"
     local login_session sso_session sso_start_url
@@ -255,8 +274,13 @@ renew_known_profile() {
     sso_start_url="$(profile_get "$profile" sso_start_url)"
 
     if [[ -n "$login_session" ]]; then
-        p5_action "Renouvellement de la session console AWS du profil '$profile' via callback localhost."
-        aws_login_same_device "$profile"
+        if is_wsl_runtime; then
+            p5_action "Renouvellement de la session console AWS du profil '$profile' via code cross-device."
+            aws_login_cross_device "$profile"
+        else
+            p5_action "Renouvellement de la session console AWS du profil '$profile' via callback same-device."
+            aws_login_same_device "$profile"
+        fi
         return
     fi
     if [[ -n "$sso_session" || -n "$sso_start_url" ]]; then
@@ -279,24 +303,23 @@ configure_process_profile() {
     p5_ok "Profil Terraform '$TARGET_PROFILE' relié à '$source' via credential_process."
 }
 
-console_login() {
+console_localhost_login() {
     local identity_json
     ensure_login_supported || return 1
 
     aws configure set region "$REGION" --profile "$SOURCE_PROFILE"
-    p5_header 'CONNEXION AWS — CALLBACK LOCALHOST WINDOWS/WSL2'
-    p5_info 'AWS CLI va lancer le flux de connexion standard et écouter un callback sur localhost dans WSL2.'
-    p5_info 'Le navigateur Windows peut joindre ce localhost ; aucune copie de code d’autorisation n’est nécessaire.'
+    warn_login_session_replacement "$SOURCE_PROFILE"
+    p5_header 'CONNEXION AWS — CALLBACK LOCALHOST SAME-DEVICE'
+    p5_warn 'Mode avancé sous WSL2 : utilisez-le seulement pour diagnostiquer ou si le callback localhost fonctionne réellement dans votre environnement.'
+    p5_info 'AWS CLI va lancer le flux same-device et tenter d’écouter un callback sur localhost.'
     p5_info 'Sous WSL2, P5 impose temporairement un helper navigateur Windows via la variable BROWSER afin d’éviter le bug gio de l’AWS CLI.'
-    p5_info 'Le helper est lancé en arrière-plan afin que l’AWS CLI puisse immédiatement maintenir son listener de callback localhost.'
-    p5_info 'Le helper tente wslview, puis rundll32.exe, puis explorer.exe ; l’URL AWS reste affichée comme repli manuel.'
+    p5_info 'Le helper est lancé en arrière-plan afin de ne pas bloquer l’AWS CLI.'
     p5_info 'Saisissez vos identifiants directement chez AWS ; le script ne les voit jamais.'
 
     if ! aws_login_same_device "$SOURCE_PROFILE"; then
         p5_error 'La connexion AWS via le callback localhost a échoué.'
-        p5_action 'Si le navigateur ne s’est pas ouvert, utilisez l’URL affichée par AWS CLI dans le navigateur Windows tant que cette tentative est active.'
-        p5_action 'Vérifiez que votre identité possède la politique AWS gérée SignInLocalDevelopmentAccess.'
-        p5_action "Si le callback localhost est bloqué par un pare-feu, testez explicitement le repli : bash scripts/commands/aws-auth.sh --profile '$TARGET_PROFILE' --source-profile '$SOURCE_PROFILE' --region '$REGION' --mode console-remote"
+        p5_action "Utilisez le mode recommandé sous WSL2 : bash scripts/commands/aws-auth.sh --profile '$TARGET_PROFILE' --source-profile '$SOURCE_PROFILE' --region '$REGION' --mode console"
+        p5_action 'Vérifiez aussi que votre identité possède la politique AWS gérée SignInLocalDevelopmentAccess.'
         return 1
     fi
 
@@ -323,16 +346,17 @@ console_remote_login() {
     ensure_login_supported || return 1
 
     aws configure set region "$REGION" --profile "$SOURCE_PROFILE"
-    p5_header 'CONNEXION AWS — REPLI CROSS-DEVICE'
-    p5_warn 'Ce mode --remote est un repli. Sous Windows 11 + WSL2, préférez normalement le mode console avec callback localhost.'
-    p5_info 'WSL2 va afficher une URL AWS. Ouvrez cette URL dans votre navigateur Windows.'
-    p5_info 'Après la connexion, le navigateur AWS affiche un code d’autorisation à usage unique.'
-    p5_info 'Revenez ensuite dans ce terminal et collez ce code à l’invite « Enter the authorization code displayed in your browser ».'
+    p5_header 'CONNEXION AWS — CODE CROSS-DEVICE WSL2'
+    p5_info 'Ce flux évite entièrement le callback localhost Windows/WSL2.'
+    p5_info 'AWS CLI affiche une URL à ouvrir dans le navigateur Windows.'
+    p5_info 'Après la connexion, AWS affiche un code d’autorisation à usage unique à recopier dans ce terminal.'
+    p5_warn 'Ce code est temporaire et sensible : ne le partagez pas et ne le recopiez pas dans un ticket, un chat ou un fichier.'
+    warn_login_session_replacement "$SOURCE_PROFILE"
 
-    if ! aws login --remote --profile "$SOURCE_PROFILE" --region "$REGION"; then
+    if ! aws_login_cross_device "$SOURCE_PROFILE"; then
         p5_error 'La connexion AWS cross-device via aws login --remote a échoué.'
-        p5_action 'Si aucun code n’a été collé dans le terminal, relancez la commande et recopiez le code affiché par le navigateur AWS.'
-        p5_action 'Si le code a expiré ou a déjà été utilisé, relancez la connexion pour générer un nouveau code.'
+        p5_action 'Si aucun code n’a été collé dans le terminal, relancez la commande et recopiez uniquement le code affiché par AWS.'
+        p5_action 'Si le code a expiré ou a déjà été utilisé, relancez la connexion pour en générer un nouveau.'
         p5_action 'Vérifiez aussi que votre identité possède la politique AWS gérée SignInLocalDevelopmentAccess.'
         return 1
     fi
@@ -353,6 +377,14 @@ console_remote_login() {
     }
 
     configure_process_profile "$SOURCE_PROFILE"
+}
+
+console_login() {
+    if is_wsl_runtime; then
+        console_remote_login
+    else
+        console_localhost_login
+    fi
 }
 
 sso_login() {
@@ -426,17 +458,17 @@ choose_mode() {
     if [[ ! -t 0 ]]; then
         p5_unknown 'Méthode d’authentification AWS' \
             'aucune méthode réutilisable n’a été détectée et le terminal n’est pas interactif' \
-            'Relancez avec --mode console, --mode console-remote, --mode sso ou --mode existing.'
+            'Relancez avec --mode console, --mode console-remote, --mode console-localhost, --mode sso ou --mode existing.'
         return 1
     fi
 
     cat <<'MENU'
 
 Méthode d'authentification AWS :
-  1  Compte console AWS — aws login + callback localhost Windows/WSL2 (recommandé)
+  1  Compte console AWS — code cross-device sans callback localhost (recommandé sous WSL2)
   2  IAM Identity Center / SSO
   3  Réutiliser un profil temporaire existant
-  4  Repli cross-device — aws login --remote
+  4  Compte console AWS — callback localhost same-device (mode avancé)
 MENU
     printf 'Votre choix [1] :\n'
     local choice
@@ -445,7 +477,7 @@ MENU
         1) MODE=console ;;
         2) MODE=sso ;;
         3) MODE=existing ;;
-        4) MODE=console-remote ;;
+        4) MODE=console-localhost ;;
         *) p5_error 'Choix AWS inconnu.'; p5_action 'Tapez 1, 2, 3 ou 4.'; return 1 ;;
     esac
 }
@@ -485,6 +517,7 @@ fi
 case "$MODE" in
     console) console_login ;;
     console-remote) console_remote_login ;;
+    console-localhost) console_localhost_login ;;
     sso) sso_login ;;
     existing) existing_profile ;;
 esac
