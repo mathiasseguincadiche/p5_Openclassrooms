@@ -195,6 +195,22 @@ validate_terraform() {
     done
 }
 
+validate_yaml() {
+    local -a files=()
+    mapfile -d '' -t files < <(
+        git -C "$PROJECT_ROOT" ls-files -z -- '*.yml' '*.yaml'
+    )
+    ((${#files[@]} == 0)) || yamllint -c "$PROJECT_ROOT/.yamllint.yml" "${files[@]}"
+}
+
+validate_markdown() {
+    local -a files=()
+    mapfile -d '' -t files < <(
+        git -C "$PROJECT_ROOT" ls-files -z -- '*.md'
+    )
+    ((${#files[@]} == 0)) || markdownlint-cli2 "${files[@]}"
+}
+
 cd "$PROJECT_ROOT" || exit 1
 run_check 'Périmètre : trois exercices et aucun Mermaid' validate_scope
 run_check 'Fichiers critiques du parcours' validate_required_files
@@ -233,7 +249,7 @@ if command -v terraform >/dev/null 2>&1; then
     run_check 'Validation Terraform' validate_terraform
 fi
 if command -v yamllint >/dev/null 2>&1; then
-    run_check 'YAML' yamllint -c "$PROJECT_ROOT/.yamllint.yml" "$PROJECT_ROOT"
+    run_check 'YAML' validate_yaml
 fi
 if command -v ansible-playbook >/dev/null 2>&1; then
     run_check 'Syntaxe Ansible' ansible-playbook --syntax-check \
@@ -241,7 +257,7 @@ if command -v ansible-playbook >/dev/null 2>&1; then
         "$PROJECT_ROOT/ansible/playbooks/deploy.yml"
 fi
 if command -v markdownlint-cli2 >/dev/null 2>&1; then
-    run_check 'Markdown' markdownlint-cli2 '**/*.md'
+    run_check 'Markdown' validate_markdown
 fi
 
 printf '\n'
