@@ -87,6 +87,7 @@ CAPABILITIES: dict[str, tuple[str, ...]] = {
         ".github/workflows/wsl2-devops-contract.yml",
         "scripts/commands/validate.sh",
         "scripts/tools/audit_non_regression.py",
+        "scripts/tests/test-untracked-artifacts-ignored.sh",
     ),
 }
 
@@ -223,6 +224,14 @@ class Audit:
             if item
         )
 
+    def tracked_markdown_files(self) -> tuple[tuple[str, Path], ...]:
+        return tuple(
+            (relative, self.path(relative))
+            for relative in self.tracked_files()
+            if PurePosixPath(relative).suffix.lower() == ".md"
+            and self.path(relative).is_file()
+        )
+
     def audit_scope(self) -> None:
         if self.path("TEMPLATES").exists():
             self.fail("le dossier générique TEMPLATES a été réintroduit")
@@ -241,13 +250,13 @@ class Audit:
             self.ok("trois modules Terraform présents")
 
         mermaid_files: list[str] = []
-        for markdown in self.root.rglob("*.md"):
+        for relative, markdown in self.tracked_markdown_files():
             try:
                 text = markdown.read_text(encoding="utf-8")
-            except UnicodeDecodeError:
+            except (UnicodeDecodeError, OSError):
                 continue
             if "```mermaid" in text.lower():
-                mermaid_files.append(str(markdown.relative_to(self.root)))
+                mermaid_files.append(relative)
         if mermaid_files:
             self.fail("blocs Mermaid présents : " + ", ".join(mermaid_files))
         else:
@@ -413,16 +422,15 @@ class Audit:
         self.require_text("scripts/commands/setup-aws-guardrails.sh", ("--apply",))
 
     def audit_documentation_consistency(self) -> None:
-        markdown_files = list(self.root.rglob("*.md"))
         stale_locations: list[str] = []
-        for markdown in markdown_files:
+        for relative, markdown in self.tracked_markdown_files():
             try:
                 content = markdown.read_text(encoding="utf-8").lower()
-            except UnicodeDecodeError:
+            except (UnicodeDecodeError, OSError):
                 continue
             for claim in STALE_CLAIMS:
                 if claim in content:
-                    stale_locations.append(f"{markdown.relative_to(self.root)} : {claim}")
+                    stale_locations.append(f"{relative} : {claim}")
         if stale_locations:
             self.fail("affirmations obsolètes : " + " | ".join(stale_locations))
         else:
