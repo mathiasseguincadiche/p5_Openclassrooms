@@ -24,6 +24,9 @@ jobs:
       - name: Vérifier le contrat de non-régression
         run: python3 scripts/tools/audit_non_regression.py
 
+      - name: Vérifier l'isolation des artefacts locaux non suivis
+        run: bash scripts/tests/test-untracked-artifacts-ignored.sh
+
       - name: Vérifier le centre de commande P5
         run: bash scripts/tests/test-p5-orchestrator.sh
 
