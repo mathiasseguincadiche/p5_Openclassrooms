@@ -39,6 +39,9 @@ jobs:
       - name: Vérifier le streaming interactif du runtime
         run: bash scripts/tests/test-interactive-streaming.sh
 
+      - name: Vérifier Node via NVM hors shell interactif
+        run: bash scripts/tests/test-nvm-noninteractive.sh
+
       - name: Vérifier la convergence et la réexécution
         run: bash scripts/tests/test-convergence-contract.sh
 
