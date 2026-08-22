@@ -21,8 +21,8 @@ run_check() {
 validate_scope() {
     [[ ! -d "$PROJECT_ROOT/TEMPLATES" ]] || return 1
     [[ ! -d "$PROJECT_ROOT/docs/exercises" ]] || return 1
-    if grep -RIl --include='*.md' '```mermaid' "$PROJECT_ROOT" | grep -q .; then
-        printf 'Des blocs Mermaid subsistent.\n' >&2
+    if git -C "$PROJECT_ROOT" grep -Iil -e '```mermaid' -- '*.md' | grep -q .; then
+        printf 'Des blocs Mermaid subsistent dans les fichiers Markdown suivis par Git.\n' >&2
         return 1
     fi
     [[ "$(find "$PROJECT_ROOT/docs/exercices" -maxdepth 1 -type f -name '*.md' | wc -l)" -eq 3 ]]
