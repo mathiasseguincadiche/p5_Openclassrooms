@@ -27,6 +27,8 @@ cat > "$FAKE_BIN/rundll32.exe" <<'EOF'
 #!/usr/bin/bash
 set -euo pipefail
 printf 'rundll32.exe protocol=%s url=%s\n' "${1:-<absent>}" "${2:-<absente>}" >> "${P5_TEST_TRACE:?}"
+# Simule un lanceur Windows qui reste vivant après l'ouverture du navigateur.
+sleep 3
 exit 0
 EOF
 chmod +x "$FAKE_BIN/rundll32.exe"
@@ -79,12 +81,20 @@ fi
 if [[ "$args" == *' login '* || "$args" == login* ]]; then
     printf 'browser=%s\n' "${BROWSER:-<absent>}" >> "${P5_TEST_TRACE:?}"
     if [[ "${P5_FAKE_OPEN_BROWSER:-0}" == 1 ]]; then
+        start_ms="$(date +%s%3N)"
         python3 - <<'PY'
 import webbrowser
 
 url = 'https://us-east-1.signin.aws.amazon.com/v1/authorize?state=test-wsl-browser'
 raise SystemExit(0 if webbrowser.open(url) else 1)
 PY
+        end_ms="$(date +%s%3N)"
+        elapsed_ms=$((end_ms - start_ms))
+        printf 'webbrowser_elapsed_ms=%s\n' "$elapsed_ms" >> "${P5_TEST_TRACE:?}"
+        if ((elapsed_ms >= 1000)); then
+            printf 'Le helper navigateur a bloqué webbrowser.open pendant %s ms.\n' "$elapsed_ms" >&2
+            exit 98
+        fi
     fi
     if [[ "${P5_FAKE_LOGIN_FAIL:-0}" == 1 ]]; then
         exit 1
@@ -137,9 +147,11 @@ grep -Fq 'AWS PRÊT' <<<"$OUTPUT"
 grep -Fq 'CALLBACK LOCALHOST WINDOWS/WSL2' <<<"$OUTPUT"
 grep -Fq 'aucune copie de code d’autorisation n’est nécessaire' <<<"$OUTPUT"
 grep -Fq 'helper navigateur Windows via la variable BROWSER' <<<"$OUTPUT"
+grep -Fq 'helper est lancé en arrière-plan' <<<"$OUTPUT"
 grep -Fq 'login --profile p5-signin --region us-east-1' "$TRACE_FILE"
-grep -Eq '^browser=.*/p5-windows-browser$' "$TRACE_FILE"
+grep -Eq '^browser=.*/p5-windows-browser %s &$' "$TRACE_FILE"
 grep -Fq 'rundll32.exe protocol=url.dll,FileProtocolHandler url=https://us-east-1.signin.aws.amazon.com/v1/authorize?state=test-wsl-browser' "$TRACE_FILE"
+grep -Eq '^webbrowser_elapsed_ms=[0-9]+$' "$TRACE_FILE"
 if grep -Fq 'gio-inattendu' "$TRACE_FILE"; then
     printf 'KO  le mode console WSL2 retombe encore sur gio malgré BROWSER.\n' >&2
     exit 1
@@ -206,4 +218,4 @@ if ((ROOT_RC == 0)); then
 fi
 grep -Fq 'refuse volontairement une session AWS root' <<<"$ROOT_OUTPUT"
 
-printf 'OK  authentification AWS localhost WSL2, BROWSER Windows explicite, repli remote et refus root validés sans contacter AWS.\n'
+printf 'OK  authentification AWS localhost WSL2, navigateur Windows non bloquant, repli remote et refus root validés sans contacter AWS.\n'

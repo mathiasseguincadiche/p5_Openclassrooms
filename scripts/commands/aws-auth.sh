@@ -37,8 +37,10 @@ Modes :
 Sous Windows 11 + WSL2, `console` est le mode recommandé : le navigateur Windows
 peut joindre le callback localhost exposé par WSL2. P5 définit temporairement la
 variable `BROWSER` vers un helper Windows explicite afin d'éviter le bug `gio`
-connu de l'AWS CLI sous WSL. Le helper utilise `wslview` si disponible, puis
-`rundll32.exe` ou `explorer.exe`. Aucune modification permanente n'est appliquée.
+connu de l'AWS CLI sous WSL. Le helper est lancé en arrière-plan pour rendre
+immédiatement la main à l'AWS CLI, qui peut alors écouter son callback localhost.
+Il utilise `wslview` si disponible, puis `rundll32.exe` ou `explorer.exe`.
+Aucune modification permanente n'est appliquée.
 
 Le script ne demande, ne lit et ne stocke jamais votre mot de passe AWS.
 Lorsqu'un nom de profil ne peut pas être déduit, les profils disponibles sont
@@ -220,7 +222,7 @@ HELPER
 }
 
 aws_login_same_device() {
-    local profile="$1" helper_dir browser_helper rc
+    local profile="$1" helper_dir browser_helper browser_command rc
 
     if ! is_wsl_runtime; then
         aws login --profile "$profile" --region "$REGION"
@@ -231,7 +233,11 @@ aws_login_same_device() {
     browser_helper="$helper_dir/p5-windows-browser"
     create_wsl_browser_helper "$helper_dir"
 
-    if BROWSER="$browser_helper" aws login --profile "$profile" --region "$REGION"; then
+    # Python webbrowser traite un BROWSER simple comme GenericBrowser et attend
+    # la fin du processus. `%s &` force BackgroundBrowser : l'AWS CLI récupère
+    # immédiatement la main et peut démarrer/maintenir son serveur de callback.
+    browser_command="$browser_helper %s &"
+    if BROWSER="$browser_command" aws login --profile "$profile" --region "$REGION"; then
         rc=0
     else
         rc=$?
@@ -282,6 +288,7 @@ console_login() {
     p5_info 'AWS CLI va lancer le flux de connexion standard et écouter un callback sur localhost dans WSL2.'
     p5_info 'Le navigateur Windows peut joindre ce localhost ; aucune copie de code d’autorisation n’est nécessaire.'
     p5_info 'Sous WSL2, P5 impose temporairement un helper navigateur Windows via la variable BROWSER afin d’éviter le bug gio de l’AWS CLI.'
+    p5_info 'Le helper est lancé en arrière-plan afin que l’AWS CLI puisse immédiatement maintenir son listener de callback localhost.'
     p5_info 'Le helper tente wslview, puis rundll32.exe, puis explorer.exe ; l’URL AWS reste affichée comme repli manuel.'
     p5_info 'Saisissez vos identifiants directement chez AWS ; le script ne les voit jamais.'
 
