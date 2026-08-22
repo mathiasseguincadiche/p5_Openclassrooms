@@ -408,9 +408,9 @@ p5_prompt_value() {
 
     while true; do
         if [[ -n "$default_value" ]]; then
-            printf '%s [%s] : ' "$label" "$default_value"
+            printf '%s [%s] :\n' "$label" "$default_value"
         else
-            printf '%s : ' "$label"
+            printf '%s :\n' "$label"
         fi
         read -r value
         value="${value:-$default_value}"
@@ -456,7 +456,7 @@ p5_confirm() {
     fi
 
     local answer
-    printf '%s [o/N] : ' "$message"
+    printf '%s [o/N] :\n' "$message"
     read -r answer
     case "${answer,,}" in
         o|oui|y|yes) return 0 ;;
@@ -475,7 +475,7 @@ p5_require_exact() {
 
     local answer
     printf '%s\n' "$message"
-    printf 'Tapez exactement %s : ' "$expected"
+    printf 'Tapez exactement %s :\n' "$expected"
     read -r answer
     [[ "$answer" == "$expected" ]]
 }
