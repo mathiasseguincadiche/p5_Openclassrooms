@@ -4,9 +4,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
+RUNTIME_FILE="$PROJECT_ROOT/scripts/lib/p5-runtime.sh"
+AWS_AUTH_FILE="$PROJECT_ROOT/scripts/commands/aws-auth.sh"
 
 # shellcheck source=../lib/p5-runtime.sh
-source "$PROJECT_ROOT/scripts/lib/p5-runtime.sh"
+source "$RUNTIME_FILE"
 
 coproc P5_STREAM_TEST {
     {
@@ -47,4 +49,11 @@ if grep -Fq 'secret-temporaire' <<<"$REDACTED"; then
     exit 1
 fi
 
-printf 'OK  streaming interactif immédiat et redaction des secrets validés.\n'
+# Les invites exécutées derrière p5_run_step doivent terminer leur ligne avant
+# read, sinon un filtre ligne-par-ligne peut encore masquer le prompt.
+grep -Fq "printf '%s [%s] :\\n'" "$RUNTIME_FILE"
+grep -Fq "printf '%s [o/N] :\\n'" "$RUNTIME_FILE"
+grep -Fq "printf 'Tapez exactement %s :\\n'" "$RUNTIME_FILE"
+grep -Fq "printf 'Votre choix [1] :\\n'" "$AWS_AUTH_FILE"
+
+printf 'OK  streaming interactif immédiat, invites visibles et redaction des secrets validés.\n'
