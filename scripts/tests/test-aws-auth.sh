@@ -17,6 +17,22 @@ trap cleanup EXIT
 mkdir -p "$FAKE_BIN" "$TMP_DIR/logs-console" "$TMP_DIR/logs-remote" \
     "$TMP_DIR/logs-login-fail" "$TMP_DIR/logs-root"
 
+cat > "$FAKE_BIN/wslview" <<'EOF'
+#!/usr/bin/bash
+exit 1
+EOF
+chmod +x "$FAKE_BIN/wslview"
+
+cat > "$FAKE_BIN/powershell.exe" <<'EOF'
+#!/usr/bin/bash
+set -euo pipefail
+printf 'powershell.exe url=%s' "${P5_WSL_BROWSER_URL:-<absente>}" >> "${P5_TEST_TRACE:?}"
+printf ' %q' "$@" >> "$P5_TEST_TRACE"
+printf '\n' >> "$P5_TEST_TRACE"
+exit 0
+EOF
+chmod +x "$FAKE_BIN/powershell.exe"
+
 cat > "$FAKE_BIN/aws" <<'EOF'
 #!/usr/bin/bash
 set -euo pipefail
@@ -26,7 +42,7 @@ printf '\n' >> "$P5_TEST_TRACE"
 args="$*"
 
 if [[ "$args" == '--version' ]]; then
-    printf '%s\n' 'aws-cli/2.36.2 Python/3.13.0 Linux/6.8 exe/x86_64.ubuntu.24'
+    printf '%s\n' 'aws-cli/2.36.21 Python/3.13.0 Linux/6.8 exe/x86_64.ubuntu.24'
     exit 0
 fi
 
@@ -47,6 +63,9 @@ if [[ "$args" == *'configure set '* ]]; then
 fi
 
 if [[ "$args" == *' login '* || "$args" == login* ]]; then
+    if [[ "${P5_FAKE_OPEN_BROWSER:-0}" == 1 ]]; then
+        gio open 'https://us-east-1.signin.aws.amazon.com/v1/authorize?state=test-wsl-browser'
+    fi
     if [[ "${P5_FAKE_LOGIN_FAIL:-0}" == 1 ]]; then
         exit 1
     fi
@@ -81,6 +100,8 @@ chmod +x "$FAKE_BIN/aws"
 export PATH="$FAKE_BIN:/usr/bin:/bin"
 export P5_TEST_TRACE="$TRACE_FILE"
 export P5_LOG_DIR="$TMP_DIR/logs-console"
+export WSL_DISTRO_NAME=Ubuntu
+export P5_FAKE_OPEN_BROWSER=1
 : > "$TRACE_FILE"
 
 OUTPUT="$(/usr/bin/bash "$AUTH_SCRIPT" \
@@ -90,10 +111,14 @@ OUTPUT="$(/usr/bin/bash "$AUTH_SCRIPT" \
     --region us-east-1 \
     --yes 2>&1)"
 
+unset P5_FAKE_OPEN_BROWSER
+
 grep -Fq 'AWS PRÊT' <<<"$OUTPUT"
 grep -Fq 'CALLBACK LOCALHOST WINDOWS/WSL2' <<<"$OUTPUT"
 grep -Fq 'aucune copie de code d’autorisation n’est nécessaire' <<<"$OUTPUT"
+grep -Fq 'redirige temporairement le lanceur gio vers le navigateur Windows' <<<"$OUTPUT"
 grep -Fq 'login --profile p5-signin --region us-east-1' "$TRACE_FILE"
+grep -Fq 'powershell.exe url=https://us-east-1.signin.aws.amazon.com/v1/authorize?state=test-wsl-browser' "$TRACE_FILE"
 if grep -Fq 'login --remote' "$TRACE_FILE"; then
     printf 'KO  le mode console WSL2 utilise encore --remote.\n' >&2
     exit 1
@@ -148,6 +173,7 @@ ROOT_OUTPUT="$(/usr/bin/bash "$AUTH_SCRIPT" \
 ROOT_RC=$?
 set -e
 unset P5_FAKE_ROOT
+unset WSL_DISTRO_NAME
 
 if ((ROOT_RC == 0)); then
     printf 'KO  une session root AWS a été acceptée.\n' >&2
@@ -155,4 +181,4 @@ if ((ROOT_RC == 0)); then
 fi
 grep -Fq 'refuse volontairement une session AWS root' <<<"$ROOT_OUTPUT"
 
-printf 'OK  authentification AWS localhost WSL2, repli remote et refus root validés sans contacter AWS.\n'
+printf 'OK  authentification AWS localhost WSL2, ouverture navigateur Windows, repli remote et refus root validés sans contacter AWS.\n'
