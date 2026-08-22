@@ -2,12 +2,16 @@
 # Teste le round-robin, la panne et la réintégration HAProxy avec des conteneurs.
 set -euo pipefail
 
+# Reproduit volontairement un shell local restrictif. Les fichiers temporaires
+# destinés aux conteneurs sont ensuite rendus explicitement lisibles.
+umask 077
+
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
 # shellcheck source=/dev/null
 source "$PROJECT_ROOT/environment/versions.env"
 
-for command_name in docker curl awk grep sort; do
+for command_name in docker curl awk grep sort chmod; do
     command -v "$command_name" >/dev/null 2>&1 || {
         printf 'Commande requise absente : %s\n' "$command_name" >&2
         exit 1
@@ -37,6 +41,11 @@ trap cleanup EXIT INT TERM
 mkdir -p "$tmp_dir/backend-1" "$tmp_dir/backend-2"
 printf 'Server name: p5-hello-1\n' > "$tmp_dir/backend-1/index.html"
 printf 'Server name: p5-hello-2\n' > "$tmp_dir/backend-2/index.html"
+
+# Les workers nginx n'utilisent pas l'UID de l'opérateur WSL. Normaliser les
+# permissions de cette copie éphémère évite les 403 sous un umask 077.
+chmod 0755 "$tmp_dir" "$tmp_dir/backend-1" "$tmp_dir/backend-2"
+chmod 0644 "$tmp_dir/backend-1/index.html" "$tmp_dir/backend-2/index.html"
 
 docker network create "$network" >/dev/null
 for backend in 1 2; do

@@ -2,12 +2,16 @@
 # Teste réellement le build Angular derrière la configuration NGINX du projet.
 set -euo pipefail
 
+# Reproduit volontairement un shell local restrictif. Le test doit rester
+# fonctionnel sans dépendre du umask de l'opérateur.
+umask 077
+
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
 # shellcheck source=/dev/null
 source "$PROJECT_ROOT/environment/versions.env"
 
-for command_name in docker curl grep find; do
+for command_name in docker curl grep find cp chmod; do
     command -v "$command_name" >/dev/null 2>&1 || {
         printf 'Commande requise absente : %s\n' "$command_name" >&2
         exit 1
@@ -29,6 +33,7 @@ mapfile -t build_indexes < <(
 build_dir="$(dirname -- "${build_indexes[0]}")"
 container_name="p5-nginx-angular-test-${RANDOM}-${RANDOM}"
 tmp_dir="$(mktemp -d)"
+readable_build_dir="$tmp_dir/angular-build"
 
 cleanup() {
     docker rm -f "$container_name" >/dev/null 2>&1 || true
@@ -36,10 +41,17 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
+# Un build créé sous un umask 077 peut contenir des fichiers 600/700. Les
+# workers NGINX du conteneur ne doivent pas dépendre des permissions locales de
+# l'opérateur. On sert donc une copie éphémère, sans modifier le build source.
+mkdir -p "$readable_build_dir"
+cp -a "$build_dir/." "$readable_build_dir/"
+chmod -R u=rwX,go=rX "$readable_build_dir"
+
 docker run --rm -d \
     --name "$container_name" \
     --publish 127.0.0.1::80 \
-    --volume "$build_dir:/var/www/p5:ro" \
+    --volume "$readable_build_dir:/var/www/p5:ro" \
     --volume "$PROJECT_ROOT/ansible/files/nginx-angular.conf:/etc/nginx/conf.d/default.conf:ro" \
     "$NGINX_DOCKER_IMAGE" >/dev/null
 
