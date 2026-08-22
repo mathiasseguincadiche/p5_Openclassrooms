@@ -23,15 +23,29 @@ exit 1
 EOF
 chmod +x "$FAKE_BIN/wslview"
 
-cat > "$FAKE_BIN/powershell.exe" <<'EOF'
+cat > "$FAKE_BIN/rundll32.exe" <<'EOF'
 #!/usr/bin/bash
 set -euo pipefail
-printf 'powershell.exe url=%s' "${P5_WSL_BROWSER_URL:-<absente>}" >> "${P5_TEST_TRACE:?}"
-printf ' %q' "$@" >> "$P5_TEST_TRACE"
-printf '\n' >> "$P5_TEST_TRACE"
+printf 'rundll32.exe protocol=%s url=%s\n' "${1:-<absent>}" "${2:-<absente>}" >> "${P5_TEST_TRACE:?}"
 exit 0
 EOF
-chmod +x "$FAKE_BIN/powershell.exe"
+chmod +x "$FAKE_BIN/rundll32.exe"
+
+cat > "$FAKE_BIN/explorer.exe" <<'EOF'
+#!/usr/bin/bash
+set -euo pipefail
+printf 'explorer.exe url=%s\n' "${1:-<absente>}" >> "${P5_TEST_TRACE:?}"
+exit 0
+EOF
+chmod +x "$FAKE_BIN/explorer.exe"
+
+cat > "$FAKE_BIN/gio" <<'EOF'
+#!/usr/bin/bash
+set -euo pipefail
+printf 'gio-inattendu %s\n' "$*" >> "${P5_TEST_TRACE:?}"
+exit 99
+EOF
+chmod +x "$FAKE_BIN/gio"
 
 cat > "$FAKE_BIN/aws" <<'EOF'
 #!/usr/bin/bash
@@ -63,8 +77,14 @@ if [[ "$args" == *'configure set '* ]]; then
 fi
 
 if [[ "$args" == *' login '* || "$args" == login* ]]; then
+    printf 'browser=%s\n' "${BROWSER:-<absent>}" >> "${P5_TEST_TRACE:?}"
     if [[ "${P5_FAKE_OPEN_BROWSER:-0}" == 1 ]]; then
-        gio open 'https://us-east-1.signin.aws.amazon.com/v1/authorize?state=test-wsl-browser'
+        python3 - <<'PY'
+import webbrowser
+
+url = 'https://us-east-1.signin.aws.amazon.com/v1/authorize?state=test-wsl-browser'
+raise SystemExit(0 if webbrowser.open(url) else 1)
+PY
     fi
     if [[ "${P5_FAKE_LOGIN_FAIL:-0}" == 1 ]]; then
         exit 1
@@ -116,9 +136,14 @@ unset P5_FAKE_OPEN_BROWSER
 grep -Fq 'AWS PRÊT' <<<"$OUTPUT"
 grep -Fq 'CALLBACK LOCALHOST WINDOWS/WSL2' <<<"$OUTPUT"
 grep -Fq 'aucune copie de code d’autorisation n’est nécessaire' <<<"$OUTPUT"
-grep -Fq 'redirige temporairement le lanceur gio vers le navigateur Windows' <<<"$OUTPUT"
+grep -Fq 'helper navigateur Windows via la variable BROWSER' <<<"$OUTPUT"
 grep -Fq 'login --profile p5-signin --region us-east-1' "$TRACE_FILE"
-grep -Fq 'powershell.exe url=https://us-east-1.signin.aws.amazon.com/v1/authorize?state=test-wsl-browser' "$TRACE_FILE"
+grep -Eq '^browser=.*/p5-windows-browser$' "$TRACE_FILE"
+grep -Fq 'rundll32.exe protocol=url.dll,FileProtocolHandler url=https://us-east-1.signin.aws.amazon.com/v1/authorize?state=test-wsl-browser' "$TRACE_FILE"
+if grep -Fq 'gio-inattendu' "$TRACE_FILE"; then
+    printf 'KO  le mode console WSL2 retombe encore sur gio malgré BROWSER.\n' >&2
+    exit 1
+fi
 if grep -Fq 'login --remote' "$TRACE_FILE"; then
     printf 'KO  le mode console WSL2 utilise encore --remote.\n' >&2
     exit 1
@@ -181,4 +206,4 @@ if ((ROOT_RC == 0)); then
 fi
 grep -Fq 'refuse volontairement une session AWS root' <<<"$ROOT_OUTPUT"
 
-printf 'OK  authentification AWS localhost WSL2, ouverture navigateur Windows, repli remote et refus root validés sans contacter AWS.\n'
+printf 'OK  authentification AWS localhost WSL2, BROWSER Windows explicite, repli remote et refus root validés sans contacter AWS.\n'
