@@ -168,7 +168,7 @@ p5_stable_log_for_command() {
                 rel="${rel#scripts/}"
                 rel="${rel%.*}"
                 mkdir -p "$P5_STABLE_LOG_ROOT/$(dirname -- "$rel")"
-                printf '%s/%s.log\n' "$P5_STABLE_LOG_ROOT/$rel"
+                printf '%s/%s.log\n' "$P5_STABLE_LOG_ROOT" "$rel"
                 return 0
                 ;;
         esac
