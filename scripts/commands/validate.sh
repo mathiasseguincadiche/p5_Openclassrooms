@@ -149,14 +149,17 @@ validate_angular() {
 }
 
 validate_opensearch_data() {
-    local output
+    local output rc=0
     output="$(mktemp)"
-    trap 'rm -f "$output"' RETURN
-    python3 -m py_compile "$PROJECT_ROOT/scripts/tools/convert-nginx-logs.py"
-    python3 "$PROJECT_ROOT/scripts/tools/convert-nginx-logs.py" \
-        "$PROJECT_ROOT/terraform/exercice-2/samples/nginx-access.log.sample" \
-        --output "$output"
-    python3 - "$output" <<'PY'
+
+    python3 -m py_compile "$PROJECT_ROOT/scripts/tools/convert-nginx-logs.py" || rc=$?
+    if ((rc == 0)); then
+        python3 "$PROJECT_ROOT/scripts/tools/convert-nginx-logs.py" \
+            "$PROJECT_ROOT/terraform/exercice-2/samples/nginx-access.log.sample" \
+            --output "$output" || rc=$?
+    fi
+    if ((rc == 0)); then
+        python3 - "$output" <<'PY' || rc=$?
 import json
 import sys
 from datetime import datetime
@@ -177,6 +180,10 @@ buckets = {
 if len(methods) < 3 or len(paths) < 5 or len(buckets) < 4:
     raise SystemExit('Échantillon insuffisant pour les trois visualisations')
 PY
+    fi
+
+    rm -f "$output"
+    return "$rc"
 }
 
 validate_terraform() {

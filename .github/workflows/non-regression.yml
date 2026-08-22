@@ -30,6 +30,9 @@ jobs:
       - name: Vérifier l'authentification AWS automatisée
         run: bash scripts/tests/test-aws-auth.sh
 
+      - name: Vérifier le précontrôle AWS réel
+        run: bash scripts/tests/test-aws-readiness-regressions.sh
+
       - name: Vérifier le streaming interactif du runtime
         run: bash scripts/tests/test-interactive-streaming.sh
 

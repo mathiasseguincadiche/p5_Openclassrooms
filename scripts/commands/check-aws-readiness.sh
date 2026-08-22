@@ -65,6 +65,10 @@ ko() {
     ERRORS=$((ERRORS + 1))
 }
 
+action() {
+    printf '      ACTION : %s\n' "$1"
+}
+
 is_yes() {
     [[ "${1,,}" == "yes" || "${1,,}" == "oui" ]]
 }
@@ -263,37 +267,101 @@ else
     ko "AMI Ubuntu 24.04 Canonical introuvable ou non vérifiable"
 fi
 
+INSTANCE_VCPUS="$(aws_cli ec2 describe-instance-types \
+    --instance-types "$P5_EC2_INSTANCE_TYPE" \
+    --query 'InstanceTypes[0].VCpuInfo.DefaultVCpus' --output text 2>/dev/null || true)"
+if [[ ! "$INSTANCE_VCPUS" =~ ^[0-9]+$ ]]; then
+    INSTANCE_VCPUS=2
+    warn "nombre de vCPU de $P5_EC2_INSTANCE_TYPE non lisible ; repli conservateur à 2 vCPU"
+fi
+
+case "$STAGE" in
+    initial|exercice-2)
+        STAGE_REQUIRED_VCPUS="$INSTANCE_VCPUS"
+        ;;
+    exercice-3)
+        STAGE_REQUIRED_VCPUS="$P5_REQUIRED_STANDARD_VCPUS"
+        ;;
+esac
+
 EC2_QUOTA="$(aws_cli service-quotas get-service-quota \
     --service-code ec2 --quota-code L-1216C47A \
     --query 'Quota.Value' --output text 2>/dev/null || true)"
 if [[ "$EC2_QUOTA" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
-    if awk -v quota="$EC2_QUOTA" -v required="$P5_REQUIRED_STANDARD_VCPUS" \
+    if awk -v quota="$EC2_QUOTA" -v required="$STAGE_REQUIRED_VCPUS" \
         'BEGIN { exit !(quota >= required) }'; then
-        ok "quota EC2 Standard : $EC2_QUOTA vCPU"
+        ok "quota EC2 Standard : $EC2_QUOTA vCPU (besoin étape $STAGE : $STAGE_REQUIRED_VCPUS)"
+        if [[ "$STAGE" != "exercice-3" ]] \
+            && ! awk -v quota="$EC2_QUOTA" -v required="$P5_REQUIRED_STANDARD_VCPUS" \
+                'BEGIN { exit !(quota >= required) }'; then
+            warn "quota actuel suffisant pour $STAGE, mais inférieur aux $P5_REQUIRED_STANDARD_VCPUS vCPU prévus lorsque l'exercice 3 coexiste avec l'infrastructure de l'exercice 1"
+            action "Demandez dès maintenant au moins $P5_REQUIRED_STANDARD_VCPUS vCPU pour le quota EC2 'Running On-Demand Standard (A, C, D, H, I, M, R, T, Z) instances' (L-1216C47A) dans $AWS_REGION."
+        fi
     else
-        ko "quota EC2 $EC2_QUOTA vCPU inférieur aux $P5_REQUIRED_STANDARD_VCPUS requis"
+        ko "quota EC2 $EC2_QUOTA vCPU inférieur aux $STAGE_REQUIRED_VCPUS requis pour l'étape $STAGE"
+        action "Demandez au moins $STAGE_REQUIRED_VCPUS vCPU pour le quota L-1216C47A dans $AWS_REGION avant de poursuivre cette étape."
     fi
 else
     ko "quota EC2 Standard impossible à lire"
 fi
 
 printf '\nAmazon OpenSearch\n'
-OPENSEARCH_COUNT="$(aws_cli opensearch list-instance-type-details \
-    --engine-version "$P5_OPENSEARCH_ENGINE" \
-    --instance-type "$P5_OPENSEARCH_INSTANCE_TYPE" \
-    --query 'length(InstanceTypeDetails)' --output text 2>/dev/null || true)"
-if [[ "$OPENSEARCH_COUNT" =~ ^[0-9]+$ ]] && ((OPENSEARCH_COUNT > 0)); then
-    ok "$P5_OPENSEARCH_ENGINE avec $P5_OPENSEARCH_INSTANCE_TYPE disponible"
+if [[ "$STAGE" == "exercice-3" ]]; then
+    ok "contrôle OpenSearch non requis pour l'exercice 3"
 else
-    ko "combinaison OpenSearch non disponible ou permission insuffisante"
-fi
+    OPENSEARCH_ERROR_FILE="$(mktemp)"
+    OPENSEARCH_COUNT=""
+    if OPENSEARCH_COUNT="$(aws_cli opensearch list-instance-type-details \
+        --engine-version "$P5_OPENSEARCH_ENGINE" \
+        --instance-type "$P5_OPENSEARCH_INSTANCE_TYPE" \
+        --query 'length(InstanceTypeDetails)' --output text \
+        2>"$OPENSEARCH_ERROR_FILE")"; then
+        if [[ "$OPENSEARCH_COUNT" =~ ^[0-9]+$ ]] && ((OPENSEARCH_COUNT > 0)); then
+            ok "$P5_OPENSEARCH_ENGINE avec $P5_OPENSEARCH_INSTANCE_TYPE disponible"
+        elif [[ "$STAGE" == "exercice-2" ]]; then
+            ko "$P5_OPENSEARCH_ENGINE avec $P5_OPENSEARCH_INSTANCE_TYPE n'est pas proposé dans $AWS_REGION"
+        else
+            warn "$P5_OPENSEARCH_ENGINE avec $P5_OPENSEARCH_INSTANCE_TYPE n'a pas été confirmé ; ce point devra être résolu avant l'exercice 2"
+        fi
+    else
+        OPENSEARCH_ERROR="$(cat "$OPENSEARCH_ERROR_FILE")"
+        if grep -Eqi 'AccessDenied|not authorized|UnauthorizedOperation' <<<"$OPENSEARCH_ERROR"; then
+            if [[ "$STAGE" == "exercice-2" ]]; then
+                ko "permission IAM es:ListInstanceTypeDetails absente pour valider la combinaison OpenSearch"
+            else
+                warn "permission IAM es:ListInstanceTypeDetails absente ; l'exercice 1 peut continuer mais l'exercice 2 sera bloqué"
+            fi
+            action "Mettez à jour la politique P5LabPolicy attachée à l'identité IAM depuis aws/iam/p5-lab-policy.json."
+        elif [[ "$STAGE" == "exercice-2" ]]; then
+            ko "impossible de valider $P5_OPENSEARCH_ENGINE avec $P5_OPENSEARCH_INSTANCE_TYPE"
+            action "Vérifiez la version OpenSearch, le type d'instance et la région $AWS_REGION."
+        else
+            warn "validation détaillée OpenSearch indisponible ; ce point sera bloquant avant l'exercice 2"
+        fi
+    fi
+    rm -f "$OPENSEARCH_ERROR_FILE"
 
-if aws_cli opensearch describe-instance-type-limits \
-    --engine-version "$P5_OPENSEARCH_ENGINE" \
-    --instance-type "$P5_OPENSEARCH_INSTANCE_TYPE" >/dev/null 2>&1; then
-    ok "limites OpenSearch accessibles"
-else
-    ko "limites OpenSearch non accessibles"
+    OPENSEARCH_LIMIT_ERROR_FILE="$(mktemp)"
+    if aws_cli opensearch describe-instance-type-limits \
+        --engine-version "$P5_OPENSEARCH_ENGINE" \
+        --instance-type "$P5_OPENSEARCH_INSTANCE_TYPE" \
+        >/dev/null 2>"$OPENSEARCH_LIMIT_ERROR_FILE"; then
+        ok "limites OpenSearch accessibles pour $P5_OPENSEARCH_ENGINE / $P5_OPENSEARCH_INSTANCE_TYPE"
+    else
+        OPENSEARCH_LIMIT_ERROR="$(cat "$OPENSEARCH_LIMIT_ERROR_FILE")"
+        if grep -Eqi 'AccessDenied|not authorized|UnauthorizedOperation' <<<"$OPENSEARCH_LIMIT_ERROR"; then
+            if [[ "$STAGE" == "exercice-2" ]]; then
+                ko "permission IAM es:DescribeInstanceTypeLimits absente"
+            else
+                warn "permission IAM es:DescribeInstanceTypeLimits absente ; à corriger avant l'exercice 2"
+            fi
+        elif [[ "$STAGE" == "exercice-2" ]]; then
+            ko "limites OpenSearch non accessibles pour la combinaison demandée"
+        else
+            warn "limites OpenSearch non vérifiables ; à corriger avant l'exercice 2"
+        fi
+    fi
+    rm -f "$OPENSEARCH_LIMIT_ERROR_FILE"
 fi
 
 printf '\nBudget et coûts\n'
@@ -346,10 +414,22 @@ KEY_EXISTS=no
 if aws_cli ec2 describe-key-pairs --key-names "$P5_KEY_NAME" >/dev/null 2>&1; then
     KEY_EXISTS=yes
 fi
-DOMAIN_EXISTS=no
-if aws_cli opensearch describe-domain \
-    --domain-name "$P5_OPENSEARCH_DOMAIN" >/dev/null 2>&1; then
-    DOMAIN_EXISTS=yes
+
+DOMAIN_STATUS=not-required
+if [[ "$STAGE" != "exercice-3" ]]; then
+    DOMAIN_ERROR_FILE="$(mktemp)"
+    if aws_cli opensearch describe-domain --domain-name "$P5_OPENSEARCH_DOMAIN" \
+        >/dev/null 2>"$DOMAIN_ERROR_FILE"; then
+        DOMAIN_STATUS=exists
+    else
+        DOMAIN_ERROR="$(cat "$DOMAIN_ERROR_FILE")"
+        if grep -Eqi 'ResourceNotFoundException|not found' <<<"$DOMAIN_ERROR"; then
+            DOMAIN_STATUS=absent
+        else
+            DOMAIN_STATUS=unknown
+        fi
+    fi
+    rm -f "$DOMAIN_ERROR_FILE"
 fi
 
 case "$STAGE" in
@@ -358,12 +438,21 @@ case "$STAGE" in
             || ko "un VPC P5 existe déjà ; vérifiez l'état Terraform"
         [[ "$KEY_EXISTS" == no ]] && ok "aucune paire EC2 conflictuelle" \
             || ko "la paire $P5_KEY_NAME existe déjà"
-        [[ "$DOMAIN_EXISTS" == no ]] && ok "aucun domaine OpenSearch conflictuel" \
-            || ko "le domaine $P5_OPENSEARCH_DOMAIN existe déjà"
+        case "$DOMAIN_STATUS" in
+            absent) ok "aucun domaine OpenSearch conflictuel" ;;
+            exists) warn "un domaine OpenSearch $P5_OPENSEARCH_DOMAIN existe déjà ; sans impact sur l'exercice 1, mais à vérifier avant l'exercice 2" ;;
+            unknown) warn "état du domaine OpenSearch non vérifiable avec les permissions actuelles ; sans impact sur l'exercice 1" ;;
+        esac
         ;;
     exercice-2)
-        [[ "$DOMAIN_EXISTS" == no ]] && ok "OpenSearch prêt pour l'exercice 2" \
-            || ko "le domaine $P5_OPENSEARCH_DOMAIN existe déjà"
+        case "$DOMAIN_STATUS" in
+            absent) ok "OpenSearch prêt pour l'exercice 2" ;;
+            exists) ko "le domaine $P5_OPENSEARCH_DOMAIN existe déjà" ;;
+            unknown)
+                ko "état du domaine OpenSearch non vérifiable"
+                action "Vérifiez que P5LabPolicy autorise es:DescribeDomain puis relancez le précontrôle."
+                ;;
+        esac
         ;;
     exercice-3)
         [[ "$VPC_COUNT" =~ ^[0-9]+$ ]] && ((VPC_COUNT > 0)) \
