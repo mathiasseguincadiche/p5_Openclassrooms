@@ -35,9 +35,10 @@ Modes :
   existing        encapsule un profil temporaire existant via credential_process
 
 Sous Windows 11 + WSL2, `console` est le mode recommandé : le navigateur Windows
-peut joindre le callback localhost exposé par WSL2. Si AWS CLI n'ouvre pas le
-navigateur automatiquement, copiez simplement l'URL affichée dans le navigateur
-Windows. `console-remote` reste disponible comme solution de repli explicite.
+peut joindre le callback localhost exposé par WSL2. Le script contourne le bug
+d'ouverture `gio` connu de l'AWS CLI sous WSL en routant temporairement l'ouverture
+vers `wslview`, PowerShell Windows ou `cmd.exe`. Si aucun lanceur Windows n'est
+disponible, l'URL AWS reste affichée pour une ouverture manuelle.
 
 Le script ne demande, ne lit et ne stocke jamais votre mot de passe AWS.
 Lorsqu'un nom de profil ne peut pas être déduit, les profils disponibles sont
@@ -175,6 +176,58 @@ ensure_login_supported() {
     fi
 }
 
+is_wsl_runtime() {
+    [[ -n "${WSL_DISTRO_NAME:-}" || -n "${WSL_INTEROP:-}" ]] && return 0
+    grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null
+}
+
+create_wsl_gio_shim() {
+    local shim_dir="$1"
+    cat > "$shim_dir/gio" <<'SHIM'
+#!/usr/bin/env bash
+set -u
+
+if [[ "${1:-}" == 'open' && "${2:-}" =~ ^https?:// ]]; then
+    url="$2"
+    if command -v wslview >/dev/null 2>&1; then
+        wslview "$url" >/dev/null 2>&1 && exit 0
+    fi
+    if command -v powershell.exe >/dev/null 2>&1; then
+        P5_WSL_BROWSER_URL="$url" powershell.exe -NoProfile -NonInteractive -Command \
+            'Start-Process -FilePath $env:P5_WSL_BROWSER_URL' >/dev/null 2>&1 && exit 0
+    fi
+    if command -v cmd.exe >/dev/null 2>&1; then
+        cmd.exe /d /c start "" "$url" >/dev/null 2>&1 && exit 0
+    fi
+fi
+
+if [[ -x /usr/bin/gio ]]; then
+    exec /usr/bin/gio "$@"
+fi
+exit 1
+SHIM
+    chmod 700 "$shim_dir/gio"
+}
+
+aws_login_same_device() {
+    local profile="$1" shim_dir rc
+
+    if ! is_wsl_runtime; then
+        aws login --profile "$profile" --region "$REGION"
+        return
+    fi
+
+    shim_dir="$(mktemp -d "${TMPDIR:-/tmp}/p5-aws-browser.XXXXXX")"
+    create_wsl_gio_shim "$shim_dir"
+    if PATH="$shim_dir:$PATH" aws login --profile "$profile" --region "$REGION"; then
+        rc=0
+    else
+        rc=$?
+    fi
+    rm -rf "$shim_dir"
+    return "$rc"
+}
+
 renew_known_profile() {
     local profile="$1"
     local login_session sso_session sso_start_url
@@ -184,7 +237,7 @@ renew_known_profile() {
 
     if [[ -n "$login_session" ]]; then
         p5_action "Renouvellement de la session console AWS du profil '$profile' via callback localhost."
-        aws login --profile "$profile" --region "$REGION"
+        aws_login_same_device "$profile"
         return
     fi
     if [[ -n "$sso_session" || -n "$sso_start_url" ]]; then
@@ -215,12 +268,13 @@ console_login() {
     p5_header 'CONNEXION AWS — CALLBACK LOCALHOST WINDOWS/WSL2'
     p5_info 'AWS CLI va lancer le flux de connexion standard et écouter un callback sur localhost dans WSL2.'
     p5_info 'Le navigateur Windows peut joindre ce localhost ; aucune copie de code d’autorisation n’est nécessaire.'
-    p5_info 'Si le navigateur ne s’ouvre pas automatiquement, copiez l’URL affichée par AWS CLI dans votre navigateur Windows.'
+    p5_info 'Sous WSL2, P5 redirige temporairement le lanceur gio vers le navigateur Windows afin de contourner le bug AWS CLI connu.'
+    p5_info 'Si aucun lanceur Windows n’est disponible, l’URL AWS reste affichée pour une ouverture manuelle.'
     p5_info 'Saisissez vos identifiants directement chez AWS ; le script ne les voit jamais.'
 
-    if ! aws login --profile "$SOURCE_PROFILE" --region "$REGION"; then
+    if ! aws_login_same_device "$SOURCE_PROFILE"; then
         p5_error 'La connexion AWS via le callback localhost a échoué.'
-        p5_action 'Vérifiez que l’URL affichée par AWS CLI a été ouverte dans le navigateur Windows et que la connexion a été terminée.'
+        p5_action 'Si le navigateur ne s’est pas ouvert, utilisez l’URL affichée par AWS CLI dans le navigateur Windows tant que cette tentative est active.'
         p5_action 'Vérifiez que votre identité possède la politique AWS gérée SignInLocalDevelopmentAccess.'
         p5_action "Si le callback localhost est bloqué par un pare-feu, testez explicitement le repli : bash scripts/commands/aws-auth.sh --profile '$TARGET_PROFILE' --source-profile '$SOURCE_PROFILE' --region '$REGION' --mode console-remote"
         return 1
