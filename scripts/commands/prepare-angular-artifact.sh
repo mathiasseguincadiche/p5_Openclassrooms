@@ -4,11 +4,27 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
+VERSIONS_FILE="$PROJECT_ROOT/environment/versions.env"
+NODE_RUNTIME_LIB="$PROJECT_ROOT/scripts/lib/p5-node-runtime.sh"
 SOURCE_DIR="${1:-$PROJECT_ROOT/application/angular}"
 TARGET_DIR="$PROJECT_ROOT/ansible/files/angular-app"
 STATE_DIR="$PROJECT_ROOT/.p5/state"
 DEPS_STATE="$STATE_DIR/angular-deps.sha256"
 ARTIFACT_STATE="$STATE_DIR/angular-artifact.env"
+
+[[ -r "$VERSIONS_FILE" && -r "$NODE_RUNTIME_LIB" ]] || {
+    printf 'Contrat Node P5 absent ou illisible.\n' >&2
+    exit 1
+}
+# shellcheck source=/dev/null
+source "$VERSIONS_FILE"
+# shellcheck source=/dev/null
+source "$NODE_RUNTIME_LIB"
+if ! p5_node_runtime_activate "$NODE_VERSION"; then
+    printf 'Node.js %s via NVM est indisponible dans ce shell.\n' "$NODE_VERSION" >&2
+    printf 'Relancez : bash scripts/commands/p5.sh prepare\n' >&2
+    exit 1
+fi
 
 if [[ ! -f "$SOURCE_DIR/package.json" ]]; then
     printf 'Projet Angular invalide : package.json absent dans %s.\n' "$SOURCE_DIR" >&2
