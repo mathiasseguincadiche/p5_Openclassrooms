@@ -58,6 +58,60 @@ Le projet privilégie les identifiants temporaires. La configuration contient :
 P5_REQUIRE_TEMPORARY_CREDENTIALS=yes
 ```
 
+### Parcours console retenu sous WSL2
+
+Sur l'environnement Windows 11 Pro + WSL2 du projet, le mode console recommandé est le flux **cross-device** :
+
+```bash
+aws login --remote --profile p5-signin --region us-east-1
+```
+
+Ce flux ne dépend pas d'un serveur callback sur `127.0.0.1` dans WSL2 :
+
+1. AWS CLI affiche une URL ;
+2. l'URL est ouverte dans le navigateur Windows ;
+3. l'utilisateur s'authentifie avec son identité IAM et son MFA ;
+4. AWS affiche un code d'autorisation à usage unique ;
+5. ce code est recopié uniquement dans le terminal WSL ;
+6. AWS CLI crée les credentials temporaires ;
+7. le profil `p5-lab` les consomme via `credential_process`.
+
+Le code d'autorisation est temporaire et sensible. Il ne doit pas être partagé dans un ticket, un chat, un dépôt ou un fichier de preuve.
+
+Le mode normal du P5 reste :
+
+```text
+P5_AWS_AUTH_MODE=auto
+```
+
+Lorsque `auto` doit initialiser ou renouveler une session console sous WSL2, il privilégie ce flux cross-device.
+
+Les modes disponibles sont :
+
+```text
+console            mode recommandé ; cross-device sous WSL2
+console-remote     alias explicite du flux cross-device
+console-localhost  callback localhost same-device, mode avancé
+auto               réutilisation/renouvellement automatique puis choix guidé
+sso                IAM Identity Center
+existing           profil temporaire existant
+```
+
+Le callback localhost est conservé pour diagnostic ou pour un environnement où il est réellement fonctionnel, mais il n'est plus le parcours par défaut sous WSL2.
+
+### Remplacement d'une ancienne session root
+
+Si `p5-signin` a déjà été utilisé avec le compte root, AWS CLI peut afficher :
+
+```text
+Profile p5-signin is already configured to use session ...:root.
+Do you want to overwrite it to use ...:user/... instead? (y/n):
+```
+
+Le projet affiche désormais un avertissement avant cette situation. Il faut répondre `y` **uniquement** si l'ARN proposé correspond bien à l'utilisateur ou au rôle IAM non-root attendu.
+
+Le P5 refuse ensuite toute identité dont l'ARN se termine par `:root`.
+
 ### Pourquoi
 
 Une clé d'accès statique longue durée augmente le risque en cas de fuite. Pour un lab, une session temporaire est préférable et plus simple à révoquer naturellement.
@@ -67,7 +121,7 @@ Une clé d'accès statique longue durée augmente le risque en cas de fuite. Pou
 La commande fondamentale est :
 
 ```bash
-aws sts get-caller-identity
+aws sts get-caller-identity --profile p5-lab
 ```
 
 Elle retourne notamment :
@@ -288,6 +342,12 @@ aws/iam/p5-lab-policy.json
 
 Cette politique documente les permissions nécessaires au lab. Elle doit être relue avant attachement à une identité.
 
+Pour `aws login`, l'identité IAM doit également disposer de la politique AWS gérée :
+
+```text
+SignInLocalDevelopmentAccess
+```
+
 Le principe reste le moindre privilège : donner les capacités nécessaires aux trois exercices sans utiliser le compte root.
 
 ## 12. Synchronisation des `tfvars`
@@ -352,9 +412,11 @@ Il signifie que les contrôles nécessaires à Terraform sont satisfaits ; il ne
 ## Commandes à retenir
 
 ```bash
-aws sts get-caller-identity
+aws sts get-caller-identity --profile p5-lab
 bash scripts/commands/p5.sh prepare
 bash scripts/commands/p5.sh status
+bash scripts/commands/aws-auth.sh --mode console
+bash scripts/commands/aws-auth.sh --mode console-localhost
 bash scripts/commands/sync-terraform-tfvars.sh --check
 bash scripts/commands/setup-aws-guardrails.sh --check
 python3 scripts/tools/audit_secrets.py

@@ -14,8 +14,13 @@ cleanup() {
 }
 trap cleanup EXIT
 
-mkdir -p "$FAKE_BIN" "$TMP_DIR/logs-console" "$TMP_DIR/logs-remote" \
-    "$TMP_DIR/logs-login-fail" "$TMP_DIR/logs-root"
+mkdir -p "$FAKE_BIN" \
+    "$TMP_DIR/logs-console" \
+    "$TMP_DIR/logs-remote-alias" \
+    "$TMP_DIR/logs-localhost" \
+    "$TMP_DIR/logs-root-association" \
+    "$TMP_DIR/logs-login-fail" \
+    "$TMP_DIR/logs-root"
 
 cat > "$FAKE_BIN/wslview" <<'EOF'
 #!/usr/bin/bash
@@ -58,7 +63,7 @@ printf '\n' >> "$P5_TEST_TRACE"
 args="$*"
 
 if [[ "$args" == '--version' ]]; then
-    printf '%s\n' 'aws-cli/2.36.21 Python/3.13.0 Linux/6.8 exe/x86_64.ubuntu.24'
+    printf '%s\n' 'aws-cli/2.36.21 Python/3.13.0 Linux/6.18 exe/x86_64.ubuntu.26'
     exit 0
 fi
 
@@ -69,7 +74,11 @@ fi
 
 if [[ "$args" == *'configure get '* ]]; then
     if [[ "$args" == *'login_session'* && "$args" == *'p5-signin'* ]]; then
-        printf '%s\n' 'arn:aws:iam::123456789012:user/devops'
+        if [[ "${P5_FAKE_LOGIN_SESSION_ROOT:-0}" == 1 ]]; then
+            printf '%s\n' 'arn:aws:iam::123456789012:root'
+        else
+            printf '%s\n' 'arn:aws:iam::123456789012:user/devops'
+        fi
     fi
     exit 0
 fi
@@ -80,7 +89,7 @@ fi
 
 if [[ "$args" == *' login '* || "$args" == login* ]]; then
     printf 'browser=%s\n' "${BROWSER:-<absent>}" >> "${P5_TEST_TRACE:?}"
-    if [[ "${P5_FAKE_OPEN_BROWSER:-0}" == 1 ]]; then
+    if [[ "$args" != *'--remote'* && "${P5_FAKE_OPEN_BROWSER:-0}" == 1 ]]; then
         start_ms="$(date +%s%3N)"
         python3 - <<'PY'
 import webbrowser
@@ -104,7 +113,7 @@ fi
 
 if [[ "$args" == *'configure export-credentials'* ]]; then
     cat <<'JSON'
-{"Version":1,"AccessKeyId":"ASIAEXAMPLE","SecretAccessKey":"secret","SessionToken":"token","Expiration":"2026-08-10T12:00:00Z"}
+{"Version":1,"AccessKeyId":"ASIAEXAMPLE","SecretAccessKey":"secret","SessionToken":"token","Expiration":"2026-08-22T14:00:00Z"}
 JSON
     exit 0
 fi
@@ -129,54 +138,89 @@ chmod +x "$FAKE_BIN/aws"
 
 export PATH="$FAKE_BIN:/usr/bin:/bin"
 export P5_TEST_TRACE="$TRACE_FILE"
-export P5_LOG_DIR="$TMP_DIR/logs-console"
 export WSL_DISTRO_NAME=Ubuntu
-export P5_FAKE_OPEN_BROWSER=1
-: > "$TRACE_FILE"
 
-OUTPUT="$(/usr/bin/bash "$AUTH_SCRIPT" \
+# 1. Le mode console recommandé sous WSL2 doit être cross-device.
+export P5_LOG_DIR="$TMP_DIR/logs-console"
+: > "$TRACE_FILE"
+CONSOLE_OUTPUT="$(/usr/bin/bash "$AUTH_SCRIPT" \
     --mode console \
     --profile p5-lab \
     --source-profile p5-signin \
     --region us-east-1 \
     --yes 2>&1)"
 
-unset P5_FAKE_OPEN_BROWSER
+grep -Fq 'AWS PRÊT' <<<"$CONSOLE_OUTPUT"
+grep -Fq 'CODE CROSS-DEVICE WSL2' <<<"$CONSOLE_OUTPUT"
+grep -Fq 'évite entièrement le callback localhost' <<<"$CONSOLE_OUTPUT"
+grep -Fq 'code est temporaire et sensible' <<<"$CONSOLE_OUTPUT"
+grep -Fq 'login --remote --profile p5-signin --region us-east-1' "$TRACE_FILE"
+if grep -Fq 'rundll32.exe' "$TRACE_FILE"; then
+    printf 'KO  le mode console recommandé a tenté le helper navigateur localhost.\n' >&2
+    exit 1
+fi
 
-grep -Fq 'AWS PRÊT' <<<"$OUTPUT"
-grep -Fq 'CALLBACK LOCALHOST WINDOWS/WSL2' <<<"$OUTPUT"
-grep -Fq 'aucune copie de code d’autorisation n’est nécessaire' <<<"$OUTPUT"
-grep -Fq 'helper navigateur Windows via la variable BROWSER' <<<"$OUTPUT"
-grep -Fq 'helper est lancé en arrière-plan' <<<"$OUTPUT"
-grep -Fq 'login --profile p5-signin --region us-east-1' "$TRACE_FILE"
-grep -Eq '^browser=.*/p5-windows-browser %s &$' "$TRACE_FILE"
-grep -Fq 'rundll32.exe protocol=url.dll,FileProtocolHandler url=https://us-east-1.signin.aws.amazon.com/v1/authorize?state=test-wsl-browser' "$TRACE_FILE"
-grep -Eq '^webbrowser_elapsed_ms=[0-9]+$' "$TRACE_FILE"
-if grep -Fq 'gio-inattendu' "$TRACE_FILE"; then
-    printf 'KO  le mode console WSL2 retombe encore sur gio malgré BROWSER.\n' >&2
-    exit 1
-fi
-if grep -Fq 'login --remote' "$TRACE_FILE"; then
-    printf 'KO  le mode console WSL2 utilise encore --remote.\n' >&2
-    exit 1
-fi
 grep -Fq 'configure set credential_process' "$TRACE_FILE"
 grep -Fq 'configure export-credentials --profile p5-signin --format process' "$TRACE_FILE"
 
-export P5_LOG_DIR="$TMP_DIR/logs-remote"
+# 2. console-remote reste un alias compatible du flux recommandé.
+export P5_LOG_DIR="$TMP_DIR/logs-remote-alias"
 : > "$TRACE_FILE"
-REMOTE_OUTPUT="$(/usr/bin/bash "$AUTH_SCRIPT" \
+REMOTE_ALIAS_OUTPUT="$(/usr/bin/bash "$AUTH_SCRIPT" \
     --mode console-remote \
     --profile p5-lab \
     --source-profile p5-signin \
     --region us-east-1 \
     --yes 2>&1)"
 
-grep -Fq 'AWS PRÊT' <<<"$REMOTE_OUTPUT"
-grep -Fq 'REPLI CROSS-DEVICE' <<<"$REMOTE_OUTPUT"
+grep -Fq 'AWS PRÊT' <<<"$REMOTE_ALIAS_OUTPUT"
+grep -Fq 'CODE CROSS-DEVICE WSL2' <<<"$REMOTE_ALIAS_OUTPUT"
 grep -Fq 'login --remote --profile p5-signin --region us-east-1' "$TRACE_FILE"
-grep -Fq 'code d’autorisation à usage unique' <<<"$REMOTE_OUTPUT"
 
+# 3. Le callback localhost reste disponible explicitement et son helper ne bloque pas.
+export P5_LOG_DIR="$TMP_DIR/logs-localhost"
+export P5_FAKE_OPEN_BROWSER=1
+: > "$TRACE_FILE"
+LOCALHOST_OUTPUT="$(/usr/bin/bash "$AUTH_SCRIPT" \
+    --mode console-localhost \
+    --profile p5-lab \
+    --source-profile p5-signin \
+    --region us-east-1 \
+    --yes 2>&1)"
+unset P5_FAKE_OPEN_BROWSER
+
+grep -Fq 'AWS PRÊT' <<<"$LOCALHOST_OUTPUT"
+grep -Fq 'CALLBACK LOCALHOST SAME-DEVICE' <<<"$LOCALHOST_OUTPUT"
+grep -Fq 'Mode avancé sous WSL2' <<<"$LOCALHOST_OUTPUT"
+grep -Fq 'login --profile p5-signin --region us-east-1' "$TRACE_FILE"
+if grep -Fq 'login --remote' "$TRACE_FILE"; then
+    printf 'KO  console-localhost utilise --remote.\n' >&2
+    exit 1
+fi
+grep -Eq '^browser=.*/p5-windows-browser %s &$' "$TRACE_FILE"
+grep -Fq 'rundll32.exe protocol=url.dll,FileProtocolHandler url=https://us-east-1.signin.aws.amazon.com/v1/authorize?state=test-wsl-browser' "$TRACE_FILE"
+grep -Eq '^webbrowser_elapsed_ms=[0-9]+$' "$TRACE_FILE"
+if grep -Fq 'gio-inattendu' "$TRACE_FILE"; then
+    printf 'KO  console-localhost retombe sur gio malgré BROWSER.\n' >&2
+    exit 1
+fi
+
+# 4. Une ancienne association root doit être expliquée avant la reconnexion IAM.
+export P5_LOG_DIR="$TMP_DIR/logs-root-association"
+export P5_FAKE_LOGIN_SESSION_ROOT=1
+: > "$TRACE_FILE"
+ROOT_ASSOC_OUTPUT="$(/usr/bin/bash "$AUTH_SCRIPT" \
+    --mode console \
+    --profile p5-lab \
+    --source-profile p5-signin \
+    --region us-east-1 \
+    --yes 2>&1)"
+unset P5_FAKE_LOGIN_SESSION_ROOT
+
+grep -Fq "encore associé à une ancienne session AWS root" <<<"$ROOT_ASSOC_OUTPUT"
+grep -Fq "Répondez 'y' uniquement si l'ARN proposé" <<<"$ROOT_ASSOC_OUTPUT"
+
+# 5. Un échec du flux recommandé doit rester bloquant et explicite.
 export P5_LOG_DIR="$TMP_DIR/logs-login-fail"
 export P5_FAKE_LOGIN_FAIL=1
 set +e
@@ -191,13 +235,13 @@ set -e
 unset P5_FAKE_LOGIN_FAIL
 
 if ((LOGIN_FAIL_RC == 0)); then
-    printf 'KO  un échec aws login a été accepté.\n' >&2
+    printf 'KO  un échec aws login --remote a été accepté.\n' >&2
     exit 1
 fi
-grep -Fq 'callback localhost a échoué' <<<"$LOGIN_FAIL_OUTPUT"
+grep -Fq 'cross-device via aws login --remote a échoué' <<<"$LOGIN_FAIL_OUTPUT"
 grep -Fq 'SignInLocalDevelopmentAccess' <<<"$LOGIN_FAIL_OUTPUT"
-grep -Fq -- '--mode console-remote' <<<"$LOGIN_FAIL_OUTPUT"
 
+# 6. Une identité root reste refusée après authentification.
 export P5_LOG_DIR="$TMP_DIR/logs-root"
 export P5_FAKE_ROOT=1
 set +e
@@ -218,4 +262,4 @@ if ((ROOT_RC == 0)); then
 fi
 grep -Fq 'refuse volontairement une session AWS root' <<<"$ROOT_OUTPUT"
 
-printf 'OK  authentification AWS localhost WSL2, navigateur Windows non bloquant, repli remote et refus root validés sans contacter AWS.\n'
+printf 'OK  authentification AWS cross-device par défaut sous WSL2, localhost avancé, remplacement root et refus root validés sans contacter AWS.\n'

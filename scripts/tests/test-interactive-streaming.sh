@@ -6,6 +6,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
 RUNTIME_FILE="$PROJECT_ROOT/scripts/lib/p5-runtime.sh"
 AWS_AUTH_FILE="$PROJECT_ROOT/scripts/commands/aws-auth.sh"
+TMP_DIR="$(mktemp -d)"
 
 # shellcheck source=../lib/p5-runtime.sh
 source "$RUNTIME_FILE"
@@ -24,6 +25,7 @@ STREAM_FD="${P5_STREAM_TEST[0]}"
 cleanup() {
     kill "$STREAM_PID" 2>/dev/null || true
     wait "$STREAM_PID" 2>/dev/null || true
+    rm -rf "$TMP_DIR"
 }
 trap cleanup EXIT
 
@@ -56,4 +58,28 @@ grep -Fq "printf '%s [o/N] :\\n'" "$RUNTIME_FILE"
 grep -Fq "printf 'Tapez exactement %s :\\n'" "$RUNTIME_FILE"
 grep -Fq "printf 'Votre choix [1] :\\n'" "$AWS_AUTH_FILE"
 
-printf 'OK  streaming interactif immédiat, invites visibles et redaction des secrets validés.\n'
+# Le flux cross-device AWS lit son code d'autorisation sur stdin. p5_run_step
+# ne doit jamais consommer ni remplacer stdin lorsqu'il journalise stdout/stderr.
+cat > "$TMP_DIR/read-stdin.sh" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+IFS= read -r value
+printf 'STDIN_RECU=%s\n' "$value"
+EOF
+chmod +x "$TMP_DIR/read-stdin.sh"
+mkdir -p "$TMP_DIR/project"
+
+STDIN_OUTPUT="$(
+    printf 'CODE_TEST_CROSS_DEVICE\n' \
+        | env P5_PROJECT_ROOT="$TMP_DIR/project" bash -c '
+            set -euo pipefail
+            source "$1"
+            p5_session_start "stdin-contract"
+            p5_run_step "stdin-cross-device" "Préserver stdin interactif" bash "$2"
+        ' _ "$RUNTIME_FILE" "$TMP_DIR/read-stdin.sh"
+)"
+
+grep -Fq 'STDIN_RECU=CODE_TEST_CROSS_DEVICE' <<<"$STDIN_OUTPUT"
+grep -Fq '[ OK ] Préserver stdin interactif' <<<"$STDIN_OUTPUT"
+
+printf 'OK  streaming interactif immédiat, stdin cross-device, invites visibles et redaction des secrets validés.\n'
