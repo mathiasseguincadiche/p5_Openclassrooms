@@ -2,7 +2,9 @@
 extends: default
 
 ignore: |
-  .terraform/
+  **/.terraform/**
+  **/node_modules/**
+  **/dist/**
 
 rules:
   document-start: disable
