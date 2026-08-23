@@ -30,6 +30,7 @@ Options:
 
 Sans --apply, le script génère et valide le bundle NDJSON sans mutation distante.
 Avec --apply, il vérifie le contrat de champs réel puis importe avec overwrite=true.
+HTTPS est obligatoire pour AWS ; HTTP n'est accepté que sur localhost pour les tests.
 HELP
 }
 
@@ -78,8 +79,10 @@ done
 [[ -f "$INDEX_TEMPLATE" ]] || { p5_error "Template OpenSearch absent : $INDEX_TEMPLATE"; exit 1; }
 [[ -f "$BUILDER" ]] || { p5_error "Générateur Saved Objects absent : $BUILDER"; exit 1; }
 
-valid_https_url() {
-    [[ "$1" =~ ^https://[A-Za-z0-9.-]+(:[0-9]+)?(/[^[:space:]]*)?$ ]]
+valid_endpoint() {
+    local value="$1"
+    [[ "$value" =~ ^https://[A-Za-z0-9.-]+(:[0-9]+)?(/[^[:space:]]*)?$ ]] \
+        || [[ "$value" =~ ^http://(127[.]0[.]0[.]1|localhost)(:[0-9]+)?(/[^[:space:]]*)?$ ]]
 }
 
 TMP_DIR="$(mktemp -d)"
@@ -123,12 +126,14 @@ fi
 ENDPOINT="${ENDPOINT%/}"
 DASHBOARDS_URL="${DASHBOARDS_URL%/}"
 
-valid_https_url "$ENDPOINT" || {
+valid_endpoint "$ENDPOINT" || {
     p5_error "Endpoint OpenSearch invalide : ${ENDPOINT:-<vide>}"
+    p5_action 'HTTPS est obligatoire pour AWS ; HTTP est réservé à localhost pour les tests.'
     exit 1
 }
-valid_https_url "$DASHBOARDS_URL" || {
+valid_endpoint "$DASHBOARDS_URL" || {
     p5_error "URL OpenSearch Dashboards invalide : ${DASHBOARDS_URL:-<vide>}"
+    p5_action 'HTTPS est obligatoire pour AWS ; HTTP est réservé à localhost pour les tests.'
     exit 1
 }
 
