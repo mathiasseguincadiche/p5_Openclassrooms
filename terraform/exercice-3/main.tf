@@ -249,7 +249,10 @@ ${local.haproxy_config}
 HAPROXY
 
 haproxy -c -f /etc/haproxy/haproxy.cfg
-systemctl enable --now haproxy
+systemctl enable haproxy
+systemctl restart haproxy
+systemctl is-active --quiet haproxy
+ss -ltn | grep -Eq '(^|[[:space:]])[^[:space:]]*:80([[:space:]]|$)'
 EOF
 
   tags = {
