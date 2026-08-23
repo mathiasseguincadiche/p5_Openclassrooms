@@ -36,6 +36,9 @@ jobs:
       - name: Vérifier le précontrôle AWS réel
         run: bash scripts/tests/test-aws-readiness-regressions.sh
 
+      - name: Vérifier les descriptions Terraform compatibles AWS
+        run: bash scripts/tests/test-terraform-aws-description-constraints.sh
+
       - name: Vérifier le gate de session AWS expirée
         run: bash scripts/tests/test-aws-session-gate.sh
 

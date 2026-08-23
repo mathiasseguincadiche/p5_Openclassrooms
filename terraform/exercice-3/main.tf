@@ -90,7 +90,7 @@ data "aws_ami" "ubuntu" {
 # ----------------------------------------------------------------------------
 resource "aws_security_group" "p5_haproxy_sg" {
   name        = "p5-haproxy-sg"
-  description = "Acces HTTP public et SSH d’administration"
+  description = "Acces HTTP public et SSH administration"
   vpc_id      = data.aws_vpc.p5_vpc.id
 
   ingress {
@@ -102,7 +102,7 @@ resource "aws_security_group" "p5_haproxy_sg" {
   }
 
   ingress {
-    description = "SSH depuis le poste d'administration"
+    description = "SSH depuis le poste administration"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
@@ -136,7 +136,7 @@ resource "aws_security_group" "p5_hello_sg" {
   }
 
   ingress {
-    description = "SSH depuis le poste d'administration"
+    description = "SSH depuis le poste administration"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"

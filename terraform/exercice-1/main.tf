@@ -95,11 +95,11 @@ resource "aws_route_table_association" "public" {
 
 resource "aws_security_group" "web" {
   name        = "p5-web-sg"
-  description = "Acces HTTP public et SSH depuis le poste d'administration"
+  description = "Acces HTTP public et SSH depuis le poste administration"
   vpc_id      = aws_vpc.p5.id
 
   ingress {
-    description = "SSH depuis le poste d'administration"
+    description = "SSH depuis le poste administration"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
