@@ -48,6 +48,9 @@ jobs:
       - name: Vérifier Node via NVM hors shell interactif
         run: bash scripts/tests/test-nvm-noninteractive.sh
 
+      - name: Vérifier le trafic NGINX HEAD
+        run: bash scripts/tests/test-nginx-traffic-head.sh
+
       - name: Vérifier la convergence et la réexécution
         run: bash scripts/tests/test-convergence-contract.sh
 
