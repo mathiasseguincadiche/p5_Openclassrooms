@@ -6,6 +6,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
 VERSIONS_FILE="$PROJECT_ROOT/environment/versions.env"
 CONFIG_FILE="$PROJECT_ROOT/environment/aws-readiness.env"
+NODE_RUNTIME_LIB="$PROJECT_ROOT/scripts/lib/p5-node-runtime.sh"
 cd "$PROJECT_ROOT"
 
 show_help() {
@@ -39,6 +40,13 @@ fi
 # shellcheck source=/dev/null
 source "$VERSIONS_FILE"
 
+if [[ ! -r "$NODE_RUNTIME_LIB" ]]; then
+    printf 'KO  %s absent\n' "$NODE_RUNTIME_LIB" >&2
+    exit 1
+fi
+# shellcheck source=/dev/null
+source "$NODE_RUNTIME_LIB"
+
 AWS_PROFILE_NAME=p5-lab
 if [[ -r "$CONFIG_FILE" ]]; then
     # shellcheck source=/dev/null
@@ -59,6 +67,12 @@ case "$RUNTIME_RC" in
     0) ok "runtime P5 conforme dans ${P5_EXPECTED_WSL_DISTRO:-Ubuntu} sous WSL2" ;;
     *) ko "runtime P5 non conforme dans WSL2" ;;
 esac
+
+# Node.js est installé via NVM. Dans un shell non interactif, NVM n'est pas
+# automatiquement injecté dans PATH : l'activer explicitement avant command -v.
+if ! p5_node_runtime_activate "$NODE_VERSION"; then
+    ko "Node.js ${NODE_VERSION} et npm non activables via NVM"
+fi
 
 printf '\nOutils obligatoires\n'
 for command in git python3 terraform ansible-playbook aws curl jq ssh docker node npm shellcheck yamllint; do
