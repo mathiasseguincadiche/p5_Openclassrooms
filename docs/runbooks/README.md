@@ -13,6 +13,7 @@ Pour apprendre les concepts avant d'agir, commencer par [`../01-parcours-debutan
 | Situation | Procédure | Première intention |
 | --- | --- | --- |
 | première réalisation complète du P5 | [`../RUNBOOK_EXECUTION_GUIDEE.md`](../RUNBOOK_EXECUTION_GUIDEE.md) | qualifier → préparer → exécuter → prouver → nettoyer |
+| **préparation et démonstration de soutenance** | [`../RUNBOOK_SOUTENANCE.md`](../RUNBOOK_SOUTENANCE.md) | remettre le lab en service avant l'oral puis démontrer architecture → infrastructure → application → logs → proxy → résilience |
 | reprise après fermeture/redémarrage/interruption | [`../convergence-et-reexecution.md`](../convergence-et-reexecution.md) | observer les states et recalculer le delta |
 | commande inconnue ou choix de parcours | [`../CENTRE_DE_COMMANDE.md`](../CENTRE_DE_COMMANDE.md) | comprendre `p5.sh` et la mutation associée |
 | incident ou résultat inattendu | [`../troubleshooting.md`](../troubleshooting.md) | diagnostiquer la couche en échec avant de corriger |
@@ -37,6 +38,51 @@ cleanup 3 → 2 → 1
         ↓
 NETTOYAGE AWS COMPLET
 ```
+
+## Parcours de soutenance
+
+Le runbook de soutenance est volontairement distinct du runbook d'exécution complet.
+
+```text
+AVANT L'ORAL
+inspect
+  ↓
+prepare
+  ↓
+status → GO TERRAFORM
+  ↓
+ex1 → ex2 → ex3
+  ↓
+diagnostics + finalize
+  ↓
+lab AWS prêt et vérifié
+
+PENDANT L'ORAL
+architecture
+  ↓
+Terraform + outputs
+  ↓
+Ansible + idempotence
+  ↓
+Angular / NGINX
+  ↓
+access.log réel
+  ↓
+OpenSearch / Dashboards
+  ↓
+HAProxy round-robin
+  ↓
+panne contrôlée + reprise
+
+APRÈS L'ORAL
+cleanup 3 → 2 → 1
+  ↓
+NETTOYAGE AWS COMPLET
+```
+
+La reconstruction AWS est une **phase de préparation**, pas une démonstration à improviser devant le jury. La soutenance doit montrer un environnement déjà convergé et des preuves courtes, lisibles et reproductibles.
+
+Référence : [`../RUNBOOK_SOUTENANCE.md`](../RUNBOOK_SOUTENANCE.md).
 
 ## Parcours en cas d'incident
 
