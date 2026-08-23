@@ -314,6 +314,7 @@ else
     if OPENSEARCH_COUNT="$(aws_cli opensearch list-instance-type-details \
         --engine-version "$P5_OPENSEARCH_ENGINE" \
         --instance-type "$P5_OPENSEARCH_INSTANCE_TYPE" \
+        --retrieve-azs \
         --query 'length(InstanceTypeDetails)' --output text \
         2>"$OPENSEARCH_ERROR_FILE")"; then
         if [[ "$OPENSEARCH_COUNT" =~ ^[0-9]+$ ]] && ((OPENSEARCH_COUNT > 0)); then

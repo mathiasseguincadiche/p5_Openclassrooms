@@ -62,8 +62,33 @@ grep -Fq 'permission IAM es:ListInstanceTypeDetails absente' "$READINESS"
 grep -Fq 'P5LabPolicy' "$READINESS"
 grep -Fq 'DOMAIN_STATUS=unknown' "$READINESS"
 
+# Régression 5 : lorsque ListInstanceTypeDetails cible un type précis, AWS exige
+# la récupération des AZ. Sans ce flag, l'API retourne ValidationException.
+python3 - "$READINESS" <<'PY'
+import sys
+from pathlib import Path
+
+text = Path(sys.argv[1]).read_text(encoding="utf-8")
+start = text.find("aws_cli opensearch list-instance-type-details")
+if start < 0:
+    raise SystemExit("appel ListInstanceTypeDetails absent")
+end = text.find('2>"$OPENSEARCH_ERROR_FILE")', start)
+if end < 0:
+    raise SystemExit("fin de l'appel ListInstanceTypeDetails introuvable")
+block = text[start:end]
+for required in (
+    '--engine-version "$P5_OPENSEARCH_ENGINE"',
+    '--instance-type "$P5_OPENSEARCH_INSTANCE_TYPE"',
+    '--retrieve-azs',
+):
+    if required not in block:
+        raise SystemExit(f"paramètre OpenSearch requis absent : {required}")
+if '--no-retrieve-azs' in block:
+    raise SystemExit("--no-retrieve-azs réintroduit le ValidationException observé")
+PY
+
 bash -n "$VALIDATE"
 bash -n "$READINESS"
 python3 -m json.tool "$POLICY" >/dev/null
 
-printf 'OK  précontrôle AWS : nettoyage local, quota par étape et IAM OpenSearch verrouillés.\n'
+printf 'OK  précontrôle AWS : nettoyage local, quota par étape, IAM et AZ OpenSearch verrouillés.\n'
