@@ -120,8 +120,14 @@ SUMMARY_LOG="$PROOF_DIR/${TIMESTAMP}-traffic.log"
             --max-time 10
             -o /dev/null
             -w '%{http_code}'
-            -X "$method"
         )
+        if [[ "$method" == HEAD ]]; then
+            # --head active le comportement HEAD natif de curl : curl ne doit pas
+            # attendre un corps de réponse que le serveur HTTP n'enverra pas.
+            curl_options+=(--head)
+        else
+            curl_options+=(-X "$method")
+        fi
         if [[ "$method" == POST ]]; then
             curl_options+=(--data 'source=p5-lab')
         fi
