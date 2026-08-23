@@ -2,52 +2,38 @@
 
 ## Objectif
 
-Ce document est la **référence opérationnelle pour la présentation du P5**.
-Il ne cherche pas à réexécuter tout le projet devant le jury. Son but est de
-montrer, dans un ordre simple et vérifiable, que :
+Ce document est la **référence opérationnelle de la présentation du P5**. Il
+organise la démonstration pour montrer que :
 
 1. l'architecture est comprise ;
-2. l'infrastructure AWS est réellement provisionnée par Terraform ;
-3. la configuration du serveur et le déploiement Angular sont réellement gérés par Ansible ;
-4. l'application est réellement servie par NGINX ;
-5. de vrais logs NGINX sont collectés puis exploités dans Amazon OpenSearch ;
-6. HAProxy répartit réellement le trafic et maintient le service pendant la panne d'un backend ;
-7. les preuves, journaux et livrables permettent de reproduire et d'auditer la démonstration.
+2. Terraform provisionne réellement l'infrastructure AWS ;
+3. Ansible configure le serveur et déploie Angular ;
+4. NGINX sert réellement l'application et produit ses logs ;
+5. OpenSearch exploite ces vrais logs ;
+6. OpenSearch Dashboards est reproductible grâce à une définition versionnée ;
+7. HAProxy répartit le trafic et maintient le service pendant une panne ;
+8. les preuves et journaux rendent le projet auditable.
 
-Le runbook d'exécution complet reste [`RUNBOOK_EXECUTION_GUIDEE.md`](RUNBOOK_EXECUTION_GUIDEE.md).
-Le présent document répond à une autre question : **que montrer, que dire et quelle preuve attendre pendant la soutenance ?**
+Le runbook technique complet reste
+[`RUNBOOK_EXECUTION_GUIDEE.md`](RUNBOOK_EXECUTION_GUIDEE.md).
 
----
-
-## Convention de lecture
-
-Chaque étape utilise cinq repères :
-
-- **Montrer** : écran, fichier ou résultat à présenter ;
-- **Commande** : commande courte à exécuter ;
-- **Observer** : résultat attendu ;
-- **Expliquer** : idée technique à formuler simplement ;
-- **Prouver** : compétence ou propriété démontrée.
-
-Une règle domine toute la présentation : **ne jamais improviser une mutation AWS pour corriger un problème non compris**.
-Si un résultat est inattendu, observer les outputs, les logs et les diagnostics avant d'agir.
+La règle principale de soutenance est simple : **le schéma explique, le terminal
+prouve, le navigateur matérialise le résultat**.
 
 ---
 
-# Partie A — Remettre le lab AWS en service avant la soutenance
+# Partie A — Remettre le lab AWS en service avant l'oral
 
-## A1. Situation actuelle
+## A1. Principe
 
-Le lab AWS peut être détruit après les travaux afin d'éviter des frais d'exploitation inutiles.
-C'est une fermeture normale du projet, pas une perte du projet : le dépôt, les states Terraform,
-les scripts, la configuration et les livrables constituent le moyen de **reconstruire l'environnement**.
+Le lab peut être détruit après les travaux afin d'éviter des frais AWS inutiles.
+Cela ne supprime pas le projet : Terraform, Ansible, les scripts, les états et les
+assets versionnés permettent de reconstruire l'environnement.
 
-La soutenance ne doit pas commencer avec une reconstruction complète. Le lab doit être remis en service
-et validé **avant** la présentation.
+La reconstruction doit être faite **avant** la soutenance, jamais improvisée
+devant le jury.
 
-## A2. Repartir du dépôt de référence
-
-Dans WSL2 Ubuntu :
+## A2. Repartir de `main`
 
 ```bash
 cd ~/labs/p5_Openclassrooms
@@ -58,37 +44,26 @@ git status --short
 
 **Observer** : aucune modification locale inattendue.
 
-**Expliquer** : le dépôt Git est la source versionnée ; les valeurs runtime et AWS sont ensuite relues depuis leurs sources de vérité.
-
-## A3. Observer avant de reconstruire
+## A3. Observer avant de muter
 
 ```bash
 bash scripts/commands/p5.sh inspect
-```
-
-**Observer** : l'outil doit permettre d'identifier un lab absent, partiel ou déjà présent.
-
-**Expliquer** : le projet est convergent. Il ne suppose pas que tout est vide et ne lance pas un `apply` aveugle.
-
-## A4. Revalider le plan de contrôle et AWS
-
-```bash
 bash scripts/commands/p5.sh prepare
 bash scripts/commands/p5.sh status
 ```
 
-**Observer** : le précontrôle doit atteindre le verdict :
+**Verdict attendu avant déploiement** :
 
 ```text
 GO TERRAFORM
 ```
 
-**Point d'arrêt** : ne pas déployer tant que l'identité AWS, l'IPv4 d'administration `/32`,
-la clé SSH, les `terraform.tfvars` ou le budget ne sont pas correctement qualifiés.
+Ne pas déployer tant que l'identité AWS, l'IPv4 d'administration `/32`, la clé
+SSH, les `terraform.tfvars` ou le garde-fou de budget ne sont pas qualifiés.
 
-## A5. Reconstruire les trois exercices dans l'ordre
+## A4. Reconstruire les trois exercices
 
-Pour une remise en service avant soutenance, préférer les étapes séparées :
+Préférer les commandes séparées :
 
 ```bash
 bash scripts/commands/p5.sh ex1
@@ -96,34 +71,45 @@ bash scripts/commands/p5.sh ex2
 bash scripts/commands/p5.sh ex3
 ```
 
-Pourquoi ne pas commencer par `p5.sh all` ?
+Pourquoi cet ordre ?
 
-- l'exercice 1 fournit le réseau utilisé ensuite par l'exercice 3 ;
-- l'exercice 1 produit le vrai log NGINX utilisé par l'exercice 2 ;
-- l'exercice 2 contient un checkpoint humain dans OpenSearch Dashboards ;
-- les commandes séparées permettent d'arrêter proprement la remise en service à la couche réellement en défaut.
+```text
+EX1
+├── crée le VPC et les subnets utilisés par EX3
+└── produit le vrai access.log utilisé par EX2
 
-### Résultats minimums à obtenir
+EX2
+└── construit OpenSearch + Dashboard as Code
 
-| Couche | Résultat attendu |
+EX3
+└── réutilise le réseau EX1 pour HAProxy + 2 backends
+```
+
+Les commandes séparées permettent de diagnostiquer une couche sans masquer le
+problème dans un parcours complet.
+
+## A5. Résultats minimums avant l'oral
+
+| Couche | État attendu |
 | --- | --- |
-| Terraform exercice 1 | infrastructure créée puis post-plan sans delta |
+| Terraform ex. 1 | infrastructure présente, post-plan sans delta |
 | Ansible | second passage `changed=0`, `unreachable=0`, `failed=0` |
 | Angular / NGINX | application accessible en HTTP |
-| Logs NGINX | vrai `access.log` collecté |
+| NGINX | vrai `access.log` collecté |
 | OpenSearch | données, mappings et agrégations vérifiés |
-| Dashboards | trois visualisations + dashboard contrôlés visuellement |
-| HAProxy | deux backends observés en fonctionnement normal |
-| Failover | service maintenu avec un backend puis retour aux deux backends |
+| Dashboards as Code | 5 Saved Objects importés et relus par API |
+| Navigateur OpenSearch | 3 visualisations + dashboard lisibles |
+| HAProxy | 2 backends observés |
+| Failover | 2 → 1 → 2 backends, service maintenu |
 
-## A6. Figer un état prêt à présenter
+## A6. Figer l'état prêt à présenter
 
 ```bash
 bash scripts/commands/p5.sh diagnostics
 bash scripts/commands/p5.sh finalize
 ```
 
-Puis vérifier les trois états Terraform :
+Puis :
 
 ```bash
 terraform -chdir=terraform/exercice-1 plan -input=false -detailed-exitcode
@@ -131,70 +117,67 @@ terraform -chdir=terraform/exercice-2 plan -input=false -detailed-exitcode
 terraform -chdir=terraform/exercice-3 plan -input=false -detailed-exitcode
 ```
 
-Pour chaque exercice, le résultat idéal avant soutenance est un **exit code 0** : aucun delta.
-Un exit code `2` signifie qu'un changement existe et doit être compris avant la présentation.
+L'idéal est un code retour `0` pour chaque exercice. Un code `2` signifie qu'un
+delta existe et doit être compris avant la présentation.
 
-**Ne pas exécuter `cleanup` avant la soutenance.** Tant que le lab reste actif, considérer les ressources AWS comme potentiellement facturables.
+**Ne pas exécuter `cleanup` avant la soutenance.** Les ressources actives restent
+potentiellement facturables.
 
 ---
 
-# Partie B — Le récit de la soutenance
+# Partie B — Introduire l'architecture
 
 ## B1. Le projet en une phrase
 
-> Ce P5 met en œuvre un lab AWS reproductible où Terraform provisionne l'infrastructure,
-> Ansible configure et déploie l'application, OpenSearch exploite les logs réels de NGINX,
-> et HAProxy démontre la répartition de charge et la continuité de service pendant une panne contrôlée.
+> Ce P5 met en œuvre un lab AWS reproductible où Terraform provisionne
+> l'infrastructure, Ansible configure et déploie l'application, OpenSearch
+> exploite les logs réels de NGINX, OpenSearch Dashboards est reconstruit comme
+> du code, et HAProxy démontre la répartition de charge et la continuité de
+> service pendant une panne contrôlée.
 
-## B2. Architecture à présenter en premier
+## B2. Montrer le schéma global
 
 **Montrer** : [`schemas/vue-ensemble.svg`](schemas/vue-ensemble.svg).
 
 ```text
                     PLAN DE CONTRÔLE
-              WSL2 Ubuntu 26.04 LTS
-                        │
+                  WSL2 Ubuntu 26.04
+                         │
              p5.sh / Terraform / Ansible
-                        │
-         ┌──────────────┼──────────────┐
-         │              │              │
-         ▼              ▼              ▼
-   EXERCICE 1      EXERCICE 2      EXERCICE 3
+                         │
+         ┌───────────────┼────────────────┐
+         │               │                │
+         ▼               ▼                ▼
+    EXERCICE 1       EXERCICE 2       EXERCICE 3
 
- Terraform AWS     Amazon           HAProxy EC2
- VPC 10.0.0.0/16   OpenSearch            │
- 2 subnets publics     ▲                  ├── backend 1
- SG + EC2 web          │                  └── backend 2
-         │              │
-      Ansible           │
-         │              │
- NGINX + Angular        │
-         │              │
-         └── access.log ┘
+ Terraform AWS      OpenSearch        HAProxy EC2
+ VPC + subnets          ▲                  │
+ SG + EC2 web           │             ┌────┴────┐
+      │                  │             ▼         ▼
+   Ansible               │          backend 1 backend 2
+      │                  │
+ NGINX + Angular         │
+      │                  │
+      └── access.log ────┘
 
- Exercice 1 ── VPC + subnets ─────────► Exercice 3
+ Exercice 1 ── VPC + subnets ─────────────► Exercice 3
 ```
 
-### Ce qu'il faut expliquer
+### À expliquer
 
-- **Terraform** possède l'infrastructure AWS ;
-- **Ansible** possède la configuration de l'EC2 applicative ;
-- **NGINX** sert l'artefact Angular et produit les logs HTTP ;
-- **OpenSearch** transforme ces logs en données requêtables et visualisables ;
-- **HAProxy** réutilise le réseau de l'exercice 1 et répartit le trafic entre deux backends ;
-- les trois exercices sont liés par de vraies dépendances, ils ne sont pas trois démonstrations isolées.
-
-### Ce que cette introduction prouve
-
-Vous maîtrisez la séparation des responsabilités et savez expliquer le flux complet avant de montrer les commandes.
+- Terraform possède l'infrastructure AWS ;
+- Ansible possède la configuration de l'EC2 applicative ;
+- NGINX sert Angular et produit les logs HTTP ;
+- OpenSearch indexe et agrège les logs ;
+- les Saved Objects versionnés reconstruisent la couche Dashboards ;
+- HAProxy réutilise le réseau de l'exercice 1 ;
+- les trois exercices ont de vraies dépendances.
 
 ---
 
-# Partie C — Démonstration 1 : infrastructure, Ansible et application
+# Partie C — Démonstration 1 : Terraform, Ansible et application
 
 ## C1. Montrer l'infrastructure réelle
-
-**Commande** :
 
 ```bash
 terraform -chdir=terraform/exercice-1 output
@@ -202,11 +185,13 @@ terraform -chdir=terraform/exercice-1 output
 
 **Observer** notamment :
 
-- `vpc_id` ;
-- `public_subnet_ids` ;
-- `web_security_group_id` ;
-- `web_public_ip` ;
-- `web_url`.
+```text
+vpc_id
+public_subnet_ids
+web_security_group_id
+web_public_ip
+web_url
+```
 
 Puis :
 
@@ -218,19 +203,11 @@ terraform -chdir=terraform/exercice-1 plan -input=false -detailed-exitcode
 
 ### À expliquer
 
-Terraform crée :
+Terraform crée le VPC `10.0.0.0/16`, deux subnets publics, le routage Internet,
+le Security Group et l'EC2 Ubuntu cible d'Ansible.
 
-- un VPC `10.0.0.0/16` ;
-- deux subnets publics répartis sur deux zones de disponibilité ;
-- une Internet Gateway et le routage public ;
-- un Security Group avec HTTP public et SSH limité à l'IPv4 d'administration ;
-- une EC2 Ubuntu 24.04 qui devient la cible Ansible.
-
-Terraform ne copie pas l'application sur le serveur : cette responsabilité appartient à Ansible.
-
-### Preuve recherchée
-
-**Le code Terraform décrit une infrastructure réellement présente et l'état observé correspond à l'état attendu.**
+Terraform ne déploie pas l'application : cette responsabilité appartient à
+Ansible.
 
 ## C2. Montrer la cible Ansible
 
@@ -240,11 +217,10 @@ ansible all \
   -m ping
 ```
 
-**Observer** : la cible répond `SUCCESS` / `pong`.
+**Observer** : `SUCCESS` / `pong`.
 
-### À expliquer
-
-L'inventaire est généré depuis les outputs Terraform. Il n'est donc pas nécessaire de recopier manuellement une IP AWS dans la procédure.
+L'inventaire est généré depuis les outputs Terraform ; aucune IP AWS n'est
+recopiée manuellement dans le parcours normal.
 
 ## C3. Montrer l'idempotence
 
@@ -264,19 +240,12 @@ failed=0
 
 ### À expliquer
 
-Le playbook :
+Le playbook installe NGINX, déploie Angular sous `/var/www/p5`, installe la
+configuration NGINX, vérifie `nginx -t` puis garantit le service actif.
 
-- installe NGINX et les utilitaires requis ;
-- crée l'utilisateur et le groupe applicatifs ;
-- déploie l'artefact Angular sous `/var/www/p5` ;
-- installe la configuration NGINX ;
-- vérifie `nginx -t` ;
-- démarre et active le service.
+`changed=0` prouve que la cible est déjà dans l'état désiré.
 
-`changed=0` au second passage montre que la cible est déjà dans l'état souhaité.
-L'automatisation est rejouable et ne modifie pas le serveur sans raison.
-
-## C4. Montrer l'application réellement servie
+## C4. Ouvrir l'application
 
 ```bash
 WEB_URL="$(terraform -chdir=terraform/exercice-1 output -raw web_url)"
@@ -286,22 +255,17 @@ bash scripts/commands/verify-angular-deployment.sh --url "$WEB_URL"
 
 Puis ouvrir `WEB_URL` dans le navigateur.
 
-### À expliquer
+### Transition
 
-Le navigateur n'est pas la seule preuve. La vérification automatisée confirme que la réponse attendue provient bien du déploiement Angular derrière NGINX.
-
-### Phrase de transition
-
-> L'infrastructure est donc présente, la configuration est idempotente et l'application est servie. Je peux maintenant suivre ce qui se passe réellement sur ce serveur à partir de ses logs HTTP.
+> L'infrastructure est présente, la configuration est idempotente et
+> l'application est servie. Je peux maintenant suivre son activité à partir des
+> logs HTTP produits par NGINX.
 
 ---
 
-# Partie D — Démonstration 2 : logs NGINX et OpenSearch
+# Partie D — Démonstration 2 : logs, OpenSearch et Dashboard as Code
 
-## D1. Montrer que les logs proviennent de l'application réelle
-
-Le scénario de reconstruction `p5.sh ex1` génère du trafic puis collecte le vrai `access.log` NGINX.
-Pour produire quelques requêtes supplémentaires pendant la présentation :
+## D1. Générer du trafic réel
 
 ```bash
 bash scripts/commands/generate-nginx-traffic.sh \
@@ -309,7 +273,7 @@ bash scripts/commands/generate-nginx-traffic.sh \
   --requests 12
 ```
 
-Collecter ensuite le log actuel :
+Puis collecter le log actuel :
 
 ```bash
 WEB_IP="$(terraform -chdir=terraform/exercice-1 output -raw web_public_ip)"
@@ -323,46 +287,88 @@ tail -n 10 proofs/runtime/exercice-2/nginx-access-presentation.log
 
 ### À expliquer
 
-Chaque ligne correspond à une requête HTTP réellement reçue par NGINX.
-Le projet possède aussi un sample versionné pour les tests reproductibles, mais il ne faut pas confondre ce sample avec la preuve runtime issue de l'EC2.
+Chaque ligne affichée correspond à une requête réellement reçue par NGINX. Le
+sample versionné sert à la reproductibilité ; il ne doit pas être confondu avec
+le log runtime de l'EC2.
 
-## D2. Montrer OpenSearch
+## D2. Vérifier OpenSearch
 
 ```bash
 OPENSEARCH_ENDPOINT="$(terraform -chdir=terraform/exercice-2 output -raw opensearch_endpoint)"
 DASHBOARDS_URL="$(terraform -chdir=terraform/exercice-2 output -raw opensearch_dashboards_endpoint)"
 
-printf 'OpenSearch : %s\nDashboards : %s\n' \
-  "$OPENSEARCH_ENDPOINT" "$DASHBOARDS_URL"
-
 bash scripts/commands/verify-opensearch-data.sh \
   --endpoint "$OPENSEARCH_ENDPOINT"
 ```
 
-**Observer** : contrôles de mappings, documents et agrégations sans erreur.
+**Observer** : mappings, documents et agrégations sans erreur.
 
-### À expliquer
-
-Le flux est :
+Le flux à expliquer est :
 
 ```text
 NGINX access.log
       ↓
-parsing et typage
+parsing + typage
       ↓
 Bulk API
       ↓
 Amazon OpenSearch
       ↓
-OpenSearch Dashboards
+agrégations
 ```
 
-Le domaine OpenSearch impose HTTPS, le chiffrement au repos et le chiffrement nœud-à-nœud.
-L'accès du lab est limité à l'IPv4 d'administration `/32`.
+## D3. Montrer que le dashboard est lui aussi reproductible
 
-## D3. Montrer le résultat métier des logs
+Avant l'oral, `p5.sh ex2` a déjà exécuté la synchronisation des Saved Objects.
+Pendant la soutenance, il n'est pas nécessaire de recréer les graphiques dans
+l'interface.
 
-Ouvrir `DASHBOARDS_URL` et présenter :
+**Montrer éventuellement la source déclarative** :
+
+```bash
+sed -n '1,220p' \
+  terraform/exercice-2/opensearch/dashboards/p5-dashboard.json
+```
+
+Elle décrit explicitement :
+
+```text
+nginx-access-* / @timestamp
+        │
+        ├── donut http_method
+        ├── Sum(bytes_sent) / 12 h
+        └── Top 5 url_path / 12 h
+                  │
+                  ▼
+        P5 — Observabilité NGINX
+```
+
+### À expliquer
+
+> Je ne reconstruis pas ces objets manuellement après chaque destruction du
+> domaine. Leur définition est versionnée. Le script génère les Saved Objects,
+> contrôle les champs réels avec `_field_caps`, les importe avec écrasement
+> contrôlé puis relit chacun des cinq objets via l'API.
+
+Cela montre une démarche d'automatisation et de reproductibilité, pas seulement
+une utilisation ponctuelle de l'interface graphique.
+
+## D4. Ouvrir directement le dashboard
+
+Le dashboard possède un ID stable :
+
+```text
+p5-nginx-observability
+```
+
+URL directe :
+
+```bash
+DASHBOARD_URL="${DASHBOARDS_URL%/}/app/dashboards#/view/p5-nginx-observability"
+printf '%s\n' "$DASHBOARD_URL"
+```
+
+Ouvrir cette URL dans le navigateur et présenter :
 
 1. le donut des méthodes HTTP ;
 2. la somme de `bytes_sent` par tranches de 12 h ;
@@ -371,23 +377,43 @@ Ouvrir `DASHBOARDS_URL` et présenter :
 
 ### À expliquer
 
-La démonstration ne consiste pas seulement à stocker des fichiers de logs.
-Elle montre que les champs ont un type exploitable pour produire des agrégations :
+Les champs ont un type exploitable :
 
-- méthode HTTP comme catégorie ;
-- `bytes_sent` comme valeur numérique ;
-- horodatage comme date ;
-- chemin URL comme dimension d'analyse.
+- `http_method` est une catégorie agrégable ;
+- `bytes_sent` est numérique ;
+- `@timestamp` est une date ;
+- `url_path` est une dimension agrégable.
 
-### Phrase de transition
+### Ce qui est automatique et ce qui reste humain
 
-> J'ai maintenant montré le déploiement et l'observabilité. La dernière partie vérifie le comportement du service lorsqu'un backend devient indisponible.
+```text
+AUTOMATIQUE
+mapping + documents
+field_caps
+index pattern
+3 visualisations
+dashboard
+import API
+relecture API
+preuves techniques
+
+HUMAIN
+ouvrir le rendu
+vérifier la lisibilité
+vérifier la plage de temps
+réaliser / présenter les captures
+```
+
+### Transition
+
+> J'ai montré le déploiement et l'observabilité. La dernière partie vérifie
+> maintenant le comportement du service lorsqu'un backend devient indisponible.
 
 ---
 
 # Partie E — Démonstration 3 : HAProxy, répartition et panne
 
-## E1. Présenter l'architecture HAProxy
+## E1. Présenter l'architecture
 
 **Montrer** : [`schemas/exercice-3.svg`](schemas/exercice-3.svg).
 
@@ -405,16 +431,7 @@ Docker              Docker
 nginxdemos/hello    nginxdemos/hello
 ```
 
-### À expliquer
-
-L'exercice 3 ne crée pas un second réseau indépendant.
-Terraform retrouve le VPC et les subnets de l'exercice 1 par leurs tags et y déploie :
-
-- une EC2 HAProxy ;
-- deux EC2 backend ;
-- un conteneur `nginxdemos/hello` sur chaque backend.
-
-Les backends acceptent le trafic HTTP provenant du Security Group HAProxy.
+L'exercice 3 réutilise le VPC et les subnets de l'exercice 1.
 
 ## E2. Montrer les outputs réels
 
@@ -422,20 +439,15 @@ Les backends acceptent le trafic HTTP provenant du Security Group HAProxy.
 terraform -chdir=terraform/exercice-3 output
 ```
 
-**Observer** notamment :
+**Observer** : `haproxy_url`, IP HAProxy et IP des deux backends.
 
-- `haproxy_url` ;
-- `haproxy_public_ip` ;
-- `hello_1_private_ip` ;
-- `hello_2_private_ip`.
-
-## E3. Montrer la configuration du proxy
+## E3. Montrer le comportement configuré
 
 ```bash
 sed -n '1,120p' terraform/exercice-3/haproxy.cfg.tpl
 ```
 
-Points à commenter :
+À commenter :
 
 ```text
 balance roundrobin
@@ -443,13 +455,6 @@ option httpchk GET /
 http-check expect status 200
 check inter 3s fall 3 rise 2
 ```
-
-### À expliquer
-
-- `roundrobin` distribue les requêtes entre les deux serveurs disponibles ;
-- HAProxy vérifie `/` et attend un HTTP `200` ;
-- `fall 3` retire un backend après trois contrôles consécutifs en échec ;
-- `rise 2` réintègre un backend après deux contrôles consécutifs réussis.
 
 ## E4. Prouver le round-robin
 
@@ -461,11 +466,7 @@ bash scripts/commands/test-haproxy-roundrobin.sh \
   --requests 12
 ```
 
-**Observer** : les réponses doivent faire apparaître les deux backends.
-
-### Preuve recherchée
-
-Le trafic ne repose pas sur un serveur unique : HAProxy distribue réellement les requêtes.
+**Observer** : les deux backends répondent.
 
 ## E5. Prouver la panne et la reprise
 
@@ -478,95 +479,101 @@ bash scripts/commands/test-haproxy-failover.sh \
   --apply
 ```
 
-Le script exécute un scénario contrôlé :
+Scénario attendu :
 
 ```text
 AVANT
-2 backends observés
+2 backends
     ↓
-arrêt du conteneur nginx-hello sur le backend 1
+arrêt backend 1
     ↓
-PENDANT LA PANNE
-1 backend observé et service toujours disponible
+PENDANT
+1 backend + service disponible
     ↓
-redémarrage du conteneur
+redémarrage backend 1
     ↓
-APRÈS LA REPRISE
-2 backends de nouveau observés
+APRÈS
+2 backends
 ```
 
-**Verdict attendu** :
+Verdict attendu :
 
 ```text
 BASCULE ET RÉINTÉGRATION HAPROXY VALIDÉES
 ```
 
-### À expliquer
-
-La haute disponibilité n'est pas prouvée par la présence d'un fichier `haproxy.cfg`.
-Elle est prouvée par le comportement observable du système quand un backend disparaît puis revient.
-
-Le script contient en plus une restauration de sécurité : si le scénario est interrompu après l'arrêt du backend,
-il tente de redémarrer le conteneur avant de quitter.
+La haute disponibilité est prouvée par le comportement réel, pas par la seule
+présence du fichier `haproxy.cfg`.
 
 ---
 
-# Partie F — Montrer que le projet est livrable et auditable
+# Partie F — Livrabilité et audit
 
-## F1. Montrer les journaux d'exécution
+## F1. Journaux
 
 ```bash
 bash scripts/commands/p5.sh logs
 ```
 
-### À expliquer
+Chaque session orchestrée écrit sous `logs/<UTC>/` et conserve les étapes
+validées ou en échec.
 
-Chaque session orchestrée écrit ses journaux sous `logs/<UTC>/`.
-Les logs ne remplacent pas les preuves fonctionnelles, mais ils permettent de retracer ce qui a réellement été exécuté.
+## F2. Preuves OpenSearch Dashboards
 
-## F2. Montrer les livrables
+Après synchronisation réelle, montrer si utile :
+
+```bash
+ls -1 proofs/runtime/exercice-2/*dashboards* 2>/dev/null
+```
+
+Les fichiers attendus comprennent :
+
+```text
+*-dashboards-saved-objects.ndjson
+*-dashboards-import.json
+*-dashboards-verify.json
+```
+
+Ils prouvent que le dashboard a été reconstruit par API. Les captures restent la
+preuve visuelle du rendu.
+
+## F3. Livrables
 
 ```bash
 ls -1 docs/livrables/
 ```
 
-Le dépôt contient trois livrables dédiés :
+Les trois familles de livrables couvrent :
 
 1. Terraform / Ansible / NGINX ;
-2. logs / dashboard OpenSearch ;
+2. logs / OpenSearch / dashboard ;
 3. HAProxy / `nginxdemos/hello`.
-
-### À expliquer
-
-La soutenance s'appuie sur le lab réel, mais la remise ne dépend pas de la présence permanente de ressources AWS facturables.
-Les preuves utiles sont consolidées dans la documentation avant la fermeture du lab.
 
 ---
 
-# Partie G — Conclusion technique à donner au jury
-
-Le projet démontre quatre propriétés :
+# Partie G — Conclusion technique
 
 | Propriété | Preuve |
 | --- | --- |
-| **reproductibilité** | Terraform reconstruit l'infrastructure depuis le dépôt |
-| **idempotence** | Ansible revient à `changed=0` lorsque l'état cible est atteint |
-| **observabilité** | le vrai `access.log` NGINX devient une donnée analysable dans OpenSearch |
-| **résilience** | HAProxy maintient le service pendant la panne contrôlée d'un backend et le réintègre ensuite |
+| **reproductibilité** | Terraform reconstruit AWS et le dashboard est versionné |
+| **idempotence** | Ansible revient à `changed=0` |
+| **observabilité** | le vrai `access.log` devient une donnée OpenSearch exploitable |
+| **automatisation** | 5 Saved Objects Dashboards sont générés, importés et vérifiés |
+| **résilience** | HAProxy maintient le service pendant une panne contrôlée |
 
-Phrase de conclusion recommandée :
+Phrase de conclusion :
 
-> L'important dans ce projet n'est pas seulement que chaque outil fonctionne séparément.
-> La valeur vient de la chaîne complète : l'infrastructure est décrite, la configuration converge,
-> l'application est vérifiable, ses logs sont exploitables, la panne est testée et tout le cycle est traçable jusqu'au nettoyage AWS.
+> L'important dans ce projet n'est pas seulement que chaque outil fonctionne
+> séparément. L'infrastructure est décrite, la configuration converge,
+> l'application est vérifiable, ses logs deviennent exploitables, la couche de
+> visualisation est reproductible, la panne est testée et le cycle reste
+> traçable jusqu'au nettoyage AWS.
 
 ---
 
-# Partie H — Si une démonstration ne répond pas comme prévu
+# Partie H — Repli en cas d'incident de démonstration
 
-## H1. L'application ne répond plus
-
-Ne pas modifier Terraform au hasard.
+## H1. Angular ne répond plus
 
 ```bash
 terraform -chdir=terraform/exercice-1 output
@@ -574,9 +581,9 @@ bash scripts/commands/verify-angular-deployment.sh --url "$WEB_URL"
 bash scripts/commands/p5.sh logs
 ```
 
-Puis qualifier séparément réseau, SSH, Ansible et NGINX.
+Qualifier réseau, SSH, Ansible et NGINX séparément avant toute mutation.
 
-## H2. OpenSearch Dashboards est lent ou inaccessible
+## H2. OpenSearch ou Dashboards ne répond plus
 
 ```bash
 terraform -chdir=terraform/exercice-2 output
@@ -584,13 +591,15 @@ bash scripts/commands/verify-opensearch-data.sh \
   --endpoint "$OPENSEARCH_ENDPOINT"
 ```
 
-Présenter les captures consolidées si l'interface graphique n'est momentanément pas exploitable,
-mais distinguer clairement la preuve enregistrée du test live.
+Pour la couche Dashboards, relire le log de `dashboards-assets-sync` et les
+preuves API. Ne pas recréer les visualisations à la souris pour masquer un
+problème d'accès ou de données.
+
+Si l'interface est momentanément indisponible pendant l'oral, présenter les
+captures consolidées en précisant clairement qu'il s'agit de la preuve
+enregistrée, distincte du test live.
 
 ## H3. Un backend HAProxy ne revient pas
-
-Le test de failover tente une restauration automatique.
-Vérifier ensuite l'état avant toute nouvelle panne :
 
 ```bash
 bash scripts/commands/test-haproxy-roundrobin.sh \
@@ -598,21 +607,23 @@ bash scripts/commands/test-haproxy-roundrobin.sh \
   --requests 12
 ```
 
-Ne relancer le test de panne que lorsque les deux backends sont de nouveau observés.
+Ne relancer un test de panne que lorsque les deux backends sont de nouveau
+observés.
 
-## H4. La session AWS a expiré
+## H4. Session AWS expirée
 
 ```bash
 bash scripts/commands/check-aws-session.sh
 ```
 
-Réparer l'authentification avant de continuer ; ne pas remplacer les outputs Terraform par des valeurs copiées manuellement.
+Réparer l'authentification ; ne jamais remplacer les outputs Terraform par des
+valeurs inventées ou copiées sans contrôle.
 
 ---
 
-# Partie I — Après la soutenance : fermer le lab
+# Partie I — Après la soutenance
 
-Une fois les preuves conservées et la présentation terminée :
+Une fois les preuves conservées :
 
 ```bash
 bash scripts/commands/p5.sh diagnostics
@@ -620,7 +631,7 @@ bash scripts/commands/p5.sh finalize
 bash scripts/commands/p5.sh cleanup
 ```
 
-L'ordre de destruction est volontaire :
+Ordre de destruction :
 
 ```text
 Exercice 3
@@ -632,9 +643,7 @@ Exercice 1
 audit AWS
 ```
 
-L'exercice 3 dépend du réseau de l'exercice 1 ; il doit donc être détruit avant lui.
-
-Le lab n'est considéré comme fermé qu'après le verdict :
+Verdict final attendu :
 
 ```text
 NETTOYAGE AWS COMPLET
@@ -646,56 +655,49 @@ NETTOYAGE AWS COMPLET
 
 ```text
 1. ARCHITECTURE
-   WSL2 → Terraform / Ansible → AWS
-   Ex1 → log réel → Ex2
-   Ex1 → VPC/subnets → Ex3
+   schéma global → expliquer les responsabilités
 
-2. INFRASTRUCTURE
-   terraform output
-   terraform plan = aucun delta
+2. TERRAFORM
+   outputs réels → plan sans delta
 
 3. ANSIBLE
-   ping
-   playbook
-   changed=0 / failed=0
+   ping → playbook → changed=0 / failed=0
 
 4. APPLICATION
-   WEB_URL
-   verify-angular-deployment.sh
-   navigateur
+   WEB_URL → vérification → navigateur Angular
 
 5. LOGS
-   générer quelques requêtes
-   collecter access.log
-   montrer des lignes réelles
+   trafic réel → collecte access.log → tail
 
 6. OPENSEARCH
-   verify-opensearch-data.sh
-   3 visualisations + dashboard
+   vérification mapping / documents / agrégations
 
-7. HAPROXY
-   montrer roundrobin + health checks
-   test round-robin
-   test panne / reprise
+7. DASHBOARD AS CODE
+   montrer la définition versionnée si utile
+   ouvrir directement P5 — Observabilité NGINX
+   présenter les 3 visuels + dashboard
 
-8. LIVRABILITÉ
-   p5.sh logs
-   docs/livrables/
+8. HAPROXY
+   round-robin → panne → service maintenu → reprise
 
-9. CONCLUSION
-   reproductible + idempotent + observable + résilient
+9. PREUVES
+   logs + preuves API + livrables
 
-10. APRÈS LA SOUTENANCE
-    cleanup : 3 → 2 → 1 → NETTOYAGE AWS COMPLET
+10. CONCLUSION
+    reproductible + idempotent + observable + automatisé + résilient
+
+11. APRÈS
+    cleanup 3 → 2 → 1 → NETTOYAGE AWS COMPLET
 ```
 
-## Ce qu'il ne faut pas faire devant le jury
+## À ne pas faire devant le jury
 
-- reconstruire les trois exercices depuis zéro pendant la présentation ;
-- accepter un `terraform apply` dont le plan n'a pas été compris ;
+- reconstruire les trois exercices depuis zéro ;
+- créer manuellement les trois visualisations OpenSearch ;
+- accepter un `terraform apply` sans comprendre le plan ;
 - présenter une CI verte comme preuve qu'AWS est actuellement déployé ;
-- recopier manuellement des IP alors que Terraform les expose en output ;
-- confondre le sample de logs avec le vrai `access.log` NGINX ;
-- montrer seulement `haproxy.cfg` sans provoquer et observer une panne ;
-- supprimer un `terraform.tfstate` pour essayer de « repartir proprement » ;
-- afficher un secret, une clé privée ou un vrai `terraform.tfvars` à l'écran.
+- recopier des IP alors que Terraform les expose ;
+- confondre le sample avec le vrai `access.log` ;
+- montrer seulement `haproxy.cfg` sans tester la panne ;
+- supprimer un `terraform.tfstate` pour « repartir proprement » ;
+- afficher un secret, une clé privée ou un vrai `terraform.tfvars`.
