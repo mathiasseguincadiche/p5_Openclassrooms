@@ -5,6 +5,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
 RUNTIME_LIB="$PROJECT_ROOT/scripts/lib/p5-node-runtime.sh"
+SETUP_SCRIPT="$PROJECT_ROOT/scripts/commands/setup.sh"
 TMP_DIR="$(mktemp -d)"
 FAKE_HOME="$TMP_DIR/home"
 FAKE_BIN="$FAKE_HOME/.nvm/versions/node/v22.22.0/bin"
@@ -62,4 +63,10 @@ chmod +x "$FAKE_BIN/node" "$FAKE_BIN/npm"
     fi
 )
 
+# Régression : setup.sh doit activer le même runtime avant ses command -v.
+grep -Fq 'NODE_RUNTIME_LIB="$PROJECT_ROOT/scripts/lib/p5-node-runtime.sh"' "$SETUP_SCRIPT"
+grep -Fq 'source "$NODE_RUNTIME_LIB"' "$SETUP_SCRIPT"
+grep -Fq 'p5_node_runtime_activate "$NODE_VERSION"' "$SETUP_SCRIPT"
+
 printf 'OK  Node.js et npm sont activables via NVM dans un shell non interactif.\n'
+printf 'OK  setup.sh active NVM avant de contrôler node/npm.\n'
