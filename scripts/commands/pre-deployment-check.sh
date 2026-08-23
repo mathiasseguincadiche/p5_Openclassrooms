@@ -223,10 +223,14 @@ else
 fi
 
 printf '\nValidation AWS Ready\n'
-if "$SCRIPT_DIR/check-aws-readiness.sh" --config "$CONFIG_FILE" --stage "$STAGE"; then
-    ok "verdict GO AWS obtenu"
+if "$SCRIPT_DIR/check-aws-session.sh" --config "$CONFIG_FILE"; then
+    if "$SCRIPT_DIR/check-aws-readiness.sh" --config "$CONFIG_FILE" --stage "$STAGE"; then
+        ok "verdict GO AWS obtenu"
+    else
+        ko "contrôle AWS Ready en échec"
+    fi
 else
-    ko "contrôle AWS Ready en échec"
+    ko "session AWS temporaire invalide ou expirée ; contrôles AWS détaillés ignorés pour éviter les faux positifs"
 fi
 
 printf '\nSynthèse : %s erreur(s), %s avertissement(s).\n' "$ERRORS" "$WARNINGS"
