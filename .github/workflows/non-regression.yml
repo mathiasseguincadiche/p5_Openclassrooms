@@ -54,6 +54,9 @@ jobs:
       - name: Vérifier le preview OpenSearch non bloquant
         run: bash scripts/tests/test-opensearch-preview.sh
 
+      - name: Vérifier le redémarrage HAProxy après rendu de la configuration
+        run: bash scripts/tests/test-haproxy-user-data-restart.sh
+
       - name: Vérifier la convergence et la réexécution
         run: bash scripts/tests/test-convergence-contract.sh
 
