@@ -1,10 +1,10 @@
 # Livrable 1 — Terraform, Ansible, NGINX et application Angular
 
-> **Gabarit à compléter avec des preuves réelles.** La présence de ce fichier ne prouve pas que l'exercice a été exécuté.
+> **État vérifié le 23 août 2026.** Ce livrable est fondé sur l'exécution AWS réelle du projet et sur les preuves produites par l'orchestrateur P5. Les identifiants et adresses publiques inutiles à la démonstration ne sont pas reproduits ici.
 
 ## 1. Objectif
 
-Démontrer qu'une infrastructure AWS est provisionnée avec Terraform puis qu'Ansible configure l'EC2 afin de servir l'application Angular du dépôt avec NGINX.
+Démontrer qu'une infrastructure AWS est provisionnée avec Terraform puis qu'Ansible configure une EC2 Ubuntu afin de servir l'application Angular du dépôt avec NGINX.
 
 ```text
 Terraform → AWS → EC2
@@ -19,11 +19,13 @@ Terraform → AWS → EC2
 - mode : AWS ;
 - infrastructure : Terraform ;
 - configuration : Ansible ;
-- cible : EC2 Ubuntu ;
+- cible : EC2 Ubuntu `t3.micro` ;
 - application : `application/angular/` ;
 - serveur HTTP : NGINX ;
 - port applicatif public : 80 ;
-- SSH : limité à l'IPv4 `/32` du poste.
+- SSH : limité à l'IPv4 `/32` du poste d'administration ;
+- métadonnées EC2 : IMDSv2 obligatoire ;
+- volume racine : chiffré, type `gp3`.
 
 ## 3. Fichiers remis
 
@@ -35,7 +37,7 @@ ansible/files/angular-app/
 application/angular/
 ```
 
-Ne pas joindre :
+Les éléments d'exécution sensibles ou éphémères restent hors dépôt :
 
 ```text
 terraform.tfvars
@@ -54,52 +56,67 @@ Commande principale :
 bash scripts/commands/p5.sh ex1
 ```
 
-Cette commande enchaîne le build Angular, Terraform, la génération d'inventaire, Ansible, l'idempotence, la vérification HTTP et la collecte des logs.
+Run de validation retenu : `20260823T015131Z`.
+
+```text
+validated_steps=13
+failed_steps=0
+result=OK
+```
+
+L'orchestrateur a revérifié l'artefact Angular, Terraform, l'inventaire Ansible, SSH, le ping Ansible, le playbook, l'idempotence, le service HTTP et la collecte des logs NGINX.
 
 ## 5. Preuve Terraform
 
-### À montrer
+### Provisionnement et état final
 
-- `terraform init` réussi ;
-- plan relu ;
-- ressources attendues ;
-- apply réel ;
-- post-plan sans delta ;
-- outputs utiles.
-
-### Ressources attendues
+Le déploiement initial a produit un plan réel de **10 ressources à créer, 0 à modifier et 0 à détruire**. Il comprenait notamment :
 
 ```text
-VPC
+1 VPC
 2 subnets publics
-Internet Gateway
-route publique
-Security Group
-EC2 Key Pair
+1 Internet Gateway
+1 table de routage publique + associations
+1 Security Group web
+1 paire de clés EC2
 1 EC2 p5-web
 ```
 
-### Points de sécurité visibles
+Le plan a été relu puis approuvé dans le parcours orchestré. Le run de référence final a ensuite recalculé l'état réel et obtenu :
 
 ```text
-SSH depuis /32
-HTTP :80 public
-IMDSv2 obligatoire
-volume racine chiffré
-compte AWS verrouillé
+No changes. Your infrastructure matches the configuration.
 ```
 
-### Preuve à insérer
+Les outputs finaux confirmaient la présence du VPC, des deux subnets publics, du Security Group et de l'EC2 web. L'EC2 `p5-web` était `running` et son URL HTTP était fournie par Terraform.
 
-**Preuve Terraform réelle à insérer ici**, avec les données inutiles anonymisées.
+### Points de sécurité vérifiés
 
-### Interprétation à rédiger
+```text
+SSH :22 limité à une source /32
+HTTP :80 public
+IMDSv2 : http_tokens = required
+volume racine : encrypted = true
+volume racine : gp3
+compte et région verrouillés par les garde-fous du projet
+```
 
-Expliquer pourquoi le plan et le post-plan démontrent que Terraform a convergé vers l'état attendu.
+### Traces techniques privées
+
+```text
+proofs/runtime/steps/20260823T015131Z/03-tf-ex1-plan.log
+proofs/runtime/steps/20260823T015131Z/04-tf-ex1-show.log
+proofs/runtime/steps/20260823T015131Z/05-tf-ex1-output.log
+proofs/runtime/exercice-1/20260823T015320Z-etat-aws-exercice-1.log
+```
+
+### Interprétation
+
+Le plan initial prouve que Terraform connaissait précisément les ressources nécessaires. Le plan final vide prouve ensuite la convergence : Terraform compare la configuration au compte AWS et ne détecte plus aucun écart à corriger. L'infrastructure est donc à la fois réellement créée et conforme à son code déclaratif.
 
 ## 6. Preuve Ansible — connectivité
 
-Commande :
+Commande exécutée :
 
 ```bash
 ansible all \
@@ -107,14 +124,22 @@ ansible all \
   -m ping
 ```
 
-Résultat attendu :
+Résultat réel :
 
 ```text
-SUCCESS
-pong
+web | SUCCESS => {
+    "changed": false,
+    "ping": "pong"
+}
 ```
 
-**Preuve Ansible ping à insérer ici.**
+La cible SSH était disponible dès la première tentative du run de référence. La preuve correspondante est conservée dans :
+
+```text
+proofs/runtime/steps/20260823T015131Z/08-ansible-ping.log
+```
+
+Ce résultat démontre qu'Ansible atteint effectivement l'EC2 avec l'inventaire généré depuis les outputs Terraform.
 
 ## 7. Preuve Ansible — premier déploiement
 
@@ -126,80 +151,90 @@ ansible-playbook \
   ansible/playbooks/deploy.yml
 ```
 
-Le playbook doit :
+Le playbook gère notamment :
 
-- installer NGINX ;
-- créer les droits applicatifs ;
-- copier Angular ;
-- installer la configuration NGINX ;
-- valider `nginx -t` ;
-- démarrer/activer NGINX.
+- l'installation de NGINX et des utilitaires requis ;
+- la création de l'utilisateur et du groupe applicatifs ;
+- la racine du site ;
+- le déploiement de l'artefact Angular ;
+- la configuration NGINX du projet ;
+- l'activation du site P5 ;
+- la désactivation du site NGINX par défaut ;
+- la validation de la configuration NGINX ;
+- le démarrage et l'activation du service.
 
-Résultat minimal :
+Lors du run final de vérification, la machine était déjà configurée et le récapitulatif a confirmé un état sain :
 
 ```text
-unreachable=0
-failed=0
+web : ok=12 changed=0 unreachable=0 failed=0 skipped=1 rescued=0 ignored=0
 ```
 
-**Preuve du premier passage à insérer ici.**
+Le fait que ce passage final soit déjà à `changed=0` est cohérent avec une machine précédemment déployée : Ansible retrouve l'état voulu sans le réécrire.
+
+Trace :
+
+```text
+proofs/runtime/steps/20260823T015131Z/09-ansible-deploy.log
+```
 
 ## 8. Preuve d'idempotence
 
-Relancer exactement :
+Le playbook a été exécuté une seconde fois immédiatement pour établir explicitement l'idempotence.
 
-```bash
-ansible-playbook \
-  -i ansible/inventories/hosts_aws \
-  ansible/playbooks/deploy.yml
-```
-
-Résultat strict attendu :
+Résultat strict :
 
 ```text
-changed=0
-unreachable=0
-failed=0
+web : ok=12 changed=0 unreachable=0 failed=0 skipped=1 rescued=0 ignored=0
 ```
 
-**Preuve du second passage à insérer ici.**
+L'orchestrateur a produit le verdict :
+
+```text
+Idempotence Ansible confirmée : changed=0, unreachable=0, failed=0.
+```
+
+Trace :
+
+```text
+proofs/runtime/steps/20260823T015131Z/10-ansible-idempotence.log
+```
 
 ### Interprétation
 
-Expliquer que l'état étant déjà conforme, Ansible ne réalise plus de modification inutile.
+Ansible décrit un état cible. Comme tous les fichiers, paquets, droits, configurations et services étaient déjà conformes, le second passage n'a effectué aucune modification. Ce comportement évite les changements inutiles et rend le déploiement répétable.
 
 ## 9. Preuve applicative
 
-Récupérer les outputs :
+Le contrôle applicatif automatisé a interrogé l'URL fournie par Terraform et obtenu :
 
-```bash
-WEB_IP="$(terraform -chdir=terraform/exercice-1 \
-  output -raw web_public_ip)"
-WEB_URL="$(terraform -chdir=terraform/exercice-1 \
-  output -raw web_url)"
+```text
+OK  réponse HTTP 200
+OK  document Angular identifié
+OK  bundle principal accessible : main-EPNQBKEW.js
+OK  fallback SPA NGINX opérationnel
+OK  en-tête de sécurité nosniff
+
+Verdict : APPLICATION ANGULAR DÉPLOYÉE ET SERVIE PAR NGINX
 ```
 
-Contrôle reproductible :
+Commande reproductible :
 
 ```bash
-bash scripts/commands/verify-angular-deployment.sh \
-  --url "$WEB_URL"
+WEB_URL="$(terraform -chdir=terraform/exercice-1 output -raw web_url)"
+bash scripts/commands/verify-angular-deployment.sh --url "$WEB_URL"
 ```
 
-### À montrer
+Trace technique :
 
-- application Angular réelle dans le navigateur ;
-- HTTP 200 ;
-- bundle JavaScript accessible ;
-- fallback SPA fonctionnel.
+```text
+proofs/runtime/steps/20260823T015131Z/11-verify-angular.log
+```
 
-**Capture de l'application à insérer ici.**
+La validation HTTP constitue la preuve reproductible versionnée. Une capture navigateur peut être conservée dans le dossier de soutenance sans publier l'adresse publique de l'instance dans le dépôt.
 
 ## 10. Logs NGINX pour l'exercice 2
 
-Le parcours `p5.sh ex1` génère le trafic et collecte le log.
-
-Équivalent détaillé :
+Le run a généré **96 requêtes HTTP** contrôlées afin de produire un trafic varié (`GET`, `HEAD`, `POST`, `OPTIONS`), puis a collecté le vrai `access.log` NGINX.
 
 ```bash
 bash scripts/commands/generate-nginx-traffic.sh \
@@ -215,36 +250,37 @@ bash scripts/commands/collect-nginx-access-log.sh \
   --output proofs/runtime/exercice-2/nginx-access-real.log
 ```
 
-Le fichier brut reste privé par défaut.
+Résultat de collecte :
+
+```text
+Documents valides : 91
+Période UTC : 2026-08-23T01:36:57 → 2026-08-23T01:53:22
+Format NGINX combined : validé
+```
+
+Ces 91 lignes réelles ont ensuite été utilisées dans l'exercice 2 avec le jeu reproductible OpenSearch.
 
 ## 11. Conclusion de l'exercice
 
-À rédiger après exécution :
-
-```text
-Terraform a créé et convergé l'infrastructure AWS attendue.
-Ansible a configuré l'EC2 et déployé Angular derrière NGINX.
-Le second passage a confirmé l'idempotence.
-L'application est accessible et produit des logs réels exploitables pour l'exercice 2.
-```
+L'exercice 1 est validé de bout en bout : Terraform a créé l'infrastructure AWS puis a confirmé l'absence de dérive, Ansible a atteint et configuré l'EC2, l'idempotence a été démontrée avec `changed=0`, et l'application Angular est réellement servie par NGINX avec un HTTP 200, son bundle JavaScript et son fallback SPA. Le trafic généré a enfin produit 91 entrées NGINX réelles exploitables par OpenSearch.
 
 ## 12. Dépendance avec l'exercice 3
 
-Ne pas détruire le VPC de cet exercice avant la fin de l'exercice 3.
+Le VPC et les subnets de l'exercice 1 sont réutilisés par l'exercice 3. Ils doivent donc rester présents jusqu'à la fin des preuves HAProxy.
 
-Le nettoyage global est :
+Le nettoyage global respecte l'ordre :
 
 ```text
-Exercice 3 → Exercice 2 → Exercice 1
+Exercice 3 → Exercice 2 → Exercice 1 → audit AWS
 ```
 
-La fermeture du lab est effectuée avec :
+La fermeture du lab s'effectue uniquement après finalisation des livrables :
 
 ```bash
 bash scripts/commands/p5.sh cleanup
 ```
 
-Verdict final du projet :
+Verdict attendu après destruction et audit :
 
 ```text
 NETTOYAGE AWS COMPLET
