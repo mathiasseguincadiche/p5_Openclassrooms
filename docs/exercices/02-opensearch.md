@@ -1,16 +1,23 @@
-# Exercice 2 — Amazon OpenSearch, logs NGINX et dashboard
+# Exercice 2 — Amazon OpenSearch, logs NGINX et Dashboard as Code
 
 ## Objectif pédagogique
 
-Le deuxième exercice apprend à transformer des logs techniques en informations exploitables.
-
-La consigne OpenClassrooms utilise le vocabulaire ELK/Kibana. Le mode Cloud choisi par ce dépôt utilise **Amazon OpenSearch** et **OpenSearch Dashboards**.
+Le deuxième exercice transforme des logs techniques en informations exploitables.
+La consigne OpenClassrooms emploie le vocabulaire ELK/Kibana ; le mode Cloud du
+dépôt utilise **Amazon OpenSearch** et **OpenSearch Dashboards**.
 
 ![Exercice 2 — logs NGINX vers Amazon OpenSearch](../schemas/exercice-2.svg)
 
-Le pipeline accepte deux sources complémentaires : le sample versionné garantit la reproductibilité,
-et le vrai `access.log` de l'exercice 1 relie l'observabilité à une application réellement déployée.
-La construction et la vérification visuelle du dashboard restent un **checkpoint humain**.
+Le pipeline accepte deux sources complémentaires :
+
+- le sample versionné garantit la reproductibilité ;
+- le vrai `access.log` de l'exercice 1 relie l'observabilité à une application
+  réellement déployée.
+
+La construction du dashboard n'est plus une opération répétitive à réaliser à
+la souris. Sa définition est **versionnée et réconciliée automatiquement**. Le
+checkpoint humain reste obligatoire pour vérifier visuellement le résultat et
+produire les captures réelles.
 
 ## Ce qui doit être démontré
 
@@ -18,9 +25,9 @@ Le dashboard comporte trois visualisations :
 
 1. **donut** : répartition des méthodes HTTP ;
 2. **histogramme** : somme des octets envoyés par tranches de 12 heures ;
-3. **top 5** : URL/requêtes les plus fréquentes par tranches de 12 heures.
+3. **top 5** : URL les plus fréquentes par tranches de 12 heures.
 
-Les preuves visuelles minimales sont :
+Les preuves visuelles minimales restent :
 
 - une capture du donut ;
 - une capture de la somme des octets / 12 h ;
@@ -32,15 +39,19 @@ Les preuves visuelles minimales sont :
 | Élément | Emplacement |
 | --- | --- |
 | Terraform OpenSearch | `terraform/exercice-2/` |
-| modèle de mapping | `terraform/exercice-2/opensearch/index-template.json` |
-| sample reproductible | `terraform/exercice-2/samples/nginx-access.log.sample` |
-| convertisseur | `scripts/tools/convert-nginx-logs.py` |
-| import | `scripts/commands/import-opensearch-data.sh` |
-| vérification | `scripts/commands/verify-opensearch-data.sh` |
-| log réel collecté | `proofs/runtime/exercice-2/nginx-access-real.log` |
-| orchestration | `scripts/commands/p5.sh` |
+| Mapping OpenSearch | `terraform/exercice-2/opensearch/index-template.json` |
+| Définition Dashboard as Code | `terraform/exercice-2/opensearch/dashboards/p5-dashboard.json` |
+| Sample reproductible | `terraform/exercice-2/samples/nginx-access.log.sample` |
+| Convertisseur NGINX | `scripts/tools/convert-nginx-logs.py` |
+| Générateur Saved Objects | `scripts/tools/build-opensearch-saved-objects.py` |
+| Import des données | `scripts/commands/import-opensearch-data.sh` |
+| Vérification des données | `scripts/commands/verify-opensearch-data.sh` |
+| Synchronisation Dashboards | `scripts/commands/sync-opensearch-dashboards.sh` |
+| Test du contrat Dashboards | `scripts/tests/test-opensearch-dashboard-assets.sh` |
+| Log réel collecté | `proofs/runtime/exercice-2/nginx-access-real.log` |
+| Orchestration | `scripts/commands/p5.sh` |
 
-## 1. ELK et OpenSearch : comprendre la correspondance
+## 1. Flux complet
 
 Dans un pipeline ELK classique :
 
@@ -51,91 +62,83 @@ logs → Logstash → Elasticsearch → Kibana
 Dans ce projet Cloud :
 
 ```text
-logs
-  ↓
+NGINX access.log
+      ↓
 convertisseur P5
-  ↓
+      ↓
 Bulk API
-  ↓
+      ↓
 Amazon OpenSearch
-  ↓
+      ↓
+Saved Objects versionnés
+      ↓
 OpenSearch Dashboards
+      ↓
+contrôle visuel humain
 ```
 
-Le projet ne cherche pas à reproduire artificiellement tous les composants d'un cluster ELK local. Il utilise le service Cloud autorisé par l'exercice tout en conservant le travail attendu sur les données et le dashboard.
+Le projet ne cherche pas à reproduire artificiellement tous les composants d'un
+cluster ELK local. Il utilise le service Cloud demandé tout en conservant la
+reproductibilité des données et de la couche de visualisation.
 
 ## 2. Sources de données
 
-### Source 1 — sample versionné
+### Sample versionné
 
 ```text
 terraform/exercice-2/samples/nginx-access.log.sample
 ```
 
-Pourquoi le conserver ?
+Il sert aux tests reproductibles, au parsing connu et à la CI indépendante
+d'une EC2 réelle.
 
-- tests reproductibles ;
-- CI indépendante d'une EC2 réelle ;
-- format connu ;
-- possibilité de vérifier le parsing sans AWS.
-
-### Source 2 — vrai log de l'exercice 1
+### Vrai log de l'exercice 1
 
 ```text
 proofs/runtime/exercice-2/nginx-access-real.log
 ```
 
-Il est collecté depuis `/var/log/nginx/access.log` sur l'EC2 Angular.
+Il est collecté depuis `/var/log/nginx/access.log` sur l'EC2 Angular. Il relie
+l'observabilité à l'application réellement déployée.
 
-Pourquoi l'utiliser ?
+Le sample et le log réel ont donc deux rôles différents et complémentaires.
 
-Parce qu'il relie l'observabilité à une application réellement déployée au lieu de rester uniquement sur un dataset fourni.
+## 3. Contrat de champs
 
-Le sample reste toutefois la base reproductible du dépôt.
+Les visualisations reposent sur quatre champs principaux :
 
-## 3. Comprendre les champs utiles
+| Champ | Type attendu | Usage |
+| --- | --- | --- |
+| `@timestamp` | date | buckets temporels de 12 h |
+| `http_method` | keyword | répartition par méthode HTTP |
+| `bytes_sent` | numérique | somme des octets envoyés |
+| `url_path` | keyword | top 5 des URL |
 
-Le pipeline doit permettre d'exploiter au minimum des informations telles que :
+Avant d'importer les Saved Objects, le script de synchronisation interroge
+`_field_caps` sur le domaine réel. Il refuse de continuer si un champ requis
+est absent, possède un type incompatible ou n'est pas agrégable.
 
-```text
-horodatage
-méthode HTTP
-URL / chemin
-code de statut
-bytes envoyés
-```
-
-Les visualisations dépendent directement du typage de ces champs.
-
-Exemples :
-
-- une méthode HTTP doit être agrégable comme catégorie ;
-- `bytes_sent` doit être numérique pour calculer une somme ;
-- l'horodatage doit être reconnu comme date pour créer des buckets de 12 h ;
-- `url_path` doit permettre une agrégation `terms` pour extraire un top 5.
+Cette vérification évite de créer un dashboard graphiquement présent mais
+fonctionnellement faux.
 
 ## 4. Infrastructure Amazon OpenSearch
 
-Le module `terraform/exercice-2` crée un domaine avec :
+Le module `terraform/exercice-2` crée notamment :
 
-- version moteur configurable, référence `OpenSearch_2.19` ;
-- une instance pour le lab ;
-- EBS gp3 ;
-- chiffrement au repos ;
-- chiffrement node-to-node ;
+- un domaine OpenSearch pour le lab ;
+- un volume EBS gp3 ;
+- le chiffrement au repos ;
+- le chiffrement nœud-à-nœud ;
 - HTTPS obligatoire ;
-- politique TLS 1.2 ;
-- accès filtré par l'IPv4 publique `/32` du poste.
+- TLS 1.2 ;
+- un accès filtré par l'IPv4 publique `/32` du poste.
 
-### Pourquoi l'accès est filtré par IP ?
-
-Le dashboard et l'API ne doivent pas être ouverts à Internet entier pour un lab personnel.
-
-Si votre IP publique change, `prepare` doit être relancé afin de recalculer la configuration et le plan Terraform.
+Si l'IP publique change, relancer `prepare` avant de modifier manuellement une
+politique d'accès.
 
 ## 5. Outputs Terraform
 
-Le module publie :
+Les valeurs de référence viennent de Terraform :
 
 ```text
 opensearch_domain_name
@@ -144,39 +147,49 @@ opensearch_arn
 opensearch_dashboards_endpoint
 ```
 
-Lecture manuelle :
+Lecture :
 
 ```bash
 terraform -chdir=terraform/exercice-2 output
 ```
 
-Endpoint API :
-
-```bash
-terraform -chdir=terraform/exercice-2 \
-  output -raw opensearch_endpoint
-```
-
-Dashboard :
-
-```bash
-terraform -chdir=terraform/exercice-2 \
-  output -raw opensearch_dashboards_endpoint
-```
-
-`p5.sh` considère ces outputs comme les valeurs de référence.
+Le dépôt ne stocke pas d'endpoint AWS inventé ou codé en dur dans les scripts.
 
 ## 6. Lancer l'exercice
+
+Le parcours normal est :
 
 ```bash
 bash scripts/commands/p5.sh ex2
 ```
 
-L'orchestrateur exécute la convergence Terraform puis le pipeline de données.
+L'orchestrateur effectue désormais :
 
-## 7. Terraform : lire le plan OpenSearch
+```text
+Terraform OpenSearch
+       ↓
+validation des logs
+       ↓
+import du sample
+       ↓
+import du vrai access.log si disponible
+       ↓
+vérification mapping + agrégations
+       ↓
+génération du bundle Saved Objects
+       ↓
+vérification field_caps réel
+       ↓
+import / réconciliation Dashboards
+       ↓
+vérification des 5 Saved Objects
+       ↓
+checkpoint visuel humain
+```
 
-Comme pour l'exercice 1 :
+## 7. Convergence Terraform
+
+Le cycle Terraform reste :
 
 ```text
 init
@@ -192,136 +205,144 @@ apply
 post-plan
 ```
 
-Avant d'accepter, vérifier :
+Un plan vide n'est pas appliqué. Un delta doit être compris avant mutation.
 
-- nom du domaine ;
-- version moteur ;
-- instance type ;
-- volume ;
-- chiffrement ;
-- HTTPS ;
-- SourceIp `/32` ;
-- région ;
-- compte AWS ;
-- coût potentiel.
+OpenSearch est potentiellement facturable tant que le domaine existe. Après les
+preuves et la soutenance, le nettoyage reste nécessaire.
 
-### Coût
+## 8. Validation et import des logs
 
-OpenSearch doit être considéré comme facturable tant que le domaine existe. Ne pas laisser le domaine tourner plusieurs jours après la fin des captures.
-
-## 8. Valider le sample sans mutation
+Prévisualisation sans mutation :
 
 ```bash
 bash scripts/commands/import-opensearch-data.sh
 ```
 
-Sans `--apply`, le script prépare et valide le flux mais ne doit pas être interprété comme une autorisation implicite de modifier OpenSearch.
-
-Le but est de détecter les erreurs de données avant l'import réel.
-
-## 9. Valider le log réel
-
-S'il existe :
+Pour le log réel :
 
 ```bash
 bash scripts/commands/import-opensearch-data.sh \
   --input proofs/runtime/exercice-2/nginx-access-real.log
 ```
 
-Si le fichier est absent :
-
-1. vérifier si l'exercice 1 a réellement été exécuté ;
-2. vérifier la collecte NGINX ;
-3. relancer `ex1` si nécessaire ;
-4. ne pas fabriquer un faux `access.log` présenté comme preuve réelle.
-
-## 10. Importer les documents
-
-Après création du domaine et confirmation :
+Import réel :
 
 ```bash
 ENDPOINT="$(terraform -chdir=terraform/exercice-2 \
   output -raw opensearch_endpoint)"
-```
 
-Import sample :
-
-```bash
 bash scripts/commands/import-opensearch-data.sh \
   --endpoint "$ENDPOINT" \
   --apply
 ```
 
-Import log réel :
+Le script réconcilie le template et les documents déterministes au lieu de
+considérer chaque exécution comme un premier déploiement.
 
-```bash
-bash scripts/commands/import-opensearch-data.sh \
-  --input proofs/runtime/exercice-2/nginx-access-real.log \
-  --endpoint "$ENDPOINT" \
-  --apply
-```
-
-### Pourquoi `--apply` est explicite ?
-
-Le dépôt sépare volontairement :
-
-```text
-vérifier / prévisualiser
-        vs
-modifier l'état distant
-```
-
-Cette séparation réduit les mutations accidentelles.
-
-## 11. Vérifier OpenSearch
+## 9. Vérification OpenSearch
 
 ```bash
 bash scripts/commands/verify-opensearch-data.sh \
   --endpoint "$ENDPOINT"
 ```
 
-Ce contrôle doit répondre notamment :
+Ce contrôle vérifie notamment :
 
-- le mapping est-il présent/utilisable ?
-- des documents sont-ils indexés ?
-- les champs attendus sont-ils agrégables ?
-- les agrégations nécessaires au dashboard retournent-elles des données ?
+- le mapping ;
+- la présence de documents ;
+- l'agrégabilité des champs ;
+- les agrégations nécessaires au dashboard.
 
-La CI exécute une variante locale avec un conteneur OpenSearch éphémère pour vérifier ce contrat sans utiliser le compte AWS.
+## 10. Dashboard as Code
 
-## 12. Ouvrir OpenSearch Dashboards
+La source de vérité lisible est :
 
-```bash
-terraform -chdir=terraform/exercice-2 \
-  output -raw opensearch_dashboards_endpoint
+```text
+terraform/exercice-2/opensearch/dashboards/p5-dashboard.json
 ```
 
-Ouvrir l'URL dans le navigateur depuis le poste dont l'IP `/32` est autorisée.
+Elle décrit :
 
-Si l'accès échoue après un changement de réseau, vérifier d'abord l'IP publique actuelle et le plan Terraform.
+```text
+index pattern : nginx-access-*
+  └── time field : @timestamp
 
-## 13. Vérifier Discover
+visualisation 1
+  └── donut / Terms / http_method
 
-Avant de construire des graphiques, explorer les documents.
+visualisation 2
+  └── histogramme / Sum(bytes_sent) / 12 h
 
-Objectifs :
+visualisation 3
+  └── histogramme empilé / Top 5 url_path / 12 h
 
-- confirmer que le data view/index attendu contient des données ;
-- vérifier les timestamps ;
-- inspecter `http_method` ;
-- inspecter `bytes_sent` ;
-- inspecter `url_path` ;
-- vérifier la plage de temps sélectionnée.
+dashboard
+  └── P5 — Observabilité NGINX
+      ├── visualisation 1
+      ├── visualisation 2
+      └── visualisation 3
+```
 
-Une visualisation vide peut être causée par une plage temporelle qui ne couvre pas les événements.
+Le fichier reste volontairement plus lisible qu'un export NDJSON brut.
 
-## 14. Visualisation 1 — Donut des méthodes HTTP
+## 11. Génération déterministe des Saved Objects
 
-### Question
+Le générateur :
+
+```text
+scripts/tools/build-opensearch-saved-objects.py
+```
+
+combine la définition du dashboard avec le mapping OpenSearch versionné. Il
+produit un bundle NDJSON contenant exactement cinq objets :
+
+1. l'index pattern ;
+2. le donut des méthodes HTTP ;
+3. la somme de `bytes_sent` par 12 h ;
+4. le top 5 `url_path` par 12 h ;
+5. le dashboard contenant les trois visualisations.
+
+Prévisualisation locale :
+
+```bash
+bash scripts/commands/sync-opensearch-dashboards.sh
+```
+
+Cette commande ne contacte pas AWS sans `--apply`.
+
+## 12. Synchronisation OpenSearch Dashboards
+
+Dans le parcours automatisé, `p5.sh ex2` appelle :
+
+```bash
+bash scripts/commands/sync-opensearch-dashboards.sh \
+  --endpoint "$ENDPOINT" \
+  --dashboards-url "$DASHBOARDS_URL" \
+  --apply
+```
+
+Le script :
+
+1. génère le bundle ;
+2. vérifie les champs réels avec `_field_caps` ;
+3. attend que l'API Dashboards soit disponible ;
+4. importe les Saved Objects avec `overwrite=true` ;
+5. relit chacun des cinq objets via l'API ;
+6. enregistre le bundle, la réponse d'import et la vérification comme preuves ;
+7. affiche l'URL directe du dashboard.
+
+Une réexécution reconstruit donc la couche de présentation de manière
+reproductible après destruction puis recréation du domaine OpenSearch.
+
+## 13. Les trois visualisations
+
+### Donut des méthodes HTTP
+
+Question traitée :
 
 > Quelle proportion des requêtes utilise chaque méthode HTTP ?
 
-### Configuration conceptuelle
+Contrat :
 
 ```text
 Type       : donut
@@ -329,80 +350,53 @@ Agrégation : Terms
 Champ      : http_method
 ```
 
-Le résultat doit rendre visibles des catégories comme GET, POST ou toute autre méthode réellement présente.
+### Somme de `bytes_sent` par 12 h
 
-### Ce que la capture doit montrer
-
-- titre compréhensible ;
-- légende ;
-- valeurs/catégories lisibles ;
-- absence de filtre parasite.
-
-## 15. Visualisation 2 — Somme de `bytes_sent` par 12 h
-
-### Question
+Question traitée :
 
 > Combien d'octets le serveur a-t-il envoyé sur chaque période de douze heures ?
 
-### Configuration conceptuelle
+Contrat :
 
 ```text
-Axe temps    : date histogram
-Intervalle   : 12 h
-Métrique     : Sum
-Champ        : bytes_sent
+Axe temps  : date histogram
+Intervalle : 12 h
+Métrique   : Sum
+Champ      : bytes_sent
 ```
 
-`bytes_sent` doit être numérique. Si l'interface refuse une somme, revenir au mapping au lieu de contourner le problème avec un autre champ.
+### Top 5 des URL par 12 h
 
-## 16. Visualisation 3 — Top 5 des URL par 12 h
-
-### Question
+Question traitée :
 
 > Quelles URL dominent l'activité au fil du temps ?
 
-### Configuration conceptuelle
+Contrat :
 
 ```text
-Temps         : date histogram 12 h
-Catégories    : Terms
-Champ         : url_path
-Taille        : 5
-Présentation  : histogramme empilé/cumulé selon l'interface
+Temps      : date histogram 12 h
+Catégories : Terms
+Champ      : url_path
+Taille     : 5
 ```
 
-La terminologie exacte de l'interface OpenSearch peut varier, mais le sens de la métrique ne doit pas changer.
+Ces paramètres sont testés automatiquement dans le dépôt.
 
-## 17. Construire le dashboard
+## 14. Checkpoint humain
 
-Ajouter les trois visualisations dans un dashboard unique.
+L'automatisation construit le dashboard ; elle ne prétend pas juger sa lisibilité
+à la place de l'opérateur.
 
-Le dashboard doit être lisible sans avoir besoin d'expliquer oralement où se trouve chaque information.
+À la fin de `p5.sh ex2`, le terminal fournit l'URL directe et demande uniquement
+de vérifier :
 
-Bonnes pratiques :
-
-- titres explicites ;
-- tailles de panneaux cohérentes ;
-- plage de temps visible ;
-- légendes non tronquées ;
-- aucun filtre résiduel non expliqué.
-
-## 18. Les quatre captures
-
-Conserver :
-
-```text
-1. donut HTTP
-2. bytes_sent / 12 h
-3. top 5 URL / 12 h
-4. dashboard complet
-```
-
-Les captures doivent provenir de l'environnement réellement utilisé pour le projet.
-
-## 19. Checkpoint humain de `p5.sh`
-
-`p5.sh ex2` affiche une action manuelle et demande de confirmer uniquement après avoir réalisé les vérifications/captures.
+- le donut ;
+- la courbe/histogramme `bytes_sent` / 12 h ;
+- le top 5 `url_path` / 12 h ;
+- le dashboard complet ;
+- la plage temporelle ;
+- l'absence de filtre parasite ;
+- les quatre captures nécessaires.
 
 Même avec :
 
@@ -410,21 +404,54 @@ Même avec :
 bash scripts/commands/p5.sh ex2 --yes
 ```
 
-le moteur ne doit pas déclarer le dashboard humainement validé à votre place.
+le checkpoint pédagogique ne doit pas être validé silencieusement à la place de
+l'utilisateur.
 
-C'est volontaire : **l'automatisation ne doit pas fabriquer une preuve pédagogique**.
+## 15. Preuves techniques automatiques
 
-## 20. Différence entre sample et preuve réelle
+Lors d'une synchronisation réelle, le script ajoute sous :
 
-| Élément | Rôle |
-| --- | --- |
-| sample versionné | reproductibilité et tests |
-| log réel ex. 1 | relier observabilité et application déployée |
-| test local OpenSearch | qualité du dépôt |
-| domaine AWS | réalisation Cloud de l'exercice |
-| captures Dashboards | preuve visuelle demandée |
+```text
+proofs/runtime/exercice-2/
+```
 
-## 21. Diagnostic
+les preuves techniques de la couche Dashboards :
+
+```text
+*-dashboards-saved-objects.ndjson
+*-dashboards-import.json
+*-dashboards-verify.json
+```
+
+Ces fichiers complètent les captures :
+
+- l'API prouve que les objets ont été importés et relus ;
+- les captures prouvent que le rendu réel est présentable.
+
+## 16. Contrat de CI
+
+Le test :
+
+```bash
+bash scripts/tests/test-opensearch-dashboard-assets.sh
+```
+
+vérifie :
+
+- les cinq IDs déterministes ;
+- le champ `http_method` du donut ;
+- `Sum(bytes_sent)` ;
+- les intervalles de 12 h ;
+- `url_path` avec taille 5 ;
+- les trois références du dashboard ;
+- l'en-tête `osd-xsrf` ;
+- l'import avec `overwrite=true` ;
+- un cycle API complet contre un serveur local simulé.
+
+La CI ne remplace pas la validation AWS réelle, mais elle verrouille le contrat
+d'automatisation avant le déploiement.
+
+## 17. Dépannage
 
 ### Dashboard inaccessible
 
@@ -435,58 +462,42 @@ aws sts get-caller-identity
 terraform -chdir=terraform/exercice-2 output
 ```
 
-Puis :
+Puis contrôler l'état du domaine, la région, l'IPv4 `/32` et les endpoints.
 
-- domaine actif ;
-- bonne région ;
-- bonne IP `/32` ;
-- endpoint correct.
+### Saved Objects non importés
 
-### Aucun document
+Relire le log de l'étape `dashboards-assets-sync`. Ne pas recréer immédiatement
+les graphiques à la souris : corriger d'abord l'accès API ou le contrat de champs,
+puis relancer la convergence.
 
-Rejouer :
-
-```bash
-bash scripts/commands/import-opensearch-data.sh
-bash scripts/commands/verify-opensearch-data.sh --endpoint "$ENDPOINT"
-```
-
-Ne pas commencer les graphiques avant d'avoir des données vérifiées.
-
-### Aucun résultat dans Discover
+### Visualisation vide
 
 Contrôler :
 
-- data view/index ;
-- plage temporelle ;
-- filtres ;
-- timestamps des événements.
+- la plage temporelle ;
+- la présence de documents ;
+- les timestamps ;
+- les filtres globaux.
 
-### Impossible de sommer `bytes_sent`
+### `bytes_sent` impossible à sommer
 
-Le champ est probablement mal typé ou le mauvais champ est sélectionné. Vérifier le mapping.
+Le champ doit être numérique et agrégable. Le contrôle `_field_caps` doit
+échouer avant l'import du dashboard si ce contrat n'est pas respecté.
 
-### Top 5 incohérent
-
-Contrôler :
-
-- agrégation `terms` ;
-- champ `url_path` ;
-- taille = 5 ;
-- intervalle de 12 h ;
-- filtres globaux.
-
-## 22. Definition of Done
+## 18. Definition of Done
 
 ```text
 OpenSearch AWS actif
 + données importées
 + mapping et agrégations vérifiés
-+ Discover exploitable
-+ donut HTTP
-+ bytes_sent / 12 h
-+ top 5 URL / 12 h
-+ dashboard complet
++ contrat field_caps validé
++ index pattern créé automatiquement
++ donut HTTP créé automatiquement
++ bytes_sent / 12 h créé automatiquement
++ top 5 URL / 12 h créé automatiquement
++ dashboard complet créé automatiquement
++ 5 Saved Objects relus par l'API
++ contrôle visuel humain
 + 4 captures réelles
 ```
 

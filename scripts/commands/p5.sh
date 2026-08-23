@@ -30,7 +30,7 @@ Commandes:
   prepare      inspecter puis converger le runtime P5 dans WSL2, AWS, tfvars et garde-fous
   status       lancer les contrôles de préparation sans mutation
   ex1          converger Terraform + Ansible + NGINX + Angular puis vérifier
-  ex2          converger OpenSearch, données et vérifier les agrégations
+  ex2          converger OpenSearch, données et Dashboards as Code puis vérifier
   ex3          converger HAProxy + 2 backends puis tester panne/reprise
   all          exécuter prepare + ex1 + ex2 + ex3 + diagnostics
   diagnostics  collecter diagnostics et structure des preuves/livrables
@@ -446,12 +446,12 @@ run_ex1() {
 }
 
 run_ex2() {
-    p5_header 'EXERCICE 2 — CONVERGER OPENSEARCH + DONNÉES + PREUVES'
+    p5_header 'EXERCICE 2 — CONVERGER OPENSEARCH + DONNÉES + DASHBOARDS AS CODE'
     load_lab_config
     local real_log="$PROJECT_ROOT/proofs/runtime/exercice-2/nginx-access-real.log"
 
     if terraform_state_has_resources 2; then
-        p5_info 'État exercice 2 existant : Terraform et OpenSearch seront réconciliés.'
+        p5_info 'État exercice 2 existant : Terraform, OpenSearch et Dashboards seront réconciliés.'
     else
         p5_run_step 'precheck-ex2' 'Précontrôle exercice 2' \
             bash "$SCRIPT_DIR/pre-deployment-check.sh" --stage exercice-2
@@ -459,7 +459,7 @@ run_ex2() {
 
     terraform_apply_exercise 2 'Amazon OpenSearch'
 
-    local opensearch_endpoint="" dashboards_url=""
+    local opensearch_endpoint="" dashboards_url="" dashboard_id="" dashboard_direct_url=""
     p5_terraform_output opensearch_endpoint "$PROJECT_ROOT/terraform/exercice-2" opensearch_endpoint \
         'Endpoint Amazon OpenSearch' p5_validate_http_url \
         'Relancez l’exercice 2 et consultez le log tf-ex2-output.'
@@ -491,13 +491,32 @@ run_ex2() {
     p5_run_step 'opensearch-verify' 'Vérifier mappings et agrégations OpenSearch' \
         bash "$SCRIPT_DIR/verify-opensearch-data.sh" --endpoint "$opensearch_endpoint"
 
-    p5_manual_checkpoint 'Dashboard OpenSearch' \
-        "Ouvrir : $dashboards_url" \
-        'Vérifier/créer le donut des méthodes HTTP.' \
-        'Vérifier/créer la somme de bytes_sent par tranches de 12 h.' \
-        'Vérifier/créer le top 5 url_path par tranches de 12 h.' \
+    p5_run_step 'dashboards-assets-preview' 'Générer et valider le bundle OpenSearch Dashboards' \
+        bash "$SCRIPT_DIR/sync-opensearch-dashboards.sh"
+
+    if ! p5_confirm 'Réconcilier les Saved Objects OpenSearch Dashboards versionnés du P5 ?'; then
+        p5_error 'Le dashboard versionné est requis pour valider complètement l’exercice 2.'
+        return 1
+    fi
+    p5_run_step 'dashboards-assets-sync' \
+        'Créer/réconcilier l’index pattern, les trois visualisations et le dashboard' \
+        bash "$SCRIPT_DIR/sync-opensearch-dashboards.sh" \
+        --endpoint "$opensearch_endpoint" \
+        --dashboards-url "$dashboards_url" \
+        --apply
+
+    dashboard_id="$(jq -r '.dashboard.id' \
+        "$PROJECT_ROOT/terraform/exercice-2/opensearch/dashboards/p5-dashboard.json")"
+    dashboard_direct_url="${dashboards_url%/}/app/dashboards#/view/$dashboard_id"
+
+    p5_manual_checkpoint 'Contrôle visuel OpenSearch Dashboards' \
+        "Ouvrir le dashboard déjà généré : $dashboard_direct_url" \
+        'Vérifier le donut des méthodes HTTP.' \
+        'Vérifier la somme de bytes_sent par tranches de 12 h.' \
+        'Vérifier le top 5 url_path par tranches de 12 h.' \
+        'Vérifier la lisibilité du dashboard complet et la plage temporelle.' \
         'Enregistrer les captures nécessaires aux livrables.'
-    p5_ok 'Exercice 2 convergé côté infrastructure/données et preuve visuelle confirmée.'
+    p5_ok 'Exercice 2 convergé : infrastructure, données et Dashboard as Code vérifiés.'
 }
 
 run_ex3() {
@@ -617,6 +636,7 @@ JE SUIS BLOQUÉ
          bash scripts/commands/p5.sh diagnostics
 
 JE PRÉPARE LA SOUTENANCE
+  docs/RUNBOOK_SOUTENANCE.md
   docs/validation-preuves-nettoyage.md
   docs/livrables/README.md
 
@@ -685,6 +705,7 @@ Préparation soutenance :
   bash scripts/commands/p5.sh finalize
 
 Puis consulter :
+  docs/RUNBOOK_SOUTENANCE.md
   docs/validation-preuves-nettoyage.md
   docs/livrables/README.md
 TXT
@@ -767,7 +788,7 @@ run_menu() {
  EXERCICES
  ------------------------------------------------------------
   4  Exercice 1 — Terraform + Ansible + Angular/NGINX
-  5  Exercice 2 — Amazon OpenSearch + logs
+  5  Exercice 2 — OpenSearch + logs + Dashboards as Code
   6  Exercice 3 — HAProxy + haute disponibilité
 
  PARCOURS COMPLET

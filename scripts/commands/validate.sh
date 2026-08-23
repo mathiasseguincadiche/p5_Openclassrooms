@@ -45,9 +45,11 @@ validate_required_files() {
         ansible/files/nginx-angular.conf
         ansible/playbooks/deploy.yml
         terraform/exercice-2/opensearch/index-template.json
+        terraform/exercice-2/opensearch/dashboards/p5-dashboard.json
         terraform/exercice-2/samples/nginx-access.log.sample
         scripts/tools/audit_non_regression.py
         scripts/tools/convert-nginx-logs.py
+        scripts/tools/build-opensearch-saved-objects.py
         scripts/tools/generer-haproxy-config.sh
         scripts/commands/sync-terraform-tfvars.sh
         scripts/commands/bootstrap-wsl2.sh
@@ -59,6 +61,7 @@ validate_required_files() {
         scripts/commands/collect-nginx-access-log.sh
         scripts/commands/import-opensearch-data.sh
         scripts/commands/verify-opensearch-data.sh
+        scripts/commands/sync-opensearch-dashboards.sh
         scripts/commands/test-haproxy-roundrobin.sh
         scripts/commands/test-haproxy-failover.sh
         scripts/commands/destroy-aws.sh
@@ -66,6 +69,7 @@ validate_required_files() {
         scripts/tests/test-nginx-angular.sh
         scripts/tests/test-haproxy-containers.sh
         scripts/tests/test-opensearch-local.sh
+        scripts/tests/test-opensearch-dashboard-assets.sh
     )
     local path
     for path in "${required[@]}"; do
@@ -88,6 +92,7 @@ validate_permissions() {
         collect-nginx-access-log.sh
         import-opensearch-data.sh
         verify-opensearch-data.sh
+        sync-opensearch-dashboards.sh
         test-haproxy-roundrobin.sh
         test-haproxy-failover.sh
         prepare-livrables.sh
@@ -102,6 +107,7 @@ validate_permissions() {
         }
     done
     [[ -x "$PROJECT_ROOT/scripts/tools/generer-haproxy-config.sh" ]]
+    [[ -x "$PROJECT_ROOT/scripts/tests/test-opensearch-dashboard-assets.sh" ]]
 }
 
 validate_bash() {
@@ -121,6 +127,8 @@ validate_json() {
         "$PROJECT_ROOT/aws/budgets/p5-monthly-budget.json.example" >/dev/null
     python3 -m json.tool \
         "$PROJECT_ROOT/terraform/exercice-2/opensearch/index-template.json" >/dev/null
+    python3 -m json.tool \
+        "$PROJECT_ROOT/terraform/exercice-2/opensearch/dashboards/p5-dashboard.json" >/dev/null
     python3 -m json.tool "$PROJECT_ROOT/application/angular/package.json" >/dev/null
     python3 -m json.tool "$PROJECT_ROOT/application/angular/package-lock.json" >/dev/null
 }
@@ -222,6 +230,8 @@ run_check 'JSON du projet' validate_json
 run_check 'Six schémas SVG adaptés au README' validate_schemas
 run_check 'Syntaxe Bash' validate_bash
 run_check 'Données OpenSearch reproductibles' validate_opensearch_data
+run_check 'Dashboard as Code OpenSearch' \
+    bash "$PROJECT_ROOT/scripts/tests/test-opensearch-dashboard-assets.sh"
 run_check 'Structure des livrables' "$SCRIPT_DIR/prepare-livrables.sh" --structure-only
 
 if command -v shellcheck >/dev/null 2>&1; then

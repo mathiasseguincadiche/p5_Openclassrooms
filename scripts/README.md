@@ -22,7 +22,7 @@ DÉMARRER / REPRENDRE
 
 EXERCICES
  4  Exercice 1 — Terraform + Ansible + Angular/NGINX
- 5  Exercice 2 — Amazon OpenSearch + logs
+ 5  Exercice 2 — OpenSearch + logs + Dashboards as Code
  6  Exercice 3 — HAProxy + haute disponibilité
 
 PARCOURS COMPLET
@@ -55,7 +55,7 @@ Documentation détaillée : [Centre de commande](../docs/CENTRE_DE_COMMANDE.md).
 | `p5.sh prepare` | aligner le runtime P5 dans WSL2, AWS, les `tfvars` et les garde-fous |
 | `p5.sh status` | vérifier la préparation |
 | `p5.sh ex1` | Terraform + Ansible + Angular/NGINX |
-| `p5.sh ex2` | Amazon OpenSearch + données |
+| `p5.sh ex2` | OpenSearch + données + Dashboard as Code |
 | `p5.sh ex3` | HAProxy + test de résilience |
 | `p5.sh all` | `prepare → ex1 → ex2 → ex3 → diagnostics` |
 | `p5.sh diagnostics` | collecter les diagnostics et l'état des preuves |
@@ -73,7 +73,7 @@ bash scripts/commands/p5.sh all
 
 `all` laisse les ressources en place pour la démonstration et les preuves. Le nettoyage reste une étape séparée.
 
-Le mode `--yes` ne valide jamais à la place de l'opérateur le checkpoint OpenSearch Dashboards ni la confirmation finale de nettoyage.
+Le mode `--yes` peut automatiser les mutations déclaratives, mais il ne valide jamais à la place de l'opérateur le contrôle visuel OpenSearch Dashboards ni la confirmation finale de nettoyage.
 
 ## Principe de convergence
 
@@ -121,11 +121,41 @@ Le checkout opérationnel doit rester sur le filesystem Linux local de la distri
 | `scripts/commands/aws-auth.sh` | authentification AWS du lab |
 | `scripts/commands/configure-lab.sh` | configuration locale du lab |
 | `scripts/commands/generate-ansible-inventory.sh` | inventaire depuis Terraform |
+| `scripts/commands/import-opensearch-data.sh` | réconciliation du template et des logs OpenSearch |
+| `scripts/commands/verify-opensearch-data.sh` | validation des mappings, documents et agrégations |
+| `scripts/tools/build-opensearch-saved-objects.py` | génération déterministe des Saved Objects |
+| `scripts/commands/sync-opensearch-dashboards.sh` | synchronisation et vérification du Dashboard as Code |
+| `scripts/tests/test-opensearch-dashboard-assets.sh` | contrat des 5 Saved Objects et cycle API simulé |
 | `scripts/commands/collect-diagnostics.sh` | diagnostic partageable |
 | `scripts/commands/prepare-livrables.sh` | contrôle des livrables |
 | `scripts/commands/destroy-aws.sh` | nettoyage ordonné `3 → 2 → 1` |
 | `scripts/commands/check-aws-cleanup.sh` | audit final AWS |
 | `scripts/tests/test-p5-orchestrator.sh` | contrat de l'orchestrateur sans AWS réel |
+
+## Dashboard as Code — exercice 2
+
+La source de vérité lisible est :
+
+```text
+terraform/exercice-2/opensearch/dashboards/p5-dashboard.json
+```
+
+Elle décrit un index pattern, trois visualisations et un dashboard. Le script de
+synchronisation génère le NDJSON, vérifie les champs réels, importe les objets
+avec écrasement contrôlé, relit les cinq objets par API et conserve les preuves
+sous `proofs/runtime/exercice-2/`.
+
+Prévisualisation sans mutation :
+
+```bash
+bash scripts/commands/sync-opensearch-dashboards.sh
+```
+
+Le parcours normal reste :
+
+```bash
+bash scripts/commands/p5.sh ex2
+```
 
 ## Frontière de responsabilité
 
@@ -140,6 +170,7 @@ Les journaux opérateur sont sous `logs/<UTC>/`. Les preuves techniques restent 
 ## Documentation opératoire
 
 - [Runbook A à Z](../docs/RUNBOOK_EXECUTION_GUIDEE.md)
+- [Runbook de soutenance](../docs/RUNBOOK_SOUTENANCE.md)
 - [Guide de soutenance](../docs/05-soutenance.md)
 - [Troubleshooting](../docs/troubleshooting.md)
 - [Validation, preuves et nettoyage](../docs/validation-preuves-nettoyage.md)

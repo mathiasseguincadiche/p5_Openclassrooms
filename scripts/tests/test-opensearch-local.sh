@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Lance OpenSearch localement puis teste template, Bulk, mappings et agrégations.
+# Lance OpenSearch localement puis teste template, Bulk, mappings, agrégations et Dashboard as Code.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -97,4 +97,7 @@ version="$(curl -fsS "$endpoint/" | jq -r '.version.number')"
 }
 
 printf 'OK  OpenSearch %s exécuté en conteneur éphémère.\n' "$version"
-printf 'Verdict : TEMPLATE, BULK, MAPPINGS, AGRÉGATIONS ET IDÉMPOTENCE VALIDÉS.\n'
+
+bash "$PROJECT_ROOT/scripts/tests/test-opensearch-dashboard-assets.sh"
+
+printf 'Verdict : TEMPLATE, BULK, MAPPINGS, AGRÉGATIONS, IDÉMPOTENCE ET DASHBOARD AS CODE VALIDÉS.\n'
