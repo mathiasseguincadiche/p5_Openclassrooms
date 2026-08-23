@@ -15,6 +15,11 @@ cleanup() {
 }
 trap cleanup EXIT
 
+if [[ ! -x "$SESSION_CHECK" ]]; then
+    printf 'KO  check-aws-session.sh doit être versionné avec le mode exécutable Git 100755.\n' >&2
+    exit 1
+fi
+
 mkdir -p "$FAKE_BIN"
 cat > "$CONFIG_FILE" <<'EOF'
 AWS_PROFILE=p5-lab
@@ -40,7 +45,7 @@ chmod +x "$FAKE_BIN/aws"
 export PATH="$FAKE_BIN:/usr/bin:/bin"
 
 set +e
-EXPIRED_OUTPUT="$(P5_TEST_AWS_STATE=expired bash "$SESSION_CHECK" --config "$CONFIG_FILE" 2>&1)"
+EXPIRED_OUTPUT="$(P5_TEST_AWS_STATE=expired "$SESSION_CHECK" --config "$CONFIG_FILE" 2>&1)"
 EXPIRED_RC=$?
 set -e
 if ((EXPIRED_RC == 0)); then
@@ -52,7 +57,7 @@ grep -Fq 'credentials temporaires doivent être renouvelés' <<<"$EXPIRED_OUTPUT
 grep -Fq 'aws-auth.sh --profile p5-lab --source-profile p5-signin --region us-east-1 --mode auto' <<<"$EXPIRED_OUTPUT"
 grep -Fq 'Aucun état EC2/VPC/OpenSearch/quota/Budget n’est déduit' <<<"$EXPIRED_OUTPUT"
 
-VALID_OUTPUT="$(P5_TEST_AWS_STATE=valid bash "$SESSION_CHECK" --config "$CONFIG_FILE")"
+VALID_OUTPUT="$(P5_TEST_AWS_STATE=valid "$SESSION_CHECK" --config "$CONFIG_FILE")"
 grep -Fq 'session AWS active : arn:aws:iam::123456789012:user/p5-lab-user' <<<"$VALID_OUTPUT"
 grep -Fq 'compte AWS vérifié : 123456789012' <<<"$VALID_OUTPUT"
 
@@ -75,4 +80,4 @@ PY
 bash -n "$SESSION_CHECK"
 bash -n "$PRECHECK"
 
-printf 'OK  session AWS expirée : arrêt avant les contrôles détaillés et action de renouvellement explicite.\n'
+printf 'OK  session AWS expirée : mode exécutable, arrêt avant contrôles détaillés et action de renouvellement explicite.\n'
