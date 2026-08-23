@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "index_pattern": {
+    "id": "p5-nginx-access",
+    "title": "nginx-access-*",
+    "time_field": "@timestamp"
+  },
+  "visualizations": [
+    {
+      "id": "p5-nginx-http-methods",
+      "title": "P5 — Répartition des méthodes HTTP",
+      "kind": "donut_terms",
+      "field": "http_method",
+      "size": 10
+    },
+    {
+      "id": "p5-nginx-bytes-12h",
+      "title": "P5 — Octets envoyés par tranche de 12 h",
+      "kind": "histogram_sum_12h",
+      "field": "bytes_sent",
+      "time_field": "@timestamp"
+    },
+    {
+      "id": "p5-nginx-top5-url-12h",
+      "title": "P5 — Top 5 des URL par tranche de 12 h",
+      "kind": "histogram_top_terms_12h",
+      "field": "url_path",
+      "time_field": "@timestamp",
+      "size": 5
+    }
+  ],
+  "dashboard": {
+    "id": "p5-nginx-observability",
+    "title": "P5 — Observabilité NGINX",
+    "description": "Dashboard reproductible du P5 : méthodes HTTP, volume envoyé par 12 h et top 5 des URL par 12 h.",
+    "time_from": "now-30d",
+    "time_to": "now",
+    "panels": [
+      {"visualization_id": "p5-nginx-http-methods", "x": 0, "y": 0, "w": 16, "h": 15},
+      {"visualization_id": "p5-nginx-bytes-12h", "x": 16, "y": 0, "w": 32, "h": 15},
+      {"visualization_id": "p5-nginx-top5-url-12h", "x": 0, "y": 15, "w": 48, "h": 18}
+    ]
+  }
+}
