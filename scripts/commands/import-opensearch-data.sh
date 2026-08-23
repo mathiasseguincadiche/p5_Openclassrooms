@@ -120,7 +120,7 @@ DOCUMENT_COUNT=$((LINE_COUNT / 2))
 
 jq -s '{query:{ids:{values:[.[] | select(.index? != null) | .index._id]}}}' \
     "$BULK_FILE" > "$IDS_QUERY"
-normalize_template "$TEMPLATE_FILE" > "$DESIRED_TEMPLATE"
+normalize_template < "$TEMPLATE_FILE" > "$DESIRED_TEMPLATE"
 
 printf 'Préparation OpenSearch\n'
 printf '  Source      : %s\n' "$INPUT_FILE"
