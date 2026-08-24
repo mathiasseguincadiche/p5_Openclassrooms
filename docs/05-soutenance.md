@@ -1,126 +1,127 @@
-# Préparer la soutenance — P5 OpenClassrooms
+# Préparer l'assessment — P5 OpenClassrooms
 
-## Rôle de ce document
+## Document canonique
 
-Ce fichier prépare **l'organisation de l'oral**. Le conducteur de démonstration officiel est :
+Le conducteur officiel de présentation est :
 
 [`RUNBOOK_SOUTENANCE.md`](RUNBOOK_SOUTENANCE.md)
 
-Il ne faut pas maintenir deux scénarios de soutenance concurrents. Le handbook contient l'architecture, les explications, les commandes, les preuves navigateur, les questions probables et les plans de repli.
+Ce fichier ne duplique pas le scénario. Il fixe uniquement la méthode de préparation.
+
+## Structure de l'assessment
+
+La présentation doit être faite dans cet ordre :
+
+```text
+PARTIE A — PRÉSENTER
+1. le projet
+2. l'architecture globale
+3. l'architecture Exercice 1
+4. l'architecture Exercice 2
+5. l'architecture Exercice 3
+
+PARTIE B — DÉMONTRER
+6. preuves Exercice 1
+7. preuves Exercice 2
+8. preuves Exercice 3
+9. conclusion
+```
+
+Le principe est volontaire : **l'évaluateur comprend d'abord ce qui a été construit, puis il voit les preuves que cela fonctionne.**
 
 ![Architecture globale du P5](schemas/vue-ensemble.svg)
 
 ## Ce que l'évaluateur doit comprendre
 
-À la fin de la présentation, le jury doit pouvoir résumer le projet ainsi :
+### Exercice 1
 
 ```text
-Exercice 1
-Terraform crée l'infrastructure AWS
-        ↓
+AWS us-east-1
+└── VPC 10.0.0.0/16
+    ├── subnet public 1 → EC2 p5-web t3.micro → NGINX + Angular
+    └── subnet public 2 → réutilisé ensuite par l'exercice 3
+
+Terraform crée l'infrastructure
 Ansible configure l'EC2
-        ↓
 NGINX sert Angular
-        ↓
-application visible
+```
 
-Exercice 2
-access.log réel
-        ↓
-OpenSearch
-        ↓
-3 visualisations + dashboard
+### Exercice 2
 
-Exercice 3
+```text
+access.log NGINX + sample
+→ parsing / typage
+→ Amazon OpenSearch Service
+→ trois visualisations + dashboard
+```
+
+Le domaine OpenSearch est un service managé AWS dans l'implémentation actuelle, pas une EC2 placée dans le VPC de l'exercice 1.
+
+### Exercice 3
+
+```text
+VPC Exercice 1
+├── subnet public 1
+│   ├── p5-haproxy t3.micro
+│   └── p5-hello-1 t3.micro
+└── subnet public 2
+    └── p5-hello-2 t3.micro
+
+Internet → HAProxy → IP privées des deux backends
+```
+
+Le résultat à démontrer est : round-robin, panne d'un service, maintien du trafic, puis réintégration.
+
+## Préparation avant l'oral
+
+Avant l'arrivée de l'évaluateur, le lab doit déjà être actif et validé :
+
+```bash
+bash scripts/commands/p5.sh inspect
+bash scripts/commands/p5.sh prepare
+bash scripts/commands/p5.sh status
+bash scripts/commands/p5.sh ex1
+bash scripts/commands/p5.sh ex2
+bash scripts/commands/p5.sh ex3
+bash scripts/commands/p5.sh diagnostics
+bash scripts/commands/p5.sh finalize
+```
+
+Préparer dans le navigateur :
+
+```text
+Angular
+OpenSearch Dashboards
 HAProxy
-        ↓
-2 backends
-        ↓
-round-robin
-        ↓
-panne contrôlée
-        ↓
-service maintenu et backend réintégré
 ```
 
-## Préparation recommandée
+## Règle de démonstration
 
-Avant l'oral :
-
-1. reconstruire et valider les trois exercices ;
-2. conserver AWS actif ;
-3. préparer les URLs Angular, OpenSearch Dashboards et HAProxy ;
-4. ouvrir le handbook ;
-5. garder les trois schémas d'exercice disponibles ;
-6. vérifier les captures de secours ;
-7. fermer toute fenêtre contenant un secret ou une donnée sensible.
-
-## Les trois règles de présentation
-
-### 1. Expliquer avant de taper
-
-Avant une commande importante, annoncer :
+Pour chaque exercice :
 
 ```text
-ce que je veux prouver
-→ ce que la commande va vérifier
-→ ce que je m'attends à observer
+ATTENDU OPENCLASSROOMS
+       ↓
+SOURCE / CONFIGURATION
+       ↓
+PREUVE TERMINAL
+       ↓
+RÉSULTAT NAVIGATEUR
+       ↓
+CONCLUSION
 ```
 
-### 2. Montrer le résultat réel
+Ne pas reconstruire l'infrastructure pendant l'assessment sauf demande explicite de l'évaluateur.
 
-```text
-Terraform / Ansible / scripts = preuve technique
-Navigateur                   = résultat concret
-```
+## À montrer absolument
 
-Une application web doit être montrée comme une application web. Un dashboard doit être montré comme un dashboard. Un load balancer doit être démontré par le comportement des backends.
-
-### 3. Montrer peu de code, mais le bon code
-
-Ne pas faire défiler des centaines de lignes. Montrer uniquement la source qui répond à la question :
-
-| Question | Source utile |
+| Exercice | Preuves minimales |
 | --- | --- |
-| que crée Terraform ? | `terraform/exercice-1/main.tf` |
-| quel type d'EC2 ? | `terraform/exercice-1/variables.tf` |
-| que configure Ansible ? | `ansible/playbooks/deploy.yml` |
-| comment le dashboard est-il versionné ? | `terraform/exercice-2/opensearch/dashboards/p5-dashboard.json` |
-| comment HAProxy répartit-il ? | `terraform/exercice-3/haproxy.cfg.tpl` |
+| Ex. 1 | Terraform outputs/state, Ansible ping, playbook sans erreur/idempotent, Angular dans le navigateur |
+| Ex. 2 | domaine OpenSearch, données exploitables, donut, bytes/12h, top5/12h, dashboard complet |
+| Ex. 3 | `haproxy.cfg`, alternance `Server name` / `Server address`, test de panne et réintégration |
 
-## Checklist juste avant l'oral
-
-- [ ] `main` est à jour ;
-- [ ] aucun changement local inattendu ;
-- [ ] Ex. 1 est convergé ;
-- [ ] Ansible affiche `changed=0` au second passage ;
-- [ ] Angular est visible ;
-- [ ] le vrai `access.log` existe ;
-- [ ] OpenSearch contient les données ;
-- [ ] les trois visualisations sont lisibles ;
-- [ ] les deux backends HAProxy répondent ;
-- [ ] le failover `2 → 1 → 2` a déjà été validé ;
-- [ ] les captures de secours sont disponibles ;
-- [ ] `cleanup` n'a pas été lancé.
-
-## Pendant l'oral
-
-Ouvrir et suivre :
-
-[`RUNBOOK_SOUTENANCE.md`](RUNBOOK_SOUTENANCE.md)
-
-Le fil conducteur est :
-
-```text
-architecture globale
-→ exercice 1
-→ exercice 2
-→ exercice 3
-→ dépendances entre exercices
-→ conclusion
-```
-
-## Après l'oral
+## Après l'assessment
 
 Une fois les preuves conservées :
 
@@ -130,7 +131,13 @@ bash scripts/commands/p5.sh finalize
 bash scripts/commands/p5.sh cleanup
 ```
 
-Verdict final attendu :
+Ordre de destruction :
+
+```text
+Exercice 3 → Exercice 2 → Exercice 1 → audit AWS
+```
+
+Verdict attendu :
 
 ```text
 NETTOYAGE AWS COMPLET
