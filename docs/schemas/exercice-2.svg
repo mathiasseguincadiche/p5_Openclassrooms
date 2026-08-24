@@ -1,41 +1,50 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="500" viewBox="0 0 1200 500" role="img" aria-labelledby="title desc">
-<title id="title">Exercice 2 — Du log NGINX au dashboard</title>
-<desc id="desc">Schéma pédagogique de l'exercice 2. Le vrai access.log NGINX, complété par un sample reproductible pour les tests, est parsé puis envoyé à Amazon OpenSearch avant d'être visualisé dans OpenSearch Dashboards.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600" role="img" aria-labelledby="title desc">
+<title id="title">Exercice 2 — architecture de logging avec Amazon OpenSearch</title>
+<desc id="desc">Le vrai access.log de NGINX et le sample reproductible sont transformés en documents structurés puis envoyés via la Bulk API vers Amazon OpenSearch Service. Le domaine managé p5-opensearch utilise OpenSearch 2.19, un nœud t3.small.search et EBS gp3 10 Gio. Il n'est pas placé dans le VPC de l'exercice 1. OpenSearch Dashboards affiche les trois visualisations demandées.</desc>
 <defs>
-  <marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
-  <style>text{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}.k{font-size:12px;font-weight:800;letter-spacing:1px;fill:#64748b}.h{font-size:25px;font-weight:760;fill:#0f172a}.t{font-size:18px;font-weight:760;fill:#0f172a}.s{font-size:14px;font-weight:560;fill:#334155}.ar{fill:none;stroke:#475569;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#a)}</style>
+  <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+  <style>text{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}.ey{font-size:12px;font-weight:800;letter-spacing:1px;fill:#64748b}.h{font-size:24px;font-weight:760;fill:#0f172a}.t{font-size:17px;font-weight:760;fill:#0f172a}.s{font-size:13px;font-weight:560;fill:#334155}.ar{fill:none;stroke:#475569;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrow)}</style>
 </defs>
-<rect width="1200" height="500" rx="24" fill="#f8fafc"/>
-<text x="42" y="43" class="k">EXERCICE 2 · LOGS ET OBSERVABILITÉ</text>
-<text x="42" y="79" class="h">Un log NGINX devient une donnée, puis un graphique</text>
+<rect width="1200" height="600" rx="24" fill="#f8fafc"/>
+<text x="42" y="42" class="ey">EXERCICE 2 · ARCHITECTURE LOGS ET OBSERVABILITÉ</text>
+<text x="42" y="77" class="h">Comment un log HTTP devient-il une donnée OpenSearch puis un dashboard ?</text>
 
-<rect x="55" y="155" width="200" height="120" rx="20" fill="#eff6ff" stroke="#2563eb" stroke-width="1.8"/>
-<text x="155" y="193" class="t" text-anchor="middle">access.log</text>
-<text x="155" y="223" class="s" text-anchor="middle">vraies requêtes</text>
-<text x="155" y="248" class="s" text-anchor="middle">du NGINX Ex. 1</text>
+<rect x="42" y="135" width="230" height="105" rx="18" fill="#eff6ff" stroke="#2563eb" stroke-width="1.6"/>
+<text x="64" y="164" class="ey">SOURCE RÉELLE</text>
+<text x="157" y="196" class="t" text-anchor="middle">NGINX access.log</text>
+<text x="157" y="220" class="s" text-anchor="middle">EC2 p5-web · Exercice 1</text>
 
-<rect x="315" y="155" width="200" height="120" rx="20" fill="#fff7ed" stroke="#ea580c" stroke-width="1.8"/>
-<text x="415" y="193" class="t" text-anchor="middle">Parser</text>
-<text x="415" y="223" class="s" text-anchor="middle">transforme les lignes</text>
-<text x="415" y="248" class="s" text-anchor="middle">en documents typés</text>
+<rect x="42" y="268" width="230" height="82" rx="18" fill="#fff" stroke="#94a3b8" stroke-width="1.5"/>
+<text x="64" y="297" class="ey">SOURCE REPRODUCTIBLE</text>
+<text x="157" y="326" class="t" text-anchor="middle">sample versionné</text>
 
-<rect x="575" y="155" width="220" height="120" rx="20" fill="#fff7ed" stroke="#ea580c" stroke-width="1.8"/>
-<text x="685" y="193" class="t" text-anchor="middle">OpenSearch</text>
-<text x="685" y="223" class="s" text-anchor="middle">indexe les documents</text>
-<text x="685" y="248" class="s" text-anchor="middle">et calcule les agrégations</text>
+<rect x="335" y="185" width="220" height="118" rx="18" fill="#fff7ed" stroke="#ea580c" stroke-width="1.7"/>
+<text x="445" y="217" class="t" text-anchor="middle">Pipeline d'import P5</text>
+<text x="445" y="247" class="s" text-anchor="middle">parsing + typage</text>
+<text x="445" y="273" class="s" text-anchor="middle">NDJSON → Bulk API</text>
+<path d="M272 187H305V225H325" class="ar"/>
+<path d="M272 309H305V263H325" class="ar"/>
 
-<rect x="855" y="135" width="290" height="160" rx="20" fill="#ecfdf5" stroke="#059669" stroke-width="1.8"/>
-<text x="1000" y="173" class="t" text-anchor="middle">OpenSearch Dashboards</text>
-<text x="1000" y="207" class="s" text-anchor="middle">Méthodes HTTP</text>
-<text x="1000" y="233" class="s" text-anchor="middle">Octets envoyés / 12 h</text>
-<text x="1000" y="259" class="s" text-anchor="middle">Top 5 URL / 12 h</text>
+<rect x="620" y="115" width="500" height="250" rx="22" fill="#fff" stroke="#ea580c" stroke-width="1.8"/>
+<text x="645" y="147" class="ey">AWS · AMAZON OPENSEARCH SERVICE · SERVICE MANAGÉ</text>
+<rect x="655" y="170" width="430" height="150" rx="17" fill="#fff7ed" stroke="#fdba74"/>
+<text x="870" y="202" class="t" text-anchor="middle">p5-opensearch</text>
+<text x="870" y="230" class="s" text-anchor="middle">OpenSearch 2.19 · 1 × t3.small.search</text>
+<text x="870" y="256" class="s" text-anchor="middle">EBS gp3 · 10 Gio</text>
+<text x="870" y="282" class="s" text-anchor="middle">HTTPS · TLS 1.2+ · chiffrement</text>
+<text x="870" y="307" class="s" text-anchor="middle">endpoint autorisé uniquement depuis IP admin /32</text>
+<text x="870" y="347" class="s" text-anchor="middle">Important : pas d'EC2 OpenSearch dans le VPC Exercice 1</text>
+<path d="M555 244H610" class="ar"/>
 
-<path d="M255 215H305" class="ar"/><path d="M515 215H565" class="ar"/><path d="M795 215H845" class="ar"/>
-<text x="280" y="200" class="s" text-anchor="middle">lit</text><text x="540" y="200" class="s" text-anchor="middle">envoie</text><text x="820" y="200" class="s" text-anchor="middle">affiche</text>
+<rect x="225" y="420" width="750" height="125" rx="20" fill="#ecfdf5" stroke="#059669" stroke-width="1.7"/>
+<text x="600" y="452" class="t" text-anchor="middle">OpenSearch Dashboards</text>
+<text x="350" y="493" class="s" text-anchor="middle">Donut</text>
+<text x="350" y="516" class="s" text-anchor="middle">méthodes HTTP</text>
+<text x="600" y="493" class="s" text-anchor="middle">Histogramme</text>
+<text x="600" y="516" class="s" text-anchor="middle">bytes_sent / 12 h</text>
+<text x="850" y="493" class="s" text-anchor="middle">Top 5</text>
+<text x="850" y="516" class="s" text-anchor="middle">url_path / 12 h</text>
+<path d="M870 365V408H600" class="ar"/>
 
-<rect x="135" y="335" width="930" height="84" rx="18" fill="#fff" stroke="#cbd5e1" stroke-width="1.5"/>
-<text x="160" y="364" class="k">POURQUOI DEUX SOURCES ?</text>
-<text x="160" y="395" class="s">Log réel = preuve du fonctionnement AWS · sample versionné = tests reproductibles et CI sans dépendre d'une EC2 active.</text>
-
-<text x="42" y="468" class="s">À retenir : NGINX produit → le parser structure → OpenSearch analyse → Dashboards rend les résultats visibles.</text>
+<text x="42" y="575" class="s">Lecture : source → transformation → OpenSearch managé → visualisations. Le sample répond au parcours guidé ; le vrai log relie l'exercice 2 à l'application réellement déployée.</text>
 </svg>
