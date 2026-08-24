@@ -1,44 +1,56 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
-<title id="title">Exercice 3 — HAProxy, répartition et reprise</title>
-<desc id="desc">Schéma pédagogique de l'exercice 3. Le client passe par HAProxy, qui répartit les requêtes entre deux backends. En cas de panne d'un backend, HAProxy le retire, continue avec l'autre, puis le réintègre après son retour.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650" role="img" aria-labelledby="title desc">
+<title id="title">Exercice 3 — placement HAProxy et deux backends dans le VPC</title>
+<desc id="desc">L'exercice 3 réutilise le VPC et les deux subnets publics de l'exercice 1. Dans le premier subnet se trouvent l'EC2 p5-haproxy et le backend p5-hello-1. Dans le second subnet se trouve p5-hello-2. Les trois EC2 sont t3.micro Ubuntu 24.04. Le client accède à HAProxy en HTTP public ; HAProxy communique avec les backends via leurs IP privées et applique round-robin et health checks.</desc>
 <defs>
-  <marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
-  <style>text{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}.k{font-size:12px;font-weight:800;letter-spacing:1px;fill:#64748b}.h{font-size:25px;font-weight:760;fill:#0f172a}.t{font-size:18px;font-weight:760;fill:#0f172a}.s{font-size:14px;font-weight:560;fill:#334155}.ar{fill:none;stroke:#475569;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#a)}</style>
+  <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+  <style>text{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}.ey{font-size:12px;font-weight:800;letter-spacing:1px;fill:#64748b}.h{font-size:24px;font-weight:760;fill:#0f172a}.t{font-size:17px;font-weight:760;fill:#0f172a}.s{font-size:13px;font-weight:560;fill:#334155}.ar{fill:none;stroke:#475569;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrow)}</style>
 </defs>
-<rect width="1200" height="520" rx="24" fill="#f8fafc"/>
-<text x="42" y="43" class="k">EXERCICE 3 · LOAD BALANCING ET RÉSILIENCE</text>
-<text x="42" y="79" class="h">HAProxy répartit la charge et maintient le service pendant une panne</text>
+<rect width="1200" height="650" rx="24" fill="#f8fafc"/>
+<text x="42" y="42" class="ey">EXERCICE 3 · ARCHITECTURE HAUTE DISPONIBILITÉ</text>
+<text x="42" y="77" class="h">Où sont placées les trois EC2 et comment HAProxy distribue-t-il le trafic ?</text>
 
-<rect x="80" y="135" width="170" height="100" rx="20" fill="#f1f5f9" stroke="#64748b" stroke-width="1.6"/>
-<text x="165" y="178" class="t" text-anchor="middle">Client</text>
-<text x="165" y="207" class="s" text-anchor="middle">HTTP :80</text>
+<rect x="40" y="120" width="170" height="82" rx="16" fill="#f1f5f9" stroke="#64748b" stroke-width="1.5"/>
+<text x="125" y="151" class="t" text-anchor="middle">Utilisateur</text>
+<text x="125" y="177" class="s" text-anchor="middle">HTTP 80 public</text>
 
-<rect x="380" y="125" width="230" height="120" rx="20" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.8"/>
-<text x="495" y="164" class="t" text-anchor="middle">HAProxy</text>
-<text x="495" y="194" class="s" text-anchor="middle">round-robin</text>
-<text x="495" y="219" class="s" text-anchor="middle">health checks HTTP</text>
+<rect x="245" y="105" width="910" height="390" rx="22" fill="#fff" stroke="#94a3b8" stroke-width="1.5"/>
+<text x="270" y="135" class="ey">AWS us-east-1 · VPC p5-vpc 10.0.0.0/16 · RÉUTILISÉ DE L'EXERCICE 1</text>
 
-<rect x="760" y="105" width="220" height="100" rx="20" fill="#ecfdf5" stroke="#059669" stroke-width="1.8"/>
-<text x="870" y="146" class="t" text-anchor="middle">Backend 1</text>
-<text x="870" y="176" class="s" text-anchor="middle">EC2 + Docker + hello</text>
-<rect x="760" y="225" width="220" height="100" rx="20" fill="#ecfdf5" stroke="#059669" stroke-width="1.8"/>
-<text x="870" y="266" class="t" text-anchor="middle">Backend 2</text>
-<text x="870" y="296" class="s" text-anchor="middle">EC2 + Docker + hello</text>
+<rect x="280" y="165" width="405" height="285" rx="20" fill="#eff6ff" stroke="#2563eb" stroke-width="1.6"/>
+<text x="305" y="195" class="ey">SUBNET PUBLIC 1 · PREMIÈRE AZ</text>
+<rect x="320" y="220" width="325" height="90" rx="16" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.7"/>
+<text x="482" y="250" class="t" text-anchor="middle">EC2 p5-haproxy</text>
+<text x="482" y="276" class="s" text-anchor="middle">t3.micro · Ubuntu 24.04</text>
+<text x="482" y="298" class="s" text-anchor="middle">SG : HTTP 80 public · SSH /32</text>
+<rect x="320" y="335" width="325" height="90" rx="16" fill="#ecfdf5" stroke="#059669" stroke-width="1.7"/>
+<text x="482" y="365" class="t" text-anchor="middle">EC2 p5-hello-1</text>
+<text x="482" y="391" class="s" text-anchor="middle">t3.micro · Docker · nginx hello</text>
+<text x="482" y="413" class="s" text-anchor="middle">HTTP 80 uniquement depuis SG HAProxy</text>
 
-<path d="M250 185H370" class="ar"/><path d="M610 185H700V155H750" class="ar"/><path d="M610 185H700V275H750" class="ar"/>
-<text x="310" y="170" class="s" text-anchor="middle">requêtes</text><text x="676" y="170" class="s" text-anchor="middle">répartit</text>
+<rect x="730" y="165" width="385" height="285" rx="20" fill="#eff6ff" stroke="#2563eb" stroke-width="1.6"/>
+<text x="755" y="195" class="ey">SUBNET PUBLIC 2 · DEUXIÈME AZ</text>
+<rect x="765" y="278" width="315" height="100" rx="16" fill="#ecfdf5" stroke="#059669" stroke-width="1.7"/>
+<text x="922" y="309" class="t" text-anchor="middle">EC2 p5-hello-2</text>
+<text x="922" y="335" class="s" text-anchor="middle">t3.micro · Docker · nginx hello</text>
+<text x="922" y="359" class="s" text-anchor="middle">HTTP 80 uniquement depuis SG HAProxy</text>
 
-<text x="70" y="380" class="k">SCÉNARIO DE PANNE — À EXPLIQUER DE GAUCHE À DROITE</text>
-<rect x="70" y="405" width="220" height="74" rx="18" fill="#ecfdf5" stroke="#059669" stroke-width="1.5"/>
-<text x="180" y="433" class="t" text-anchor="middle">1 · Normal</text><text x="180" y="459" class="s" text-anchor="middle">2 backends disponibles</text>
-<rect x="340" y="405" width="220" height="74" rx="18" fill="#fef2f2" stroke="#dc2626" stroke-width="1.5"/>
-<text x="450" y="433" class="t" text-anchor="middle">2 · Panne</text><text x="450" y="459" class="s" text-anchor="middle">backend 1 retiré</text>
-<rect x="610" y="405" width="220" height="74" rx="18" fill="#fff7ed" stroke="#ea580c" stroke-width="1.5"/>
-<text x="720" y="433" class="t" text-anchor="middle">3 · Continuité</text><text x="720" y="459" class="s" text-anchor="middle">backend 2 continue</text>
-<rect x="880" y="405" width="250" height="74" rx="18" fill="#ecfdf5" stroke="#059669" stroke-width="1.5"/>
-<text x="1005" y="433" class="t" text-anchor="middle">4 · Réintégration</text><text x="1005" y="459" class="s" text-anchor="middle">backend 1 revient dans le pool</text>
-<path d="M290 442H330" class="ar"/><path d="M560 442H600" class="ar"/><path d="M830 442H870" class="ar"/>
+<path d="M210 161H305V265H310" class="ar"/>
+<text x="258" y="147" class="s" text-anchor="middle">requêtes</text>
+<path d="M482 310V325" class="ar"/>
+<path d="M645 265H700V328H755" class="ar"/>
+<text x="696" y="248" class="s" text-anchor="middle">round-robin via IP privées</text>
 
-<text x="1015" y="160" class="s">fall 3 = retrait</text><text x="1015" y="190" class="s">rise 2 = retour</text>
-<text x="42" y="505" class="s">À retenir : l'utilisateur parle à HAProxy ; HAProxy choisit un backend sain ; la panne d'un serveur ne coupe pas le service.</text>
+<rect x="280" y="465" width="835" height="25" rx="10" fill="#fff7ed" stroke="#fdba74"/>
+<text x="697" y="483" class="s" text-anchor="middle">HAProxy : GET / health check · inter 3s · fall 3 · rise 2</text>
+
+<text x="42" y="535" class="ey">SCÉNARIO DE VALIDATION OPENCLASSROOMS</text>
+<rect x="55" y="558" width="250" height="60" rx="15" fill="#ecfdf5" stroke="#059669"/>
+<text x="180" y="584" class="t" text-anchor="middle">1 · 2 backends UP</text><text x="180" y="606" class="s" text-anchor="middle">alternance visible</text>
+<rect x="335" y="558" width="250" height="60" rx="15" fill="#fef2f2" stroke="#dc2626"/>
+<text x="460" y="584" class="t" text-anchor="middle">2 · service 1 DOWN</text><text x="460" y="606" class="s" text-anchor="middle">HAProxy le retire</text>
+<rect x="615" y="558" width="250" height="60" rx="15" fill="#fff7ed" stroke="#ea580c"/>
+<text x="740" y="584" class="t" text-anchor="middle">3 · service maintenu</text><text x="740" y="606" class="s" text-anchor="middle">backend 2 répond</text>
+<rect x="895" y="558" width="250" height="60" rx="15" fill="#ecfdf5" stroke="#059669"/>
+<text x="1020" y="584" class="t" text-anchor="middle">4 · service 1 revient</text><text x="1020" y="606" class="s" text-anchor="middle">réintégration automatique</text>
+<path d="M305 588H325" class="ar"/><path d="M585 588H605" class="ar"/><path d="M865 588H885" class="ar"/>
 </svg>
