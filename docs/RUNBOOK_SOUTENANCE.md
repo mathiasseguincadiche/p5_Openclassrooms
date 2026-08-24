@@ -1,21 +1,12 @@
-# Runbook soutenance P5 — moins de 20 minutes
+# Runbook LIVE P5 — moins de 20 minutes
 
-> **But :** présenter l'architecture, lancer les preuves utiles, montrer le résultat dans le navigateur.
+> **But :** présenter clairement les trois exercices, montrer uniquement les preuves utiles et terminer avec une marge de sécurité.
 >
-> **Règle :** schéma → 2 phrases d'explication → commande → résultat → navigateur.
-
-## Repères pour toi
-
-```text
-POURQUOI  = ce que l'étape doit prouver
-VÉRIFIER  = ce que tu regardes dans la sortie
-DIRE      = la phrase courte à donner au jury
-NAVIGATEUR = le résultat concret à montrer
-```
-
-Ne cherche pas à commenter toute la sortie d'une commande : montre uniquement les lignes utiles indiquées dans **Vérifier**.
+> **Règle :** schéma → explication courte → preuve → navigateur.
 
 ## Avant l'oral — hors chrono
+
+### 1. Vérifier le dépôt et le lab
 
 ```bash
 cd ~/labs/p5_Openclassrooms
@@ -24,9 +15,7 @@ git pull --ff-only
 bash scripts/commands/p5.sh status
 ```
 
-**Pourquoi :** partir du bon dépôt, sur `main`, avec un lab déjà prêt.
-
-Préparer les variables :
+### 2. Préparer les variables
 
 ```bash
 export WEB_URL="$(terraform -chdir=terraform/exercice-1 output -raw web_url)"
@@ -37,9 +26,7 @@ export HAPROXY_URL="$(terraform -chdir=terraform/exercice-3 output -raw haproxy_
 export BACKEND_1_IP="$(terraform -chdir=terraform/exercice-3 output -raw hello_1_public_ip)"
 ```
 
-**Pourquoi :** éviter de rechercher les URLs et IP pendant la soutenance.
-
-Ouvrir trois onglets :
+### 3. Ouvrir les trois onglets navigateur
 
 ```text
 1. $WEB_URL       → application Angular
@@ -47,76 +34,49 @@ Ouvrir trois onglets :
 3. $HAPROXY_URL   → service derrière HAProxy
 ```
 
+Les commandes sont lancées dans WSL2 Ubuntu. Les preuves visuelles sont montrées dans le navigateur Windows.
+
+### 4. Prévalider les trois preuves principales
+
+```bash
+bash scripts/commands/verify-angular-deployment.sh --url "$WEB_URL"
+bash scripts/commands/verify-opensearch-data.sh --endpoint "$OPENSEARCH_ENDPOINT"
+bash scripts/commands/test-haproxy-roundrobin.sh --url "$HAPROXY_URL" --requests 12
+```
+
 Ne pas lancer `cleanup` avant la fin de la soutenance.
 
 ---
 
-# 0:00 → 1:00 — Présenter le projet
+# 0:00 → 0:45 — Vue d'ensemble du projet
 
 ## Afficher
 
-![Vue d'ensemble](schemas/vue-ensemble.svg)
+![Vue d'ensemble officielle](schemas/officiels/vue-ensemble.webp)
 
 ## Dire
 
-> « Le projet contient trois exercices. Le premier provisionne AWS avec Terraform puis déploie Angular avec Ansible et NGINX. Le deuxième exploite les logs NGINX dans Amazon OpenSearch. Le troisième met HAProxy devant deux backends pour démontrer la répartition de charge et la reprise après panne. »
+> « Le projet est composé de trois exercices complémentaires. Le premier construit et déploie le socle technique. Le deuxième exploite les logs produits par NGINX. Le troisième réutilise le réseau AWS pour répartir la charge et tester la continuité de service. »
 
-## À retenir
+### À retenir
 
 ```text
-Ex. 1 : construire et déployer
-Ex. 2 : observer les logs
-Ex. 3 : répartir et résister
+Exercice 1 → construire et déployer
+Exercice 2 → observer et analyser
+Exercice 3 → répartir et résister
 ```
 
 ---
 
-# 1:00 → 6:00 — Exercice 1 — Terraform + Ansible + Angular
+# 0:45 → 6:00 — Exercice 1 — Construire et déployer
 
-## 1:00 → 2:30 — Architecture
+## Architecture
 
-### Afficher
+![Schéma officiel exercice 1](schemas/officiels/exercice-1.webp)
 
-![Architecture exercice 1](schemas/exercice-1.svg)
+**À comprendre :** Terraform provisionne l'infrastructure AWS. Ansible configure la machine. NGINX sert l'application Angular. Le VPC et ses deux subnets constituent le socle réseau réutilisé ensuite par l'exercice 3.
 
-### Dire
-
-> « Terraform crée dans `us-east-1` un VPC `10.0.0.0/16`, deux subnets publics et l'EC2 `p5-web` en `t3.micro` dans le premier subnet. Ansible se connecte ensuite en SSH, installe NGINX et déploie Angular. Le deuxième subnet sera réutilisé dans l'exercice 3. »
-
-### À pointer
-
-```text
-VPC 10.0.0.0/16
-├── subnet public 1 → p5-web · t3.micro · Ubuntu 24.04
-└── subnet public 2 → réutilisé par Ex. 3
-
-HTTP 80 → NGINX → Angular
-SSH 22  → Ansible
-```
-
-**À comprendre :** Terraform crée l'infrastructure ; Ansible configure la machine ; NGINX sert l'application.
-
-## 2:30 → 3:15 — Prouver Terraform
-
-```bash
-terraform -chdir=terraform/exercice-1 output
-```
-
-### Pourquoi
-
-Montrer que Terraform connaît bien les ressources déployées et leurs valeurs utiles.
-
-### Vérifier
-
-```text
-vpc_id
-public_subnet_ids
-web_security_group_id
-web_public_ip
-web_url
-```
-
-Puis :
+## 1. Prouver la convergence Terraform
 
 ```bash
 terraform -chdir=terraform/exercice-1 plan \
@@ -124,11 +84,7 @@ terraform -chdir=terraform/exercice-1 plan \
   -detailed-exitcode
 ```
 
-### Pourquoi
-
-Vérifier que la configuration Terraform et l'infrastructure déployée sont déjà alignées.
-
-### Résultat attendu
+### À voir
 
 ```text
 No changes
@@ -136,32 +92,9 @@ No changes
 
 ### Dire
 
-> « Terraform gère bien l'infrastructure et le plan est convergé : il n'y a aucun changement à appliquer. »
+> « L'infrastructure AWS réelle correspond à la configuration Terraform : aucun changement n'est nécessaire. »
 
-## 3:15 → 4:00 — Prouver la connexion Ansible
-
-```bash
-ansible all \
-  -i ansible/inventories/hosts_aws \
-  -m ping
-```
-
-### Pourquoi
-
-Prouver que l'inventaire Ansible pointe vers la bonne EC2 et que la connexion SSH fonctionne.
-
-### Résultat attendu
-
-```text
-SUCCESS
-ping: pong
-```
-
-### Dire
-
-> « Ansible atteint correctement l'instance cible. »
-
-## 4:00 → 5:00 — Prouver le déploiement Ansible
+## 2. Prouver l'idempotence Ansible
 
 ```bash
 ansible-playbook \
@@ -169,11 +102,7 @@ ansible-playbook \
   ansible/playbooks/deploy.yml
 ```
 
-### Pourquoi
-
-Prouver que la configuration NGINX et le déploiement Angular sont automatisés et rejouables.
-
-### Résultat attendu sur un environnement déjà convergé
+### À voir
 
 ```text
 changed=0
@@ -183,242 +112,120 @@ failed=0
 
 ### Dire
 
-> « Ansible configure NGINX et déploie Angular. `changed=0` montre que la machine est déjà dans l'état attendu. »
+> « Ansible peut être rejoué sans modifier une machine déjà conforme. »
 
-## 5:00 → 6:00 — Montrer Angular
+## 3. Prouver puis montrer Angular
 
 ```bash
 bash scripts/commands/verify-angular-deployment.sh \
   --url "$WEB_URL"
 ```
 
-### Pourquoi
+### À voir
 
-Prouver techniquement que NGINX répond et sert bien l'application déployée.
+```text
+HTTP 200
+APPLICATION ANGULAR DÉPLOYÉE ET SERVIE PAR NGINX
+```
 
 ### Navigateur
-
-Ouvrir ou revenir sur :
 
 ```text
 $WEB_URL
 ```
 
-### Montrer
-
-```text
-application Angular affichée
-HTTP 200
-rafraîchissement fonctionnel
-```
+Montrer l'application Angular puis effectuer un rafraîchissement.
 
 ### Dire
 
-> « Le résultat final de l'exercice 1 est bien visible : Angular est réellement servie par NGINX sur l'EC2 AWS. »
+> « Ici on voit le résultat réel : l'application Angular est bien servie par NGINX sur l'EC2 AWS. »
 
 ### Transition
 
-> « L'application fonctionne. J'utilise maintenant ses logs HTTP dans l'exercice 2. »
+> « L'application fonctionne. J'utilise maintenant les logs produits par NGINX. »
 
 ---
 
-# 6:00 → 10:30 — Exercice 2 — Logs + Amazon OpenSearch
+# 6:00 → 10:30 — Exercice 2 — Observer et analyser
 
-## 6:00 → 7:30 — Architecture
+## Architecture
 
-### Afficher
+![Schéma officiel exercice 2](schemas/officiels/exercice-2.webp)
 
-![Architecture exercice 2](schemas/exercice-2.svg)
+**À comprendre :** le log brut est structuré, envoyé à Amazon OpenSearch, indexé et agrégé. OpenSearch Dashboards transforme ensuite ces données en visualisations lisibles.
 
-### Dire
-
-> « Le NGINX de l'exercice 1 produit `access.log`. Les logs sont parsés et envoyés à Amazon OpenSearch Service, puis OpenSearch Dashboards affiche les trois visualisations demandées. OpenSearch est ici un service AWS managé, pas une EC2 du VPC. »
-
-### À pointer
-
-```text
-access.log
-→ parsing / typage
-→ Bulk API
-→ Amazon OpenSearch
-→ OpenSearch Dashboards
-```
-
-Configuration utile :
-
-```text
-OpenSearch 2.19
-1 × t3.small.search
-EBS gp3 · 10 Gio
-HTTPS
-```
-
-**À comprendre :** NGINX produit la donnée ; le parser la structure ; OpenSearch l'indexe et l'agrège ; Dashboards la rend lisible.
-
-## 7:30 → 8:00 — Prouver OpenSearch
-
-```bash
-terraform -chdir=terraform/exercice-2 output
-```
-
-### Pourquoi
-
-Prouver que le domaine OpenSearch et ses endpoints sont bien issus du déploiement Terraform.
-
-### Vérifier
-
-```text
-opensearch_domain_name
-opensearch_endpoint
-opensearch_dashboards_endpoint
-```
-
-### Dire
-
-> « Le domaine Amazon OpenSearch est bien déployé et Terraform me fournit ses endpoints. »
-
-## 8:00 → 8:45 — Prouver les données
+## 1. Vérifier les données
 
 ```bash
 bash scripts/commands/verify-opensearch-data.sh \
   --endpoint "$OPENSEARCH_ENDPOINT"
 ```
 
-### Pourquoi
-
-Vérifier que les données nécessaires aux trois graphiques sont réellement exploitables.
-
-### Vérifier
+### À voir
 
 ```text
 documents présents
-mapping valide
-http_method agrégable
-bytes_sent sommable
-url_path agrégable
-agrégations valides
+méthodes HTTP exploitables
+tranches de 12 h exploitables
+chemins exploitables
+DONNÉES OPENSEARCH PRÊTES POUR LE DASHBOARD
 ```
 
 ### Dire
 
-> « Les logs sont correctement structurés et les agrégations nécessaires aux graphiques fonctionnent. »
+> « Les données nécessaires aux trois visualisations sont bien structurées et agrégables. »
 
-## 8:45 → 10:30 — Montrer le dashboard
-
-### Navigateur
-
-Ouvrir ou revenir sur :
+## 2. Montrer le dashboard dans le navigateur
 
 ```text
 $DASHBOARD_URL
 ```
 
-### Pourquoi
-
-Montrer le résultat visuel demandé par l'exercice, pas seulement une preuve API.
-
-### Montrer dans cet ordre
+Montrer dans cet ordre :
 
 ```text
-1. donut : méthodes HTTP
-2. histogramme : somme bytes_sent / 12 h
-3. top 5 url_path / 12 h
+1. méthodes HTTP       → répartition des requêtes
+2. octets / 12 h       → volume servi dans le temps
+3. top 5 URL / 12 h    → chemins les plus demandés
 4. dashboard complet
 ```
 
 ### Dire
 
-> « Ce sont les trois visualisations demandées par l'exercice, regroupées dans le dashboard. »
+> « Le dashboard rassemble les trois visualisations demandées à partir des logs NGINX. »
 
 ### Transition
 
-> « Je termine avec la répartition de charge et la continuité de service. »
+> « Je termine avec la répartition de charge et la réaction à la panne d'un backend. »
 
 ---
 
-# 10:30 → 17:30 — Exercice 3 — HAProxy + deux backends
+# 10:30 → 17:00 — Exercice 3 — Répartir et résister
 
-## 10:30 → 12:00 — Architecture
+## Architecture
 
-### Afficher
+![Schéma officiel exercice 3](schemas/officiels/exercice-3.webp)
 
-![Architecture exercice 3](schemas/exercice-3.svg)
+**À comprendre :** HAProxy reçoit les requêtes et choisit un backend sain. `roundrobin` alterne les requêtes ; le health check vérifie la disponibilité ; `fall 3` retire un backend après trois échecs ; `rise 2` le réintègre après deux succès.
 
-### Dire
-
-> « L'exercice 3 réutilise le VPC et les deux subnets de l'exercice 1. HAProxy et `p5-hello-1` sont dans le premier subnet ; `p5-hello-2` est dans le second. HAProxy reçoit le trafic public puis communique avec les deux backends sur leurs IP privées. »
-
-### À pointer
-
-```text
-subnet public 1
-├── p5-haproxy · t3.micro
-└── p5-hello-1 · t3.micro
-
-subnet public 2
-└── p5-hello-2 · t3.micro
-
-Internet → HAProxy:80 → IP privées des backends:80
-```
-
-**À comprendre :** le client ne choisit jamais un backend ; HAProxy reçoit la requête et sélectionne un backend sain.
-
-## 12:00 → 12:45 — Montrer la configuration HAProxy
-
-```bash
-grep -E 'bind|balance|httpchk|http-check|server hello' \
-  terraform/exercice-3/haproxy.cfg.tpl
-```
-
-### Pourquoi
-
-Montrer uniquement les directives qui expliquent le comportement observé ensuite.
-
-### À montrer
-
-```text
-bind *:80
-balance roundrobin
-option httpchk GET /
-http-check expect status 200
-fall 3
-rise 2
-```
-
-### Dire
-
-> « HAProxy répartit en round-robin, retire un backend après trois échecs de health check et le réintègre après deux succès. »
-
-## 12:45 → 14:00 — Montrer le round-robin dans le navigateur
-
-### Navigateur
-
-Ouvrir ou revenir sur :
+## 1. Montrer le round-robin dans le navigateur
 
 ```text
 $HAPROXY_URL
 ```
 
-Rafraîchir plusieurs fois.
-
-### Pourquoi
-
-Matérialiser visuellement l'alternance entre les deux services applicatifs.
-
-### Montrer
+Rafraîchir quatre à six fois et montrer :
 
 ```text
 Server name
 Server address
 ```
 
-Les valeurs doivent alterner entre les deux backends.
-
 ### Dire
 
-> « À chaque rafraîchissement, HAProxy répartit les requêtes entre les deux backends. »
+> « Les requêtes successives sont réparties entre les deux backends. »
 
-## 14:00 → 15:00 — Prouver le round-robin dans le terminal
+## 2. Confirmer le round-robin dans le terminal
 
 ```bash
 bash scripts/commands/test-haproxy-roundrobin.sh \
@@ -426,24 +233,18 @@ bash scripts/commands/test-haproxy-roundrobin.sh \
   --requests 12
 ```
 
-### Pourquoi
-
-Confirmer par plusieurs requêtes que les deux backends sont réellement utilisés.
-
-### Résultat attendu
+### À voir
 
 ```text
-p5-hello-1
-p5-hello-2
 2 backends distincts observés
 ROUND-ROBIN OPÉRATIONNEL
 ```
 
-## 15:00 → 17:00 — Prouver la panne et la reprise
+## 3. Prouver la panne et la reprise
 
 ### Dire avant de lancer
 
-> « Je vais arrêter le service sur un backend. HAProxy doit le retirer, continuer avec l'autre, puis le réintégrer après son redémarrage. »
+> « J'arrête un backend. HAProxy doit le retirer, continuer avec l'autre puis le réintégrer automatiquement après son retour. »
 
 ```bash
 bash scripts/commands/test-haproxy-failover.sh \
@@ -452,16 +253,12 @@ bash scripts/commands/test-haproxy-failover.sh \
   --apply
 ```
 
-### Pourquoi
-
-Prouver exactement le comportement attendu : détection de panne, continuité de service et réintégration automatique.
-
-### Résultat attendu
+### À voir
 
 ```text
-AVANT  : 2 backends
-PENDANT: 1 backend
-APRÈS  : 2 backends
+AVANT   : 2 backends
+PENDANT : 1 backend
+APRÈS   : 2 backends
 
 BASCULE ET RÉINTÉGRATION HAPROXY VALIDÉES
 ```
@@ -469,14 +266,12 @@ BASCULE ET RÉINTÉGRATION HAPROXY VALIDÉES
 ### À comprendre
 
 ```text
-2 → 1 = HAProxy a détecté la panne
+2 → 1 = la panne est détectée
 1     = le service reste disponible
-1 → 2 = HAProxy a détecté le retour du backend
+1 → 2 = le backend restauré est réintégré
 ```
 
-## 17:00 → 17:30 — Vérification navigateur
-
-Revenir sur :
+## 4. Vérifier le retour à l'état normal dans le navigateur
 
 ```text
 $HAPROXY_URL
@@ -486,39 +281,42 @@ Rafraîchir plusieurs fois et vérifier que les deux backends sont de nouveau se
 
 ### Dire
 
-> « Le backend restauré a bien été réintégré automatiquement dans la rotation. »
+> « Le backend restauré a été réintégré automatiquement dans la rotation. »
+
+### Limite à connaître
+
+Le lab démontre la tolérance à la panne d'un **backend**. L'instance HAProxy elle-même reste un point unique de défaillance dans cette architecture pédagogique.
 
 ---
 
-# 17:30 → 18:00 — Conclusion
+# 17:00 → 18:00 — Conclusion
 
-## Dire
-
-> « Les trois résultats sont démontrés : Terraform et Ansible déploient l'application Angular derrière NGINX, les logs sont exploitables dans Amazon OpenSearch avec les trois visualisations demandées, et HAProxy assure la répartition de charge ainsi que la reprise après panne. »
+> « Terraform et Ansible rendent le déploiement reproductible, OpenSearch rend les logs observables, et HAProxy répartit la charge tout en maintenant le service lors de la perte d'un backend. »
 
 ---
 
-# Repli rapide si un écran pose problème
+# 18:00 → 20:00 — Marge de sécurité
 
-## Angular
+Utiliser ce temps pour une question, une latence ou un imprévu.
+
+## Repli rapide
+
+### Angular
 
 ```bash
 bash scripts/commands/verify-angular-deployment.sh --url "$WEB_URL"
 ```
 
-## OpenSearch
+### OpenSearch
 
 ```bash
-bash scripts/commands/verify-opensearch-data.sh \
-  --endpoint "$OPENSEARCH_ENDPOINT"
+bash scripts/commands/verify-opensearch-data.sh --endpoint "$OPENSEARCH_ENDPOINT"
 ```
 
-## HAProxy
+### HAProxy
 
 ```bash
-bash scripts/commands/test-haproxy-roundrobin.sh \
-  --url "$HAPROXY_URL" \
-  --requests 12
+bash scripts/commands/test-haproxy-roundrobin.sh --url "$HAPROXY_URL" --requests 12
 ```
 
 ## Après la soutenance
