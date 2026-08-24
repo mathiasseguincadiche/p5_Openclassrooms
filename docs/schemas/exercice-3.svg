@@ -1,42 +1,44 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
-<title id="title">Exercice 3 — Architecture HAProxy et scénario de failover</title>
-<desc id="desc">Diagramme en deux parties. En haut, HAProxy reçoit le trafic HTTP public et le distribue en round-robin vers deux backends Docker dont le port 80 n'est autorisé que depuis le Security Group HAProxy. En bas, le scénario montre deux backends disponibles, la panne d'un backend après trois checks en échec, le service maintenu sur l'autre backend, puis la réintégration après deux checks réussis.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
+<title id="title">Exercice 3 — HAProxy, répartition et reprise</title>
+<desc id="desc">Schéma pédagogique de l'exercice 3. Le client passe par HAProxy, qui répartit les requêtes entre deux backends. En cas de panne d'un backend, HAProxy le retire, continue avec l'autre, puis le réintègre après son retour.</desc>
 <defs>
   <marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
-  <style>text{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}.ey{font-size:12px;font-weight:800;letter-spacing:1px;fill:#475569}.h{font-size:23px;font-weight:760;fill:#0f172a}.t{font-size:16px;font-weight:760;fill:#0f172a}.s{font-size:13px;font-weight:560;fill:#334155}.ar{fill:none;stroke:#475569;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#a)}</style>
+  <style>text{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}.k{font-size:12px;font-weight:800;letter-spacing:1px;fill:#64748b}.h{font-size:25px;font-weight:760;fill:#0f172a}.t{font-size:18px;font-weight:760;fill:#0f172a}.s{font-size:14px;font-weight:560;fill:#334155}.ar{fill:none;stroke:#475569;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#a)}</style>
 </defs>
-<rect width="1200" height="620" rx="24" fill="#f8fafc"/>
-<text x="42" y="42" class="ey">EXERCICE 3 · LOAD BALANCING ET RÉSILIENCE</text>
-<text x="42" y="76" class="h">HAProxy répartit le trafic, retire un backend défaillant, puis le réintègre.</text>
+<rect width="1200" height="520" rx="24" fill="#f8fafc"/>
+<text x="42" y="43" class="k">EXERCICE 3 · LOAD BALANCING ET RÉSILIENCE</text>
+<text x="42" y="79" class="h">HAProxy répartit la charge et maintient le service pendant une panne</text>
 
-<rect x="42" y="110" width="1116" height="250" rx="20" fill="#fff" stroke="#cbd5e1" stroke-width="1.5"/>
-<text x="64" y="140" class="ey">TOPOLOGIE · VPC ET SUBNETS RÉUTILISÉS DE L'EXERCICE 1</text>
-<rect x="80" y="174" width="170" height="76" rx="14" fill="#f1f5f9" stroke="#64748b" stroke-width="1.5"/>
-<text x="165" y="203" class="t" text-anchor="middle">Internet</text><text x="165" y="228" class="s" text-anchor="middle">HTTP :80</text>
-<rect x="330" y="160" width="250" height="106" rx="16" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.7"/>
-<text x="455" y="190" class="t" text-anchor="middle">EC2 HAProxy · t3.micro</text>
-<text x="455" y="216" class="s" text-anchor="middle">round-robin · GET / health check</text>
-<text x="455" y="240" class="s" text-anchor="middle">inter 3s · fall 3 · rise 2</text>
-<path d="M250 212H320" class="ar"/>
+<rect x="80" y="135" width="170" height="100" rx="20" fill="#f1f5f9" stroke="#64748b" stroke-width="1.6"/>
+<text x="165" y="178" class="t" text-anchor="middle">Client</text>
+<text x="165" y="207" class="s" text-anchor="middle">HTTP :80</text>
 
-<rect x="690" y="148" width="220" height="92" rx="16" fill="#ecfdf5" stroke="#047857" stroke-width="1.6"/>
-<text x="800" y="178" class="t" text-anchor="middle">Backend 1 · t3.micro</text><text x="800" y="204" class="s" text-anchor="middle">Docker · p5-hello-1</text><text x="800" y="226" class="s" text-anchor="middle">HTTP :80 depuis SG HAProxy</text>
-<rect x="690" y="254" width="220" height="92" rx="16" fill="#ecfdf5" stroke="#047857" stroke-width="1.6"/>
-<text x="800" y="284" class="t" text-anchor="middle">Backend 2 · t3.micro</text><text x="800" y="310" class="s" text-anchor="middle">Docker · p5-hello-2</text><text x="800" y="332" class="s" text-anchor="middle">HTTP :80 depuis SG HAProxy</text>
-<path d="M580 212H640V194H680" class="ar"/><path d="M580 212H640V300H680" class="ar"/>
+<rect x="380" y="125" width="230" height="120" rx="20" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.8"/>
+<text x="495" y="164" class="t" text-anchor="middle">HAProxy</text>
+<text x="495" y="194" class="s" text-anchor="middle">round-robin</text>
+<text x="495" y="219" class="s" text-anchor="middle">health checks HTTP</text>
 
-<rect x="960" y="174" width="165" height="96" rx="14" fill="#fff7ed" stroke="#c2410c" stroke-width="1.5"/>
-<text x="1042" y="202" class="ey" text-anchor="middle">SÉCURITÉ</text><text x="1042" y="228" class="s" text-anchor="middle">client → HAProxy</text><text x="1042" y="250" class="s" text-anchor="middle">HAProxy → backends</text>
+<rect x="760" y="105" width="220" height="100" rx="20" fill="#ecfdf5" stroke="#059669" stroke-width="1.8"/>
+<text x="870" y="146" class="t" text-anchor="middle">Backend 1</text>
+<text x="870" y="176" class="s" text-anchor="middle">EC2 + Docker + hello</text>
+<rect x="760" y="225" width="220" height="100" rx="20" fill="#ecfdf5" stroke="#059669" stroke-width="1.8"/>
+<text x="870" y="266" class="t" text-anchor="middle">Backend 2</text>
+<text x="870" y="296" class="s" text-anchor="middle">EC2 + Docker + hello</text>
 
-<text x="42" y="405" class="ey">SCÉNARIO DYNAMIQUE · FAILOVER 2 → 1 → 2</text>
-<rect x="50" y="430" width="245" height="116" rx="16" fill="#ecfdf5" stroke="#047857" stroke-width="1.5"/>
-<text x="172" y="458" class="ey" text-anchor="middle">1 · ÉTAT NORMAL</text><text x="172" y="486" class="t" text-anchor="middle">2 backends UP</text><text x="172" y="512" class="s" text-anchor="middle">round-robin observable</text>
-<rect x="335" y="430" width="245" height="116" rx="16" fill="#fef2f2" stroke="#b91c1c" stroke-width="1.5"/>
-<text x="457" y="458" class="ey" text-anchor="middle">2 · PANNE</text><text x="457" y="486" class="t" text-anchor="middle">3 checks KO → DOWN</text><text x="457" y="512" class="s" text-anchor="middle">backend 1 retiré</text>
-<rect x="620" y="430" width="245" height="116" rx="16" fill="#fff7ed" stroke="#c2410c" stroke-width="1.5"/>
-<text x="742" y="458" class="ey" text-anchor="middle">3 · SERVICE MAINTENU</text><text x="742" y="486" class="t" text-anchor="middle">1 backend UP</text><text x="742" y="512" class="s" text-anchor="middle">HTTP reste disponible</text>
-<rect x="905" y="430" width="245" height="116" rx="16" fill="#ecfdf5" stroke="#047857" stroke-width="1.5"/>
-<text x="1027" y="458" class="ey" text-anchor="middle">4 · REPRISE</text><text x="1027" y="486" class="t" text-anchor="middle">2 checks OK → UP</text><text x="1027" y="512" class="s" text-anchor="middle">backend réintégré</text>
-<path d="M295 488H325" class="ar"/><path d="M580 488H610" class="ar"/><path d="M865 488H895" class="ar"/>
-<text x="42" y="588" class="s">Preuve attendue : navigateur = alternance visible · terminal = deux backends avant, un pendant la panne, deux après restauration.</text>
+<path d="M250 185H370" class="ar"/><path d="M610 185H700V155H750" class="ar"/><path d="M610 185H700V275H750" class="ar"/>
+<text x="310" y="170" class="s" text-anchor="middle">requêtes</text><text x="676" y="170" class="s" text-anchor="middle">répartit</text>
+
+<text x="70" y="380" class="k">SCÉNARIO DE PANNE — À EXPLIQUER DE GAUCHE À DROITE</text>
+<rect x="70" y="405" width="220" height="74" rx="18" fill="#ecfdf5" stroke="#059669" stroke-width="1.5"/>
+<text x="180" y="433" class="t" text-anchor="middle">1 · Normal</text><text x="180" y="459" class="s" text-anchor="middle">2 backends disponibles</text>
+<rect x="340" y="405" width="220" height="74" rx="18" fill="#fef2f2" stroke="#dc2626" stroke-width="1.5"/>
+<text x="450" y="433" class="t" text-anchor="middle">2 · Panne</text><text x="450" y="459" class="s" text-anchor="middle">backend 1 retiré</text>
+<rect x="610" y="405" width="220" height="74" rx="18" fill="#fff7ed" stroke="#ea580c" stroke-width="1.5"/>
+<text x="720" y="433" class="t" text-anchor="middle">3 · Continuité</text><text x="720" y="459" class="s" text-anchor="middle">backend 2 continue</text>
+<rect x="880" y="405" width="250" height="74" rx="18" fill="#ecfdf5" stroke="#059669" stroke-width="1.5"/>
+<text x="1005" y="433" class="t" text-anchor="middle">4 · Réintégration</text><text x="1005" y="459" class="s" text-anchor="middle">backend 1 revient dans le pool</text>
+<path d="M290 442H330" class="ar"/><path d="M560 442H600" class="ar"/><path d="M830 442H870" class="ar"/>
+
+<text x="1015" y="160" class="s">fall 3 = retrait</text><text x="1015" y="190" class="s">rise 2 = retour</text>
+<text x="42" y="505" class="s">À retenir : l'utilisateur parle à HAProxy ; HAProxy choisit un backend sain ; la panne d'un serveur ne coupe pas le service.</text>
 </svg>
