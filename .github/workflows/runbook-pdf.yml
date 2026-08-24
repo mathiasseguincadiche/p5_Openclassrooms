@@ -1,0 +1,59 @@
+name: Runbook PDF
+
+on:
+  push:
+    paths:
+      - 'docs/RUNBOOK_SOUTENANCE.md'
+      - 'docs/schemas/officiels/*.svg'
+      - 'scripts/tools/build-runbook-pdf.sh'
+      - '.github/workflows/runbook-pdf.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: runbook-pdf-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-commit:
+    name: Générer et synchroniser le PDF
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+
+      - name: Installer la chaîne PDF
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pandoc \
+            texlive-xetex \
+            librsvg2-bin \
+            fonts-dejavu-core \
+            poppler-utils
+
+      - name: Générer le runbook PDF
+        run: bash scripts/tools/build-runbook-pdf.sh
+
+      - name: Vérifier le PDF produit
+        run: |
+          test -s docs/RUNBOOK_SOUTENANCE.pdf
+          pdfinfo docs/RUNBOOK_SOUTENANCE.pdf | grep -q '^Pages:'
+          pdfinfo docs/RUNBOOK_SOUTENANCE.pdf | grep -q 'Page size:.*A4'
+
+      - name: Synchroniser le PDF versionné
+        run: |
+          if git diff --quiet -- docs/RUNBOOK_SOUTENANCE.pdf; then
+            echo 'Le PDF versionné est déjà synchronisé.'
+            exit 0
+          fi
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/RUNBOOK_SOUTENANCE.pdf
+          git commit -m 'docs: régénérer le PDF du runbook LIVE'
+          git push origin "HEAD:${GITHUB_REF_NAME}"
