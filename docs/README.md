@@ -4,7 +4,7 @@ Ce dossier est le **portail documentaire de référence** du projet P5 OpenClass
 
 La documentation est organisée par intention : **comprendre**, **démontrer**, **exécuter**, **diagnostiquer**, **prouver** et **maintenir**. Chaque document garde une fonction claire afin d'éviter un manuel monolithique impossible à utiliser sous pression.
 
-![Architecture globale du P5](schemas/vue-ensemble.svg)
+![Architecture globale officielle du P5](schemas/officiels/vue-ensemble.webp)
 
 ## Le projet en une lecture
 
@@ -31,17 +31,16 @@ RÉPARTIR ET RÉSISTER
 
 | Je veux… | Document | Fonction |
 | --- | --- | --- |
-| préparer et dérouler la soutenance | [`RUNBOOK_SOUTENANCE.md`](RUNBOOK_SOUTENANCE.md) | **conducteur court (<20 min)** : architecture, commandes, résultats et navigateur |
-| préparer la soutenance en profondeur | [`soutenance/RUNBOOK_MENTOR_COMPLET_DETAILLE.md`](soutenance/RUNBOOK_MENTOR_COMPLET_DETAILLE.md) | **runbook mentor détaillé** : explications, schémas, preuves, questions probables et limites |
-| ouvrir les runbooks détaillés par exercice | [`soutenance/README.md`](soutenance/README.md) | portail Ex. 1, Ex. 2, Ex. 3 et schémas détaillés |
+| préparer et dérouler la soutenance | [`RUNBOOK_SOUTENANCE.md`](RUNBOOK_SOUTENANCE.md) | **conducteur LIVE (<20 min)** : schémas officiels, commandes, résultats et navigateur |
+| préparer la soutenance en profondeur | [`soutenance/RUNBOOK_MENTOR_COMPLET_DETAILLE.md`](soutenance/RUNBOOK_MENTOR_COMPLET_DETAILLE.md) | **runbook mentor détaillé** : explications, preuves, questions probables et limites |
+| ouvrir les runbooks détaillés par exercice | [`soutenance/README.md`](soutenance/README.md) | portail Ex. 1, Ex. 2 et Ex. 3 |
 | comprendre l'architecture en profondeur | [`architecture-et-flux.md`](architecture-et-flux.md) | référence technique des ressources, flux et dépendances |
 | découvrir le P5 progressivement | [`01-parcours-debutant.md`](01-parcours-debutant.md) | guide pédagogique |
 | exécuter le projet de A à Z | [`RUNBOOK_EXECUTION_GUIDEE.md`](RUNBOOK_EXECUTION_GUIDEE.md) | procédure opératoire complète |
 | reprendre après une interruption | [`convergence-et-reexecution.md`](convergence-et-reexecution.md) | state, delta, convergence et idempotence |
 | comprendre une commande `p5.sh` | [`CENTRE_DE_COMMANDE.md`](CENTRE_DE_COMMANDE.md) | référence CLI |
 | résoudre un incident | [`troubleshooting.md`](troubleshooting.md) | diagnostic par couche |
-| comprendre un terme | [`GLOSSAIRE.md`](GLOSSAIRE.md) | vocabulaire contextualisé |
-| comprendre les schémas | [`schemas/README.md`](schemas/README.md) | langage visuel et conventions |
+| comprendre les schémas | [`schemas/README.md`](schemas/README.md) | schémas officiels de soutenance et références techniques |
 | préparer les preuves | [`livrables/README.md`](livrables/README.md) | preuves techniques et livrables |
 | vérifier la cohérence doc/code | [`MATRICE_TRACABILITE.md`](MATRICE_TRACABILITE.md) | source de vérité et maintenance |
 
@@ -50,14 +49,14 @@ RÉPARTIR ET RÉSISTER
 ```text
 1. soutenance/RUNBOOK_MENTOR_COMPLET_DETAILLE.md  → préparer et comprendre
         ↓
-2. RUNBOOK_SOUTENANCE.md                         → conducteur live <20 min
+2. RUNBOOK_SOUTENANCE.md                         → conducteur LIVE <20 min
         ↓
-3. schémas détaillés ou vue-ensemble.svg         → support visuel
+3. schemas/officiels/                            → supports visuels officiels
         ↓
-4. GLOSSAIRE.md si une notion doit être révisée
+4. GLOSSAIRE.md                                  → réviser une notion si nécessaire
 ```
 
-Le runbook détaillé sert à **apprendre et préparer**. `RUNBOOK_SOUTENANCE.md` reste le **conducteur live** à utiliser sous contrainte de temps.
+Le runbook détaillé sert à **apprendre et préparer**. `RUNBOOK_SOUTENANCE.md` reste le **conducteur LIVE** à utiliser sous contrainte de temps.
 
 ## Parcours recommandé pour comprendre le projet
 
@@ -129,16 +128,16 @@ comment reprendre si cela échoue ?
 
 ## Parcours visuel officiel
 
+Les quatre schémas ci-dessous sont les **supports officiels de soutenance** :
+
 | Vue | Schéma | À comprendre |
 | --- | --- | --- |
-| projet | [`vue-ensemble.svg`](schemas/vue-ensemble.svg) | Ex1 construit, Ex2 observe, Ex3 résiste |
-| préparation | [`etape-0.svg`](schemas/etape-0.svg) | qualifier le lab avant Terraform |
-| Ex. 1 | [`exercice-1.svg`](schemas/exercice-1.svg) | Terraform crée ; Ansible configure ; NGINX sert Angular |
-| Ex. 2 | [`exercice-2.svg`](schemas/exercice-2.svg) | log → parser → Bulk API → OpenSearch → dashboard |
-| Ex. 3 | [`exercice-3.svg`](schemas/exercice-3.svg) | topologie HAProxy + failover dynamique |
-| fermeture | [`finalisation.svg`](schemas/finalisation/finalisation.svg) | preuves → destroy `3 → 2 → 1` → audit |
+| projet | [`vue-ensemble.webp`](schemas/officiels/vue-ensemble.webp) | Ex. 1 construit le socle ; Ex. 2 exploite les logs ; Ex. 3 réutilise le réseau pour la haute disponibilité |
+| Ex. 1 | [`exercice-1.webp`](schemas/officiels/exercice-1.webp) | VPC, subnets, EC2 et rôle de Terraform, Ansible, NGINX et Angular |
+| Ex. 2 | [`exercice-2.webp`](schemas/officiels/exercice-2.webp) | `access.log → parsing → Bulk API → OpenSearch → Dashboards` |
+| Ex. 3 | [`exercice-3.webp`](schemas/officiels/exercice-3.webp) | HAProxy, deux backends, round-robin et failover `2 → 1 → 2` |
 
-Les conventions graphiques sont documentées dans [`schemas/README.md`](schemas/README.md). Les schémas de préparation à l'oral sont regroupés sous [`schemas/soutenance/`](schemas/soutenance/).
+Les schémas [`etape-0.svg`](schemas/etape-0.svg), [`finalisation.svg`](schemas/finalisation/finalisation.svg) et les anciens SVG d'architecture restent des **références techniques complémentaires**. Les conventions sont documentées dans [`schemas/README.md`](schemas/README.md).
 
 ## Guides techniques par exercice
 
