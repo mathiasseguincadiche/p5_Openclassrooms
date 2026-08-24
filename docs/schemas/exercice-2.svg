@@ -1,28 +1,44 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="390" viewBox="0 0 1200 390" role="img" aria-labelledby="title desc">
-<title id="title">Exercice 2 — Deux sources de logs vers Amazon OpenSearch</title>
-<desc id="desc">Le sample versionné et le vrai access.log NGINX de l'exercice 1 convergent vers le convertisseur P5, puis la Bulk API, Amazon OpenSearch et OpenSearch Dashboards. La validation visuelle du dashboard reste un checkpoint humain.</desc>
-<defs><marker id="a" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#64748b"/></marker></defs>
-<style>text{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}.h{font-size:22px;font-weight:750;fill:#0f172a}.k{font-size:12px;font-weight:800;letter-spacing:1px;fill:#64748b}.t{font-size:16px;font-weight:750;fill:#0f172a}.s{font-size:13px;font-weight:550;fill:#334155}.ar{fill:none;stroke:#64748b;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#a)}</style>
-<rect width="1200" height="390" rx="22" fill="#f8fafc"/>
-<text x="42" y="45" class="k">EXERCICE 2 · OBSERVABILITÉ</text><text x="42" y="76" class="h">Transformer des logs reproductibles et réels en preuves exploitables.</text>
-<rect x="42" y="112" width="210" height="70" rx="14" fill="#fff" stroke="#94a3b8" stroke-width="1.5"/>
-<text x="62" y="139" class="k">SOURCE REPRODUCTIBLE</text><text x="62" y="165" class="t">sample versionné</text>
-<rect x="42" y="204" width="210" height="70" rx="14" fill="#eff6ff" stroke="#2563eb" stroke-width="1.6"/>
-<text x="62" y="231" class="k">SOURCE RÉELLE · EX1</text><text x="62" y="257" class="t">access.log NGINX</text>
-<rect x="310" y="148" width="208" height="92" rx="16" fill="#eff6ff" stroke="#2563eb" stroke-width="1.7"/>
-<text x="332" y="177" class="k">CONVERSION</text><text x="332" y="205" class="t">convert-nginx-logs.py</text><text x="332" y="226" class="s">NDJSON Bulk typé</text>
-<path d="M252 147H280V184H300" class="ar"/><path d="M252 239H280V204H300" class="ar"/>
-<rect x="566" y="148" width="180" height="92" rx="16" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.7"/>
-<text x="588" y="177" class="k">IMPORT</text><text x="588" y="205" class="t">Bulk API</text><text x="588" y="226" class="s">mapping strict · --apply</text>
-<path d="M518 194H556" class="ar"/>
-<rect x="794" y="148" width="176" height="92" rx="16" fill="#fff" stroke="#7c3aed" stroke-width="1.7"/>
-<text x="816" y="177" class="k">INDEX</text><text x="816" y="205" class="t">OpenSearch 2.19</text><text x="816" y="226" class="s">nginx-access-*</text>
-<path d="M746 194H784" class="ar"/>
-<rect x="1012" y="132" width="146" height="124" rx="16" fill="#ecfdf5" stroke="#059669" stroke-width="1.7"/>
-<text x="1032" y="160" class="k">CHECKPOINT HUMAIN</text><text x="1032" y="188" class="t">Dashboards</text><text x="1032" y="214" class="s">Discover</text><text x="1032" y="236" class="s">3 vues + dashboard</text>
-<path d="M970 194H1002" class="ar"/>
-<text x="42" y="315" class="k">PREUVES VISUELLES</text>
-<rect x="42" y="330" width="342" height="42" rx="12" fill="#fff" stroke="#cbd5e1"/><text x="213" y="356" class="s" text-anchor="middle">donut · méthodes HTTP</text>
-<rect x="405" y="330" width="342" height="42" rx="12" fill="#fff" stroke="#cbd5e1"/><text x="576" y="356" class="s" text-anchor="middle">somme bytes_sent · 12 h</text>
-<rect x="768" y="330" width="390" height="42" rx="12" fill="#fff" stroke="#cbd5e1"/><text x="963" y="356" class="s" text-anchor="middle">top 5 url_path · 12 h + dashboard complet</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
+<title id="title">Exercice 2 — Du log NGINX au dashboard OpenSearch</title>
+<desc id="desc">Flux de données de l'exercice 2. Le sample versionné et le vrai access.log NGINX sont transformés en documents NDJSON typés, importés via la Bulk API dans Amazon OpenSearch 2.19, vérifiés par mappings et agrégations, puis présentés dans OpenSearch Dashboards avec trois visualisations.</desc>
+<defs>
+  <marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+  <style>text{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}.ey{font-size:12px;font-weight:800;letter-spacing:1px;fill:#475569}.h{font-size:23px;font-weight:760;fill:#0f172a}.t{font-size:16px;font-weight:760;fill:#0f172a}.s{font-size:13px;font-weight:560;fill:#334155}.ar{fill:none;stroke:#475569;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#a)}</style>
+</defs>
+<rect width="1200" height="560" rx="24" fill="#f8fafc"/>
+<text x="42" y="42" class="ey">EXERCICE 2 · LOGS ET OBSERVABILITÉ</text>
+<text x="42" y="76" class="h">Une requête HTTP devient un document structuré, puis un indicateur visuel.</text>
+
+<rect x="42" y="120" width="220" height="92" rx="16" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1.6"/>
+<text x="62" y="149" class="ey">SOURCE RÉELLE</text><text x="62" y="178" class="t">access.log NGINX</text><text x="62" y="199" class="s">produit par l'exercice 1</text>
+<rect x="42" y="238" width="220" height="72" rx="16" fill="#fff" stroke="#94a3b8" stroke-width="1.5"/>
+<text x="62" y="267" class="ey">SOURCE REPRODUCTIBLE</text><text x="62" y="294" class="t">sample versionné</text>
+
+<rect x="310" y="164" width="210" height="108" rx="16" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.6"/>
+<text x="332" y="194" class="ey">TRANSFORMATION</text><text x="332" y="222" class="t">Parser NGINX</text><text x="332" y="247" class="s">texte → NDJSON typé</text>
+<path d="M262 166H288V204H300" class="ar"/><path d="M262 274H288V232H300" class="ar"/>
+
+<rect x="570" y="164" width="190" height="108" rx="16" fill="#fff7ed" stroke="#c2410c" stroke-width="1.6"/>
+<text x="592" y="194" class="ey">IMPORT</text><text x="592" y="222" class="t">Bulk API</text><text x="592" y="247" class="s">mapping + index nginx-access-*</text>
+<path d="M520 218H560" class="ar"/>
+
+<rect x="810" y="132" width="320" height="172" rx="18" fill="#fff" stroke="#c2410c" stroke-width="1.7"/>
+<text x="832" y="162" class="ey">AMAZON OPENSEARCH SERVICE</text>
+<text x="832" y="193" class="t">OpenSearch 2.19 · 1 × t3.small.search</text>
+<text x="832" y="220" class="s">EBS gp3 10 Gio · HTTPS · TLS 1.2+</text>
+<text x="832" y="244" class="s">chiffrement au repos + inter-nœuds</text>
+<text x="832" y="268" class="s">accès limité à l'IP d'administration /32</text>
+<path d="M760 218H800" class="ar"/>
+
+<rect x="140" y="360" width="920" height="132" rx="20" fill="#ecfdf5" stroke="#047857" stroke-width="1.6"/>
+<text x="166" y="389" class="ey">OPENSEARCH DASHBOARDS · DASHBOARD AS CODE + CONTRÔLE VISUEL</text>
+<rect x="176" y="410" width="245" height="58" rx="13" fill="#fff" stroke="#34d399"/>
+<text x="298" y="435" class="t" text-anchor="middle">Donut méthodes HTTP</text><text x="298" y="457" class="s" text-anchor="middle">http_method</text>
+<rect x="477" y="410" width="245" height="58" rx="13" fill="#fff" stroke="#34d399"/>
+<text x="599" y="435" class="t" text-anchor="middle">Octets envoyés / 12 h</text><text x="599" y="457" class="s" text-anchor="middle">Sum(bytes_sent)</text>
+<rect x="778" y="410" width="245" height="58" rx="13" fill="#fff" stroke="#34d399"/>
+<text x="900" y="435" class="t" text-anchor="middle">Top 5 URL / 12 h</text><text x="900" y="457" class="s" text-anchor="middle">url_path</text>
+<path d="M970 304V350" class="ar"/>
+
+<text x="42" y="530" class="s">Lecture : données réelles pour la preuve · sample pour la reproductibilité · API pour l'automatisation · navigateur pour valider le rendu final.</text>
 </svg>
