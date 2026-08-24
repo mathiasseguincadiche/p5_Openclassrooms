@@ -31,7 +31,9 @@ RÉPARTIR ET RÉSISTER
 
 | Je veux… | Document | Fonction |
 | --- | --- | --- |
-| préparer et dérouler la soutenance | [`RUNBOOK_SOUTENANCE.md`](RUNBOOK_SOUTENANCE.md) | **handbook de démonstration** : architecture, explications, terminal, navigateur, questions jury |
+| préparer et dérouler la soutenance | [`RUNBOOK_SOUTENANCE.md`](RUNBOOK_SOUTENANCE.md) | **conducteur court (<20 min)** : architecture, commandes, résultats et navigateur |
+| préparer la soutenance en profondeur | [`soutenance/RUNBOOK_MENTOR_COMPLET_DETAILLE.md`](soutenance/RUNBOOK_MENTOR_COMPLET_DETAILLE.md) | **runbook mentor détaillé** : explications, schémas, preuves, questions probables et limites |
+| ouvrir les runbooks détaillés par exercice | [`soutenance/README.md`](soutenance/README.md) | portail Ex. 1, Ex. 2, Ex. 3 et schémas détaillés |
 | comprendre l'architecture en profondeur | [`architecture-et-flux.md`](architecture-et-flux.md) | référence technique des ressources, flux et dépendances |
 | découvrir le P5 progressivement | [`01-parcours-debutant.md`](01-parcours-debutant.md) | guide pédagogique |
 | exécuter le projet de A à Z | [`RUNBOOK_EXECUTION_GUIDEE.md`](RUNBOOK_EXECUTION_GUIDEE.md) | procédure opératoire complète |
@@ -46,20 +48,16 @@ RÉPARTIR ET RÉSISTER
 ## Parcours recommandé pour la soutenance
 
 ```text
-1. RUNBOOK_SOUTENANCE.md
+1. soutenance/RUNBOOK_MENTOR_COMPLET_DETAILLE.md  → préparer et comprendre
         ↓
-2. vue-ensemble.svg
+2. RUNBOOK_SOUTENANCE.md                         → conducteur live <20 min
         ↓
-3. exercice-1.svg
+3. schémas détaillés ou vue-ensemble.svg         → support visuel
         ↓
-4. exercice-2.svg
-        ↓
-5. exercice-3.svg
-        ↓
-6. GLOSSAIRE.md si une notion doit être révisée
+4. GLOSSAIRE.md si une notion doit être révisée
 ```
 
-Le handbook est le **conducteur live**. Les autres documents servent de référence lorsque l'évaluateur demande davantage de profondeur.
+Le runbook détaillé sert à **apprendre et préparer**. `RUNBOOK_SOUTENANCE.md` reste le **conducteur live** à utiliser sous contrainte de temps.
 
 ## Parcours recommandé pour comprendre le projet
 
@@ -103,6 +101,8 @@ quel résultat le jury doit voir ?
 comment j'enchaîne ?
 ```
 
+Pour réviser chaque point avec davantage de contexte avant la session, utiliser [`soutenance/RUNBOOK_MENTOR_COMPLET_DETAILLE.md`](soutenance/RUNBOOK_MENTOR_COMPLET_DETAILLE.md) ou les trois runbooks spécialisés du dossier [`soutenance/`](soutenance/README.md).
+
 ### 2. Architecture — comprendre le système
 
 [`architecture-et-flux.md`](architecture-et-flux.md) répond à :
@@ -138,7 +138,7 @@ comment reprendre si cela échoue ?
 | Ex. 3 | [`exercice-3.svg`](schemas/exercice-3.svg) | topologie HAProxy + failover dynamique |
 | fermeture | [`finalisation.svg`](schemas/finalisation/finalisation.svg) | preuves → destroy `3 → 2 → 1` → audit |
 
-Les conventions graphiques sont documentées dans [`schemas/README.md`](schemas/README.md).
+Les conventions graphiques sont documentées dans [`schemas/README.md`](schemas/README.md). Les schémas de préparation à l'oral sont regroupés sous [`schemas/soutenance/`](schemas/soutenance/).
 
 ## Guides techniques par exercice
 
