@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Génère le PDF versionné depuis le runbook Markdown canonique et les SVG officiels.
+# Le Markdown source n'est jamais modifié : les adaptations PDF restent temporaires.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
