@@ -1,52 +1,47 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
-<title id="title">Exercice 1 — Déploiement AWS de Terraform à Angular</title>
-<desc id="desc">Diagramme de déploiement de l'exercice 1. Terraform crée dans AWS un VPC, deux subnets publics, une Internet Gateway, le routage, un Security Group et une EC2 t3.micro Ubuntu 24.04. Ansible se connecte en SSH à l'EC2, installe NGINX et déploie Angular. Les utilisateurs accèdent en HTTP et NGINX produit access.log.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="500" viewBox="0 0 1200 500" role="img" aria-labelledby="title desc">
+<title id="title">Exercice 1 — De Terraform à Angular</title>
+<desc id="desc">Schéma pédagogique de l'exercice 1. Terraform crée l'infrastructure AWS, Ansible configure l'EC2, NGINX sert Angular et produit le log utilisé ensuite par l'exercice 2.</desc>
 <defs>
   <marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
-  <style>text{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}.ey{font-size:12px;font-weight:800;letter-spacing:1px;fill:#475569}.h{font-size:23px;font-weight:760;fill:#0f172a}.t{font-size:16px;font-weight:760;fill:#0f172a}.s{font-size:13px;font-weight:560;fill:#334155}.ar{fill:none;stroke:#475569;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#a)}.admin{stroke-dasharray:7 6}</style>
+  <style>text{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}.k{font-size:12px;font-weight:800;letter-spacing:1px;fill:#64748b}.h{font-size:25px;font-weight:760;fill:#0f172a}.t{font-size:18px;font-weight:760;fill:#0f172a}.s{font-size:14px;font-weight:560;fill:#334155}.ar{fill:none;stroke:#475569;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#a)}</style>
 </defs>
-<rect width="1200" height="620" rx="24" fill="#f8fafc"/>
-<text x="42" y="42" class="ey">EXERCICE 1 · INFRASTRUCTURE ET DÉPLOIEMENT</text>
-<text x="42" y="76" class="h">Terraform crée la cible AWS ; Ansible la configure ; NGINX sert Angular.</text>
+<rect width="1200" height="500" rx="24" fill="#f8fafc"/>
+<text x="42" y="43" class="k">EXERCICE 1 · INFRASTRUCTURE ET DÉPLOIEMENT</text>
+<text x="42" y="79" class="h">Terraform crée → Ansible configure → NGINX sert Angular</text>
 
-<rect x="40" y="110" width="1120" height="408" rx="22" fill="#fff" stroke="#cbd5e1" stroke-width="1.5"/>
-<text x="64" y="140" class="ey">AWS · us-east-1</text>
-<rect x="70" y="160" width="1060" height="330" rx="20" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1.6"/>
-<text x="94" y="190" class="ey">VPC 10.0.0.0/16</text>
+<rect x="55" y="145" width="185" height="120" rx="20" fill="#eff6ff" stroke="#2563eb" stroke-width="1.8"/>
+<text x="147" y="184" class="t" text-anchor="middle">Terraform</text>
+<text x="147" y="214" class="s" text-anchor="middle">décrit et crée</text>
+<text x="147" y="239" class="s" text-anchor="middle">l'infrastructure</text>
 
-<rect x="100" y="215" width="285" height="205" rx="16" fill="#fff" stroke="#60a5fa" stroke-width="1.5"/>
-<text x="122" y="244" class="ey">SUBNET PUBLIC 1 · AZ A</text>
-<rect x="130" y="270" width="225" height="118" rx="14" fill="#ecfdf5" stroke="#047857" stroke-width="1.6"/>
-<text x="242" y="300" class="t" text-anchor="middle">EC2 p5-web</text>
-<text x="242" y="326" class="s" text-anchor="middle">t3.micro · Ubuntu 24.04</text>
-<text x="242" y="349" class="s" text-anchor="middle">EBS gp3 chiffré · IMDSv2</text>
-<text x="242" y="372" class="s" text-anchor="middle">NGINX → Angular</text>
+<rect x="285" y="145" width="215" height="120" rx="20" fill="#eff6ff" stroke="#2563eb" stroke-width="1.8"/>
+<text x="392" y="184" class="t" text-anchor="middle">AWS</text>
+<text x="392" y="214" class="s" text-anchor="middle">VPC + EC2 t3.micro</text>
+<text x="392" y="239" class="s" text-anchor="middle">Ubuntu 24.04</text>
 
-<rect x="420" y="215" width="235" height="205" rx="16" fill="#fff" stroke="#60a5fa" stroke-width="1.5"/>
-<text x="442" y="244" class="ey">SUBNET PUBLIC 2 · AZ B</text>
-<text x="537" y="302" class="s" text-anchor="middle">réseau disponible</text>
-<text x="537" y="328" class="s" text-anchor="middle">pour les besoins</text>
-<text x="537" y="354" class="s" text-anchor="middle">du lab et de l'exercice 3</text>
+<rect x="545" y="145" width="185" height="120" rx="20" fill="#fff7ed" stroke="#ea580c" stroke-width="1.8"/>
+<text x="637" y="184" class="t" text-anchor="middle">Ansible</text>
+<text x="637" y="214" class="s" text-anchor="middle">configure l'EC2</text>
+<text x="637" y="239" class="s" text-anchor="middle">et déploie</text>
 
-<rect x="700" y="215" width="390" height="205" rx="16" fill="#fff7ed" stroke="#c2410c" stroke-width="1.5"/>
-<text x="722" y="244" class="ey">ACCÈS ET RÉSEAU</text>
-<text x="722" y="278" class="t">Internet Gateway + route 0.0.0.0/0</text>
-<text x="722" y="310" class="s">Security Group p5-web</text>
-<text x="742" y="336" class="s">HTTP 80 : public → application</text>
-<text x="742" y="360" class="s">SSH 22 : uniquement depuis IP admin /32</text>
-<text x="722" y="393" class="s">Clé publique SSH importée par Terraform</text>
+<rect x="775" y="145" width="185" height="120" rx="20" fill="#ecfdf5" stroke="#059669" stroke-width="1.8"/>
+<text x="867" y="184" class="t" text-anchor="middle">NGINX</text>
+<text x="867" y="214" class="s" text-anchor="middle">sert l'application</text>
+<text x="867" y="239" class="s" text-anchor="middle">et écrit access.log</text>
 
-<rect x="40" y="542" width="270" height="50" rx="14" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.5"/>
-<text x="175" y="563" class="t" text-anchor="middle">Terraform</text><text x="175" y="584" class="s" text-anchor="middle">réseau + sécurité + EC2</text>
-<rect x="360" y="542" width="270" height="50" rx="14" fill="#fff7ed" stroke="#c2410c" stroke-width="1.5"/>
-<text x="495" y="563" class="t" text-anchor="middle">Ansible</text><text x="495" y="584" class="s" text-anchor="middle">SSH → NGINX + artefact Angular</text>
-<rect x="680" y="542" width="200" height="50" rx="14" fill="#ecfdf5" stroke="#047857" stroke-width="1.5"/>
-<text x="780" y="563" class="t" text-anchor="middle">Navigateur</text><text x="780" y="584" class="s" text-anchor="middle">HTTP :80</text>
-<rect x="930" y="542" width="230" height="50" rx="14" fill="#fff7ed" stroke="#c2410c" stroke-width="1.5"/>
-<text x="1045" y="563" class="t" text-anchor="middle">access.log</text><text x="1045" y="584" class="s" text-anchor="middle">entrée de l'exercice 2</text>
+<rect x="1005" y="145" width="140" height="120" rx="20" fill="#ecfdf5" stroke="#059669" stroke-width="1.8"/>
+<text x="1075" y="184" class="t" text-anchor="middle">Angular</text>
+<text x="1075" y="214" class="s" text-anchor="middle">application</text>
+<text x="1075" y="239" class="s" text-anchor="middle">visible</text>
 
-<path d="M310 567H350" class="ar"/>
-<path d="M630 567H670" class="ar"/>
-<path d="M880 567H920" class="ar"/>
-<path d="M495 542C495 500 340 470 268 388" class="ar admin"/>
+<path d="M240 205H275" class="ar"/><path d="M500 205H535" class="ar"/><path d="M730 205H765" class="ar"/><path d="M960 205H995" class="ar"/>
+<text x="257" y="190" class="s" text-anchor="middle">crée</text><text x="517" y="190" class="s" text-anchor="middle">cible</text><text x="747" y="190" class="s" text-anchor="middle">installe</text><text x="977" y="190" class="s" text-anchor="middle">sert</text>
+
+<rect x="110" y="320" width="980" height="92" rx="18" fill="#fff" stroke="#cbd5e1" stroke-width="1.5"/>
+<text x="135" y="350" class="k">DÉTAILS À CONNAÎTRE — SANS SURCHARGER LE SCHÉMA</text>
+<text x="135" y="382" class="s">VPC 10.0.0.0/16 · 2 subnets publics · HTTP 80 public · SSH 22 limité à l'IP /32 · disque gp3 chiffré · IMDSv2</text>
+
+<path d="M867 265V310" class="ar"/>
+<text x="884" y="294" class="s">access.log → Exercice 2</text>
+<text x="42" y="468" class="s">À retenir : Terraform gère l'infrastructure ; Ansible gère la configuration ; NGINX expose l'application Angular.</text>
 </svg>
