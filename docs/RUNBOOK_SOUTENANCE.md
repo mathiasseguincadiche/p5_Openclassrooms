@@ -1,4 +1,4 @@
-# Handbook de soutenance — P5 OpenClassrooms
+# Runbook de soutenance — P5 OpenClassrooms
 
 > **Fonction du document :** conduire une démonstration claire, pédagogique et vérifiable du P5.
 > L'ordre de lecture est volontaire : **comprendre → expliquer → montrer le code utile → prouver dans le terminal → montrer le résultat dans le navigateur → conclure**.
