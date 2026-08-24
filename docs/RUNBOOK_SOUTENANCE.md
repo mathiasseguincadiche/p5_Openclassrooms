@@ -148,6 +148,12 @@ Montrer l'application Angular puis effectuer un rafraîchissement.
 
 # 6:00 → 10:30 — Exercice 2 — Observer et analyser
 
+## Choix de mise en œuvre à annoncer
+
+> « Pour cet exercice, j'ai choisi le **mode Cloud prévu par le projet**. Au lieu du mode local Elasticsearch/Kibana, j'utilise **Amazon OpenSearch et OpenSearch Dashboards sur AWS**. La chaîne fonctionnelle reste la même : structurer, indexer, analyser et visualiser les logs. »
+
+Cette phrase doit être donnée avant d'entrer dans le détail afin d'éviter toute ambiguïté entre l'intitulé historique « stack ELK » et l'option Cloud retenue.
+
 ## Architecture
 
 ![Schéma officiel exercice 2](schemas/officiels/exercice-2.svg)
@@ -207,6 +213,31 @@ Montrer dans cet ordre :
 ![Schéma officiel exercice 3](schemas/officiels/exercice-3.svg)
 
 **À comprendre :** HAProxy reçoit les requêtes et choisit un backend sain. `roundrobin` alterne les requêtes ; le health check vérifie la disponibilité ; `fall 3` retire un backend après trois échecs ; `rise 2` le réintègre après deux succès.
+
+## 0. Relier la configuration au comportement observé
+
+Afficher uniquement les quatre paramètres utiles :
+
+```bash
+grep -nE \
+  'balance roundrobin|option httpchk|fall 3|rise 2' \
+  terraform/exercice-3/haproxy.cfg.tpl
+```
+
+### À voir
+
+```text
+balance roundrobin
+option httpchk GET /
+... fall 3 rise 2
+... fall 3 rise 2
+```
+
+### Dire
+
+> « Avant de tester le comportement, je montre les paramètres qui l'expliquent : répartition `roundrobin`, health check HTTP, retrait après trois échecs et réintégration après deux succès. »
+
+Ne pas commenter toute la configuration : cette preuve doit rester très courte.
 
 ## 1. Montrer le round-robin dans le navigateur
 
@@ -318,6 +349,44 @@ bash scripts/commands/verify-opensearch-data.sh --endpoint "$OPENSEARCH_ENDPOINT
 ```bash
 bash scripts/commands/test-haproxy-roundrobin.sh --url "$HAPROXY_URL" --requests 12
 ```
+
+---
+
+# Après la démo — bilan mentor (hors chrono)
+
+La démonstration technique reste limitée à 20 minutes. Si cette session sert aussi de bilan de fin de projet, enchaîner ensuite avec les quatre points demandés par OpenClassrooms.
+
+## 1. Autoévaluation
+
+Ouvrir la fiche d'autoévaluation et commenter brièvement les éléments importants ou les notes laissées.
+
+### Formulation
+
+> « Je vous propose maintenant de faire le bilan du projet à partir de mon autoévaluation. »
+
+## 2. Difficulté rencontrée
+
+Préparer **une difficulté réelle** rencontrée pendant le projet et expliquer :
+
+```text
+contexte → problème → diagnostic → correction → ce que j'en retiens
+```
+
+Ne pas inventer une difficulté pour l'oral. Choisir un cas que tu peux expliquer techniquement.
+
+## 3. Point fort
+
+Présenter **un point que tu maîtrises bien** et expliquer pourquoi. L'objectif n'est pas de répéter la démo, mais de montrer ce que tu as appris et ce que tu sais désormais reproduire.
+
+## 4. Suite à donner
+
+Identifier un ou deux éléments à approfondir après le projet : cours à revoir, pratique supplémentaire ou point technique sur lequel rester vigilant.
+
+### Phrase de fermeture
+
+> « La démonstration montre que les trois exercices fonctionnent. Ce bilan me permet maintenant d'identifier ce que je maîtrise et ce que je dois encore approfondir pour la suite. »
+
+---
 
 ## Après la soutenance
 
