@@ -1,47 +1,51 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="500" viewBox="0 0 1200 500" role="img" aria-labelledby="title desc">
-<title id="title">Exercice 1 — De Terraform à Angular</title>
-<desc id="desc">Schéma pédagogique de l'exercice 1. Terraform crée l'infrastructure AWS, Ansible configure l'EC2, NGINX sert Angular et produit le log utilisé ensuite par l'exercice 2.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+<title id="title">Exercice 1 — architecture AWS, Terraform, Ansible, NGINX et Angular</title>
+<desc id="desc">Dans AWS us-east-1, le VPC 10.0.0.0/16 contient deux subnets publics. L'EC2 p5-web t3.micro Ubuntu 24.04 est placée dans le premier subnet. Le second subnet est créé pour le socle réseau et sera réutilisé par l'exercice 3. Terraform crée l'infrastructure, Ansible administre p5-web en SSH, et le navigateur atteint Angular via NGINX en HTTP.</desc>
 <defs>
-  <marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
-  <style>text{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}.k{font-size:12px;font-weight:800;letter-spacing:1px;fill:#64748b}.h{font-size:25px;font-weight:760;fill:#0f172a}.t{font-size:18px;font-weight:760;fill:#0f172a}.s{font-size:14px;font-weight:560;fill:#334155}.ar{fill:none;stroke:#475569;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#a)}</style>
+  <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+  <style>text{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}.ey{font-size:12px;font-weight:800;letter-spacing:1px;fill:#64748b}.h{font-size:24px;font-weight:760;fill:#0f172a}.t{font-size:17px;font-weight:760;fill:#0f172a}.s{font-size:13px;font-weight:560;fill:#334155}.ar{fill:none;stroke:#475569;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrow)}.dash{stroke-dasharray:7 6}</style>
 </defs>
-<rect width="1200" height="500" rx="24" fill="#f8fafc"/>
-<text x="42" y="43" class="k">EXERCICE 1 · INFRASTRUCTURE ET DÉPLOIEMENT</text>
-<text x="42" y="79" class="h">Terraform crée → Ansible configure → NGINX sert Angular</text>
+<rect width="1200" height="620" rx="24" fill="#f8fafc"/>
+<text x="42" y="42" class="ey">EXERCICE 1 · ARCHITECTURE DU DÉPLOIEMENT</text>
+<text x="42" y="77" class="h">Où est l'EC2, qui la crée, qui la configure et comment Angular est exposée ?</text>
 
-<rect x="55" y="145" width="185" height="120" rx="20" fill="#eff6ff" stroke="#2563eb" stroke-width="1.8"/>
-<text x="147" y="184" class="t" text-anchor="middle">Terraform</text>
-<text x="147" y="214" class="s" text-anchor="middle">décrit et crée</text>
-<text x="147" y="239" class="s" text-anchor="middle">l'infrastructure</text>
+<rect x="310" y="108" width="850" height="420" rx="22" fill="#fff" stroke="#94a3b8" stroke-width="1.5"/>
+<text x="334" y="138" class="ey">AWS · us-east-1</text>
+<rect x="340" y="158" width="790" height="338" rx="20" fill="#eff6ff" stroke="#2563eb" stroke-width="1.7"/>
+<text x="365" y="188" class="ey">VPC p5-vpc · 10.0.0.0/16</text>
 
-<rect x="285" y="145" width="215" height="120" rx="20" fill="#eff6ff" stroke="#2563eb" stroke-width="1.8"/>
-<text x="392" y="184" class="t" text-anchor="middle">AWS</text>
-<text x="392" y="214" class="s" text-anchor="middle">VPC + EC2 t3.micro</text>
-<text x="392" y="239" class="s" text-anchor="middle">Ubuntu 24.04</text>
+<rect x="380" y="215" width="330" height="220" rx="18" fill="#fff" stroke="#60a5fa" stroke-width="1.5"/>
+<text x="402" y="245" class="ey">SUBNET PUBLIC 1 · PREMIÈRE AZ</text>
+<rect x="420" y="275" width="250" height="125" rx="16" fill="#ecfdf5" stroke="#059669" stroke-width="1.7"/>
+<text x="545" y="305" class="t" text-anchor="middle">EC2 p5-web</text>
+<text x="545" y="332" class="s" text-anchor="middle">t3.micro · Ubuntu 24.04</text>
+<text x="545" y="357" class="s" text-anchor="middle">NGINX + Angular</text>
+<text x="545" y="382" class="s" text-anchor="middle">IP publique · SG p5-web-sg</text>
 
-<rect x="545" y="145" width="185" height="120" rx="20" fill="#fff7ed" stroke="#ea580c" stroke-width="1.8"/>
-<text x="637" y="184" class="t" text-anchor="middle">Ansible</text>
-<text x="637" y="214" class="s" text-anchor="middle">configure l'EC2</text>
-<text x="637" y="239" class="s" text-anchor="middle">et déploie</text>
+<rect x="755" y="215" width="330" height="220" rx="18" fill="#fff" stroke="#60a5fa" stroke-width="1.5"/>
+<text x="777" y="245" class="ey">SUBNET PUBLIC 2 · DEUXIÈME AZ</text>
+<text x="920" y="310" class="t" text-anchor="middle">Pas d'EC2 Exercice 1</text>
+<text x="920" y="342" class="s" text-anchor="middle">socle réseau déjà créé</text>
+<text x="920" y="368" class="s" text-anchor="middle">réutilisé par l'exercice 3</text>
 
-<rect x="775" y="145" width="185" height="120" rx="20" fill="#ecfdf5" stroke="#059669" stroke-width="1.8"/>
-<text x="867" y="184" class="t" text-anchor="middle">NGINX</text>
-<text x="867" y="214" class="s" text-anchor="middle">sert l'application</text>
-<text x="867" y="239" class="s" text-anchor="middle">et écrit access.log</text>
+<rect x="505" y="452" width="455" height="30" rx="10" fill="#fff7ed" stroke="#fdba74"/>
+<text x="732" y="472" class="s" text-anchor="middle">Internet Gateway + route 0.0.0.0/0 vers les 2 subnets publics</text>
 
-<rect x="1005" y="145" width="140" height="120" rx="20" fill="#ecfdf5" stroke="#059669" stroke-width="1.8"/>
-<text x="1075" y="184" class="t" text-anchor="middle">Angular</text>
-<text x="1075" y="214" class="s" text-anchor="middle">application</text>
-<text x="1075" y="239" class="s" text-anchor="middle">visible</text>
+<rect x="42" y="160" width="210" height="82" rx="16" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.6"/>
+<text x="147" y="192" class="t" text-anchor="middle">Terraform</text>
+<text x="147" y="219" class="s" text-anchor="middle">crée AWS + réseau + EC2</text>
+<path d="M252 201H300" class="ar"/>
 
-<path d="M240 205H275" class="ar"/><path d="M500 205H535" class="ar"/><path d="M730 205H765" class="ar"/><path d="M960 205H995" class="ar"/>
-<text x="257" y="190" class="s" text-anchor="middle">crée</text><text x="517" y="190" class="s" text-anchor="middle">cible</text><text x="747" y="190" class="s" text-anchor="middle">installe</text><text x="977" y="190" class="s" text-anchor="middle">sert</text>
+<rect x="42" y="282" width="210" height="82" rx="16" fill="#fff7ed" stroke="#ea580c" stroke-width="1.6"/>
+<text x="147" y="314" class="t" text-anchor="middle">Ansible</text>
+<text x="147" y="341" class="s" text-anchor="middle">SSH 22 depuis IP /32</text>
+<path d="M252 323H405" class="ar dash"/>
 
-<rect x="110" y="320" width="980" height="92" rx="18" fill="#fff" stroke="#cbd5e1" stroke-width="1.5"/>
-<text x="135" y="350" class="k">DÉTAILS À CONNAÎTRE — SANS SURCHARGER LE SCHÉMA</text>
-<text x="135" y="382" class="s">VPC 10.0.0.0/16 · 2 subnets publics · HTTP 80 public · SSH 22 limité à l'IP /32 · disque gp3 chiffré · IMDSv2</text>
+<rect x="42" y="404" width="210" height="82" rx="16" fill="#f1f5f9" stroke="#64748b" stroke-width="1.6"/>
+<text x="147" y="436" class="t" text-anchor="middle">Navigateur</text>
+<text x="147" y="463" class="s" text-anchor="middle">HTTP 80 public</text>
+<path d="M252 445H395V390H410" class="ar"/>
 
-<path d="M867 265V310" class="ar"/>
-<text x="884" y="294" class="s">access.log → Exercice 2</text>
-<text x="42" y="468" class="s">À retenir : Terraform gère l'infrastructure ; Ansible gère la configuration ; NGINX expose l'application Angular.</text>
+<text x="42" y="558" class="ey">RESPONSABILITÉS</text>
+<text x="42" y="586" class="s">Terraform crée l'infrastructure · Ansible configure l'EC2 · NGINX écoute sur 80 et sert Angular · access.log devient l'entrée de l'exercice 2.</text>
 </svg>
