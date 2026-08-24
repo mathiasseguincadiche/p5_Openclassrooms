@@ -4,35 +4,33 @@ on:
   push:
     paths:
       - 'docs/RUNBOOK_SOUTENANCE.md'
+      - 'docs/RUNBOOK_SOUTENANCE.pdf'
       - 'docs/schemas/officiels/*.svg'
       - 'scripts/tools/build-runbook-pdf.sh'
       - '.github/workflows/runbook-pdf.yml'
   pull_request:
     paths:
       - 'docs/RUNBOOK_SOUTENANCE.md'
+      - 'docs/RUNBOOK_SOUTENANCE.pdf'
       - 'docs/schemas/officiels/*.svg'
       - 'scripts/tools/build-runbook-pdf.sh'
       - '.github/workflows/runbook-pdf.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: runbook-pdf-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build-and-commit:
-    name: Générer et synchroniser le PDF
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+  build-and-verify:
+    name: Générer et vérifier le PDF
     runs-on: ubuntu-latest
 
     steps:
       - name: Récupérer le dépôt
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          fetch-depth: 0
-          ref: ${{ github.head_ref || github.ref_name }}
 
       - name: Installer la chaîne PDF
         run: |
@@ -46,26 +44,18 @@ jobs:
             lmodern \
             poppler-utils
 
-      - name: Générer le runbook PDF
+      - name: Conserver le PDF versionné
+        run: cp docs/RUNBOOK_SOUTENANCE.pdf "$RUNNER_TEMP/runbook-versionne.pdf"
+
+      - name: Régénérer le runbook PDF
         run: bash scripts/tools/build-runbook-pdf.sh
 
-      - name: Vérifier le PDF produit
+      - name: Vérifier le format et le contenu
         run: |
           test -s docs/RUNBOOK_SOUTENANCE.pdf
           pdfinfo docs/RUNBOOK_SOUTENANCE.pdf | grep -q '^Pages:'
           pdfinfo docs/RUNBOOK_SOUTENANCE.pdf | grep -q 'Page size:.*A4'
 
-      - name: Synchroniser le PDF versionné
-        env:
-          TARGET_BRANCH: ${{ github.head_ref || github.ref_name }}
-        run: |
-          if git diff --quiet -- docs/RUNBOOK_SOUTENANCE.pdf; then
-            echo 'Le PDF versionné est déjà synchronisé.'
-            exit 0
-          fi
-
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add docs/RUNBOOK_SOUTENANCE.pdf
-          git commit -m 'docs: régénérer le PDF du runbook LIVE'
-          git push origin "HEAD:${TARGET_BRANCH}"
+          pdftotext -layout "$RUNNER_TEMP/runbook-versionne.pdf" "$RUNNER_TEMP/runbook-versionne.txt"
+          pdftotext -layout docs/RUNBOOK_SOUTENANCE.pdf "$RUNNER_TEMP/runbook-genere.txt"
+          diff -u "$RUNNER_TEMP/runbook-versionne.txt" "$RUNNER_TEMP/runbook-genere.txt"
