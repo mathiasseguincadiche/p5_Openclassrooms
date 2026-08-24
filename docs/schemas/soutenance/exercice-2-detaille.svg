@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="720" viewBox="0 0 1400 720">
+  <defs><marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+  <style>text{font-family:Inter,Segoe UI,Arial,sans-serif;fill:#0f172a}.t{font-size:27px;font-weight:700}.h{font-size:18px;font-weight:700}.x{font-size:15px;fill:#334155}.s{font-size:13px;fill:#475569}.ar{stroke:#475569;stroke-width:2.4;fill:none;marker-end:url(#a)}</style></defs>
+  <rect width="1400" height="720" rx="24" fill="#f8fafc"/>
+  <text x="45" y="50" class="t">P5 — Exercice 2 : logs NGINX → parsing → Amazon OpenSearch → Dashboard</text>
+  <rect x="55" y="135" width="250" height="105" rx="18" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="180" y="170" text-anchor="middle" class="h">Log réel Exercice 1</text><text x="180" y="198" text-anchor="middle" class="x">/var/log/nginx/access.log</text>
+  <rect x="55" y="285" width="250" height="95" rx="18" fill="#fff" stroke="#94a3b8" stroke-width="2"/>
+  <text x="180" y="320" text-anchor="middle" class="h">Sample versionné</text><text x="180" y="348" text-anchor="middle" class="s">source reproductible</text>
+  <rect x="385" y="205" width="245" height="125" rx="18" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
+  <text x="507" y="240" text-anchor="middle" class="h">Pipeline d'import</text><text x="507" y="269" text-anchor="middle" class="x">parsing + typage</text><text x="507" y="297" text-anchor="middle" class="x">NDJSON · Bulk API</text>
+  <path d="M305 188H350V240H375" class="ar"/><path d="M305 332H350V292H375" class="ar"/>
+  <rect x="705" y="120" width="630" height="300" rx="22" fill="#fff" stroke="#ea580c" stroke-width="2"/>
+  <text x="1020" y="157" text-anchor="middle" class="h">Amazon OpenSearch Service · us-east-1</text>
+  <text x="1020" y="195" text-anchor="middle" class="x">p5-opensearch · OpenSearch 2.19</text>
+  <text x="1020" y="224" text-anchor="middle" class="x">1 × t3.small.search · EBS gp3 10 Gio</text>
+  <text x="1020" y="253" text-anchor="middle" class="x">chiffrement au repos + nœud-à-nœud</text>
+  <text x="1020" y="282" text-anchor="middle" class="x">HTTPS · TLS 1.2 · accès limité à IP admin /32</text>
+  <text x="1020" y="330" text-anchor="middle" class="s">Service AWS managé : ce n'est pas une EC2 placée dans le VPC de l'Exercice 1.</text>
+  <path d="M630 267H695" class="ar"/>
+  <rect x="300" y="485" width="800" height="165" rx="22" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+  <text x="700" y="522" text-anchor="middle" class="h">OpenSearch Dashboards</text>
+  <text x="450" y="570" text-anchor="middle" class="x">Donut</text><text x="450" y="598" text-anchor="middle" class="s">méthodes HTTP</text>
+  <text x="700" y="570" text-anchor="middle" class="x">Histogramme</text><text x="700" y="598" text-anchor="middle" class="s">Σ bytes_sent / 12 h</text>
+  <text x="950" y="570" text-anchor="middle" class="x">Top 5</text><text x="950" y="598" text-anchor="middle" class="s">url_path / 12 h</text>
+  <path d="M1020 420V455H700V480" class="ar"/>
+  <text x="45" y="690" class="x">Message clé : la consigne parle ELK/Kibana ; le mode Cloud retenu utilise l'équivalent AWS OpenSearch + OpenSearch Dashboards, tout en conservant les trois visualisations demandées.</text>
+</svg>
