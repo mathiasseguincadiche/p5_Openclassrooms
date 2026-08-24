@@ -1,51 +1,45 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
-<title id="title">P5 — Architecture AWS des trois exercices</title>
-<desc id="desc">Vue d'ensemble centrée sur le projet AWS. L'exercice 1 crée le réseau et déploie Angular derrière NGINX. Le log NGINX alimente l'exercice 2 OpenSearch. Le VPC et les subnets de l'exercice 1 sont réutilisés par l'exercice 3 HAProxy avec deux backends.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="500" viewBox="0 0 1200 500" role="img" aria-labelledby="title desc">
+<title id="title">P5 — Vue simple des trois exercices</title>
+<desc id="desc">Vue pédagogique du projet. L'exercice 1 construit l'infrastructure AWS et déploie Angular derrière NGINX. Les logs NGINX alimentent l'exercice 2 OpenSearch. Le réseau AWS de l'exercice 1 est réutilisé par l'exercice 3 HAProxy.</desc>
 <defs>
   <marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
-  <style>text{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}.ey{font-size:12px;font-weight:800;letter-spacing:1px;fill:#475569}.h{font-size:24px;font-weight:760;fill:#0f172a}.t{font-size:17px;font-weight:760;fill:#0f172a}.s{font-size:13px;font-weight:560;fill:#334155}.w{fill:#fff}.ar{fill:none;stroke:#475569;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#a)}.dash{stroke-dasharray:7 6}</style>
+  <style>text{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}.k{font-size:12px;font-weight:800;letter-spacing:1px;fill:#64748b}.h{font-size:25px;font-weight:760;fill:#0f172a}.t{font-size:19px;font-weight:760;fill:#0f172a}.s{font-size:14px;font-weight:560;fill:#334155}.ar{fill:none;stroke:#475569;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#a)}</style>
 </defs>
-<rect width="1200" height="560" rx="24" fill="#f8fafc"/>
-<text x="42" y="42" class="ey">P5 OPENCLASSROOMS · ARCHITECTURE DU PROJET</text>
-<text x="42" y="76" class="h">Construire → observer → répartir et résister à une panne</text>
+<rect width="1200" height="500" rx="24" fill="#f8fafc"/>
+<text x="42" y="43" class="k">P5 OPENCLASSROOMS · VUE D'ENSEMBLE</text>
+<text x="42" y="79" class="h">Trois exercices, une seule histoire</text>
 
-<rect x="42" y="112" width="1116" height="356" rx="22" fill="#fff" stroke="#cbd5e1" stroke-width="1.5"/>
-<rect x="70" y="145" width="330" height="286" rx="18" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1.8"/>
-<text x="94" y="175" class="ey">EXERCICE 1 · CONSTRUIRE ET DÉPLOYER</text>
-<text x="94" y="207" class="t">Terraform → AWS</text>
-<text x="94" y="235" class="s">VPC 10.0.0.0/16 · 2 subnets publics</text>
-<text x="94" y="258" class="s">Internet Gateway · routage · Security Group</text>
-<rect x="106" y="282" width="258" height="104" rx="14" fill="#fff" stroke="#60a5fa" stroke-width="1.5"/>
-<text x="235" y="310" class="t" text-anchor="middle">EC2 p5-web · t3.micro</text>
-<text x="235" y="336" class="s" text-anchor="middle">Ubuntu 24.04 · EBS gp3 chiffré</text>
-<text x="235" y="360" class="s" text-anchor="middle">Ansible → NGINX → Angular</text>
-<text x="235" y="414" class="ey" text-anchor="middle">RÉSULTAT : APPLICATION WEB</text>
+<rect x="55" y="125" width="320" height="235" rx="22" fill="#eff6ff" stroke="#2563eb" stroke-width="1.8"/>
+<text x="82" y="160" class="k">EXERCICE 1</text>
+<text x="82" y="197" class="t">Construire et déployer</text>
+<text x="82" y="236" class="s">Terraform crée l'infrastructure AWS</text>
+<text x="82" y="266" class="s">Ansible configure le serveur</text>
+<text x="82" y="296" class="s">NGINX sert Angular</text>
+<rect x="82" y="321" width="266" height="28" rx="14" fill="#fff"/>
+<text x="215" y="341" class="s" text-anchor="middle">Résultat : application accessible</text>
 
-<rect x="442" y="145" width="330" height="286" rx="18" fill="#fff7ed" stroke="#c2410c" stroke-width="1.8"/>
-<text x="466" y="175" class="ey">EXERCICE 2 · OBSERVER</text>
-<text x="466" y="207" class="t">Logs NGINX → OpenSearch</text>
-<text x="466" y="235" class="s">parsing / typage → Bulk API</text>
-<rect x="478" y="282" width="258" height="104" rx="14" fill="#fff" stroke="#fb923c" stroke-width="1.5"/>
-<text x="607" y="310" class="t" text-anchor="middle">Amazon OpenSearch 2.19</text>
-<text x="607" y="336" class="s" text-anchor="middle">1 × t3.small.search · gp3 10 Gio</text>
-<text x="607" y="360" class="s" text-anchor="middle">Dashboards · 3 visualisations</text>
-<text x="607" y="414" class="ey" text-anchor="middle">RÉSULTAT : OBSERVABILITÉ</text>
+<rect x="440" y="125" width="320" height="235" rx="22" fill="#fff7ed" stroke="#ea580c" stroke-width="1.8"/>
+<text x="467" y="160" class="k">EXERCICE 2</text>
+<text x="467" y="197" class="t">Observer</text>
+<text x="467" y="236" class="s">NGINX produit access.log</text>
+<text x="467" y="266" class="s">OpenSearch indexe les logs</text>
+<text x="467" y="296" class="s">Dashboards affiche les indicateurs</text>
+<rect x="467" y="321" width="266" height="28" rx="14" fill="#fff"/>
+<text x="600" y="341" class="s" text-anchor="middle">Résultat : observabilité</text>
 
-<rect x="814" y="145" width="316" height="286" rx="18" fill="#ecfdf5" stroke="#047857" stroke-width="1.8"/>
-<text x="838" y="175" class="ey">EXERCICE 3 · RÉPARTIR ET RÉSISTER</text>
-<text x="838" y="207" class="t">HAProxy → 2 backends</text>
-<text x="838" y="235" class="s">VPC + subnets réutilisés de l'exercice 1</text>
-<rect x="850" y="282" width="244" height="104" rx="14" fill="#fff" stroke="#34d399" stroke-width="1.5"/>
-<text x="972" y="310" class="t" text-anchor="middle">EC2 HAProxy · t3.micro</text>
-<text x="972" y="336" class="s" text-anchor="middle">round-robin · health checks</text>
-<text x="972" y="360" class="s" text-anchor="middle">2 × EC2 t3.micro · Docker</text>
-<text x="972" y="414" class="ey" text-anchor="middle">RÉSULTAT : CONTINUITÉ DE SERVICE</text>
+<rect x="825" y="125" width="320" height="235" rx="22" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.8"/>
+<text x="852" y="160" class="k">EXERCICE 3</text>
+<text x="852" y="197" class="t">Répartir et résister</text>
+<text x="852" y="236" class="s">HAProxy reçoit les requêtes</text>
+<text x="852" y="266" class="s">Deux backends partagent la charge</text>
+<text x="852" y="296" class="s">Le service continue pendant une panne</text>
+<rect x="852" y="321" width="266" height="28" rx="14" fill="#fff"/>
+<text x="985" y="341" class="s" text-anchor="middle">Résultat : continuité de service</text>
 
-<path d="M400 248H432" class="ar"/>
-<text x="416" y="232" class="s" text-anchor="middle">access.log</text>
-<path d="M400 395C530 505 760 505 814 395" class="ar dash"/>
-<text x="607" y="514" class="s" text-anchor="middle">VPC + subnets réutilisés</text>
+<path d="M375 220H430" class="ar"/>
+<text x="402" y="205" class="s" text-anchor="middle">logs</text>
+<path d="M215 360C315 435 850 435 985 360" class="ar"/>
+<text x="600" y="425" class="s" text-anchor="middle">réseau AWS réutilisé</text>
 
-<text x="42" y="508" class="ey">LECTURE EN 10 SECONDES</text>
-<text x="42" y="536" class="s">Ex. 1 livre l'application et produit les logs · Ex. 2 transforme ces logs en indicateurs · Ex. 3 réutilise le réseau pour démontrer load balancing et failover.</text>
+<text x="42" y="472" class="s">À retenir : Ex. 1 livre l'application · Ex. 2 observe son activité · Ex. 3 démontre la répartition de charge et la résilience.</text>
 </svg>
