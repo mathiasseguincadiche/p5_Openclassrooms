@@ -6,16 +6,44 @@
 
 ## Avant l'oral — hors chrono
 
-### 1. Vérifier le dépôt et le lab
+### 1. Se placer dans le checkout réellement utilisé
 
 ```bash
-cd ~/labs/p5_Openclassrooms
+cd ~/projects/p5_Openclassrooms
 git switch main
 git pull --ff-only
+```
+
+Le checkout de référence de cette machine est sous `~/projects`. Si le dépôt est volontairement placé sous `~/labs` ou `~/repositories`, adapter uniquement la commande `cd`. Ne pas travailler depuis `/mnt/c` ou `/mnt/e`.
+
+### 2. Charger et valider la session AWS dans le shell courant
+
+```bash
+source environment/aws-readiness.env
+export AWS_PROFILE AWS_REGION AWS_SDK_LOAD_CONFIG=1
+
+if ! bash scripts/commands/check-aws-session.sh; then
+  bash scripts/commands/aws-auth.sh \
+    --profile "$AWS_PROFILE" \
+    --source-profile "${P5_AWS_LOGIN_PROFILE:-p5-signin}" \
+    --region "$AWS_REGION" \
+    --mode auto
+  bash scripts/commands/check-aws-session.sh
+fi
+
 bash scripts/commands/p5.sh status
 ```
 
-### 2. Préparer les variables
+**Pourquoi cette étape est obligatoire :** `p5.sh` charge la configuration AWS dans son propre processus, mais un script enfant ne peut pas exporter ses variables vers le shell interactif parent. Les commandes Terraform lancées directement pendant la démo ont donc besoin de `AWS_PROFILE` et `AWS_REGION` exportés dans **ce terminal**.
+
+Si un nouveau terminal est ouvert pendant la session, rejouer au minimum :
+
+```bash
+source environment/aws-readiness.env
+export AWS_PROFILE AWS_REGION AWS_SDK_LOAD_CONFIG=1
+```
+
+### 3. Préparer les variables runtime
 
 ```bash
 export WEB_URL="$(terraform -chdir=terraform/exercice-1 output -raw web_url)"
@@ -26,17 +54,27 @@ export HAPROXY_URL="$(terraform -chdir=terraform/exercice-3 output -raw haproxy_
 export BACKEND_1_IP="$(terraform -chdir=terraform/exercice-3 output -raw hello_1_public_ip)"
 ```
 
-### 3. Ouvrir les trois onglets navigateur
+### 4. Afficher les URL puis ouvrir les trois onglets navigateur
+
+```bash
+printf 'Angular   : %s\n' "$WEB_URL"
+printf 'Dashboard : %s\n' "$DASHBOARD_URL"
+printf 'HAProxy   : %s\n' "$HAPROXY_URL"
+```
+
+Copier les trois URL affichées dans le navigateur Windows :
 
 ```text
-1. $WEB_URL       → application Angular
-2. $DASHBOARD_URL → OpenSearch Dashboards
-3. $HAPROXY_URL   → service derrière HAProxy
+Angular   → application Angular
+Dashboard → OpenSearch Dashboards
+HAProxy   → service derrière HAProxy
 ```
+
+**Important :** ne jamais saisir `$WEB_URL`, `$DASHBOARD_URL`, `$HAPROXY_URL` ou une URL `http://...` seule comme commande Bash. Bash essaierait de l'exécuter comme un programme et renverrait `No such file or directory`.
 
 Les commandes sont lancées dans WSL2 Ubuntu. Les preuves visuelles sont montrées dans le navigateur Windows.
 
-### 4. Prévalider les trois preuves principales
+### 5. Prévalider les trois preuves principales
 
 ```bash
 bash scripts/commands/verify-angular-deployment.sh --url "$WEB_URL"
@@ -78,7 +116,12 @@ Exercice 3 → répartir et résister
 
 ## 1. Prouver la convergence Terraform
 
+La commande `plan` interroge réellement AWS : elle ne peut pas fonctionner avec le seul state local. Le shell courant doit donc conserver le profil AWS préparé hors chrono.
+
 ```bash
+source environment/aws-readiness.env
+export AWS_PROFILE AWS_REGION AWS_SDK_LOAD_CONFIG=1
+
 terraform -chdir=terraform/exercice-1 plan \
   -input=false \
   -detailed-exitcode
@@ -89,6 +132,8 @@ terraform -chdir=terraform/exercice-1 plan \
 ```text
 No changes
 ```
+
+Avec `-detailed-exitcode` : `0` signifie aucun changement, `2` signifie qu'un delta existe et `1` signifie une erreur. Pendant la démonstration préparée, le résultat attendu est `0`.
 
 ### Dire
 
@@ -130,11 +175,11 @@ APPLICATION ANGULAR DÉPLOYÉE ET SERVIE PAR NGINX
 
 ### Navigateur
 
-```text
-$WEB_URL
+```bash
+printf '%s\n' "$WEB_URL"
 ```
 
-Montrer l'application Angular puis effectuer un rafraîchissement.
+Copier l'URL affichée dans le navigateur Windows, montrer l'application Angular puis effectuer un rafraîchissement.
 
 ### Dire
 
@@ -147,6 +192,12 @@ Montrer l'application Angular puis effectuer un rafraîchissement.
 ---
 
 # 6:00 → 10:30 — Exercice 2 — Observer et analyser
+
+## Choix de mise en œuvre à annoncer
+
+> « Pour cet exercice, j'ai choisi le **mode Cloud prévu par le projet**. Au lieu du mode local Elasticsearch/Kibana, j'utilise **Amazon OpenSearch et OpenSearch Dashboards sur AWS**. La chaîne fonctionnelle reste la même : structurer, indexer, analyser et visualiser les logs. »
+
+Cette phrase doit être donnée avant d'entrer dans le détail afin d'éviter toute ambiguïté entre l'intitulé historique « stack ELK » et l'option Cloud retenue.
 
 ## Architecture
 
@@ -177,11 +228,11 @@ DONNÉES OPENSEARCH PRÊTES POUR LE DASHBOARD
 
 ## 2. Montrer le dashboard dans le navigateur
 
-```text
-$DASHBOARD_URL
+```bash
+printf '%s\n' "$DASHBOARD_URL"
 ```
 
-Montrer dans cet ordre :
+Copier l'URL affichée dans le navigateur Windows puis montrer dans cet ordre :
 
 ```text
 1. méthodes HTTP       → répartition des requêtes
@@ -208,13 +259,38 @@ Montrer dans cet ordre :
 
 **À comprendre :** HAProxy reçoit les requêtes et choisit un backend sain. `roundrobin` alterne les requêtes ; le health check vérifie la disponibilité ; `fall 3` retire un backend après trois échecs ; `rise 2` le réintègre après deux succès.
 
-## 1. Montrer le round-robin dans le navigateur
+## 0. Relier la configuration au comportement observé
 
-```text
-$HAPROXY_URL
+Afficher uniquement les quatre paramètres utiles :
+
+```bash
+grep -nE \
+  'balance roundrobin|option httpchk|fall 3|rise 2' \
+  terraform/exercice-3/haproxy.cfg.tpl
 ```
 
-Rafraîchir quatre à six fois et montrer :
+### À voir
+
+```text
+balance roundrobin
+option httpchk GET /
+... fall 3 rise 2
+... fall 3 rise 2
+```
+
+### Dire
+
+> « Avant de tester le comportement, je montre les paramètres qui l'expliquent : répartition `roundrobin`, health check HTTP, retrait après trois échecs et réintégration après deux succès. »
+
+Ne pas commenter toute la configuration : cette preuve doit rester très courte.
+
+## 1. Montrer le round-robin dans le navigateur
+
+```bash
+printf '%s\n' "$HAPROXY_URL"
+```
+
+Copier l'URL affichée dans le navigateur Windows, puis rafraîchir quatre à six fois et montrer :
 
 ```text
 Server name
@@ -273,11 +349,11 @@ BASCULE ET RÉINTÉGRATION HAPROXY VALIDÉES
 
 ## 4. Vérifier le retour à l'état normal dans le navigateur
 
-```text
-$HAPROXY_URL
+```bash
+printf '%s\n' "$HAPROXY_URL"
 ```
 
-Rafraîchir plusieurs fois et vérifier que les deux backends sont de nouveau servis.
+Revenir dans l'onglet HAProxy, rafraîchir plusieurs fois et vérifier que les deux backends sont de nouveau servis.
 
 ### Dire
 
@@ -318,6 +394,44 @@ bash scripts/commands/verify-opensearch-data.sh --endpoint "$OPENSEARCH_ENDPOINT
 ```bash
 bash scripts/commands/test-haproxy-roundrobin.sh --url "$HAPROXY_URL" --requests 12
 ```
+
+---
+
+# Après la démo — bilan mentor (hors chrono)
+
+La démonstration technique reste limitée à 20 minutes. Si cette session sert aussi de bilan de fin de projet, enchaîner ensuite avec les quatre points demandés par OpenClassrooms.
+
+## 1. Autoévaluation
+
+Ouvrir la fiche d'autoévaluation et commenter brièvement les éléments importants ou les notes laissées.
+
+### Formulation
+
+> « Je vous propose maintenant de faire le bilan du projet à partir de mon autoévaluation. »
+
+## 2. Difficulté rencontrée
+
+Préparer **une difficulté réelle** rencontrée pendant le projet et expliquer :
+
+```text
+contexte → problème → diagnostic → correction → ce que j'en retiens
+```
+
+Ne pas inventer une difficulté pour l'oral. Choisir un cas que tu peux expliquer techniquement.
+
+## 3. Point fort
+
+Présenter **un point que tu maîtrises bien** et expliquer pourquoi. L'objectif n'est pas de répéter la démo, mais de montrer ce que tu as appris et ce que tu sais désormais reproduire.
+
+## 4. Suite à donner
+
+Identifier un ou deux éléments à approfondir après le projet : cours à revoir, pratique supplémentaire ou point technique sur lequel rester vigilant.
+
+### Phrase de fermeture
+
+> « La démonstration montre que les trois exercices fonctionnent. Ce bilan me permet maintenant d'identifier ce que je maîtrise et ce que je dois encore approfondir pour la suite. »
+
+---
 
 ## Après la soutenance
 

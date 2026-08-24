@@ -1,0 +1,61 @@
+name: Runbook PDF
+
+on:
+  push:
+    paths:
+      - 'docs/RUNBOOK_SOUTENANCE.md'
+      - 'docs/RUNBOOK_SOUTENANCE.pdf'
+      - 'docs/schemas/officiels/*.svg'
+      - 'scripts/tools/build-runbook-pdf.sh'
+      - '.github/workflows/runbook-pdf.yml'
+  pull_request:
+    paths:
+      - 'docs/RUNBOOK_SOUTENANCE.md'
+      - 'docs/RUNBOOK_SOUTENANCE.pdf'
+      - 'docs/schemas/officiels/*.svg'
+      - 'scripts/tools/build-runbook-pdf.sh'
+      - '.github/workflows/runbook-pdf.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: runbook-pdf-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-verify:
+    name: Générer et vérifier le PDF
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Installer la chaîne PDF
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pandoc \
+            texlive-xetex \
+            texlive-fonts-recommended \
+            librsvg2-bin \
+            fonts-dejavu-core \
+            lmodern \
+            poppler-utils
+
+      - name: Conserver le PDF versionné
+        run: cp docs/RUNBOOK_SOUTENANCE.pdf "$RUNNER_TEMP/runbook-versionne.pdf"
+
+      - name: Régénérer le runbook PDF
+        run: bash scripts/tools/build-runbook-pdf.sh
+
+      - name: Vérifier le format et le contenu
+        run: |
+          test -s docs/RUNBOOK_SOUTENANCE.pdf
+          pdfinfo docs/RUNBOOK_SOUTENANCE.pdf | grep -q '^Pages:'
+          pdfinfo docs/RUNBOOK_SOUTENANCE.pdf | grep -q 'Page size:.*A4'
+
+          pdftotext -layout "$RUNNER_TEMP/runbook-versionne.pdf" "$RUNNER_TEMP/runbook-versionne.txt"
+          pdftotext -layout docs/RUNBOOK_SOUTENANCE.pdf "$RUNNER_TEMP/runbook-genere.txt"
+          diff -u "$RUNNER_TEMP/runbook-versionne.txt" "$RUNNER_TEMP/runbook-genere.txt"
