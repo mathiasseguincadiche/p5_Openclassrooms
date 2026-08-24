@@ -42,6 +42,7 @@ jobs:
             texlive-xetex \
             librsvg2-bin \
             fonts-dejavu-core \
+            lmodern \
             poppler-utils
 
       - name: Générer le runbook PDF
