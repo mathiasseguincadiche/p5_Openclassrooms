@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="800" viewBox="0 0 1400 800">
+  <defs><marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#475569"/></marker>
+  <style>text{font-family:Inter,Segoe UI,Arial,sans-serif;fill:#0f172a}.t{font-size:27px;font-weight:700}.h{font-size:18px;font-weight:700}.x{font-size:15px;fill:#334155}.s{font-size:13px;fill:#475569}.ar{stroke:#475569;stroke-width:2.4;fill:none;marker-end:url(#a)}</style></defs>
+  <rect width="1400" height="800" rx="24" fill="#f8fafc"/>
+  <text x="45" y="50" class="t">P5 — Exercice 3 : HAProxy, round-robin, health checks et reprise après panne</text>
+  <rect x="45" y="125" width="180" height="95" rx="18" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+  <text x="135" y="160" text-anchor="middle" class="h">Utilisateur</text><text x="135" y="190" text-anchor="middle" class="x">HTTP 80</text>
+  <rect x="275" y="100" width="1080" height="490" rx="24" fill="#fff" stroke="#94a3b8" stroke-width="2"/>
+  <text x="305" y="135" class="h">VPC p5-vpc · 10.0.0.0/16 · réutilisé depuis l'Exercice 1</text>
+  <rect x="320" y="175" width="455" height="350" rx="20" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="547" y="207" text-anchor="middle" class="h">Subnet public 1 · 10.0.1.0/24</text>
+  <rect x="370" y="245" width="355" height="105" rx="18" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2"/>
+  <text x="547" y="280" text-anchor="middle" class="h">EC2 p5-haproxy</text><text x="547" y="307" text-anchor="middle" class="x">t3.micro · HAProxy :80</text><text x="547" y="332" text-anchor="middle" class="s">HTTP public · SSH admin /32</text>
+  <rect x="370" y="390" width="355" height="105" rx="18" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+  <text x="547" y="425" text-anchor="middle" class="h">EC2 p5-hello-1</text><text x="547" y="453" text-anchor="middle" class="x">Docker · nginxdemos/hello</text><text x="547" y="478" text-anchor="middle" class="s">HTTP seulement depuis SG HAProxy</text>
+  <rect x="825" y="175" width="485" height="350" rx="20" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="1067" y="207" text-anchor="middle" class="h">Subnet public 2 · 10.0.2.0/24</text>
+  <rect x="885" y="325" width="365" height="105" rx="18" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+  <text x="1067" y="360" text-anchor="middle" class="h">EC2 p5-hello-2</text><text x="1067" y="388" text-anchor="middle" class="x">Docker · nginxdemos/hello</text><text x="1067" y="413" text-anchor="middle" class="s">HTTP seulement depuis SG HAProxy</text>
+  <path d="M225 172H280V297H360" class="ar"/>
+  <path d="M547 350V380" class="ar"/>
+  <path d="M725 298H800V377H875" class="ar"/>
+  <text x="790" y="278" text-anchor="middle" class="s">IP privées · round-robin</text>
+  <rect x="420" y="545" width="775" height="36" rx="11" fill="#fff7ed" stroke="#ea580c"/>
+  <text x="807" y="569" text-anchor="middle" class="x">GET / · HTTP 200 · inter 3s · fall 3 · rise 2</text>
+  <text x="45" y="640" class="h">Démonstration attendue</text>
+  <rect x="55" y="670" width="280" height="75" rx="16" fill="#ecfdf5" stroke="#059669"/><text x="195" y="700" text-anchor="middle" class="h">1 · 2 backends UP</text><text x="195" y="725" text-anchor="middle" class="s">les deux répondent</text>
+  <rect x="370" y="670" width="280" height="75" rx="16" fill="#fef2f2" stroke="#dc2626"/><text x="510" y="700" text-anchor="middle" class="h">2 · backend 1 DOWN</text><text x="510" y="725" text-anchor="middle" class="s">HAProxy le retire</text>
+  <rect x="685" y="670" width="280" height="75" rx="16" fill="#fff7ed" stroke="#ea580c"/><text x="825" y="700" text-anchor="middle" class="h">3 · service maintenu</text><text x="825" y="725" text-anchor="middle" class="s">backend 2 continue</text>
+  <rect x="1000" y="670" width="340" height="75" rx="16" fill="#ecfdf5" stroke="#059669"/><text x="1170" y="700" text-anchor="middle" class="h">4 · backend 1 réintégré</text><text x="1170" y="725" text-anchor="middle" class="s">retour automatique après rise 2</text>
+</svg>
