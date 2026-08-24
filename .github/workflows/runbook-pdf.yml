@@ -40,6 +40,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             pandoc \
             texlive-xetex \
+            texlive-fonts-recommended \
             librsvg2-bin \
             fonts-dejavu-core \
             lmodern \
