@@ -36,7 +36,7 @@ a été exécuté. Les éléments marqués « preuve réelle » doivent provenir
 | Inventaire Ansible | `hosts_aws.example` + copie locale | `ansible ... -m ping` | ping réel réussi |
 | Playbook | `ansible/playbooks/deploy.yml` | syntax-check + exécution | recap sans échec |
 | NGINX | `ansible/files/nginx-angular.conf` | `nginx -t` + test Docker | config valide |
-| Application Angular réelle | `application/angular/` | `npm test`, build, CI | application réellement servie |
+| Application Angular réelle | `application/angular/` | `npm test`, build, CI | application réellement servie et visible dans le navigateur |
 | Artefact déployé | `ansible/files/angular-app/` | comparaison CI avec `dist/` | même build déployé |
 | Idempotence Ansible | même playbook relancé | seconde exécution | recap avec absence de changements inutiles |
 | Fallback SPA | `try_files ... /index.html` | `verify-angular-deployment.sh` | `/parcours-p5` en HTTP 200 |
@@ -70,16 +70,22 @@ Ils sont **locaux uniquement** tant qu’ils n’ont pas été relus et anonymis
 | Mapping OpenSearch | `opensearch/index-template.json` | `verify-opensearch-data.sh` | mapping réel |
 | Import Bulk | `import-opensearch-data.sh --apply` | contrôle `.errors == false` | import réussi |
 | Au moins 64 documents | dataset / import | `verify-opensearch-data.sh` | comptage réel |
-| Donut HTTP | manuel dans Dashboards | Terms `http_method` | capture réelle |
-| Octets par 12 h | manuel dans Dashboards | Sum `bytes_sent` + histogramme `12h` | capture réelle |
-| Top 5 URL par 12 h | manuel dans Dashboards | Terms `url_path` taille 5 + `12h` | capture réelle |
-| Dashboard complet | manuel | contrôle visuel | capture réelle |
+| Index pattern | `p5-dashboard.json` + générateur Saved Objects | `_field_caps` + import/relecture API | objet réel présent dans Dashboards |
+| Donut HTTP | Dashboard as Code, champ `http_method` | import/relecture API + contrôle navigateur | capture réelle lisible |
+| Octets par 12 h | Dashboard as Code, `Sum(bytes_sent)` + intervalle `12h` | import/relecture API + contrôle navigateur | capture réelle lisible |
+| Top 5 URL par 12 h | Dashboard as Code, `url_path`, taille 5 + intervalle `12h` | import/relecture API + contrôle navigateur | capture réelle lisible |
+| Dashboard complet | `p5-nginx-observability` versionné | 5 Saved Objects relus par API + contrôle navigateur | capture réelle des 3 visuels réunis |
 
-### Ce qui est automatisé et ce qui ne l’est pas
+### Ce qui est automatisé et ce qui reste humain
 
-Le dépôt automatise la transformation, l’import et les contrôles de données.
-Il **n’automatise pas la création des trois visualisations**, car cette
-manipulation fait partie de la compréhension demandée.
+Le dépôt automatise la transformation et l’import des données, les contrôles de
+mapping/agrégations, la génération des Saved Objects, le contrôle `_field_caps`,
+l’import avec écrasement contrôlé et la relecture des cinq objets par API.
+
+La partie volontairement humaine est la **validation du rendu réel dans le
+navigateur** : vérifier la plage temporelle, la lisibilité des trois
+visualisations et réaliser les captures demandées. La soutenance ne doit pas
+recréer les graphiques à la souris.
 
 ### Livrable associé
 
@@ -92,9 +98,9 @@ manipulation fait partie de la compréhension demandée.
 | Réutiliser le réseau Ex.1 | data sources Terraform par tags | AWS Ready `exercice-3` | VPC détecté |
 | Deux backends | `aws_instance.p5_hello`, `count = 2` | Terraform outputs | 2 EC2 actives |
 | HAProxy | `aws_instance.p5_haproxy` | output `haproxy_url` | EC2 active |
-| `nginxdemos/hello` | Docker dans `user_data` | réponse `Server name` | deux hostnames distincts |
+| `nginxdemos/hello` | Docker dans `user_data` | navigateur + réponse `Server name` | deux hostnames distincts |
 | HTTP backend privé | SG backend depuis SG HAProxy | plan Terraform | backends non exposés directement en HTTP public |
-| `roundrobin` | HAProxy config | `test-haproxy-roundrobin.sh` | deux backends observés |
+| `roundrobin` | HAProxy config | navigateur + `test-haproxy-roundrobin.sh` | deux backends observés |
 | Health check HTTP | `option httpchk GET /` | config + test | retrait automatique |
 | Seuil de panne | `fall 3` | config | un seul backend pendant panne |
 | Seuil de reprise | `rise 2` | config | retour des deux backends |
@@ -164,6 +170,7 @@ Le contrôle `check-aws-cleanup.sh` est global : il ne doit produire
 ## Documents associés
 
 - [Architecture technique](architecture-et-flux.md)
-- [Runbook complet](01-parcours-debutant.md)
+- [Runbook de soutenance](RUNBOOK_SOUTENANCE.md)
+- [Runbook d’exécution guidée](RUNBOOK_EXECUTION_GUIDEE.md)
 - [Validation, preuves et nettoyage](validation-preuves-nettoyage.md)
 - [Livrables](livrables/README.md)
