@@ -1,149 +1,89 @@
-# Schémas de référence — assessment P5
+# Schémas du projet P5
 
-Les schémas de ce dossier servent d'abord à **présenter l'architecture du projet pendant l'assessment**. Ils ne remplacent ni le code Terraform ni les explications du runbook.
+Ce dossier distingue désormais deux niveaux de schémas :
 
-Leur fonction est de répondre rapidement à quatre questions :
+- **les schémas officiels de soutenance**, utilisés dans le runbook LIVE ;
+- **les SVG techniques de référence**, conservés pour les explications plus détaillées et les contrôles de cohérence.
 
-```text
-quelles ressources existent ?
-où sont-elles placées ?
-comment communiquent-elles ?
-quel résultat doit être démontré ?
-```
+## Schémas officiels de soutenance
 
-## Ordre de présentation
+Les quatre visuels validés comme support officiel sont regroupés dans [`officiels/`](officiels/) :
 
-| Schéma | Ce qu'il faut expliquer |
-| --- | --- |
-| [Vue d'ensemble](vue-ensemble.svg) | les trois exercices et leurs dépendances |
-| [Exercice 1](exercice-1.svg) | VPC, deux subnets, placement de `p5-web`, rôle de Terraform et Ansible |
-| [Exercice 2](exercice-2.svg) | source des logs, pipeline d'import et domaine Amazon OpenSearch managé |
-| [Exercice 3](exercice-3.svg) | placement de HAProxy et des deux backends, flux réseau et failover |
-| [Étape 0](etape-0.svg) | préparation technique du lab, hors récit principal de l'oral |
-| [Finalisation](finalisation/finalisation.svg) | preuves, destruction et audit après la démonstration |
+| Vue | Fichier | Fonction pendant l'oral |
+| --- | --- | --- |
+| projet | [`vue-ensemble.webp`](officiels/vue-ensemble.webp) | comprendre en quelques secondes comment les trois exercices s'enchaînent |
+| Exercice 1 | [`exercice-1.webp`](officiels/exercice-1.webp) | comprendre le socle AWS, le VPC, les subnets, l'EC2 et le rôle de Terraform, Ansible, NGINX et Angular |
+| Exercice 2 | [`exercice-2.webp`](officiels/exercice-2.webp) | suivre le flux `access.log → parsing → Bulk API → OpenSearch → Dashboards` et les trois visualisations |
+| Exercice 3 | [`exercice-3.webp`](officiels/exercice-3.webp) | comprendre HAProxy, les deux backends, le round-robin et le scénario `2 → 1 → 2` |
 
-## Vue globale
+Le document canonique qui les utilise est [`../RUNBOOK_SOUTENANCE.md`](../RUNBOOK_SOUTENANCE.md).
 
-La vue globale doit permettre de dire simplement :
+### Principe graphique
+
+La vue d'ensemble reste volontairement légère : elle raconte **la progression du projet**, sans répéter les détails présents dans les trois schémas d'exercice.
 
 ```text
-Exercice 1
-Infrastructure + déploiement
-      │
-      ├── access.log ─────► Exercice 2 : logs + OpenSearch
-      │
-      └── VPC + subnets ──► Exercice 3 : HAProxy + deux backends
+Exercice 1 : construire et déployer
+        │
+        ├── access.log ─────► Exercice 2 : observer et analyser
+        │
+        └── VPC + subnets ──► Exercice 3 : répartir et résister
 ```
 
-L'environnement Windows/WSL2 n'appartient pas à ce schéma : il s'agit uniquement du poste depuis lequel les commandes sont exécutées.
+Les schémas détaillés ajoutent uniquement les informations nécessaires à la compréhension : rôle des outils, flux principal, résultat attendu et dépendances entre exercices.
 
-## Exercice 1 — topologie à montrer
+## SVG techniques de référence
 
-Le schéma doit faire apparaître clairement :
+Les anciens SVG restent disponibles :
+
+- [`vue-ensemble.svg`](vue-ensemble.svg) ;
+- [`exercice-1.svg`](exercice-1.svg) ;
+- [`exercice-2.svg`](exercice-2.svg) ;
+- [`exercice-3.svg`](exercice-3.svg) ;
+- [`etape-0.svg`](etape-0.svg) ;
+- [`finalisation/finalisation.svg`](finalisation/finalisation.svg).
+
+Ils servent de référence technique, mais ne sont plus les visuels principaux du runbook LIVE.
+
+## Rappels techniques
+
+### Exercice 1
 
 ```text
-AWS us-east-1
-└── VPC 10.0.0.0/16
-    ├── subnet public 1
-    │   └── EC2 p5-web · t3.micro · Ubuntu 24.04
-    │       └── NGINX + Angular
-    └── subnet public 2
-        └── aucune EC2 Ex. 1 ; réseau réutilisé Ex. 3
+Terraform → provisionne l'infrastructure
+AWS       → héberge les ressources
+VPC       → réseau privé et isolé du projet
+subnets   → organisent le placement des ressources
+EC2       → machine virtuelle p5-web
+Ansible   → configure la machine et déploie
+NGINX     → sert l'application en HTTP
+Angular   → application web
 ```
 
-Il doit également distinguer :
+### Exercice 2
 
 ```text
-Terraform → crée l'infrastructure
-Ansible   → configure p5-web via SSH
-Navigateur → accède à NGINX/Angular via HTTP 80
+access.log            → log réel issu de NGINX
+sample reproductible  → jeu de données de démonstration
+parsing / typage      → structure les champs
+Bulk API              → envoie les documents
+Amazon OpenSearch     → indexe et agrège
+OpenSearch Dashboards → affiche les visualisations
 ```
 
-## Exercice 2 — architecture à montrer
-
-Amazon OpenSearch Service est un **service AWS managé** dans l'implémentation actuelle.
-
-Le schéma ne doit donc pas dessiner artificiellement une EC2 OpenSearch dans le VPC de l'exercice 1.
-
-Flux de référence :
+### Exercice 3
 
 ```text
-access.log NGINX ─┐
-                  ├─► parsing / typage ─► Bulk API ─► Amazon OpenSearch ─► Dashboards
-sample versionné ─┘
+HAProxy          → répartit la charge
+roundrobin       → alterne les requêtes
+health check GET / → vérifie la disponibilité
+fall 3           → retire après 3 échecs
+rise 2           → réintègre après 2 succès
+hello-1 / hello-2 → backends applicatifs
 ```
 
-Configuration importante :
-
-```text
-OpenSearch 2.19
-1 × t3.small.search
-EBS gp3 · 10 Gio
-HTTPS / TLS 1.2+
-accès limité à l'IP d'administration /32
-```
-
-Le résultat visuel attendu reste : donut HTTP, octets par 12 h, top 5 URL par 12 h et dashboard complet.
-
-## Exercice 3 — topologie à montrer
-
-Le schéma doit rendre le placement des trois EC2 immédiatement compréhensible :
-
-```text
-VPC Exercice 1
-├── subnet public 1
-│   ├── p5-haproxy · t3.micro
-│   └── p5-hello-1 · t3.micro
-└── subnet public 2
-    └── p5-hello-2 · t3.micro
-```
-
-Flux utilisateur :
-
-```text
-Internet → HAProxy:80 → IP privée backend 1:80
-                    └→ IP privée backend 2:80
-```
-
-Le Security Group des backends n'autorise HTTP que depuis le Security Group HAProxy.
-
-Le scénario de validation est :
-
-```text
-2 backends disponibles
-→ panne d'un service
-→ 1 backend continue
-→ restauration
-→ 2 backends disponibles
-```
-
-## Règles graphiques
-
-Un schéma d'assessment doit être lisible à l'écran sans zoom excessif. Il doit donc :
-
-- montrer le placement réel des ressources lorsque ce placement est important ;
-- afficher les types d'instance utiles à l'explication ;
-- distinguer VPC, subnets, service managé et flux Internet ;
-- éviter les détails qui ne servent pas l'explication orale ;
-- utiliser les mêmes noms que le code (`p5-web`, `p5-haproxy`, `p5-hello-1`, `p5-hello-2`) ;
-- nommer les flux importants : HTTP public, SSH d'administration, IP privées backend ;
-- rester compréhensible indépendamment des couleurs.
-
-## Contrat technique SVG
-
-Les six SVG restent :
-
-- autonomes ;
-- accessibles avec `title`, `desc`, `role="img"` et `aria-labelledby` ;
-- horizontaux et adaptés à GitHub ;
-- sans script ni ressource externe ;
-- sans Mermaid ;
-- sous les limites de poids et de complexité contrôlées par la CI.
-
-Contrôle :
+## Contrôle des SVG techniques
 
 ```bash
 python3 scripts/tools/audit_non_regression.py --schemas-only
 ```
-
-Le document canonique de présentation est [`../RUNBOOK_SOUTENANCE.md`](../RUNBOOK_SOUTENANCE.md).
