@@ -21,7 +21,7 @@ ce sont des systèmes distincts.
 
 ## Parcours complet
 
-![Architecture et dépendances du P5](schemas/vue-ensemble.svg)
+![Architecture et dépendances du P5](schemas/officiels/vue-ensemble.svg)
 
 ```text
 qualifier WSL2
@@ -177,7 +177,7 @@ Cela signifie que le lab est prêt à **lire un plan Terraform**, pas qu'un
 
 # Phase 4 — Exercice 1 : Terraform + Ansible + Angular/NGINX
 
-![Exercice 1 — infrastructure et déploiement](schemas/exercice-1.svg)
+![Exercice 1 — infrastructure et déploiement](schemas/officiels/exercice-1.svg)
 
 ## Objectif
 
@@ -268,7 +268,7 @@ Guide : [`exercices/01-terraform-ansible.md`](exercices/01-terraform-ansible.md)
 
 # Phase 5 — Exercice 2 : OpenSearch + Dashboard as Code
 
-![Exercice 2 — logs vers OpenSearch](schemas/exercice-2.svg)
+![Exercice 2 — logs vers OpenSearch](schemas/officiels/exercice-2.svg)
 
 ## Objectif
 
@@ -402,7 +402,7 @@ Guide : [`exercices/02-opensearch.md`](exercices/02-opensearch.md).
 
 # Phase 6 — Exercice 3 : HAProxy et résilience
 
-![Exercice 3 — HAProxy et résilience](schemas/exercice-3.svg)
+![Exercice 3 — HAProxy et résilience](schemas/officiels/exercice-3.svg)
 
 ## Précondition
 

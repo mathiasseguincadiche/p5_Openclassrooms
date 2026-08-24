@@ -4,7 +4,7 @@ Ce dossier est le **portail documentaire de référence** du projet P5 OpenClass
 
 La documentation est organisée par intention : **comprendre**, **démontrer**, **exécuter**, **diagnostiquer**, **prouver** et **maintenir**. Chaque document garde une fonction claire afin d'éviter un manuel monolithique impossible à utiliser sous pression.
 
-![Architecture globale officielle du P5](schemas/officiels/vue-ensemble.webp)
+![Architecture globale officielle du P5](schemas/officiels/vue-ensemble.svg)
 
 ## Le projet en une lecture
 
@@ -128,16 +128,16 @@ comment reprendre si cela échoue ?
 
 ## Parcours visuel officiel
 
-Les quatre schémas ci-dessous sont les **supports officiels de soutenance** :
+Les quatre schémas ci-dessous sont les **supports officiels de soutenance en SVG vectoriel haute qualité**. Ils restent nets à l'écran, au zoom et lors d'une exportation PDF :
 
 | Vue | Schéma | À comprendre |
 | --- | --- | --- |
-| projet | [`vue-ensemble.webp`](schemas/officiels/vue-ensemble.webp) | Ex. 1 construit le socle ; Ex. 2 exploite les logs ; Ex. 3 réutilise le réseau pour la haute disponibilité |
-| Ex. 1 | [`exercice-1.webp`](schemas/officiels/exercice-1.webp) | VPC, subnets, EC2 et rôle de Terraform, Ansible, NGINX et Angular |
-| Ex. 2 | [`exercice-2.webp`](schemas/officiels/exercice-2.webp) | `access.log → parsing → Bulk API → OpenSearch → Dashboards` |
-| Ex. 3 | [`exercice-3.webp`](schemas/officiels/exercice-3.webp) | HAProxy, deux backends, round-robin et failover `2 → 1 → 2` |
+| projet | [`vue-ensemble.svg`](schemas/officiels/vue-ensemble.svg) | Ex. 1 construit le socle ; Ex. 2 exploite les logs ; Ex. 3 réutilise le réseau pour la haute disponibilité |
+| Ex. 1 | [`exercice-1.svg`](schemas/officiels/exercice-1.svg) | VPC, subnets, EC2 et rôle de Terraform, Ansible, NGINX et Angular |
+| Ex. 2 | [`exercice-2.svg`](schemas/officiels/exercice-2.svg) | `access.log → parsing → Bulk API → OpenSearch → Dashboards` |
+| Ex. 3 | [`exercice-3.svg`](schemas/officiels/exercice-3.svg) | HAProxy, deux backends, round-robin et failover `2 → 1 → 2` |
 
-Les schémas [`etape-0.svg`](schemas/etape-0.svg), [`finalisation.svg`](schemas/finalisation/finalisation.svg) et les anciens SVG d'architecture restent des **références techniques complémentaires**. Les conventions sont documentées dans [`schemas/README.md`](schemas/README.md).
+Les anciens WebP restent disponibles comme compatibilité raster. Les schémas [`etape-0.svg`](schemas/etape-0.svg), [`finalisation.svg`](schemas/finalisation/finalisation.svg) et les anciens SVG d'architecture restent des **références techniques complémentaires**. Les conventions sont documentées dans [`schemas/README.md`](schemas/README.md).
 
 ## Guides techniques par exercice
 
