@@ -133,7 +133,8 @@ Une documentation qui attribue ces quatre responsabilités au même outil est in
 | mapping | `terraform/exercice-2/opensearch/index-template.json` | guide ex. 2, troubleshooting | changement de types/champs |
 | import Bulk | `scripts/commands/import-opensearch-data.sh` | guide ex. 2, runbook | changement de CLI ou comportement |
 | vérification agrégations | `scripts/commands/verify-opensearch-data.sh` | guide ex. 2, preuves | changement des vérifications |
-| dashboard reste humain | orchestration `p5.sh` + contrat du projet | README, runbook, guide ex. 2 | automatisation volontaire du checkpoint |
+| Dashboard as Code | `terraform/exercice-2/opensearch/dashboards/p5-dashboard.json`, `scripts/tools/build-opensearch-saved-objects.py`, `scripts/commands/sync-opensearch-dashboards.sh`, orchestration `p5.sh` | README, runbook, guide ex. 2, correspondance consignes | changement des Saved Objects, champs, IDs ou synchronisation API |
+| contrôle visuel et captures | checkpoint humain de `p5.sh ex2` | runbook, guide ex. 2, livrables | changement des visuels ou des preuves demandées |
 
 ### Vocabulaire de la consigne
 
@@ -221,6 +222,7 @@ preuve AWS   = comportement réellement observé dans le lab
 | `docs/01-parcours-debutant.md` | compréhension pédagogique | enchaîner des commandes sans expliquer pourquoi |
 | `docs/architecture-et-flux.md` | architecture et responsabilités | procédures incident détaillées |
 | `docs/RUNBOOK_EXECUTION_GUIDEE.md` | procédure complète | longs cours théoriques |
+| `docs/RUNBOOK_SOUTENANCE.md` | conducteur live : expliquer → prouver → navigateur → transition | reconstruire le lab pendant l’oral ou devenir un tutoriel exhaustif |
 | `docs/troubleshooting.md` | diagnostic et récupération | cacher les symptômes derrière des commandes destructives |
 | `docs/CENTRE_DE_COMMANDE.md` | référence CLI | documenter des commandes inexistantes |
 | guides `docs/exercices/` | compréhension approfondie par exercice | dupliquer tout le runbook A→Z |
