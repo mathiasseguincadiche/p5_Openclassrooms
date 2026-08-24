@@ -1,166 +1,149 @@
-# Schémas de référence
+# Schémas de référence — assessment P5
 
-Les six SVG de ce dossier constituent le **langage visuel officiel du P5**. Leur priorité est la compréhension : un lecteur doit pouvoir saisir l'idée principale d'un schéma en quelques secondes, puis utiliser le Markdown pour approfondir.
+Les schémas de ce dossier servent d'abord à **présenter l'architecture du projet pendant l'assessment**. Ils ne remplacent ni le code Terraform ni les explications du runbook.
 
-## Principe directeur
+Leur fonction est de répondre rapidement à quatre questions :
 
 ```text
-un schéma = une idée principale
+quelles ressources existent ?
+où sont-elles placées ?
+comment communiquent-elles ?
+quel résultat doit être démontré ?
 ```
 
-Le schéma montre le **modèle mental**. Le texte explique ensuite les paramètres, commandes, versions, risques et preuves.
+## Ordre de présentation
 
-Un détail technique ne doit apparaître dans l'image que s'il aide réellement à comprendre le fonctionnement.
-
-## Parcours visuel
-
-| Schéma | Question principale |
+| Schéma | Ce qu'il faut expliquer |
 | --- | --- |
-| [Vue d'ensemble](vue-ensemble.svg) | comment les trois exercices s'enchaînent-ils ? |
-| [Étape 0](etape-0.svg) | comment préparer le lab avant Terraform ? |
-| [Exercice 1](exercice-1.svg) | qui crée, qui configure et qui sert l'application ? |
-| [Exercice 2](exercice-2.svg) | comment un log NGINX devient-il un graphique ? |
-| [Exercice 3](exercice-3.svg) | comment HAProxy répartit-il le trafic et maintient-il le service pendant une panne ? |
-| [Finalisation](finalisation/finalisation.svg) | comment terminer et nettoyer proprement le lab ? |
+| [Vue d'ensemble](vue-ensemble.svg) | les trois exercices et leurs dépendances |
+| [Exercice 1](exercice-1.svg) | VPC, deux subnets, placement de `p5-web`, rôle de Terraform et Ansible |
+| [Exercice 2](exercice-2.svg) | source des logs, pipeline d'import et domaine Amazon OpenSearch managé |
+| [Exercice 3](exercice-3.svg) | placement de HAProxy et des deux backends, flux réseau et failover |
+| [Étape 0](etape-0.svg) | préparation technique du lab, hors récit principal de l'oral |
+| [Finalisation](finalisation/finalisation.svg) | preuves, destruction et audit après la démonstration |
 
-## Lecture globale
+## Vue globale
+
+La vue globale doit permettre de dire simplement :
 
 ```text
-EXERCICE 1
-construire + déployer
+Exercice 1
+Infrastructure + déploiement
       │
-      ├── logs ─────────► EXERCICE 2 : observer
+      ├── access.log ─────► Exercice 2 : logs + OpenSearch
       │
-      └── réseau AWS ───► EXERCICE 3 : répartir + résister
+      └── VPC + subnets ──► Exercice 3 : HAProxy + deux backends
 ```
 
-À retenir :
+L'environnement Windows/WSL2 n'appartient pas à ce schéma : il s'agit uniquement du poste depuis lequel les commandes sont exécutées.
+
+## Exercice 1 — topologie à montrer
+
+Le schéma doit faire apparaître clairement :
 
 ```text
-Ex. 1 livre l'application
-Ex. 2 observe son activité
-Ex. 3 démontre la disponibilité
+AWS us-east-1
+└── VPC 10.0.0.0/16
+    ├── subnet public 1
+    │   └── EC2 p5-web · t3.micro · Ubuntu 24.04
+    │       └── NGINX + Angular
+    └── subnet public 2
+        └── aucune EC2 Ex. 1 ; réseau réutilisé Ex. 3
 ```
 
-## Règles de simplicité
-
-Un schéma de soutenance doit :
-
-1. présenter au maximum quelques composants principaux ;
-2. utiliser des mots courts dans les boîtes ;
-3. garder les détails techniques dans un encadré secondaire ou dans le Markdown ;
-4. suivre une lecture évidente, généralement de gauche à droite ;
-5. nommer les flèches seulement lorsqu'un verbe aide la compréhension : `crée`, `configure`, `sert`, `envoie`, `répartit` ;
-6. terminer par une idée simple à retenir ;
-7. rester compréhensible sans connaître Terraform, OpenSearch ou HAProxy à l'avance.
-
-## Trois types de schémas
-
-### Chaîne de responsabilités
-
-Utilisée pour l'exercice 1 :
+Il doit également distinguer :
 
 ```text
-Terraform → AWS → Ansible → NGINX → Angular
+Terraform → crée l'infrastructure
+Ansible   → configure p5-web via SSH
+Navigateur → accède à NGINX/Angular via HTTP 80
 ```
 
-La question est : **qui fait quoi ?**
+## Exercice 2 — architecture à montrer
 
-### Flux de données
+Amazon OpenSearch Service est un **service AWS managé** dans l'implémentation actuelle.
 
-Utilisé pour l'exercice 2 :
+Le schéma ne doit donc pas dessiner artificiellement une EC2 OpenSearch dans le VPC de l'exercice 1.
+
+Flux de référence :
 
 ```text
-access.log → parser → OpenSearch → Dashboard
+access.log NGINX ─┐
+                  ├─► parsing / typage ─► Bulk API ─► Amazon OpenSearch ─► Dashboards
+sample versionné ─┘
 ```
 
-La question est : **que devient la donnée ?**
-
-### Topologie + scénario de panne
-
-Utilisée pour l'exercice 3 :
+Configuration importante :
 
 ```text
-Client → HAProxy → 2 backends
-
-2 disponibles → 1 tombe → service continue → 2 disponibles
+OpenSearch 2.19
+1 × t3.small.search
+EBS gp3 · 10 Gio
+HTTPS / TLS 1.2+
+accès limité à l'IP d'administration /32
 ```
 
-La question est : **comment le service reste-t-il disponible ?**
+Le résultat visuel attendu reste : donut HTTP, octets par 12 h, top 5 URL par 12 h et dashboard complet.
 
-## Langage visuel
+## Exercice 3 — topologie à montrer
 
-Les couleurs sont peu nombreuses et restent secondaires par rapport au texte :
-
-| Couleur | Usage principal |
-| --- | --- |
-| bleu | infrastructure AWS ou source technique |
-| orange | configuration, transformation ou observabilité |
-| vert | application, résultat ou service disponible |
-| violet | HAProxy / répartition de charge |
-| rouge | panne contrôlée uniquement |
-| gris | contexte neutre |
-
-La couleur n'est jamais la seule information permettant de comprendre un état.
-
-## Comment accompagner un schéma dans le Markdown
-
-Chaque grand schéma doit être suivi de trois blocs courts :
+Le schéma doit rendre le placement des trois EC2 immédiatement compréhensible :
 
 ```text
-COMMENT LE LIRE
-→ ordre de lecture en 3 à 5 étapes
-
-À RETENIR
-→ une phrase simple
-
-CE QUE JE DÉMONTRE
-→ preuve terminal ou navigateur
+VPC Exercice 1
+├── subnet public 1
+│   ├── p5-haproxy · t3.micro
+│   └── p5-hello-1 · t3.micro
+└── subnet public 2
+    └── p5-hello-2 · t3.micro
 ```
 
-Le handbook de soutenance applique cette structure afin que le dessin serve réellement de support oral.
+Flux utilisateur :
 
-## Ce qui doit rester hors du schéma principal
+```text
+Internet → HAProxy:80 → IP privée backend 1:80
+                    └→ IP privée backend 2:80
+```
 
-Sauf nécessité pédagogique, ne pas surcharger une image avec :
+Le Security Group des backends n'autorise HTTP que depuis le Security Group HAProxy.
 
-- tous les noms de ressources Terraform ;
-- toutes les options de sécurité ;
-- toutes les versions de composants ;
-- toutes les commandes ;
-- les chemins complets de fichiers ;
-- les détails de CI ;
-- l'environnement Windows/WSL2 lorsque le sujet est l'architecture AWS du projet.
+Le scénario de validation est :
 
-Ces informations restent disponibles dans les documents techniques et dans le code.
+```text
+2 backends disponibles
+→ panne d'un service
+→ 1 backend continue
+→ restauration
+→ 2 backends disponibles
+```
 
-## Règles techniques
+## Règles graphiques
 
-Les SVG restent :
+Un schéma d'assessment doit être lisible à l'écran sans zoom excessif. Il doit donc :
+
+- montrer le placement réel des ressources lorsque ce placement est important ;
+- afficher les types d'instance utiles à l'explication ;
+- distinguer VPC, subnets, service managé et flux Internet ;
+- éviter les détails qui ne servent pas l'explication orale ;
+- utiliser les mêmes noms que le code (`p5-web`, `p5-haproxy`, `p5-hello-1`, `p5-hello-2`) ;
+- nommer les flux importants : HTTP public, SSH d'administration, IP privées backend ;
+- rester compréhensible indépendamment des couleurs.
+
+## Contrat technique SVG
+
+Les six SVG restent :
 
 - autonomes ;
 - accessibles avec `title`, `desc`, `role="img"` et `aria-labelledby` ;
 - horizontaux et adaptés à GitHub ;
-- inférieurs à la limite de poids du contrat de non-régression ;
-- sans script, image encodée, ressource externe ou filtre SVG complexe ;
-- lisibles avec les polices système ;
-- sans Mermaid dans le contrat actuel du dépôt.
+- sans script ni ressource externe ;
+- sans Mermaid ;
+- sous les limites de poids et de complexité contrôlées par la CI.
 
-## Contrôle de non-régression
+Contrôle :
 
 ```bash
 python3 scripts/tools/audit_non_regression.py --schemas-only
 ```
 
-Le contrôle vérifie notamment :
-
-- exactement six SVG ;
-- dimensions et ratio horizontal ;
-- poids maximal ;
-- accessibilité ;
-- nombre raisonnable de blocs texte ;
-- absence d'éléments interdits ;
-- plusieurs compositions adaptées aux sujets ;
-- présence des six schémas dans le README racine.
-
-Une évolution graphique est réussie lorsqu'elle **réduit le temps nécessaire pour comprendre** sans modifier le fonctionnement du P5.
+Le document canonique de présentation est [`../RUNBOOK_SOUTENANCE.md`](../RUNBOOK_SOUTENANCE.md).
