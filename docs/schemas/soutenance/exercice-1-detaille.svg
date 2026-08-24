@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="850" viewBox="0 0 1400 850">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#475569"/>
+    </marker>
+    <style>
+      text{font-family:Inter,Segoe UI,Arial,sans-serif;fill:#0f172a}
+      .title{font-size:27px;font-weight:700}
+      .sub{font-size:16px;fill:#475569}
+      .box-title{font-size:18px;font-weight:700}
+      .txt{font-size:15px;fill:#334155}
+      .small{font-size:13px;fill:#475569}
+      .arrow{stroke:#475569;stroke-width:2.4;fill:none;marker-end:url(#arrow)}
+      .dash{stroke-dasharray:8 6}
+    </style>
+  </defs>
+  <rect width="1400" height="820" rx="24" fill="#f8fafc"/>
+  <text x="45" y="48" class="title">P5 — Exercice 1 : Terraform → AWS → Ansible → NGINX → Angular</text>
+  <text x="45" y="78" class="sub">Lecture à l'oral : Terraform construit le socle ; Ansible configure l'EC2 ; NGINX expose l'application en HTTP.</text>
+
+  <rect x="45" y="120" width="260" height="185" rx="18" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2"/>
+  <text x="175" y="152" text-anchor="middle" class="box-title">Plan de contrôle</text>
+  <text x="175" y="180" text-anchor="middle" class="txt">Windows 11 + WSL2</text>
+  <text x="175" y="204" text-anchor="middle" class="txt">Ubuntu 26.04</text>
+  <text x="175" y="238" text-anchor="middle" class="small">Terraform · AWS CLI</text>
+  <text x="175" y="260" text-anchor="middle" class="small">Ansible · build Angular</text>
+  <text x="175" y="282" text-anchor="middle" class="small">clé SSH ~/.ssh/p5-key</text>
+
+  <rect x="365" y="105" width="990" height="555" rx="24" fill="#ffffff" stroke="#94a3b8" stroke-width="2"/>
+  <text x="395" y="140" class="box-title">AWS · us-east-1</text>
+  <rect x="395" y="165" width="930" height="455" rx="22" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="425" y="198" class="box-title">VPC p5-vpc · 10.0.0.0/16</text>
+
+  <rect x="435" y="230" width="390" height="300" rx="20" fill="#ffffff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="630" y="262" text-anchor="middle" class="box-title">Subnet public 1 · 10.0.1.0/24</text>
+  <text x="630" y="286" text-anchor="middle" class="small">première zone de disponibilité</text>
+  <rect x="485" y="322" width="290" height="160" rx="18" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+  <text x="630" y="354" text-anchor="middle" class="box-title">EC2 p5-web</text>
+  <text x="630" y="381" text-anchor="middle" class="txt">t3.micro · Ubuntu 24.04</text>
+  <text x="630" y="407" text-anchor="middle" class="txt">IP publique + IP privée</text>
+  <text x="630" y="433" text-anchor="middle" class="txt">NGINX → /var/www/p5</text>
+  <text x="630" y="459" text-anchor="middle" class="txt">Angular</text>
+
+  <rect x="875" y="230" width="390" height="300" rx="20" fill="#ffffff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="1070" y="262" text-anchor="middle" class="box-title">Subnet public 2 · 10.0.2.0/24</text>
+  <text x="1070" y="286" text-anchor="middle" class="small">deuxième zone de disponibilité</text>
+  <text x="1070" y="373" text-anchor="middle" class="box-title">Pas d'EC2 Exercice 1</text>
+  <text x="1070" y="405" text-anchor="middle" class="txt">socle réseau déjà prêt</text>
+  <text x="1070" y="433" text-anchor="middle" class="txt">réutilisé par l'Exercice 3</text>
+
+  <rect x="535" y="555" width="650" height="42" rx="12" fill="#fff7ed" stroke="#ea580c"/>
+  <text x="860" y="581" text-anchor="middle" class="txt">Internet Gateway + route publique 0.0.0.0/0 sur les deux subnets</text>
+
+  <path d="M305 180 H355 V245 H425" class="arrow"/>
+  <text x="326" y="165" class="small">Terraform</text>
+  <path d="M305 245 H350 V395 H470" class="arrow dash"/>
+  <text x="318" y="335" class="small">Ansible · SSH 22</text>
+
+  <rect x="45" y="365" width="260" height="115" rx="18" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+  <text x="175" y="397" text-anchor="middle" class="box-title">Navigateur</text>
+  <text x="175" y="426" text-anchor="middle" class="txt">HTTP 80 public</text>
+  <text x="175" y="452" text-anchor="middle" class="small">→ NGINX → Angular</text>
+  <path d="M305 423 H465" class="arrow"/>
+
+  <rect x="45" y="535" width="260" height="125" rx="18" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
+  <text x="175" y="567" text-anchor="middle" class="box-title">Security Group</text>
+  <text x="175" y="595" text-anchor="middle" class="txt">22/TCP : IP admin /32</text>
+  <text x="175" y="621" text-anchor="middle" class="txt">80/TCP : 0.0.0.0/0</text>
+  <text x="175" y="646" text-anchor="middle" class="small">sortie : autorisée</text>
+
+  <rect x="45" y="700" width="1310" height="105" rx="18" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="70" y="730" class="box-title">Message clé à dire au mentor</text>
+  <text x="70" y="757" class="txt">Terraform crée le réseau, la sécurité et l'EC2 ; il ne configure pas NGINX.</text>
+  <text x="70" y="783" class="txt">Le user_data installe seulement Python 3 ; Ansible prend ensuite le relais et déploie NGINX + Angular de façon rejouable.</text>
+</svg>
