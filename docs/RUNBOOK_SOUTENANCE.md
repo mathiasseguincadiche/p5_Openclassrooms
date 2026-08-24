@@ -4,6 +4,17 @@
 >
 > **Règle :** schéma → 2 phrases d'explication → commande → résultat → navigateur.
 
+## Repères pour toi
+
+```text
+POURQUOI  = ce que l'étape doit prouver
+VÉRIFIER  = ce que tu regardes dans la sortie
+DIRE      = la phrase courte à donner au jury
+NAVIGATEUR = le résultat concret à montrer
+```
+
+Ne cherche pas à commenter toute la sortie d'une commande : montre uniquement les lignes utiles indiquées dans **Vérifier**.
+
 ## Avant l'oral — hors chrono
 
 ```bash
@@ -12,6 +23,8 @@ git switch main
 git pull --ff-only
 bash scripts/commands/p5.sh status
 ```
+
+**Pourquoi :** partir du bon dépôt, sur `main`, avec un lab déjà prêt.
 
 Préparer les variables :
 
@@ -24,12 +37,14 @@ export HAPROXY_URL="$(terraform -chdir=terraform/exercice-3 output -raw haproxy_
 export BACKEND_1_IP="$(terraform -chdir=terraform/exercice-3 output -raw hello_1_public_ip)"
 ```
 
+**Pourquoi :** éviter de rechercher les URLs et IP pendant la soutenance.
+
 Ouvrir trois onglets :
 
 ```text
-1. $WEB_URL
-2. $DASHBOARD_URL
-3. $HAPROXY_URL
+1. $WEB_URL       → application Angular
+2. $DASHBOARD_URL → OpenSearch Dashboards
+3. $HAPROXY_URL   → service derrière HAProxy
 ```
 
 Ne pas lancer `cleanup` avant la fin de la soutenance.
@@ -46,7 +61,7 @@ Ne pas lancer `cleanup` avant la fin de la soutenance.
 
 > « Le projet contient trois exercices. Le premier provisionne AWS avec Terraform puis déploie Angular avec Ansible et NGINX. Le deuxième exploite les logs NGINX dans Amazon OpenSearch. Le troisième met HAProxy devant deux backends pour démontrer la répartition de charge et la reprise après panne. »
 
-## Enchaîner
+## À retenir
 
 ```text
 Ex. 1 : construire et déployer
@@ -68,7 +83,7 @@ Ex. 3 : répartir et résister
 
 > « Terraform crée dans `us-east-1` un VPC `10.0.0.0/16`, deux subnets publics et l'EC2 `p5-web` en `t3.micro` dans le premier subnet. Ansible se connecte ensuite en SSH, installe NGINX et déploie Angular. Le deuxième subnet sera réutilisé dans l'exercice 3. »
 
-### À pointer sur le schéma
+### À pointer
 
 ```text
 VPC 10.0.0.0/16
@@ -79,11 +94,17 @@ HTTP 80 → NGINX → Angular
 SSH 22  → Ansible
 ```
 
+**À comprendre :** Terraform crée l'infrastructure ; Ansible configure la machine ; NGINX sert l'application.
+
 ## 2:30 → 3:15 — Prouver Terraform
 
 ```bash
 terraform -chdir=terraform/exercice-1 output
 ```
+
+### Pourquoi
+
+Montrer que Terraform connaît bien les ressources déployées et leurs valeurs utiles.
 
 ### Vérifier
 
@@ -103,6 +124,10 @@ terraform -chdir=terraform/exercice-1 plan \
   -detailed-exitcode
 ```
 
+### Pourquoi
+
+Vérifier que la configuration Terraform et l'infrastructure déployée sont déjà alignées.
+
 ### Résultat attendu
 
 ```text
@@ -111,7 +136,7 @@ No changes
 
 ### Dire
 
-> « Terraform gère bien l'infrastructure et le plan est convergé. »
+> « Terraform gère bien l'infrastructure et le plan est convergé : il n'y a aucun changement à appliquer. »
 
 ## 3:15 → 4:00 — Prouver la connexion Ansible
 
@@ -121,12 +146,20 @@ ansible all \
   -m ping
 ```
 
+### Pourquoi
+
+Prouver que l'inventaire Ansible pointe vers la bonne EC2 et que la connexion SSH fonctionne.
+
 ### Résultat attendu
 
 ```text
 SUCCESS
 ping: pong
 ```
+
+### Dire
+
+> « Ansible atteint correctement l'instance cible. »
 
 ## 4:00 → 5:00 — Prouver le déploiement Ansible
 
@@ -135,6 +168,10 @@ ansible-playbook \
   -i ansible/inventories/hosts_aws \
   ansible/playbooks/deploy.yml
 ```
+
+### Pourquoi
+
+Prouver que la configuration NGINX et le déploiement Angular sont automatisés et rejouables.
 
 ### Résultat attendu sur un environnement déjà convergé
 
@@ -146,7 +183,7 @@ failed=0
 
 ### Dire
 
-> « Ansible configure NGINX et déploie Angular. `changed=0` montre que la configuration est déjà conforme. »
+> « Ansible configure NGINX et déploie Angular. `changed=0` montre que la machine est déjà dans l'état attendu. »
 
 ## 5:00 → 6:00 — Montrer Angular
 
@@ -154,6 +191,10 @@ failed=0
 bash scripts/commands/verify-angular-deployment.sh \
   --url "$WEB_URL"
 ```
+
+### Pourquoi
+
+Prouver techniquement que NGINX répond et sert bien l'application déployée.
 
 ### Navigateur
 
@@ -170,6 +211,10 @@ application Angular affichée
 HTTP 200
 rafraîchissement fonctionnel
 ```
+
+### Dire
+
+> « Le résultat final de l'exercice 1 est bien visible : Angular est réellement servie par NGINX sur l'EC2 AWS. »
 
 ### Transition
 
@@ -189,7 +234,7 @@ rafraîchissement fonctionnel
 
 > « Le NGINX de l'exercice 1 produit `access.log`. Les logs sont parsés et envoyés à Amazon OpenSearch Service, puis OpenSearch Dashboards affiche les trois visualisations demandées. OpenSearch est ici un service AWS managé, pas une EC2 du VPC. »
 
-### À pointer sur le schéma
+### À pointer
 
 ```text
 access.log
@@ -208,11 +253,17 @@ EBS gp3 · 10 Gio
 HTTPS
 ```
 
+**À comprendre :** NGINX produit la donnée ; le parser la structure ; OpenSearch l'indexe et l'agrège ; Dashboards la rend lisible.
+
 ## 7:30 → 8:00 — Prouver OpenSearch
 
 ```bash
 terraform -chdir=terraform/exercice-2 output
 ```
+
+### Pourquoi
+
+Prouver que le domaine OpenSearch et ses endpoints sont bien issus du déploiement Terraform.
 
 ### Vérifier
 
@@ -222,12 +273,20 @@ opensearch_endpoint
 opensearch_dashboards_endpoint
 ```
 
+### Dire
+
+> « Le domaine Amazon OpenSearch est bien déployé et Terraform me fournit ses endpoints. »
+
 ## 8:00 → 8:45 — Prouver les données
 
 ```bash
 bash scripts/commands/verify-opensearch-data.sh \
   --endpoint "$OPENSEARCH_ENDPOINT"
 ```
+
+### Pourquoi
+
+Vérifier que les données nécessaires aux trois graphiques sont réellement exploitables.
 
 ### Vérifier
 
@@ -253,6 +312,10 @@ Ouvrir ou revenir sur :
 ```text
 $DASHBOARD_URL
 ```
+
+### Pourquoi
+
+Montrer le résultat visuel demandé par l'exercice, pas seulement une preuve API.
 
 ### Montrer dans cet ordre
 
@@ -285,7 +348,7 @@ $DASHBOARD_URL
 
 > « L'exercice 3 réutilise le VPC et les deux subnets de l'exercice 1. HAProxy et `p5-hello-1` sont dans le premier subnet ; `p5-hello-2` est dans le second. HAProxy reçoit le trafic public puis communique avec les deux backends sur leurs IP privées. »
 
-### À pointer sur le schéma
+### À pointer
 
 ```text
 subnet public 1
@@ -298,12 +361,18 @@ subnet public 2
 Internet → HAProxy:80 → IP privées des backends:80
 ```
 
+**À comprendre :** le client ne choisit jamais un backend ; HAProxy reçoit la requête et sélectionne un backend sain.
+
 ## 12:00 → 12:45 — Montrer la configuration HAProxy
 
 ```bash
 grep -E 'bind|balance|httpchk|http-check|server hello' \
   terraform/exercice-3/haproxy.cfg.tpl
 ```
+
+### Pourquoi
+
+Montrer uniquement les directives qui expliquent le comportement observé ensuite.
 
 ### À montrer
 
@@ -332,6 +401,10 @@ $HAPROXY_URL
 
 Rafraîchir plusieurs fois.
 
+### Pourquoi
+
+Matérialiser visuellement l'alternance entre les deux services applicatifs.
+
 ### Montrer
 
 ```text
@@ -341,6 +414,10 @@ Server address
 
 Les valeurs doivent alterner entre les deux backends.
 
+### Dire
+
+> « À chaque rafraîchissement, HAProxy répartit les requêtes entre les deux backends. »
+
 ## 14:00 → 15:00 — Prouver le round-robin dans le terminal
 
 ```bash
@@ -348,6 +425,10 @@ bash scripts/commands/test-haproxy-roundrobin.sh \
   --url "$HAPROXY_URL" \
   --requests 12
 ```
+
+### Pourquoi
+
+Confirmer par plusieurs requêtes que les deux backends sont réellement utilisés.
 
 ### Résultat attendu
 
@@ -371,6 +452,10 @@ bash scripts/commands/test-haproxy-failover.sh \
   --apply
 ```
 
+### Pourquoi
+
+Prouver exactement le comportement attendu : détection de panne, continuité de service et réintégration automatique.
+
 ### Résultat attendu
 
 ```text
@@ -379,6 +464,14 @@ PENDANT: 1 backend
 APRÈS  : 2 backends
 
 BASCULE ET RÉINTÉGRATION HAPROXY VALIDÉES
+```
+
+### À comprendre
+
+```text
+2 → 1 = HAProxy a détecté la panne
+1     = le service reste disponible
+1 → 2 = HAProxy a détecté le retour du backend
 ```
 
 ## 17:00 → 17:30 — Vérification navigateur
@@ -390,6 +483,10 @@ $HAPROXY_URL
 ```
 
 Rafraîchir plusieurs fois et vérifier que les deux backends sont de nouveau servis.
+
+### Dire
+
+> « Le backend restauré a bien été réintégré automatiquement dans la rotation. »
 
 ---
 
