@@ -2,225 +2,154 @@
 
 ## Objectif
 
-Ce document décrit **comment le P5 est réellement construit** : frontières de responsabilité, plan de contrôle, composants AWS, flux réseau, flux de données, convergence, preuves et dépendances entre exercices.
+Ce document est la **référence d'architecture du projet**. Il explique comment les trois exercices s'emboîtent, quelles ressources AWS existent, qui possède chaque responsabilité, quels flux circulent et pourquoi l'ordre d'exécution est important.
 
-Il répond principalement à :
+Pour une démonstration guidée devant le jury, utiliser [`RUNBOOK_SOUTENANCE.md`](RUNBOOK_SOUTENANCE.md). Pour exécuter le projet pas à pas, utiliser [`RUNBOOK_EXECUTION_GUIDEE.md`](RUNBOOK_EXECUTION_GUIDEE.md).
 
-```text
-quels composants existent ?
-qui possède quoi ?
-comment communiquent-ils ?
-d'où viennent les valeurs utilisées ?
-quelles dépendances imposent l'ordre d'exécution et de destruction ?
-```
+## 1. Vue globale
 
-Pour apprendre progressivement les concepts, utiliser [`01-parcours-debutant.md`](01-parcours-debutant.md). Pour exécuter le projet, utiliser [`RUNBOOK_EXECUTION_GUIDEE.md`](RUNBOOK_EXECUTION_GUIDEE.md).
+![Architecture globale du P5](schemas/vue-ensemble.svg)
 
-![Architecture de référence du P5](schemas/vue-ensemble.svg)
-
-## 1. Architecture en couches
-
-Le projet peut être lu en cinq couches :
+Le projet se lit en trois verbes :
 
 ```text
-1. plateforme
-   Windows 11 Pro + WSL2 + distribution Ubuntu
-
-2. plan de contrôle P5
-   p5.sh + scripts + runtime spécifique
-
-3. infrastructure AWS
-   Terraform exercices 1, 2 et 3
-
-4. configuration / application / données
-   Ansible + Angular + NGINX + pipeline OpenSearch + HAProxy
-
-5. validation
-   logs + preuves + livrables + CI + non-régression
+CONSTRUIRE ET DÉPLOYER
+        ↓
+OBSERVER
+        ↓
+RÉPARTIR ET RÉSISTER
 ```
 
-Cette séparation évite une confusion fréquente : un seul dépôt orchestre plusieurs outils, mais chaque outil conserve une responsabilité précise.
-
-## 2. Frontière plateforme / projet
-
-La plateforme Windows/WSL2 est fournie par [`mathiasseguincadiche/Windows_11_Pro_Custom`](https://github.com/mathiasseguincadiche/Windows_11_Pro_Custom).
-
-### La plateforme possède
-
-- Windows 11 Pro ;
-- WSL2 ;
-- la distribution `Ubuntu` ;
-- le VHDX ;
-- le réseau et le DNS WSL2 ;
-- systemd ;
-- Docker Engine ;
-- Terraform ;
-- AWS CLI.
-
-### Le P5 possède
-
-- son contrat d'exécution dans WSL2 ;
-- son runtime spécifique, notamment Node.js et Ansible Core ;
-- son plan de contrôle `p5.sh` ;
-- sa configuration AWS locale ;
-- ses `terraform.tfvars`, states, inventaires, logs et preuves locaux ;
-- les trois modules Terraform ;
-- la configuration Ansible ;
-- l'application Angular ;
-- les scripts OpenSearch et HAProxy ;
-- les livrables et contrôles de non-régression.
-
-Le P5 ne crée, ne déplace, n'exporte et ne détruit pas la distribution WSL2.
-
-Contrat détaillé : [`../environment/wsl2/README.md`](../environment/wsl2/README.md).
-
-## 3. Deux contextes Ubuntu distincts
-
-L'architecture utilise plusieurs machines Linux.
-
-| Contexte | Version de référence | Fonction |
+| Exercice | But | Résultat concret |
 | --- | --- | --- |
-| distribution WSL2 locale | Ubuntu 26.04 LTS `resolute` | plan de contrôle du P5 |
-| EC2 exercice 1 | Ubuntu 24.04 LTS `noble` par défaut | cible Ansible, NGINX et Angular |
-| EC2 exercice 3 | Ubuntu 24.04 LTS `noble` par défaut | HAProxy et backends |
+| Exercice 1 | créer le socle AWS et livrer Angular | application visible dans le navigateur |
+| Exercice 2 | transformer les logs NGINX en indicateurs | dashboard OpenSearch |
+| Exercice 3 | répartir le trafic et tester la panne | service maintenu pendant un failover |
 
-Le code source de cette distinction se trouve notamment dans :
-
-- `environment/versions.env` pour WSL2 ;
-- les filtres AMI des modules Terraform exercices 1 et 3 pour les EC2.
-
-Une documentation qui parle d'« Ubuntu » sans préciser le contexte doit être lue avec prudence.
-
-## 4. Plan de contrôle
+Deux dépendances donnent sa cohérence au projet :
 
 ```text
-distribution WSL2 Ubuntu 26.04
-       │
-       ▼
-scripts/commands/p5.sh
-       │
-       ├── scripts/lib/p5-runtime.sh
-       │      ├── journalisation
-       │      ├── preuves par étape
-       │      ├── confirmations
-       │      └── validation de valeurs
-       │
-       ├── scripts/commands/*.sh
-       ├── scripts/tools/*
-       ├── terraform/exercice-*/
-       └── ansible/playbooks/deploy.yml
+Exercice 1 ── access.log ──► Exercice 2
+Exercice 1 ── VPC/subnets ─► Exercice 3
 ```
 
-`p5.sh` orchestre le parcours mais ne remplace pas les outils qu'il appelle.
+## 2. Responsabilités
 
-### Responsabilités
+Le dépôt orchestre plusieurs outils, mais leurs responsabilités restent distinctes.
 
-```text
-p5.sh      → orchestration, garde-fous, ordre et preuves
-Terraform  → infrastructure AWS et propriété via le state
-Ansible    → configuration de l'EC2 exercice 1
-Angular    → artefact applicatif
-NGINX      → service web + logs HTTP
-OpenSearch → indexation et analyse des logs
-HAProxy    → répartition et health checks
-```
-
-Cycle général :
-
-```text
-inspecter → calculer le delta → confirmer → corriger → vérifier → prouver
-```
-
-## 5. Sources de vérité
-
-L'architecture ne doit pas dépendre d'informations recopiées manuellement dans plusieurs documents.
-
-| Domaine | Source de vérité |
+| Composant | Responsabilité |
 | --- | --- |
-| runtime WSL2 | `environment/versions.env` + contrôles de bootstrap |
-| configuration locale du lab | `environment/aws-readiness.env` |
-| commandes disponibles | `scripts/commands/p5.sh` |
-| ressources AWS | `terraform/exercice-{1,2,3}/` |
-| valeurs runtime d'infrastructure | outputs Terraform |
-| configuration NGINX/Angular | `ansible/playbooks/deploy.yml` + `ansible/files/` |
-| source applicative | `application/angular/` |
-| données OpenSearch | sample/log réel + parser + mapping + scripts d'import |
-| comportement HAProxy | `terraform/exercice-3/haproxy.cfg.tpl` |
-| preuves/logs | `scripts/lib/p5-runtime.sh` |
-| non-régression | `scripts/tools/audit_non_regression.py` + workflows GitHub Actions |
+| Terraform | créer et maintenir les ressources AWS |
+| state Terraform | mémoriser la propriété et l'état des ressources gérées |
+| Ansible | configurer l'EC2 de l'exercice 1 et déployer Angular |
+| NGINX | servir Angular et produire les logs HTTP |
+| Angular | application web livrée |
+| parser NGINX | transformer les lignes de log en documents structurés |
+| Amazon OpenSearch | indexer et agréger les documents |
+| OpenSearch Dashboards | rendre les agrégations visibles |
+| HAProxy | répartir les requêtes et surveiller les backends |
+| `p5.sh` | orchestrer les étapes, garde-fous, preuves et ordre d'exécution |
 
-Matrice détaillée : [`MATRICE_TRACABILITE.md`](MATRICE_TRACABILITE.md).
-
-## 6. Exercice 1 — infrastructure et déploiement
-
-Vue spécialisée : [`schemas/exercice-1.svg`](schemas/exercice-1.svg).
-
-Le point essentiel est la séparation entre **construction de l'infrastructure** et **configuration du serveur**.
+La règle d'architecture la plus importante est :
 
 ```text
-application/angular/
-       │ npm build
-       ▼
-artefact Angular
-       │
-       ├─────────────────────────────────────┐
-       │                                     │
-terraform/exercice-1                         │
-       │                                     │
-       ▼                                     │
-VPC + réseau + SG + EC2 + outputs            │
-       │                                     │
-       └───────────────┬─────────────────────┘
-                       ▼
-                    Ansible
-                       │
-                       ▼
-                NGINX + Angular
+Terraform crée.
+Ansible configure.
+NGINX sert.
+OpenSearch observe.
+HAProxy répartit.
 ```
 
-### 6.1 Infrastructure AWS
+## 3. Exercice 1 — infrastructure et déploiement
 
-Le module crée :
+![Architecture de l'exercice 1](schemas/exercice-1.svg)
+
+### 3.1 Ce que Terraform crée
+
+Le module [`terraform/exercice-1/`](../terraform/exercice-1/) crée le socle réseau et la cible de déploiement.
 
 ```text
-AWS Region
+AWS us-east-1
 └── VPC 10.0.0.0/16
-    ├── Public subnet 1
-    ├── Public subnet 2
+    ├── subnet public 1
+    ├── subnet public 2
     ├── Internet Gateway
-    ├── Public route table
-    ├── Security Group web
-    │   ├── TCP/22 depuis your_ip_cidr /32
-    │   └── TCP/80 depuis Internet
+    ├── table de routage publique
+    ├── Security Group p5-web
     ├── EC2 Key Pair
     └── EC2 p5-web
-        ├── Ubuntu 24.04 LTS par défaut
-        ├── Python 3 via user_data
-        ├── IMDSv2 obligatoire
-        └── volume racine gp3 chiffré
 ```
 
-### 6.2 Flux SSH
+La cible `p5-web` utilise par défaut :
+
+| Élément | Valeur |
+| --- | --- |
+| type EC2 | `t3.micro` |
+| OS | Ubuntu 24.04 LTS |
+| volume racine | EBS `gp3` chiffré |
+| metadata | IMDSv2 obligatoire |
+| bootstrap | Python 3 uniquement |
+
+### 3.2 Pourquoi deux subnets ?
+
+Deux subnets publics sont créés dans les deux premières zones de disponibilité disponibles.
+
+Le second subnet n'est pas un doublon inutile : le réseau est volontairement construit comme un **socle réutilisable**. L'exercice 3 retrouve ensuite ces subnets et répartit ses backends sur ce réseau.
+
+### 3.3 Flux Internet
 
 ```text
-WSL2 Ubuntu 26.04
-   │ TCP/22 depuis l'IPv4 publique /32
+Internet
+   │ HTTP :80
    ▼
-EC2 p5-web Ubuntu 24.04
-   ├── Ansible ping
-   └── ansible-playbook deploy.yml
+Internet Gateway
+   ▼
+route 0.0.0.0/0
+   ▼
+Security Group p5-web
+   ▼
+EC2 p5-web
+   ▼
+NGINX
+   ▼
+Angular
 ```
 
-L'inventaire Ansible doit être construit à partir de l'output Terraform pertinent plutôt qu'à partir d'une IP mémorisée.
+Le Security Group distingue deux usages :
 
-### 6.3 Configuration Ansible
+| Port | Source | Usage |
+| --- | --- | --- |
+| TCP/80 | `0.0.0.0/0` | accès public à l'application |
+| TCP/22 | IPv4 admin `/32` | administration SSH / Ansible |
 
-Le playbook :
+### 3.4 Flux Terraform → Ansible
+
+Terraform ne déploie pas Angular.
+
+Le `user_data` installe uniquement Python 3 afin de rendre la cible administrable par Ansible.
+
+```text
+Terraform
+   ↓
+EC2 créée
+   ↓
+output IP / DNS
+   ↓
+inventaire Ansible
+   ↓
+SSH
+   ↓
+deploy.yml
+```
+
+### 3.5 Ce qu'Ansible configure
+
+Le playbook [`ansible/playbooks/deploy.yml`](../ansible/playbooks/deploy.yml) :
 
 ```text
 installe NGINX + curl
       ↓
-crée appuser/appgroup
+crée appuser / appgroup
       ↓
 crée /var/www/p5
       ↓
@@ -233,372 +162,577 @@ nginx -t
 active et démarre NGINX
 ```
 
-Les handlers évitent de recharger NGINX sans changement pertinent. Le second passage est utilisé comme preuve d'idempotence.
+Les handlers évitent de recharger NGINX lorsque rien n'a changé.
 
-### 6.4 Flux HTTP et logs
+### 3.6 Convergence et idempotence
+
+Deux propriétés différentes sont démontrées :
+
+```text
+Terraform
+plan sans delta
+= infrastructure convergée
+
+Ansible
+changed=0
+= configuration idempotente
+```
+
+Terraform répond à « faut-il modifier l'infrastructure ? ».
+
+Ansible répond à « faut-il modifier la configuration de la machine ? ».
+
+### 3.7 Sortie de l'exercice 1
+
+L'exercice produit deux résultats utiles :
+
+```text
+1. application Angular visible
+2. /var/log/nginx/access.log
+```
+
+Le premier prouve le déploiement. Le second devient une entrée de l'exercice 2.
+
+---
+
+## 4. Exercice 2 — logs et observabilité
+
+![Flux de l'exercice 2](schemas/exercice-2.svg)
+
+### 4.1 Problème traité
+
+Une ligne de log NGINX est d'abord du texte. Pour calculer une somme, un top ou une répartition, elle doit devenir un document structuré avec des types cohérents.
+
+```text
+ligne texte
+   ↓
+parsing
+   ↓
+document structuré
+   ↓
+mapping
+   ↓
+agrégation
+   ↓
+visualisation
+```
+
+### 4.2 Deux sources de données
+
+Le pipeline accepte :
+
+```text
+sample versionné
+        ┐
+        ├──► parser
+        │
+access.log réel
+        ┘
+```
+
+Le sample rend les tests reproductibles.
+
+Le log réel prouve que l'observabilité est reliée à l'application AWS réellement déployée.
+
+### 4.3 Transformation
+
+Le convertisseur [`scripts/tools/convert-nginx-logs.py`](../scripts/tools/convert-nginx-logs.py) produit des documents adaptés à la Bulk API.
+
+Les champs essentiels sont :
+
+| Champ | Type attendu | Usage |
+| --- | --- | --- |
+| `@timestamp` | date | axe temporel |
+| `http_method` | keyword | répartition des méthodes |
+| `bytes_sent` | numérique | somme du volume envoyé |
+| `url_path` | keyword | top des chemins |
+
+Un mauvais mapping peut donc laisser les données présentes tout en empêchant une visualisation correcte.
+
+### 4.4 Domaine Amazon OpenSearch
+
+Le module [`terraform/exercice-2/`](../terraform/exercice-2/) crée un domaine managé.
+
+| Paramètre | Valeur de référence |
+| --- | --- |
+| moteur | `OpenSearch_2.19` |
+| nombre d'instances | 1 |
+| type | `t3.small.search` |
+| stockage | EBS `gp3` |
+| taille | 10 Gio |
+| HTTPS | obligatoire |
+| TLS | minimum 1.2 |
+| chiffrement au repos | activé |
+| chiffrement inter-nœuds | activé |
+| contrôle d'accès | IP d'administration `/32` |
+
+Le nœud unique correspond au dimensionnement d'un lab pédagogique, pas à une architecture OpenSearch de production hautement disponible.
+
+### 4.5 Flux d'ingestion
+
+```text
+access.log / sample
+        ↓
+convert-nginx-logs.py
+        ↓
+NDJSON Bulk
+        ↓
+index-template.json
+        ↓
+Bulk API
+        ↓
+nginx-access-*
+        ↓
+verify-opensearch-data.sh
+```
+
+La vérification porte sur les documents, mappings et agrégations avant même d'ouvrir l'interface graphique.
+
+### 4.6 Dashboard as Code
+
+La source de vérité visuelle est :
+
+```text
+terraform/exercice-2/opensearch/dashboards/p5-dashboard.json
+```
+
+La chaîne est :
+
+```text
+définition versionnée
+        ↓
+génération Saved Objects
+        ↓
+_field_caps
+        ↓
+import API
+        ↓
+relecture API
+        ↓
+validation navigateur
+```
+
+Les cinq objets attendus sont :
+
+```text
+1 index pattern
+3 visualisations
+1 dashboard
+```
+
+L'automatisation rend la reconstruction reproductible. Le contrôle visuel humain reste nécessaire pour confirmer que les graphiques sont réellement lisibles.
+
+### 4.7 Les trois visualisations
+
+| Visualisation | Champ | Question |
+| --- | --- | --- |
+| donut | `http_method` | quelles méthodes HTTP dominent ? |
+| somme / 12 h | `bytes_sent` | quel volume le serveur envoie-t-il ? |
+| top 5 / 12 h | `url_path` | quels chemins sont les plus sollicités ? |
+
+### 4.8 Sortie de l'exercice 2
+
+Le résultat attendu n'est pas seulement « OpenSearch répond ».
+
+Il faut pouvoir montrer :
+
+```text
+données présentes
++
+mappings corrects
++
+agrégations correctes
++
+3 visualisations
++
+dashboard complet
+```
+
+---
+
+## 5. Exercice 3 — HAProxy et résilience
+
+![Architecture et failover de l'exercice 3](schemas/exercice-3.svg)
+
+### 5.1 Réutilisation du réseau
+
+L'exercice 3 ne crée pas de nouveau VPC.
+
+Terraform utilise des data sources filtrées par tags afin de retrouver :
+
+```text
+VPC p5-vpc
++
+subnets publics de l'exercice 1
+```
+
+Cette dépendance explique pourquoi l'exercice 1 doit exister avant l'exercice 3.
+
+### 5.2 Topologie
 
 ```text
 Internet
    │ HTTP :80
    ▼
-Security Group web
-   ▼
-NGINX
-   ├──► Angular SPA
+EC2 HAProxy
    │
-   └──► /var/log/nginx/access.log
-             │ collecte SSH
-             ▼
-proofs/runtime/exercice-2/nginx-access-real.log
+   ├──► backend 1
+   └──► backend 2
 ```
 
-Le log réel devient une entrée de l'exercice 2.
+Les trois EC2 utilisent `t3.micro` par défaut.
 
-## 7. Exercice 2 — OpenSearch et observabilité
-
-Vue spécialisée : [`schemas/exercice-2.svg`](schemas/exercice-2.svg).
-
-### 7.1 Domaine AWS
-
-`terraform/exercice-2` crée un domaine Amazon OpenSearch avec notamment :
-
-- version moteur configurable, référence `OpenSearch_2.19` ;
-- une instance pour le lab ;
-- EBS gp3 ;
-- chiffrement au repos ;
-- chiffrement node-to-node ;
-- HTTPS obligatoire ;
-- TLS 1.2 minimum ;
-- accès limité à l'IPv4 publique d'administration `/32`.
-
-La consigne pédagogique peut employer le vocabulaire ELK/Kibana ; l'implémentation réelle de ce dépôt utilise Amazon OpenSearch et OpenSearch Dashboards.
-
-### 7.2 Deux sources, un pipeline
+Les backends exécutent :
 
 ```text
-sample versionné ──────────────┐
-                               │
-access.log réel de l'ex. 1 ────┤
-                               ▼
-                    convert-nginx-logs.py
-                               │
-                               ▼
-                    documents Bulk NDJSON
-                               │
-                               ▼
-                    import-opensearch-data.sh
-                               │
-                               ▼
-                         OpenSearch
-                               │
-                               ▼
-                    verify-opensearch-data.sh
-                               │
-                               ▼
-                    OpenSearch Dashboards
+Docker
+└── nginxdemos/hello:0.4-plain-text
 ```
 
-### 7.3 Pourquoi deux sources ?
+### 5.3 Security Groups
 
-Le sample :
-
-- rend les tests reproductibles ;
-- permet une CI sans EC2 AWS ;
-- stabilise le contrat de parsing.
-
-Le log réel :
-
-- prouve le lien entre l'application réellement déployée et l'observabilité.
-
-### 7.4 Validation automatique et humaine
-
-Automatisable :
-
-- parsing ;
-- mapping ;
-- import ;
-- nombre de documents ;
-- agrégations.
-
-Checkpoint humain :
-
-- Discover ;
-- trois visualisations ;
-- dashboard complet ;
-- captures finales.
-
-Cette frontière est volontaire : l'automatisation ne doit pas fabriquer une preuve visuelle à la place de l'opérateur.
-
-## 8. Exercice 3 — HAProxy et résilience
-
-Vue spécialisée : [`schemas/exercice-3.svg`](schemas/exercice-3.svg).
-
-L'exercice 3 **réutilise** le VPC et les subnets de l'exercice 1 à partir de leurs tags.
-
-### 8.1 Topologie réseau
+Le flux applicatif est intentionnellement orienté vers HAProxy.
 
 ```text
 Internet
-   │ TCP/80 public
+   │
    ▼
-Security Group HAProxy
+SG HAProxy
+   │ HTTP :80
    ▼
-EC2 p5-haproxy
-Ubuntu 24.04
-HAProxy installé via apt
-   │ HTTP privé
-   ├────────────────┐
-   ▼                ▼
-EC2 hello-1      EC2 hello-2
-Ubuntu 24.04     Ubuntu 24.04
-Docker           Docker
-nginxdemos/hello nginxdemos/hello
+HAProxy
+   │
+   ▼
+SG backends
+   │ HTTP :80 autorisé depuis SG HAProxy
+   ▼
+backends
 ```
 
-Le Security Group des backends autorise HTTP depuis le **Security Group HAProxy**, pas depuis Internet entier.
+Les backends ont une IP publique dans le contexte du lab, mais leur port HTTP n'est pas ouvert à Internet entier.
 
-Les backends restent joignables en SSH depuis l'IPv4 `/32` du poste d'administration pour les opérations de test prévues.
+### 5.4 Round-robin
 
-### 8.2 Configuration HAProxy
-
-Le template définit notamment :
+Le template [`terraform/exercice-3/haproxy.cfg.tpl`](../terraform/exercice-3/haproxy.cfg.tpl) contient :
 
 ```text
 balance roundrobin
-option httpchk GET /
-http-check expect status 200
-check inter 3s fall 3 rise 2
 ```
 
-### 8.3 Scénario de résilience
+Lorsque les deux backends sont sains, les requêtes sont distribuées entre eux.
+
+Le navigateur permet de matérialiser cette répartition grâce à `Server name` et `Server address`.
+
+### 5.5 Health checks
+
+HAProxy exécute :
+
+```text
+GET /
+```
+
+et attend :
+
+```text
+HTTP 200
+```
+
+Les paramètres sont :
+
+| Paramètre | Effet |
+| --- | --- |
+| `inter 3s` | intervalle entre deux contrôles |
+| `fall 3` | trois échecs avant passage DOWN |
+| `rise 2` | deux succès avant retour UP |
+
+### 5.6 Scénario dynamique
 
 ```text
 2 backends UP
       ↓
-trafic réparti
+arrêt backend 1
       ↓
-arrêt contrôlé d'un backend
+3 checks KO
       ↓
-health checks → DOWN
+backend 1 DOWN
       ↓
-trafic maintenu vers le backend sain
+trafic vers backend 2
       ↓
-restauration
+service maintenu
       ↓
-health checks → UP
+backend 1 redémarre
       ↓
-réintégration dans le pool
+2 checks OK
+      ↓
+backend 1 UP
+      ↓
+retour à 2 backends
 ```
 
-La preuve porte donc sur le **comportement**, pas uniquement sur la syntaxe du fichier HAProxy.
+La preuve porte sur le **comportement** et non uniquement sur la présence de `balance roundrobin` dans un fichier.
 
-Le script de failover prévoit la restauration du backend afin de ne pas laisser volontairement l'environnement dans un état dégradé.
+### 5.7 Sortie de l'exercice 3
 
-## 9. Flux de configuration
-
-La configuration locale principale est :
+Le résultat attendu est :
 
 ```text
-environment/aws-readiness.env
+AVANT   : deux backends observés
+PENDANT : un backend, HTTP reste disponible
+APRÈS   : deux backends observés
 ```
 
-Elle centralise notamment :
-
-- profil et région AWS ;
-- compte attendu ;
-- IPv4 `/32` ;
-- clé SSH ;
-- types d'instances ;
-- paramètres OpenSearch ;
-- budget et confirmations.
-
-Flux :
+Verdict :
 
 ```text
-environment/aws-readiness.env
-        │
-        ▼
-sync-terraform-tfvars.sh
-        │
-    ┌───┼───┐
-    ▼   ▼   ▼
-   ex1 ex2 ex3
-terraform.tfvars locaux
+BASCULE ET RÉINTÉGRATION HAPROXY VALIDÉES
 ```
 
-Les vrais `terraform.tfvars` restent locaux, avec des permissions restrictives, et ne sont pas versionnés.
+---
 
-## 10. Flux Terraform et convergence
+## 6. Flux transverses
 
-Pour chaque exercice :
+### 6.1 Flux applicatif
 
 ```text
-terraform init
-      ↓
-terraform plan -detailed-exitcode -out=tfplan
-      ↓
-terraform show tfplan
-      ↓
-code 0 = aucun delta ──► pas d'apply
-code 2 = delta réel ───► confirmation
-      ↓
-sauvegarde locale du state
-      ↓
-terraform apply tfplan
-      ↓
-nouvelle sauvegarde du state
-      ↓
-post-plan
-      ↓
-aucun delta attendu
+navigateur
+   ↓
+NGINX
+   ↓
+Angular
 ```
 
-Le principe est important :
-
-> la réexécution repose sur le recalcul du delta et la conservation du state, pas sur une recréation systématique.
-
-Référence : [`convergence-et-reexecution.md`](convergence-et-reexecution.md).
-
-## 11. Flux des preuves
-
-Le runtime organise les preuves par exécution et par étape.
+### 6.2 Flux de logs
 
 ```text
-commande
+requête HTTP
    ↓
-log d'étape
+NGINX
    ↓
-redaction des secrets lorsqu'applicable
+access.log
    ↓
-proofs/runtime/...
+parser
    ↓
-manifest / résumé
+OpenSearch
    ↓
-sélection humaine pour les livrables
+Dashboards
 ```
 
-Les traces brutes sont privées par défaut. Un livrable ne doit publier que les éléments nécessaires, contextualisés et relus.
+### 6.3 Flux HAProxy
 
-Référence : [`contrat-preuves-automatiques.md`](contrat-preuves-automatiques.md).
+```text
+client
+   ↓
+HAProxy
+   ↓
+backend sain
+```
 
-## 12. Dépendances d'exécution
+### 6.4 Flux d'administration
+
+Les flux d'administration sont différents des flux utilisateurs.
+
+```text
+administration SSH
+        ↓
+IP /32
+        ↓
+EC2
+
+utilisateur HTTP
+        ↓
+port 80
+        ↓
+NGINX ou HAProxy
+```
+
+---
+
+## 7. Sources de vérité
+
+La documentation décrit le système ; elle ne doit pas devenir une deuxième configuration.
+
+| Domaine | Source de vérité |
+| --- | --- |
+| ressources Ex. 1 | `terraform/exercice-1/` |
+| configuration Ex. 1 | `ansible/playbooks/deploy.yml` + `ansible/files/` |
+| application | `application/angular/` |
+| ressources Ex. 2 | `terraform/exercice-2/` |
+| mapping OpenSearch | `terraform/exercice-2/opensearch/index-template.json` |
+| dashboard | `terraform/exercice-2/opensearch/dashboards/p5-dashboard.json` |
+| ressources Ex. 3 | `terraform/exercice-3/` |
+| comportement HAProxy | `terraform/exercice-3/haproxy.cfg.tpl` |
+| orchestration | `scripts/commands/p5.sh` |
+| preuves runtime | `scripts/lib/p5-runtime.sh` |
+| règles documentaires | `MATRICE_TRACABILITE.md` |
+
+---
+
+## 8. Convergence et réexécution
+
+Le projet ne considère pas « rejouer » comme « tout recréer ».
+
+Pour Terraform :
+
+```text
+state existant
+      ↓
+plan
+      ↓
+delta ?
+  ┌───┴───┐
+ non     oui
+  │       │
+stop    appliquer le plan validé
+```
+
+Pour Ansible :
+
+```text
+état cible
+   ↓
+playbook
+   ↓
+écart ?
+  ┌─┴─┐
+ non oui
+  │   │
+changed=0
+    corriger
+```
+
+La convergence repose sur la conservation du state et sur le recalcul du delta.
+
+Voir [`convergence-et-reexecution.md`](convergence-et-reexecution.md).
+
+---
+
+## 9. Preuves
+
+Une configuration n'est pas automatiquement une preuve d'exécution.
+
+Le projet distingue :
+
+```text
+CODE
+ce qui devrait arriver
+
+PREUVE TERMINAL
+ce que les outils ont réellement observé
+
+PREUVE NAVIGATEUR
+ce que l'utilisateur peut réellement voir
+```
+
+Exemples :
+
+| Affirmation | Preuve adaptée |
+| --- | --- |
+| Terraform est convergé | plan sans delta |
+| Ansible est idempotent | `changed=0` |
+| Angular fonctionne | navigateur + vérification HTTP |
+| OpenSearch contient les logs | vérification documents/mappings/aggs |
+| dashboard fonctionne | navigateur |
+| HAProxy répartit | deux backends observés |
+| failover fonctionne | scénario réel `2 → 1 → 2` |
+
+---
+
+## 10. Dépendances d'exécution
 
 ```text
 prepare
-  ↓
+   ↓
 status
-  ↓
+   ↓
 ex1
-  ├──► ex2 via access.log réel
-  └──► ex3 via VPC/subnets
-        ↓
+ ├──► ex2 via access.log
+ └──► ex3 via VPC/subnets
+   ↓
 diagnostics
-  ↓
+   ↓
 finalize
 ```
 
-Nuance importante :
+Nuance :
 
-- ex2 dispose d'un sample versionné et peut tester son pipeline de manière reproductible ;
-- la preuve réelle d'observabilité peut utiliser le log de l'exercice 1 ;
-- ex3 dépend réellement du réseau de l'exercice 1.
+- le pipeline Ex. 2 dispose d'un sample et peut être testé sans log réel ;
+- la preuve de bout en bout de l'Ex. 2 utilise le log réel de l'Ex. 1 ;
+- l'Ex. 3 dépend réellement du réseau Ex. 1.
 
-## 13. Ordre de destruction
+---
 
-Vue spécialisée : [`schemas/finalisation/finalisation.svg`](schemas/finalisation/finalisation.svg).
+## 11. Ordre de destruction
+
+Les dépendances imposent l'ordre de fermeture :
 
 ```text
-terraform/exercice-3 destroy
-          ↓
-terraform/exercice-2 destroy
-          ↓
-terraform/exercice-1 destroy
-          ↓
-audit global AWS
+Exercice 3
+    ↓
+Exercice 2
+    ↓
+Exercice 1
+    ↓
+audit AWS
 ```
 
-L'exercice 3 doit être détruit avant l'exercice 1 à cause de sa dépendance réseau.
+L'exercice 3 est détruit avant l'exercice 1 parce qu'il réutilise son réseau.
 
-Le verdict final du parcours est :
+Le verdict final attendu est :
 
 ```text
 NETTOYAGE AWS COMPLET
 ```
 
-L'arrêt de la distribution WSL2 n'est pas un nettoyage AWS.
+---
 
-## 14. Architecture de validation
+## 12. Sécurité structurante
 
-La validation du projet possède plusieurs niveaux :
+Les garde-fous principaux sont :
 
-```text
-source code / configuration
-        ↓
-validation locale
-        ↓
-GitHub Actions
-        ↓
-exécution AWS réelle
-        ↓
-preuves runtime
-        ↓
-livrables
-```
+- `allowed_account_ids` dans les providers Terraform ;
+- accès SSH limité à une IPv4 `/32` ;
+- accès OpenSearch limité à l'IPv4 `/32` ;
+- HTTPS et TLS 1.2 minimum pour OpenSearch ;
+- chiffrement EBS et OpenSearch ;
+- IMDSv2 sur les EC2 ;
+- port HTTP des backends autorisé depuis le SG HAProxy ;
+- états, tfvars réels, inventaires réels et secrets non versionnés.
 
-### La CI peut prouver
+---
 
-- cohérence syntaxique ;
-- lint et tests ;
-- validation Terraform ;
-- syntaxe Ansible ;
-- build Angular ;
-- comportement local des composants testables ;
-- non-régression structurelle et documentaire.
+## 13. Annexe — environnement de contrôle local
 
-### La CI ne peut pas prouver à elle seule
+L'environnement local existe pour **piloter** le projet ; il n'est pas la topologie AWS démontrée au jury.
 
-- l'exécution réelle des exercices dans le compte AWS de l'opérateur ;
-- la construction visuelle effective du dashboard ;
-- une panne AWS réellement observée ;
-- la qualité finale des captures de soutenance.
-
-La distinction correcte est :
+Le contexte de référence est :
 
 ```text
-CI verte = dépôt cohérent
-preuve AWS = comportement réellement observé
+Windows 11 Pro
+└── WSL2
+    └── Ubuntu 26.04
+        └── checkout P5 sur filesystem Linux
 ```
 
-## 15. Matrice des responsabilités techniques
+Les EC2 AWS des exercices 1 et 3 utilisent, elles, Ubuntu 24.04 LTS par défaut.
 
-| Composant | Responsabilité | Ne possède pas |
-| --- | --- | --- |
-| `Windows_11_Pro_Custom` | Windows, WSL2, distribution, stack commune | ressources AWS du P5 |
-| runtime P5 | dépendances et configuration propres au projet | cycle de vie WSL2 |
-| `p5.sh` | orchestration, garde-fous, preuves | infrastructure hors Terraform |
-| Terraform | ressources AWS + state | configuration NGINX/Angular de l'EC2 ex. 1 |
-| Ansible | configuration de l'EC2 ex. 1 | VPC/EC2 AWS |
-| Angular | artefact applicatif | infrastructure |
-| NGINX | service Angular + logs HTTP | analyse des logs |
-| OpenSearch | stockage/analyse des logs | création automatique des preuves visuelles humaines |
-| OpenSearch Dashboards | exploration/visualisation | infrastructure AWS globale |
-| HAProxy | répartition et health checks | création du réseau |
-| GitHub Actions | qualité et non-régression | preuve d'exécution AWS réelle |
+Cette distinction évite de confondre :
 
-Cette matrice constitue le contrat d'architecture du P5.
+```text
+poste de contrôle
+≠
+ressources AWS du projet
+```
 
-## 16. Règles de maintenance de ce document
+Pour le contrat d'environnement local, voir [`../environment/wsl2/README.md`](../environment/wsl2/README.md).
 
-Relire cette architecture lorsque changent :
+---
 
-- `environment/versions.env` ;
-- les commandes/orchestrations de `p5.sh` ;
-- un module Terraform ;
-- le playbook Ansible ;
-- le pipeline Angular ;
-- le mapping ou les scripts OpenSearch ;
-- `haproxy.cfg.tpl` ;
-- l'organisation des preuves ;
-- les dépendances entre exercices.
+## 14. Documents associés
 
-La liste détaillée des déclencheurs est maintenue dans [`MATRICE_TRACABILITE.md`](MATRICE_TRACABILITE.md).
+- [`RUNBOOK_SOUTENANCE.md`](RUNBOOK_SOUTENANCE.md) — démonstration orale ;
+- [`RUNBOOK_EXECUTION_GUIDEE.md`](RUNBOOK_EXECUTION_GUIDEE.md) — exécution complète ;
+- [`GLOSSAIRE.md`](GLOSSAIRE.md) — vocabulaire ;
+- [`schemas/README.md`](schemas/README.md) — langage visuel ;
+- [`MATRICE_TRACABILITE.md`](MATRICE_TRACABILITE.md) — documentation ↔ code ;
+- [`troubleshooting.md`](troubleshooting.md) — diagnostic ;
+- [`CONVENTIONS_DOCUMENTAIRES.md`](CONVENTIONS_DOCUMENTAIRES.md) — règles de rédaction.

@@ -2,239 +2,209 @@
 
 Ce dossier est le **portail documentaire de référence** du projet P5 OpenClassrooms.
 
-La documentation est organisée par besoin : comprendre, préparer, exécuter, diagnostiquer, prouver et nettoyer. Elle est volontairement séparée en plusieurs types de documents afin de ne pas transformer le README racine ou le runbook en manuel monolithique.
+La documentation est organisée par intention : **comprendre**, **démontrer**, **exécuter**, **diagnostiquer**, **prouver** et **maintenir**. Chaque document garde une fonction claire afin d'éviter un manuel monolithique impossible à utiliser sous pression.
 
-![Architecture de référence du P5](schemas/vue-ensemble.svg)
+![Architecture globale du P5](schemas/vue-ensemble.svg)
 
-## Choisir son point d'entrée
+## Le projet en une lecture
 
-| Je veux… | Lire d'abord | Pourquoi |
+```text
+Exercice 1
+Terraform → AWS → Ansible → NGINX → Angular
+        │
+        ├── access.log ─────► Exercice 2 : OpenSearch
+        │
+        └── VPC/subnets ────► Exercice 3 : HAProxy
+```
+
+Le projet se résume en trois verbes :
+
+```text
+CONSTRUIRE ET DÉPLOYER
+        ↓
+OBSERVER
+        ↓
+RÉPARTIR ET RÉSISTER
+```
+
+## Choisir le bon document
+
+| Je veux… | Document | Fonction |
 | --- | --- | --- |
-| découvrir le projet sans connaissances implicites | [`01-parcours-debutant.md`](01-parcours-debutant.md) | explique les concepts, les responsabilités et les dépendances avant les commandes |
-| exécuter le projet de A à Z | [`RUNBOOK_EXECUTION_GUIDEE.md`](RUNBOOK_EXECUTION_GUIDEE.md) | fournit l'ordre opératoire, les points d'arrêt et les critères de succès |
-| savoir quelle procédure utiliser | [`runbooks/README.md`](runbooks/README.md) | oriente vers exécution, reprise, incident, preuves ou nettoyage |
-| comprendre l'architecture | [`architecture-et-flux.md`](architecture-et-flux.md) | décrit les frontières, réseaux, flux de données et sources de vérité |
-| comprendre `p5.sh` | [`CENTRE_DE_COMMANDE.md`](CENTRE_DE_COMMANDE.md) | référence les commandes, mutations et cas d'usage |
-| reprendre après une interruption | [`convergence-et-reexecution.md`](convergence-et-reexecution.md) | explique state, delta, idempotence et reprise sûre |
-| résoudre un incident | [`troubleshooting.md`](troubleshooting.md) | diagnostique par couche sans casser l'état |
-| comprendre un terme DevOps/AWS | [`GLOSSAIRE.md`](GLOSSAIRE.md) | définit le vocabulaire dans le contexte exact du P5 |
-| préparer les preuves | [`livrables/README.md`](livrables/README.md) | distingue preuve technique, preuve réelle et livrable publiable |
-| préparer l'oral | [`05-soutenance.md`](05-soutenance.md) | organise la démonstration et l'explication technique |
-| vérifier qu'un texte correspond encore au code | [`MATRICE_TRACABILITE.md`](MATRICE_TRACABILITE.md) | relie chaque affirmation importante à sa source de vérité |
+| préparer et dérouler la soutenance | [`RUNBOOK_SOUTENANCE.md`](RUNBOOK_SOUTENANCE.md) | **handbook de démonstration** : architecture, explications, terminal, navigateur, questions jury |
+| comprendre l'architecture en profondeur | [`architecture-et-flux.md`](architecture-et-flux.md) | référence technique des ressources, flux et dépendances |
+| découvrir le P5 progressivement | [`01-parcours-debutant.md`](01-parcours-debutant.md) | guide pédagogique |
+| exécuter le projet de A à Z | [`RUNBOOK_EXECUTION_GUIDEE.md`](RUNBOOK_EXECUTION_GUIDEE.md) | procédure opératoire complète |
+| reprendre après une interruption | [`convergence-et-reexecution.md`](convergence-et-reexecution.md) | state, delta, convergence et idempotence |
+| comprendre une commande `p5.sh` | [`CENTRE_DE_COMMANDE.md`](CENTRE_DE_COMMANDE.md) | référence CLI |
+| résoudre un incident | [`troubleshooting.md`](troubleshooting.md) | diagnostic par couche |
+| comprendre un terme | [`GLOSSAIRE.md`](GLOSSAIRE.md) | vocabulaire contextualisé |
+| comprendre les schémas | [`schemas/README.md`](schemas/README.md) | langage visuel et conventions |
+| préparer les preuves | [`livrables/README.md`](livrables/README.md) | preuves techniques et livrables |
+| vérifier la cohérence doc/code | [`MATRICE_TRACABILITE.md`](MATRICE_TRACABILITE.md) | source de vérité et maintenance |
 
-## Les quatre familles de documents
+## Parcours recommandé pour la soutenance
 
-### 1. README — orientation
+```text
+1. RUNBOOK_SOUTENANCE.md
+        ↓
+2. vue-ensemble.svg
+        ↓
+3. exercice-1.svg
+        ↓
+4. exercice-2.svg
+        ↓
+5. exercice-3.svg
+        ↓
+6. GLOSSAIRE.md si une notion doit être révisée
+```
 
-Le [`README.md`](../README.md) à la racine répond rapidement à :
+Le handbook est le **conducteur live**. Les autres documents servent de référence lorsque l'évaluateur demande davantage de profondeur.
 
-- quel est le but du projet ?
-- quels sont les trois exercices ?
-- où s'exécute le lab ?
-- comment commencer sans faire de mutation aveugle ?
-- où trouver le bon niveau de détail ?
-
-Il ne remplace ni les guides techniques ni les procédures d'exploitation.
-
-### 2. Documentation pédagogique et technique — compréhension
-
-Ces documents répondent surtout à **« pourquoi ? »** et **« comment cela fonctionne ? »**.
-
-- [`00-cadre-officiel.md`](00-cadre-officiel.md) — cadre, consignes et périmètre ;
-- [`01-parcours-debutant.md`](01-parcours-debutant.md) — modèle mental progressif ;
-- [`architecture-et-flux.md`](architecture-et-flux.md) — architecture et responsabilités ;
-- [`exercices/01-terraform-ansible.md`](exercices/01-terraform-ansible.md) — exercice 1 en profondeur ;
-- [`exercices/02-opensearch.md`](exercices/02-opensearch.md) — exercice 2 en profondeur ;
-- [`exercices/03-haproxy.md`](exercices/03-haproxy.md) — exercice 3 en profondeur ;
-- [`GLOSSAIRE.md`](GLOSSAIRE.md) — vocabulaire contextualisé.
-
-### 3. Runbooks — action
-
-Un runbook répond surtout à **« que dois-je faire maintenant, dans quel ordre, et comment vérifier que l'étape a réussi ? »**.
-
-Le catalogue est [`runbooks/README.md`](runbooks/README.md). Il référence notamment :
-
-- [`RUNBOOK_EXECUTION_GUIDEE.md`](RUNBOOK_EXECUTION_GUIDEE.md) — exécution complète ;
-- [`convergence-et-reexecution.md`](convergence-et-reexecution.md) — reprise et réexécution ;
-- [`troubleshooting.md`](troubleshooting.md) — incident et diagnostic ;
-- [`validation-preuves-nettoyage.md`](validation-preuves-nettoyage.md) — finalisation et fermeture du lab.
-
-Les guides d'exercice expliquent les concepts ; les runbooks imposent la séquence opératoire.
-
-### 4. Contrats, audits et livrables — conformité
-
-Ces documents expliquent **ce qui doit rester vrai** et **comment le prouver**.
-
-- [`02-correspondance-consignes-depot.md`](02-correspondance-consignes-depot.md) — consignes → implémentation → preuves ;
-- [`03-audit-structurel.md`](03-audit-structurel.md) — invariants structurels ;
-- [`04-audit-non-regression.md`](04-audit-non-regression.md) — contrat exécutable ;
-- [`contrat-informations-requises.md`](contrat-informations-requises.md) — entrées attendues ;
-- [`contrat-preuves-automatiques.md`](contrat-preuves-automatiques.md) — limites des preuves automatiques ;
-- [`MATRICE_TRACABILITE.md`](MATRICE_TRACABILITE.md) — documentation ↔ code ;
-- [`CONVENTIONS_DOCUMENTAIRES.md`](CONVENTIONS_DOCUMENTAIRES.md) — règles de rédaction et de maintenance ;
-- [`livrables/README.md`](livrables/README.md) — préparation de la remise.
-
-## Parcours recommandé pour un débutant
+## Parcours recommandé pour comprendre le projet
 
 ```text
 README racine
     ↓
 01-parcours-debutant.md
     ↓
-GLOSSAIRE.md au besoin
-    ↓
-00-preparation-environnement.md
-    ↓
-00b-preparation-compte-aws.md
-    ↓
-RUNBOOK_EXECUTION_GUIDEE.md
+architecture-et-flux.md
     ↓
 exercices/01-terraform-ansible.md
     ↓
 exercices/02-opensearch.md
     ↓
 exercices/03-haproxy.md
-    ↓
-validation-preuves-nettoyage.md
-    ↓
-05-soutenance.md
 ```
 
-Le principe est volontaire : **comprendre avant de muter**.
-
-## Parcours recommandé pour une reprise
+## Parcours recommandé pour exécuter
 
 ```text
-inspect
-  ↓
-convergence-et-reexecution.md
-  ↓
-status
-  ↓
-exercice ciblé ou all
-  ↓
-diagnostics
+00-preparation-environnement.md
+    ↓
+00b-preparation-compte-aws.md
+    ↓
+RUNBOOK_EXECUTION_GUIDEE.md
+    ↓
+validation-preuves-nettoyage.md
 ```
 
-Ne pas repartir d'une installation « propre » tant que l'état réel et les states Terraform n'ont pas été qualifiés.
+## Les trois niveaux de documentation
 
-## Préparer l'environnement
+### 1. Handbook — expliquer et démontrer
 
-1. [`00-preparation-environnement.md`](00-preparation-environnement.md) — WSL2, checkout et runtime P5 ;
-2. [`00b-preparation-compte-aws.md`](00b-preparation-compte-aws.md) — identité, compte, réseau, budget et quotas ;
-3. [`contrat-informations-requises.md`](contrat-informations-requises.md) — informations nécessaires au moteur P5.
+[`RUNBOOK_SOUTENANCE.md`](RUNBOOK_SOUTENANCE.md) répond à :
 
-Contrat WSL2 : [`../environment/wsl2/README.md`](../environment/wsl2/README.md).
+```text
+qu'est-ce que je montre ?
+comment je l'explique ?
+quelle commande prouve le point ?
+quel résultat le jury doit voir ?
+comment j'enchaîne ?
+```
 
-Parcours visuel : [`schemas/etape-0.svg`](schemas/etape-0.svg).
+### 2. Architecture — comprendre le système
 
-## Exécuter les trois exercices
+[`architecture-et-flux.md`](architecture-et-flux.md) répond à :
 
-| Étape | Guide technique | Commande principale | Résultat attendu |
-| --- | --- | --- | --- |
-| exercice 1 | [`exercices/01-terraform-ansible.md`](exercices/01-terraform-ansible.md) | `bash scripts/commands/p5.sh ex1` | Terraform convergé, Ansible idempotent, Angular servi par NGINX |
-| exercice 2 | [`exercices/02-opensearch.md`](exercices/02-opensearch.md) | `bash scripts/commands/p5.sh ex2` | données vérifiées + checkpoint OpenSearch Dashboards |
-| exercice 3 | [`exercices/03-haproxy.md`](exercices/03-haproxy.md) | `bash scripts/commands/p5.sh ex3` | round-robin + continuité pendant panne + réintégration |
+```text
+quelles ressources existent ?
+qui possède quoi ?
+comment communiquent-elles ?
+quelles données circulent ?
+quelles dépendances relient les exercices ?
+```
 
-## Reprendre, diagnostiquer et prouver
+### 3. Runbooks — agir
 
-- [`convergence-et-reexecution.md`](convergence-et-reexecution.md) — reprise et idempotence ;
-- [`troubleshooting.md`](troubleshooting.md) — diagnostic par couche ;
-- [`contrat-preuves-automatiques.md`](contrat-preuves-automatiques.md) — génération et limites des preuves automatiques ;
-- [`validation-preuves-nettoyage.md`](validation-preuves-nettoyage.md) — validation, livrables et fermeture du lab ;
-- [`livrables/README.md`](livrables/README.md) — livrables de l'évaluation.
+[`RUNBOOK_EXECUTION_GUIDEE.md`](RUNBOOK_EXECUTION_GUIDEE.md) et les runbooks spécialisés répondent à :
+
+```text
+que dois-je faire maintenant ?
+quelles sont les préconditions ?
+que dois-je observer ?
+quand dois-je m'arrêter ?
+comment reprendre si cela échoue ?
+```
 
 ## Parcours visuel officiel
 
-| Étape | Schéma | Idée à retenir |
+| Vue | Schéma | À comprendre |
 | --- | --- | --- |
-| architecture | [`vue-ensemble.svg`](schemas/vue-ensemble.svg) | `Ubuntu` sous WSL2 pilote trois exercices AWS liés |
-| préparation | [`etape-0.svg`](schemas/etape-0.svg) | `inspect → prepare → status → GO TERRAFORM` |
-| exercice 1 | [`exercice-1.svg`](schemas/exercice-1.svg) | Terraform crée ; Ansible configure et déploie |
-| exercice 2 | [`exercice-2.svg`](schemas/exercice-2.svg) | sample + log réel → OpenSearch → checkpoint humain |
-| exercice 3 | [`exercice-3.svg`](schemas/exercice-3.svg) | VPC Ex1 → HAProxy → panne contrôlée → reprise |
-| fermeture | [`finalisation.svg`](schemas/finalisation/finalisation.svg) | preuves → livrables → destroy `3 → 2 → 1` → audit AWS |
+| projet | [`vue-ensemble.svg`](schemas/vue-ensemble.svg) | Ex1 construit, Ex2 observe, Ex3 résiste |
+| préparation | [`etape-0.svg`](schemas/etape-0.svg) | qualifier le lab avant Terraform |
+| Ex. 1 | [`exercice-1.svg`](schemas/exercice-1.svg) | Terraform crée ; Ansible configure ; NGINX sert Angular |
+| Ex. 2 | [`exercice-2.svg`](schemas/exercice-2.svg) | log → parser → Bulk API → OpenSearch → dashboard |
+| Ex. 3 | [`exercice-3.svg`](schemas/exercice-3.svg) | topologie HAProxy + failover dynamique |
+| fermeture | [`finalisation.svg`](schemas/finalisation/finalisation.svg) | preuves → destroy `3 → 2 → 1` → audit |
 
-Conventions graphiques : [`schemas/README.md`](schemas/README.md).
+Les conventions graphiques sont documentées dans [`schemas/README.md`](schemas/README.md).
+
+## Guides techniques par exercice
+
+| Exercice | Guide | Résultat attendu |
+| --- | --- | --- |
+| 1 — Terraform / Ansible | [`exercices/01-terraform-ansible.md`](exercices/01-terraform-ansible.md) | infrastructure convergée, Ansible idempotent, Angular visible |
+| 2 — OpenSearch | [`exercices/02-opensearch.md`](exercices/02-opensearch.md) | données validées + trois visualisations |
+| 3 — HAProxy | [`exercices/03-haproxy.md`](exercices/03-haproxy.md) | round-robin + failover `2 → 1 → 2` |
 
 ## Sources de vérité
 
-Une documentation fiable ne doit jamais devenir une deuxième configuration concurrente.
+La prose explique ; le code configure.
 
-| Domaine | Source de vérité technique |
+| Domaine | Source de vérité |
 | --- | --- |
-| plateforme Windows/WSL2 | `mathiasseguincadiche/Windows_11_Pro_Custom` |
-| contrat d'exécution P5 | `environment/wsl2/README.md` + scripts de contrôle |
-| versions P5 | `environment/versions.env` |
 | orchestration | `scripts/commands/p5.sh` |
-| logs et preuves runtime | `scripts/lib/p5-runtime.sh` |
 | infrastructure AWS | `terraform/exercice-{1,2,3}/` |
-| configuration serveur | `ansible/playbooks/deploy.yml` |
+| configuration Ex. 1 | `ansible/playbooks/deploy.yml` |
 | application | `application/angular/` |
-| qualité et non-régression | `scripts/tools/audit_non_regression.py` + `.github/workflows/` |
+| mapping OpenSearch | `terraform/exercice-2/opensearch/index-template.json` |
+| Dashboard as Code | `terraform/exercice-2/opensearch/dashboards/p5-dashboard.json` |
+| comportement HAProxy | `terraform/exercice-3/haproxy.cfg.tpl` |
+| logs et preuves | `scripts/lib/p5-runtime.sh` |
+| cohérence doc/code | `MATRICE_TRACABILITE.md` |
 
-La table complète et les déclencheurs de mise à jour sont dans [`MATRICE_TRACABILITE.md`](MATRICE_TRACABILITE.md).
-
-## Règles de lecture importantes
-
-### Ubuntu 26.04 et Ubuntu 24.04 ne désignent pas la même machine
-
-- **Ubuntu 26.04 / `resolute`** : distribution WSL2 locale qui exécute le plan de contrôle ;
-- **Ubuntu 24.04 / `noble`** : AMI EC2 par défaut utilisée par Terraform pour les exercices 1 et 3.
-
-Cette différence est normale et doit rester explicite dans la documentation.
-
-### CI verte et preuve AWS réelle sont différentes
+## Trois preuves différentes
 
 ```text
-CI VERTE
-= dépôt cohérent et tests satisfaits
+CODE
+= ce qui doit être construit
 
-PREUVE AWS
-= comportement réellement observé dans le lab
+CI
+= le dépôt respecte ses contrats et tests
+
+PREUVE RUNTIME
+= ce qui a réellement été observé dans le lab
 ```
 
-### Le state Terraform fait partie de la reprise
+Une CI verte ne remplace pas une démonstration AWS réelle.
 
-Ne pas supprimer un `terraform.tfstate` pour « repartir proprement » avant d'avoir compris quelles ressources il possède.
+## Maintenir la qualité documentaire
 
-### `--yes` n'annule pas les checkpoints humains
-
-Le mode automatique ne valide pas un dashboard OpenSearch, n'invente pas une valeur AWS et ne doit pas transformer la destruction finale en opération silencieuse.
-
-## Gouvernance et conformité
-
-- [`02-correspondance-consignes-depot.md`](02-correspondance-consignes-depot.md) — consignes → implémentation → preuve ;
-- [`03-audit-structurel.md`](03-audit-structurel.md) — règles structurelles ;
-- [`04-audit-non-regression.md`](04-audit-non-regression.md) — contrat exécutable ;
-- [`suivi/decisions-techniques.md`](suivi/decisions-techniques.md) — décisions techniques ;
-- [`suivi/journal-de-session.md`](suivi/journal-de-session.md) — suivi des sessions.
-
-## Invariants documentaires
-
-La documentation doit toujours conserver ces faits :
-
-- exactement trois exercices ;
-- réalisation AWS pour les trois exercices ;
-- plan de contrôle exécuté dans la distribution WSL2 `Ubuntu` 26.04 ;
-- EC2 Ubuntu 24.04 par défaut pour les exercices concernés ;
-- distinction entre CI et preuve AWS réelle ;
-- dépendance exercice 1 → exercice 3 ;
-- flux de logs exercice 1 → exercice 2 ;
-- ordre de fermeture `3 → 2 → 1` ;
-- conservation des states Terraform pour la reprise ;
-- absence de Kubernetes, Helm, Prometheus, Grafana ou Vault dans le périmètre P5.
-
-Audit :
+Avant de fusionner une évolution documentaire importante :
 
 ```bash
+python3 scripts/tools/audit_non_regression.py --schemas-only
 python3 scripts/tools/audit_non_regression.py
+bash scripts/commands/validate.sh
 ```
 
-Navigation rapide :
+Les règles de rédaction sont dans [`CONVENTIONS_DOCUMENTAIRES.md`](CONVENTIONS_DOCUMENTAIRES.md).
 
-```bash
-bash scripts/commands/p5.sh docs
-bash scripts/commands/p5.sh guide
-bash scripts/commands/p5.sh inspect
-```
+## Préparer, diagnostiquer et fermer
+
+- [`00-preparation-environnement.md`](00-preparation-environnement.md) — environnement local ;
+- [`00b-preparation-compte-aws.md`](00b-preparation-compte-aws.md) — AWS, budget, réseau et identité ;
+- [`convergence-et-reexecution.md`](convergence-et-reexecution.md) — reprise ;
+- [`troubleshooting.md`](troubleshooting.md) — diagnostic ;
+- [`validation-preuves-nettoyage.md`](validation-preuves-nettoyage.md) — finalisation ;
+- [`livrables/README.md`](livrables/README.md) — livrables.
+
+## Gouvernance
+
+- [`02-correspondance-consignes-depot.md`](02-correspondance-consignes-depot.md) — consignes → implémentation → preuves ;
+- [`03-audit-structurel.md`](03-audit-structurel.md) — invariants structurels ;
+- [`04-audit-non-regression.md`](04-audit-non-regression.md) — contrat exécutable ;
+- [`MATRICE_TRACABILITE.md`](MATRICE_TRACABILITE.md) — documentation ↔ code ;
+- [`CONVENTIONS_DOCUMENTAIRES.md`](CONVENTIONS_DOCUMENTAIRES.md) — règles documentaires ;
+- [`suivi/decisions-techniques.md`](suivi/decisions-techniques.md) — décisions techniques.
