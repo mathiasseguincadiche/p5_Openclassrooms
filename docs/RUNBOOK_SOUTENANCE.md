@@ -52,7 +52,7 @@ Ne pas lancer `cleanup` avant la fin de la soutenance.
 
 ## Afficher
 
-![Vue d'ensemble officielle](schemas/officiels/vue-ensemble.webp)
+![Vue d'ensemble officielle](schemas/officiels/vue-ensemble.svg)
 
 ## Dire
 
@@ -72,7 +72,7 @@ Exercice 3 → répartir et résister
 
 ## Architecture
 
-![Schéma officiel exercice 1](schemas/officiels/exercice-1.webp)
+![Schéma officiel exercice 1](schemas/officiels/exercice-1.svg)
 
 **À comprendre :** Terraform provisionne l'infrastructure AWS. Ansible configure la machine. NGINX sert l'application Angular. Le VPC et ses deux subnets constituent le socle réseau réutilisé ensuite par l'exercice 3.
 
@@ -150,7 +150,7 @@ Montrer l'application Angular puis effectuer un rafraîchissement.
 
 ## Architecture
 
-![Schéma officiel exercice 2](schemas/officiels/exercice-2.webp)
+![Schéma officiel exercice 2](schemas/officiels/exercice-2.svg)
 
 **À comprendre :** le log brut est structuré, envoyé à Amazon OpenSearch, indexé et agrégé. OpenSearch Dashboards transforme ensuite ces données en visualisations lisibles.
 
@@ -204,7 +204,7 @@ Montrer dans cet ordre :
 
 ## Architecture
 
-![Schéma officiel exercice 3](schemas/officiels/exercice-3.webp)
+![Schéma officiel exercice 3](schemas/officiels/exercice-3.svg)
 
 **À comprendre :** HAProxy reçoit les requêtes et choisit un backend sain. `roundrobin` alterne les requêtes ; le health check vérifie la disponibilité ; `fall 3` retire un backend après trois échecs ; `rise 2` le réintègre après deux succès.
 
